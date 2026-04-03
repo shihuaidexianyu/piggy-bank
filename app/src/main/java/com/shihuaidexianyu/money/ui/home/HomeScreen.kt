@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -102,13 +103,13 @@ fun HomeScreen(
                     label = "${state.settings.homePeriod.displayName}净流入",
                     value = AmountFormatter.format(state.periodNetInflow, state.settings),
                     modifier = Modifier.weight(1f),
-                    accent = MaterialTheme.colorScheme.tertiary,
+                    accent = Color(0xFFC24A4A),
                 )
                 MoneyMetricTile(
                     label = "${state.settings.homePeriod.displayName}净流出",
                     value = AmountFormatter.format(state.periodNetOutflow, state.settings),
                     modifier = Modifier.weight(1f),
-                    accent = MaterialTheme.colorScheme.secondary,
+                    accent = Color(0xFF3F8A63),
                 )
             }
         }
