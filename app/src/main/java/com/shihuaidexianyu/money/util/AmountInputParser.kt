@@ -4,7 +4,7 @@ import java.math.RoundingMode
 
 object AmountInputParser {
     fun parseToMinor(text: String): Long? {
-        val normalized = text.trim()
+        val normalized = text.trim().replace(",", "")
         if (normalized.isEmpty()) return null
         if (normalized.startsWith("-")) return null
 
@@ -16,4 +16,3 @@ object AmountInputParser {
         }.getOrNull()
     }
 }
-

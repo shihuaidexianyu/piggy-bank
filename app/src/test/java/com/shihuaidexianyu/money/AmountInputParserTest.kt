@@ -50,4 +50,9 @@ class AmountInputParserTest {
     fun `leading zeros are handled`() {
         assertEquals(750, AmountInputParser.parseToMinor("007.50"))
     }
+
+    @Test
+    fun `grouped amount with commas is accepted`() {
+        assertEquals(1234567, AmountInputParser.parseToMinor("12,345.67"))
+    }
 }
