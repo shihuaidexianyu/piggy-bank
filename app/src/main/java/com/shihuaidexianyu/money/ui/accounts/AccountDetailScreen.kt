@@ -93,12 +93,6 @@ fun AccountDetailScreen(
                 }
             }
         }
-        item {
-            AccountTrendChartCard(
-                chart = state.trendChart,
-                settings = state.settings,
-            )
-        }
         if (
             state.groupType == com.shihuaidexianyu.money.domain.model.AccountGroupType.INVESTMENT &&
             state.latestSettlement != null

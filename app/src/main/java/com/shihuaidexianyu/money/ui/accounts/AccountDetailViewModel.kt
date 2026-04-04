@@ -24,7 +24,6 @@ data class AccountDetailUiState(
     val isStale: Boolean = false,
     val settings: AppSettings = AppSettings(),
     val latestSettlement: InvestmentSettlementSummary? = null,
-    val trendChart: AccountTrendChartUiModel = AccountTrendChartUiModel(),
 )
 
 class AccountDetailViewModel(
@@ -58,12 +57,6 @@ class AccountDetailViewModel(
                             isStale = snapshot.isStale,
                             settings = snapshot.settings,
                             latestSettlement = snapshot.latestSettlement,
-                            trendChart = AccountTrendChartTransformer.build(
-                                account = account,
-                                currentBalance = snapshot.currentBalance,
-                                balanceUpdates = snapshot.balanceUpdates,
-                                settlements = snapshot.settlements,
-                            ),
                         )
                     }
                 }
