@@ -95,14 +95,14 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                     }
                 },
                 popEnterTransition = {
-                    if (isTopLevelSwitch()) {
+                    if (isTopLevelSwitch() || isPopToTopLevelDestination()) {
                         EnterTransition.None
                     } else {
                         slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_ANIM_DURATION))
                     }
                 },
                 popExitTransition = {
-                    if (isTopLevelSwitch()) {
+                    if (isTopLevelSwitch() || isPopToTopLevelDestination()) {
                         ExitTransition.None
                     } else {
                         slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(NAV_ANIM_DURATION))
@@ -123,4 +123,11 @@ private fun AnimatedContentTransitionScope<*>.isTopLevelSwitch(): Boolean {
     val initial = (initialState as? androidx.navigation.NavBackStackEntry)?.destination?.route
     val target = (targetState as? androidx.navigation.NavBackStackEntry)?.destination?.route
     return initial in topLevel && target in topLevel
+}
+
+private fun AnimatedContentTransitionScope<*>.isPopToTopLevelDestination(): Boolean {
+    val topLevel = MoneyDestination.topLevel.map { it.route }.toSet()
+    val initial = (initialState as? androidx.navigation.NavBackStackEntry)?.destination?.route
+    val target = (targetState as? androidx.navigation.NavBackStackEntry)?.destination?.route
+    return initial !in topLevel && target in topLevel
 }

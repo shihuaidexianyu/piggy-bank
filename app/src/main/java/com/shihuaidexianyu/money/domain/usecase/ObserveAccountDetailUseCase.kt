@@ -1,8 +1,8 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
+import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -22,8 +22,6 @@ data class AccountDetailSnapshot(
     val currentBalance: Long,
     val isStale: Boolean,
     val latestSettlement: InvestmentSettlementSummary?,
-    val balanceUpdates: List<BalanceUpdateRecordEntity>,
-    val settlements: List<InvestmentSettlementEntity>,
 )
 
 class ObserveAccountDetailUseCase(
@@ -66,14 +64,15 @@ class ObserveAccountDetailUseCase(
                 currentBalance = 0L,
                 isStale = false,
                 latestSettlement = null,
-                balanceUpdates = emptyList(),
-                settlements = emptyList(),
             )
         }
 
         val reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
-        val balanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(account.id)
-        val settlements = transactionRepository.queryInvestmentSettlementsByAccountId(account.id)
+        val settlements = if (account.groupType == AccountGroupType.INVESTMENT.value) {
+            transactionRepository.queryInvestmentSettlementsByAccountId(account.id)
+        } else {
+            emptyList()
+        }
         val latestSettlement = settlements.maxWithOrNull(
             compareBy<InvestmentSettlementEntity> { it.periodEndAt }.thenBy { it.id },
         )?.let { settlement ->
@@ -96,8 +95,6 @@ class ObserveAccountDetailUseCase(
             currentBalance = calculateCurrentBalanceUseCase(account.id),
             isStale = AccountStatusUtils.isStale(account, reminderConfig = reminderConfig),
             latestSettlement = latestSettlement,
-            balanceUpdates = balanceUpdates,
-            settlements = settlements,
         )
     }
 }
