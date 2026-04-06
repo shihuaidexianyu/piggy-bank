@@ -27,7 +27,9 @@ sealed interface EditAccountEffect {
     data object Saved : EditAccountEffect
     data object Archived : EditAccountEffect
     data object Closed : EditAccountEffect
-    data class ShowMessage(val message: String) : EditAccountEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : EditAccountEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class EditAccountViewModel(
@@ -129,4 +131,3 @@ class EditAccountViewModel(
         effects.emit(EditAccountEffect.Closed)
     }
 }
-

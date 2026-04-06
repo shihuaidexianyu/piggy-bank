@@ -85,5 +85,14 @@ interface CashFlowRecordDao {
         """,
     )
     suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long
+
+    @Query(
+        """
+        SELECT * FROM cash_flow_records
+        WHERE isDeleted = 0 AND occurredAt >= :startAt AND occurredAt <= :endAt
+        ORDER BY occurredAt ASC
+        """,
+    )
+    suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
 }
 

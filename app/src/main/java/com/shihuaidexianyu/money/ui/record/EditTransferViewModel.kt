@@ -32,7 +32,9 @@ data class EditTransferUiState(
 sealed interface EditTransferEffect {
     data object Saved : EditTransferEffect
     data object Deleted : EditTransferEffect
-    data class ShowMessage(val message: String) : EditTransferEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : EditTransferEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class EditTransferViewModel(
@@ -151,4 +153,3 @@ class EditTransferViewModel(
         effects.emit(EditTransferEffect.Deleted)
     }
 }
-

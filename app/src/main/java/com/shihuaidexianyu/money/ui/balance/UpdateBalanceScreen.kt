@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
@@ -23,6 +24,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
@@ -42,13 +44,8 @@ fun UpdateBalanceScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                UpdateBalanceEffect.Saved -> onShowResult()
-                is UpdateBalanceEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
-        }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        if (effect is UpdateBalanceEffect.Saved) onShowResult()
     }
 
     if (showAccountPicker) {
@@ -166,13 +163,7 @@ fun UpdateBalanceScreen(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                Button(
-                    onClick = viewModel::save,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isSaving,
-                ) {
-                    androidx.compose.material3.Text(if (state.isSaving) "保存中..." else "确认更新余额")
-                }
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "确认更新余额")
             }
         }
     }

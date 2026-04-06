@@ -245,6 +245,12 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sumOf { it.amount }
     }
 
+    override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> {
+        return queryAllActiveCashFlowRecords()
+            .filter { it.occurredAt in startAt..endAt }
+            .sortedBy { it.occurredAt }
+    }
+
     private fun <T> replaceById(target: MutableList<T>, id: Long, replacement: T) {
         val index = target.indexOfFirst {
             when (it) {

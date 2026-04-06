@@ -32,7 +32,9 @@ data class UpdateBalanceUiState(
 
 sealed interface UpdateBalanceEffect {
     data object Saved : UpdateBalanceEffect
-    data class ShowMessage(val message: String) : UpdateBalanceEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : UpdateBalanceEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class UpdateBalanceViewModel(
@@ -141,4 +143,3 @@ class UpdateBalanceViewModel(
         }
     }
 }
-

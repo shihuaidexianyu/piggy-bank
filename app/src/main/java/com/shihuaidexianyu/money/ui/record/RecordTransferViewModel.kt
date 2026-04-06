@@ -27,7 +27,9 @@ data class RecordTransferUiState(
 
 sealed interface RecordTransferEffect {
     data object Saved : RecordTransferEffect
-    data class ShowMessage(val message: String) : RecordTransferEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : RecordTransferEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class RecordTransferViewModel(
@@ -130,4 +132,3 @@ class RecordTransferViewModel(
         }
     }
 }
-

@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -34,13 +35,8 @@ fun BalanceUpdateDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                BalanceUpdateDetailEffect.Deleted -> onDeleted()
-                is BalanceUpdateDetailEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
-        }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        if (effect is BalanceUpdateDetailEffect.Deleted) onDeleted()
     }
 
     if (showDeleteConfirm) {

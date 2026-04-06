@@ -33,7 +33,9 @@ data class EditCashFlowUiState(
 sealed interface EditCashFlowEffect {
     data object Saved : EditCashFlowEffect
     data object Deleted : EditCashFlowEffect
-    data class ShowMessage(val message: String) : EditCashFlowEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : EditCashFlowEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class EditCashFlowViewModel(
@@ -151,4 +153,3 @@ class EditCashFlowViewModel(
         effects.emit(EditCashFlowEffect.Deleted)
     }
 }
-

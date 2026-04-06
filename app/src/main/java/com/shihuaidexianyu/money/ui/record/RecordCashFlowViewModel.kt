@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountInputParser
@@ -29,19 +30,29 @@ data class RecordCashFlowUiState(
 
 sealed interface RecordCashFlowEffect {
     data object Saved : RecordCashFlowEffect
-    data class ShowMessage(val message: String) : RecordCashFlowEffect
+    data class ShowMessage(override val message: String) : RecordCashFlowEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class RecordCashFlowViewModel(
     private val direction: CashFlowDirection,
     initialAccountId: Long?,
+    prefillAmount: Long? = null,
+    prefillPurpose: String? = null,
+    private val reminderId: Long? = null,
     private val accountRepository: AccountRepository,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
+    private val confirmReminderUseCase: ConfirmReminderUseCase? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         RecordCashFlowUiState(
             direction = direction,
             selectedAccountId = initialAccountId,
+            amountText = prefillAmount?.let {
+                java.math.BigDecimal.valueOf(it, 2)
+                    .setScale(2, java.math.RoundingMode.DOWN)
+                    .toPlainString()
+            } ?: "",
+            purpose = prefillPurpose ?: "",
         ),
     )
     val uiState: StateFlow<RecordCashFlowUiState> = _uiState.asStateFlow()
@@ -125,6 +136,9 @@ class RecordCashFlowViewModel(
                     occurredAt = occurredAt,
                 )
             }.onSuccess {
+                if (reminderId != null && confirmReminderUseCase != null) {
+                    runCatching { confirmReminderUseCase(reminderId) }
+                }
                 effects.emit(RecordCashFlowEffect.Saved)
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isSaving = false)

@@ -32,7 +32,9 @@ data class EditBalanceUpdateUiState(
 sealed interface EditBalanceUpdateEffect {
     data object Saved : EditBalanceUpdateEffect
     data object Deleted : EditBalanceUpdateEffect
-    data class ShowMessage(val message: String) : EditBalanceUpdateEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : EditBalanceUpdateEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class EditBalanceUpdateViewModel(

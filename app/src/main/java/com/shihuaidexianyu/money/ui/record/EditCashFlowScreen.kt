@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -23,6 +24,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
@@ -41,13 +43,11 @@ fun EditCashFlowScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                EditCashFlowEffect.Saved -> onBack()
-                EditCashFlowEffect.Deleted -> onDeleted()
-                is EditCashFlowEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        when (effect) {
+            EditCashFlowEffect.Saved -> onBack()
+            EditCashFlowEffect.Deleted -> onDeleted()
+            else -> {}
         }
     }
 
@@ -151,13 +151,7 @@ fun EditCashFlowScreen(
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     timeSubtitle = "修改记录发生时间",
                 )
-                Button(
-                    onClick = viewModel::save,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isSaving,
-                ) {
-                    Text(if (state.isSaving) "保存中..." else "保存修改")
-                }
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "保存修改")
             }
         }
         item {

@@ -14,6 +14,7 @@
 .cxx
 local.properties
 .gradle-user-home
+.gradle-local
 .android-user-home
 .android-user-home-debug
 .android-user-home-rebuild

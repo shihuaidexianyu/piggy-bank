@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 
 @Composable
@@ -26,13 +28,8 @@ fun CreateAccountScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                CreateAccountEffect.Saved -> onBack()
-                is CreateAccountEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
-        }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        if (effect is CreateAccountEffect.Saved) onBack()
     }
 
     AccountSettingsPickerDialog(
@@ -69,13 +66,7 @@ fun CreateAccountScreen(
                     onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
                     onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
                 )
-                Button(
-                    onClick = viewModel::save,
-                    enabled = !state.isSaving,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    androidx.compose.material3.Text(if (state.isSaving) "保存中..." else "保存")
-                }
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
             }
         }
     }

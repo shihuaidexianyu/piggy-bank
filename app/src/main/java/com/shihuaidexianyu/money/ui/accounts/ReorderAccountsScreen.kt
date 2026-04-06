@@ -16,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 
@@ -32,13 +34,8 @@ fun ReorderAccountsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                ReorderAccountsEffect.Saved -> onBack()
-                is ReorderAccountsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
-        }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        if (effect is ReorderAccountsEffect.Saved) onBack()
     }
 
     MoneyFormPage(
@@ -130,13 +127,7 @@ fun ReorderAccountsScreen(
             }
             item {
                 MoneyCard {
-                    Button(
-                        onClick = viewModel::save,
-                        enabled = !state.isSaving,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (state.isSaving) "保存中..." else "保存顺序")
-                    }
+                    MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "保存顺序")
                 }
             }
         }

@@ -2,8 +2,7 @@ package com.shihuaidexianyu.money
 
 import android.app.Application
 
-class
-MoneyApplication : Application() {
+class MoneyApplication : Application() {
     lateinit var container: MoneyAppContainer
         private set
 
@@ -12,4 +11,3 @@ MoneyApplication : Application() {
         container = MoneyAppContainer(this)
     }
 }
-

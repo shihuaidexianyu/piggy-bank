@@ -83,6 +83,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                 addAccountsGraph(navController = navController, container = container)
                 addRecordGraph(navController = navController, container = container)
                 addBalanceGraph(navController = navController, container = container)
+                addReminderGraph(navController = navController, container = container)
             }
         }
     }

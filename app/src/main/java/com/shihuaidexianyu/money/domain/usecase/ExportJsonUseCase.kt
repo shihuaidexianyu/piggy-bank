@@ -10,9 +10,11 @@ import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
+import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -33,6 +35,7 @@ data class ExportJsonPayload(
     val balanceUpdateRecords: List<BalanceUpdateRecordEntity>,
     val balanceAdjustmentRecords: List<BalanceAdjustmentRecordEntity>,
     val investmentSettlements: List<InvestmentSettlementEntity>,
+    val recurringReminders: List<RecurringReminderEntity>,
     val settings: AppSettings,
     val exportedAt: Long,
     val appVersion: String,
@@ -54,6 +57,7 @@ object ExportJsonPayloadFactory {
         balanceUpdateRecords: List<BalanceUpdateRecordEntity>,
         balanceAdjustmentRecords: List<BalanceAdjustmentRecordEntity>,
         investmentSettlements: List<InvestmentSettlementEntity>,
+        recurringReminders: List<RecurringReminderEntity> = emptyList(),
         settings: AppSettings,
         exportedAt: Long,
         appVersion: String,
@@ -66,6 +70,7 @@ object ExportJsonPayloadFactory {
             balanceUpdateRecords = balanceUpdateRecords.sortedWith(compareBy<BalanceUpdateRecordEntity> { it.occurredAt }.thenBy { it.id }),
             balanceAdjustmentRecords = balanceAdjustmentRecords.sortedWith(compareBy<BalanceAdjustmentRecordEntity> { it.occurredAt }.thenBy { it.id }),
             investmentSettlements = investmentSettlements.sortedWith(compareBy<InvestmentSettlementEntity> { it.periodEndAt }.thenBy { it.id }),
+            recurringReminders = recurringReminders.sortedWith(compareBy<RecurringReminderEntity> { it.nextDueAt }.thenBy { it.id }),
             settings = settings,
             exportedAt = exportedAt,
             appVersion = appVersion,
@@ -79,6 +84,7 @@ class ExportJsonUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val settingsRepository: SettingsRepository,
+    private val recurringReminderRepository: RecurringReminderRepository,
 ) {
     suspend operator fun invoke(): ExportJsonResult {
         val exportedAt = System.currentTimeMillis()
@@ -90,6 +96,7 @@ class ExportJsonUseCase(
             balanceUpdateRecords = transactionRepository.queryAllBalanceUpdateRecords(),
             balanceAdjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords(),
             investmentSettlements = transactionRepository.queryAllInvestmentSettlements(),
+            recurringReminders = recurringReminderRepository.queryAll(),
             settings = settingsRepository.observeSettings().first(),
             exportedAt = exportedAt,
             appVersion = context.packageManager
@@ -148,6 +155,7 @@ private fun ExportJsonPayload.toJson(): JSONObject {
         put("balanceUpdateRecords", JSONArray().apply { balanceUpdateRecords.forEach { put(it.toJson()) } })
         put("balanceAdjustmentRecords", JSONArray().apply { balanceAdjustmentRecords.forEach { put(it.toJson()) } })
         put("investmentSettlements", JSONArray().apply { investmentSettlements.forEach { put(it.toJson()) } })
+        put("recurringReminders", JSONArray().apply { recurringReminders.forEach { put(it.toJson()) } })
         put("settings", settings.toJson())
         put("exportedAt", exportedAt)
         put("appVersion", appVersion)
@@ -233,5 +241,22 @@ private fun InvestmentSettlementEntity.toJson(): JSONObject = JSONObject().apply
     put("periodStartAt", periodStartAt)
     put("periodEndAt", periodEndAt)
     put("createdAt", createdAt)
+}
+
+private fun RecurringReminderEntity.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("name", name)
+    put("type", type)
+    put("accountId", accountId)
+    put("direction", direction)
+    put("amount", amount)
+    put("periodType", periodType)
+    put("periodValue", periodValue)
+    put("periodMonth", periodMonth ?: JSONObject.NULL)
+    put("isEnabled", isEnabled)
+    put("nextDueAt", nextDueAt)
+    put("lastConfirmedAt", lastConfirmedAt ?: JSONObject.NULL)
+    put("createdAt", createdAt)
+    put("updatedAt", updatedAt)
 }
 

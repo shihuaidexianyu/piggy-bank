@@ -1,13 +1,17 @@
 package com.shihuaidexianyu.money.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NorthEast
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.SouthWest
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Sync
@@ -20,10 +24,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyMetricTile
@@ -39,6 +45,8 @@ fun HomeScreen(
     onStartCashFlow: (CashFlowDirection, Long) -> Unit,
     onStartTransfer: () -> Unit,
     onStartUpdateBalance: (Long) -> Unit,
+    onReminderClick: (DueReminderUiModel) -> Unit,
+    onAllRemindersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pickerDirection by remember { mutableStateOf<CashFlowDirection?>(null) }
@@ -114,6 +122,55 @@ fun HomeScreen(
                 )
             }
         }
+        if (state.dueReminders.isNotEmpty()) {
+            item {
+                MoneySectionHeader(title = "待处理提醒")
+            }
+            item {
+                MoneyCard {
+                    state.dueReminders.forEach { reminder ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onReminderClick(reminder) }
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = reminder.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                    MoneyStatusPill(
+                                        text = when (reminder.type) {
+                                            ReminderType.MANUAL -> "待缴费"
+                                            ReminderType.SUBSCRIPTION -> "待确认"
+                                        },
+                                        accent = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                            Text(
+                                text = reminder.amountFormatted,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    Text(
+                        text = "管理全部提醒 >",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onAllRemindersClick),
+                    )
+                }
+            }
+        }
         item {
             MoneySectionHeader(title = "操作")
         }
@@ -150,6 +207,17 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     onClick = { showUpdateBalancePicker = true },
                     enabled = state.accountOptions.isNotEmpty(),
+                )
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HomeActionButton(
+                    label = "定期提醒",
+                    icon = { Icon(Icons.Outlined.Notifications, contentDescription = null) },
+                    modifier = Modifier.weight(1f),
+                    onClick = onAllRemindersClick,
+                    enabled = true,
                 )
             }
         }

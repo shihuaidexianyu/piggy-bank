@@ -13,10 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 
@@ -38,16 +40,11 @@ fun EditAccountScreen(
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
     var nameDraft by remember(state.name) { mutableStateOf(state.name) }
 
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                EditAccountEffect.Saved,
-                EditAccountEffect.Archived,
-                -> onBack()
-                EditAccountEffect.Closed -> onClosed()
-
-                is EditAccountEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
-            }
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        when (effect) {
+            EditAccountEffect.Saved, EditAccountEffect.Archived -> onBack()
+            EditAccountEffect.Closed -> onClosed()
+            else -> {}
         }
     }
 
@@ -120,13 +117,7 @@ fun EditAccountScreen(
         }
         item {
             MoneyCard {
-                Button(
-                    onClick = viewModel::save,
-                    enabled = !state.isSaving && !state.isLoading,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    androidx.compose.material3.Text(if (state.isSaving) "保存中..." else "保存")
-                }
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
             }
         }
         item { MoneySectionHeader(title = "归档") }

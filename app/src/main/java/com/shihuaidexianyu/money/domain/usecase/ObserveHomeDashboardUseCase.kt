@@ -1,10 +1,12 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.AccountStatusUtils
@@ -23,11 +25,13 @@ data class HomeDashboardSnapshot(
     val periodNetOutflow: Long,
     val staleAccountCount: Int,
     val activeAccounts: List<AccountEntity>,
+    val dueReminders: List<RecurringReminderEntity>,
 )
 
 class ObserveHomeDashboardUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
+    private val recurringReminderRepository: RecurringReminderRepository,
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
@@ -39,10 +43,12 @@ class ObserveHomeDashboardUseCase(
             accountReminderSettingsRepository.observeReminderConfigs(),
             settingsRepository.observeSettings(),
             transactionRepository.observeChangeVersion(),
-        ) { accounts, reminderConfigs, settings, _ ->
-            Triple(accounts, reminderConfigs, settings)
-        }.mapLatest { (accounts, reminderConfigs, settings) ->
-            buildSnapshot(accounts, reminderConfigs, settings)
+            recurringReminderRepository.observeDueReminders(),
+        ) { accounts, reminderConfigs, settings, _, dueReminders ->
+            Triple(accounts, reminderConfigs, settings) to dueReminders
+        }.mapLatest { (triple, dueReminders) ->
+            val (accounts, reminderConfigs, settings) = triple
+            buildSnapshot(accounts, reminderConfigs, settings, dueReminders)
         }
     }
 
@@ -50,6 +56,7 @@ class ObserveHomeDashboardUseCase(
         accounts: List<AccountEntity>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
+        dueReminders: List<RecurringReminderEntity>,
     ): HomeDashboardSnapshot = coroutineScope {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
         val balanceJobs = accounts.map { account ->
@@ -71,6 +78,7 @@ class ObserveHomeDashboardUseCase(
                 )
             },
             activeAccounts = accounts,
+            dueReminders = dueReminders,
         )
     }
 }

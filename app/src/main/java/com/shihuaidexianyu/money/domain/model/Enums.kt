@@ -116,3 +116,50 @@ enum class HomePeriod(
     }
 }
 
+enum class ReminderType(
+    val value: String,
+    val displayName: String,
+) {
+    MANUAL("manual", "手动缴费"),
+    SUBSCRIPTION("subscription", "自动扣费"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): ReminderType {
+            return entries.firstOrNull { it.value == value } ?: MANUAL
+        }
+    }
+}
+
+enum class ReminderPeriodType(
+    val value: String,
+    val displayName: String,
+) {
+    MONTHLY("monthly", "每月"),
+    YEARLY("yearly", "每年"),
+    CUSTOM_DAYS("custom_days", "自定义天数"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): ReminderPeriodType {
+            return entries.firstOrNull { it.value == value } ?: MONTHLY
+        }
+    }
+}
+
+enum class StatsPeriod(
+    val value: String,
+    val displayName: String,
+) {
+    WEEK("week", "周"),
+    MONTH("month", "月"),
+    YEAR("year", "年"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): StatsPeriod {
+            return entries.firstOrNull { it.value == value } ?: MONTH
+        }
+    }
+}
+

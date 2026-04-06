@@ -132,5 +132,7 @@ class TransactionRepositoryImpl(
     override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllInflowBetween(startAt, endAt)
 
     override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllOutflowBetween(startAt, endAt)
+
+    override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryActiveBetween(startAt, endAt)
 }
 

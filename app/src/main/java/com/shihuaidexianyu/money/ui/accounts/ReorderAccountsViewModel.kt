@@ -29,7 +29,9 @@ data class ReorderAccountsUiState(
 
 sealed interface ReorderAccountsEffect {
     data object Saved : ReorderAccountsEffect
-    data class ShowMessage(val message: String) : ReorderAccountsEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : ReorderAccountsEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class ReorderAccountsViewModel(
@@ -131,4 +133,3 @@ class ReorderAccountsViewModel(
         }
     }
 }
-

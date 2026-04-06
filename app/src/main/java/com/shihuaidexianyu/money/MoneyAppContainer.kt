@@ -5,22 +5,29 @@ import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.SettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveStatsUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
@@ -30,6 +37,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountOrderingUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import kotlinx.coroutines.runBlocking
 
@@ -65,6 +73,9 @@ class MoneyAppContainer(context: Context) {
     val accountReminderSettingsRepository: AccountReminderSettingsRepository =
         AccountReminderSettingsRepositoryImpl(appContext)
 
+    val recurringReminderRepository: RecurringReminderRepository =
+        RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
+
     val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
@@ -83,6 +94,7 @@ class MoneyAppContainer(context: Context) {
     val observeHomeDashboardUseCase = ObserveHomeDashboardUseCase(
         accountReminderSettingsRepository = accountReminderSettingsRepository,
         accountRepository = accountRepository,
+        recurringReminderRepository = recurringReminderRepository,
         settingsRepository = settingsRepository,
         transactionRepository = transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
@@ -192,6 +204,36 @@ class MoneyAppContainer(context: Context) {
         accountReminderSettingsRepository = accountReminderSettingsRepository,
         transactionRepository = transactionRepository,
         settingsRepository = settingsRepository,
+        recurringReminderRepository = recurringReminderRepository,
+    )
+
+    val createReminderUseCase = CreateReminderUseCase(
+        accountRepository = accountRepository,
+        reminderRepository = recurringReminderRepository,
+    )
+
+    val updateReminderUseCase = UpdateReminderUseCase(
+        accountRepository = accountRepository,
+        reminderRepository = recurringReminderRepository,
+    )
+
+    val deleteReminderUseCase = DeleteReminderUseCase(
+        reminderRepository = recurringReminderRepository,
+    )
+
+    val confirmReminderUseCase = ConfirmReminderUseCase(
+        reminderRepository = recurringReminderRepository,
+    )
+
+    val observeDueRemindersUseCase = ObserveDueRemindersUseCase(
+        reminderRepository = recurringReminderRepository,
+    )
+
+    val observeStatsUseCase = ObserveStatsUseCase(
+        accountRepository = accountRepository,
+        settingsRepository = settingsRepository,
+        transactionRepository = transactionRepository,
+        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
     )
 }
 

@@ -28,7 +28,9 @@ data class BalanceUpdateDetailUiState(
 
 sealed interface BalanceUpdateDetailEffect {
     data object Deleted : BalanceUpdateDetailEffect
-    data class ShowMessage(val message: String) : BalanceUpdateDetailEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : BalanceUpdateDetailEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class BalanceUpdateDetailViewModel(

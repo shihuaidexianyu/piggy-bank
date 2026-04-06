@@ -24,7 +24,9 @@ data class CreateAccountUiState(
 
 sealed interface CreateAccountEffect {
     data object Saved : CreateAccountEffect
-    data class ShowMessage(val message: String) : CreateAccountEffect
+    data class ShowMessage(
+        override val message: String,
+    ) : CreateAccountEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class CreateAccountViewModel(
@@ -85,4 +87,3 @@ class CreateAccountViewModel(
         }
     }
 }
-

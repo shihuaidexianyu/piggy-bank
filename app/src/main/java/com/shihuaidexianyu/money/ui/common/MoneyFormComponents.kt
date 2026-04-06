@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,6 +19,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -256,6 +261,58 @@ fun MoneyAmountField(
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = MaterialTheme.typography.displayMedium,
+    )
+}
+
+@Composable
+fun MoneySaveButton(
+    onClick: () -> Unit,
+    isSaving: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    label: String = "保存",
+    savingLabel: String = "保存中...",
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled && !isSaving,
+    ) {
+        Text(if (isSaving) savingLabel else label)
+    }
+}
+
+@Composable
+fun <T> MoneyPickerField(
+    label: String,
+    value: String,
+    dialogTitle: String,
+    options: List<T>,
+    selected: T? = null,
+    optionLabel: (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        MoneyChoiceDialog(
+            title = dialogTitle,
+            options = options,
+            selected = selected,
+            label = optionLabel,
+            onSelect = {
+                onSelect(it)
+                showDialog = false
+            },
+            onDismiss = { showDialog = false },
+        )
+    }
+
+    MoneySelectionField(
+        label = label,
+        value = value,
+        modifier = modifier.clickable { showDialog = true },
     )
 }
 

@@ -57,5 +57,6 @@ interface TransactionRepository {
     suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long
     suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long
+    suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
 }
 
