@@ -29,6 +29,15 @@ data class CashFlowBar(
     val outflow: Long,
 )
 
+data class CashFlowEvent(
+    val occurredAt: Long,
+    val inflow: Long,
+    val outflow: Long,
+) {
+    val netAmount: Long
+        get() = inflow - outflow
+}
+
 data class NetAssetPoint(
     val label: String,
     val timestamp: Long,
@@ -93,6 +102,7 @@ data class StatsSnapshot(
     val assetGroupShares: List<AssetGroupShare>,
     val topAccountShares: List<AccountShare>,
     val investmentOverview: InvestmentOverview,
+    val cashFlowEvents: List<CashFlowEvent>,
     val cashFlowBars: List<CashFlowBar>,
     val netAssetPoints: List<NetAssetPoint>,
     val investmentPoints: List<InvestmentPoint>,
@@ -130,6 +140,7 @@ class ObserveStatsUseCase(
         val groupSharesJob = async { buildAssetGroupShares(statsData) }
         val topAccountsJob = async { buildTopAccountShares(statsData) }
         val investmentOverviewJob = async { buildInvestmentOverview(statsData) }
+        val cashFlowEventsJob = async { buildCashFlowEvents(statsData.allCashFlows) }
 
         val intervals = intervalsJob.await()
         StatsSnapshot(
@@ -140,6 +151,7 @@ class ObserveStatsUseCase(
             assetGroupShares = groupSharesJob.await(),
             topAccountShares = topAccountsJob.await(),
             investmentOverview = investmentOverviewJob.await(),
+            cashFlowEvents = cashFlowEventsJob.await(),
             cashFlowBars = intervals.map { interval ->
                 CashFlowBar(
                     label = interval.label,
@@ -177,6 +189,9 @@ class ObserveStatsUseCase(
         val cashFlowsJob = async {
             transactionRepository.queryActiveCashFlowRecordsBetween(rangeStart, rangeEnd)
         }
+        val allCashFlowsJob = async {
+            transactionRepository.queryAllActiveCashFlowRecords()
+        }
         val transfersJob = async {
             transactionRepository.queryActiveTransferRecordsBetween(rangeStart, rangeEnd)
         }
@@ -205,6 +220,7 @@ class ObserveStatsUseCase(
             overallRange = overallRange,
             accounts = accounts,
             cashFlowsInRange = cashFlowsJob.await(),
+            allCashFlows = allCashFlowsJob.await(),
             transfersInRange = transfersJob.await(),
             manualAdjustmentsInRange = adjustmentsJob.await(),
             balanceUpdatesInRange = balanceUpdatesJob.await(),
@@ -352,6 +368,28 @@ class ObserveStatsUseCase(
         }.sortedByDescending { abs(it.balance) }
     }
 
+    private fun buildCashFlowEvents(
+        allCashFlows: List<CashFlowRecordEntity>,
+    ): List<CashFlowEvent> {
+        return allCashFlows
+            .sortedBy { it.occurredAt }
+            .map { record ->
+                if (record.direction == "inflow") {
+                    CashFlowEvent(
+                        occurredAt = record.occurredAt,
+                        inflow = record.amount,
+                        outflow = 0L,
+                    )
+                } else {
+                    CashFlowEvent(
+                        occurredAt = record.occurredAt,
+                        inflow = 0L,
+                        outflow = record.amount,
+                    )
+                }
+            }
+    }
+
     private fun buildInvestmentOverview(
         statsData: StatsData,
     ): InvestmentOverview {
@@ -468,6 +506,7 @@ private data class StatsData(
     val overallRange: TimeRange,
     val accounts: List<AccountEntity>,
     val cashFlowsInRange: List<CashFlowRecordEntity>,
+    val allCashFlows: List<CashFlowRecordEntity>,
     val transfersInRange: List<TransferRecordEntity>,
     val manualAdjustmentsInRange: List<BalanceAdjustmentRecordEntity>,
     val balanceUpdatesInRange: List<BalanceUpdateRecordEntity>,

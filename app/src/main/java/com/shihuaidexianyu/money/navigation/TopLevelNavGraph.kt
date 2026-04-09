@@ -98,6 +98,11 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         StatsScreen(
             state = state,
             onPeriodChange = viewModel::updatePeriod,
+            onCashFlowModeChange = viewModel::updateCashFlowCardMode,
+            onCashFlowGranularityChange = viewModel::updateCashFlowGranularity,
+            onCashFlowDisplayUnitChange = viewModel::updateCashFlowDisplayUnit,
+            onCashFlowDateSelect = viewModel::selectCashFlowDate,
+            onCashFlowShiftPeriod = viewModel::shiftCashFlowVisiblePeriod,
             modifier = Modifier,
         )
     }

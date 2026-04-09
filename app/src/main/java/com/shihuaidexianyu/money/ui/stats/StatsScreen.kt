@@ -24,12 +24,16 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.util.AmountFormatter
-import kotlin.math.abs
 
 @Composable
 fun StatsScreen(
     state: StatsUiState,
     onPeriodChange: (StatsPeriod) -> Unit,
+    onCashFlowModeChange: (CashFlowCardMode) -> Unit,
+    onCashFlowGranularityChange: (CashFlowGranularity) -> Unit,
+    onCashFlowDisplayUnitChange: (CashFlowDisplayUnit) -> Unit,
+    onCashFlowDateSelect: (Long) -> Unit,
+    onCashFlowShiftPeriod: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -78,39 +82,27 @@ fun StatsScreen(
             }
 
             item {
-                MoneySectionHeader(title = "现金流结构", trailing = "仅统计入账与出账")
+                MoneySectionHeader(title = "现金流", trailing = "不含转账与余额修正")
             }
             item {
-                MoneyCard {
-                    MoneyInlineLabelValue(
-                        label = "总入账",
-                        value = AmountFormatter.format(state.overview.totalInflow, state.settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = "总出账",
-                        value = AmountFormatter.format(state.overview.totalOutflow, state.settings),
-                    )
-                    state.intervals.maxByOrNull { abs(it.netCashFlow) }?.let { interval ->
-                        MoneyInlineLabelValue(
-                            label = "波动最大区间",
-                            value = "${interval.label} · ${AmountFormatter.format(interval.netCashFlow, state.settings)}",
-                        )
-                    }
-                    if (state.cashFlowBars.any { it.inflow > 0 || it.outflow > 0 }) {
-                        CashFlowChart(
-                            bars = state.cashFlowBars,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp),
-                        )
-                    } else {
-                        EmptyChartBody("当前周期没有入账或出账记录。")
-                    }
-                }
+                CashFlowCalendarCard(
+                    settings = state.settings,
+                    events = state.cashFlowEvents,
+                    mode = state.cashFlowCardMode,
+                    granularity = state.cashFlowGranularity,
+                    displayUnit = state.cashFlowDisplayUnit,
+                    selectedEpochDay = state.cashFlowSelectedEpochDay,
+                    visibleEpochDay = state.cashFlowVisibleEpochDay,
+                    onModeChange = onCashFlowModeChange,
+                    onGranularityChange = onCashFlowGranularityChange,
+                    onDisplayUnitChange = onCashFlowDisplayUnitChange,
+                    onDateSelect = onCashFlowDateSelect,
+                    onShiftPeriod = onCashFlowShiftPeriod,
+                )
             }
 
             item {
-                MoneySectionHeader(title = "净资产趋势", trailing = "含转账与余额修正")
+                MoneySectionHeader(title = "净资产趋势", trailing = "含转账、修正与余额锚点")
             }
             item {
                 MoneyCard {
@@ -136,7 +128,7 @@ fun StatsScreen(
             }
 
             item {
-                MoneySectionHeader(title = "资产分布", trailing = "按账户分组聚合")
+                MoneySectionHeader(title = "资产配置", trailing = "按账户组聚合")
             }
             item {
                 MoneyCard {
