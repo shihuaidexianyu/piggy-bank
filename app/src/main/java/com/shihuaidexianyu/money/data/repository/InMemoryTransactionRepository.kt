@@ -215,15 +215,23 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
-        return queryAllActiveCashFlowRecords()
+        val cashFlowInflow = queryAllActiveCashFlowRecords()
             .filter { it.direction == "inflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
+        val balanceUpdateInflow = balanceUpdates
+            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .sumOf { it.delta }
+        return cashFlowInflow + balanceUpdateInflow
     }
 
     override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
-        return queryAllActiveCashFlowRecords()
+        val cashFlowOutflow = queryAllActiveCashFlowRecords()
             .filter { it.direction == "outflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
+        val balanceUpdateOutflow = balanceUpdates
+            .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .sumOf { -it.delta }
+        return cashFlowOutflow + balanceUpdateOutflow
     }
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> {

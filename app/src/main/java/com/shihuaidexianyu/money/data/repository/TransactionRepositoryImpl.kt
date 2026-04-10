@@ -120,9 +120,15 @@ class TransactionRepositoryImpl(
 
     override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long = balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startAt, endAt)
 
-    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllInflowBetween(startAt, endAt)
+    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
+        return cashFlowRecordDao.sumAllInflowBetween(startAt, endAt) +
+            balanceUpdateRecordDao.sumPositiveDeltaBetween(startAt, endAt)
+    }
 
-    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumAllOutflowBetween(startAt, endAt)
+    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
+        return cashFlowRecordDao.sumAllOutflowBetween(startAt, endAt) +
+            balanceUpdateRecordDao.sumNegativeDeltaBetween(startAt, endAt)
+    }
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryActiveBetween(startAt, endAt)
 }

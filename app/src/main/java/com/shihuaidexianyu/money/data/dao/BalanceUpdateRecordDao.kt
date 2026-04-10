@@ -34,6 +34,26 @@ interface BalanceUpdateRecordDao {
     )
     suspend fun queryBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecordEntity>
 
+    @Query(
+        """
+        SELECT COALESCE(SUM(delta), 0) FROM balance_update_records
+        WHERE delta > 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumPositiveDeltaBetween(startAt: Long, endAt: Long): Long
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(-delta), 0) FROM balance_update_records
+        WHERE delta < 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumNegativeDeltaBetween(startAt: Long, endAt: Long): Long
+
     @Query("SELECT COUNT(*) FROM balance_update_records")
     fun observeCount(): Flow<Int>
 
