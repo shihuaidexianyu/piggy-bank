@@ -26,21 +26,18 @@ val Amber300 = Color(0xFFE7C98A)
 data class MoneyColors(
     val income: Color,
     val expense: Color,
-    val settlement: Color,
     val current: Color,
 )
 
 private val LightMoneyColors = MoneyColors(
     income = Color(0xFFC24A4A),
     expense = Color(0xFF3F8A63),
-    settlement = Color(0xFFB45309),
     current = Color(0xFF0F766E),
 )
 
 private val DarkMoneyColors = MoneyColors(
     income = Color(0xFFE57373),
     expense = Color(0xFF66BB6A),
-    settlement = Color(0xFFFBBF24),
     current = Color(0xFF5EEAD4),
 )
 
@@ -48,4 +45,3 @@ val LocalMoneyColors = staticCompositionLocalOf { LightMoneyColors }
 
 internal val LightMoneyColorsInstance = LightMoneyColors
 internal val DarkMoneyColorsInstance = DarkMoneyColors
-

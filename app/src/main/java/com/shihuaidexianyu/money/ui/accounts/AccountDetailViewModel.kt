@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.usecase.InvestmentSettlementSummary
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +22,6 @@ data class AccountDetailUiState(
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isStale: Boolean = false,
     val settings: AppSettings = AppSettings(),
-    val latestSettlement: InvestmentSettlementSummary? = null,
 )
 
 class AccountDetailViewModel(
@@ -56,7 +54,6 @@ class AccountDetailViewModel(
                             reminderConfig = snapshot.reminderConfig,
                             isStale = snapshot.isStale,
                             settings = snapshot.settings,
-                            latestSettlement = snapshot.latestSettlement,
                         )
                     }
                 }
@@ -66,4 +63,3 @@ class AccountDetailViewModel(
         }
     }
 }
-

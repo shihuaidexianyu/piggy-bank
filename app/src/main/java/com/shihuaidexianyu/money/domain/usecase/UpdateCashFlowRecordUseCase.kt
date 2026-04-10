@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 class UpdateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -32,8 +31,6 @@ class UpdateCashFlowRecordUseCase(
             updatedAt = System.currentTimeMillis(),
         )
         transactionRepository.updateCashFlowRecord(updated)
-        recalculateInvestmentSettlementsUseCase(existing.accountId)
-        if (existing.accountId != accountId) recalculateInvestmentSettlementsUseCase(accountId)
         refreshAccountActivityStateUseCase(existing.accountId)
         if (existing.accountId != accountId) {
             refreshAccountActivityStateUseCase(accountId)

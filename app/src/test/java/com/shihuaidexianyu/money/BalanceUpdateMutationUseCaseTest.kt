@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
@@ -34,7 +33,6 @@ class BalanceUpdateMutationUseCaseTest {
         val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
@@ -87,7 +85,6 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             transactionRepository = transactionRepository,
-            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
@@ -117,11 +114,7 @@ class BalanceUpdateMutationUseCaseTest {
         deleteBalanceUpdateRecordUseCase(latestRecordId)
 
         assertEquals(3_000, accountRepository.getAccountById(accountId)?.lastBalanceUpdateAt)
-        assertEquals(1, transactionRepository.queryInvestmentSettlementsByAccountId(accountId).size)
-        assertNull(
-            transactionRepository.queryInvestmentSettlementsByAccountId(accountId)
-                .firstOrNull { it.balanceUpdateRecordId == latestRecordId },
-        )
+        assertNull(transactionRepository.getBalanceUpdateRecordById(latestRecordId))
     }
 
     @Test
@@ -138,7 +131,6 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             transactionRepository = transactionRepository,
-            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
@@ -188,7 +180,6 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             transactionRepository = transactionRepository,
-            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)

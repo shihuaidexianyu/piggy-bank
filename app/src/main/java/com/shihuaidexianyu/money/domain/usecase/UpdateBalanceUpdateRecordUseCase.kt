@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class UpdateBalanceUpdateRecordUseCase(
     private val transactionRepository: TransactionRepository,
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
-    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -32,7 +31,6 @@ class UpdateBalanceUpdateRecordUseCase(
                 ),
             )
         }
-        recalculateInvestmentSettlementsUseCase(existing.accountId)
         refreshAccountActivityStateUseCase(existing.accountId)
     }
 }

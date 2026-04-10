@@ -12,7 +12,6 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
@@ -47,29 +46,6 @@ fun BalanceUpdateResultScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-        }
-        result.settlementSummary?.let { settlement ->
-            item {
-                MoneyCard {
-                    MoneySectionHeader(title = "投资账户结算")
-                    MoneyInlineLabelValue(
-                        label = "本周期盈亏",
-                        value = AmountFormatter.format(settlement.pnl, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期收益率",
-                        value = "${"%.2f".format(settlement.returnRate * 100)}%",
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期净转入",
-                        value = AmountFormatter.format(settlement.netTransferIn, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期净转出",
-                        value = AmountFormatter.format(settlement.netTransferOut, settings),
-                    )
-                }
             }
         }
         item {

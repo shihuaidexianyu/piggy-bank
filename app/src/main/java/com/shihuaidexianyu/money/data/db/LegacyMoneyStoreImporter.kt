@@ -19,8 +19,7 @@ object LegacyMoneyStoreImporter {
             snapshot.cashFlowRecords.isNotEmpty() ||
             snapshot.transferRecords.isNotEmpty() ||
             snapshot.balanceUpdates.isNotEmpty() ||
-            snapshot.adjustments.isNotEmpty() ||
-            snapshot.settlements.isNotEmpty()
+            snapshot.adjustments.isNotEmpty()
         if (!hasLegacyData) return
 
         database.withTransaction {
@@ -29,7 +28,6 @@ object LegacyMoneyStoreImporter {
             snapshot.transferRecords.sortedBy { it.id }.forEach { database.transferRecordDao().insert(it) }
             snapshot.balanceUpdates.sortedBy { it.id }.forEach { database.balanceUpdateRecordDao().insert(it) }
             snapshot.adjustments.sortedBy { it.id }.forEach { database.balanceAdjustmentRecordDao().insert(it) }
-            snapshot.settlements.sortedBy { it.id }.forEach { database.investmentSettlementDao().insert(it) }
         }
     }
 }

@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +19,12 @@ data class MoneySnapshot(
     val nextTransferId: Long = 1,
     val nextBalanceUpdateId: Long = 1,
     val nextAdjustmentId: Long = 1,
-    val nextSettlementId: Long = 1,
     val changeVersion: Long = 0,
     val accounts: List<AccountEntity> = emptyList(),
     val cashFlowRecords: List<CashFlowRecordEntity> = emptyList(),
     val transferRecords: List<TransferRecordEntity> = emptyList(),
     val balanceUpdates: List<BalanceUpdateRecordEntity> = emptyList(),
     val adjustments: List<BalanceAdjustmentRecordEntity> = emptyList(),
-    val settlements: List<InvestmentSettlementEntity> = emptyList(),
 )
 
 class PersistentMoneyStore(
@@ -68,14 +65,12 @@ class PersistentMoneyStore(
             put("nextTransferId", snapshot.nextTransferId)
             put("nextBalanceUpdateId", snapshot.nextBalanceUpdateId)
             put("nextAdjustmentId", snapshot.nextAdjustmentId)
-            put("nextSettlementId", snapshot.nextSettlementId)
             put("changeVersion", snapshot.changeVersion)
             put("accounts", JSONArray().apply { snapshot.accounts.forEach { put(it.toJson()) } })
             put("cashFlowRecords", JSONArray().apply { snapshot.cashFlowRecords.forEach { put(it.toJson()) } })
             put("transferRecords", JSONArray().apply { snapshot.transferRecords.forEach { put(it.toJson()) } })
             put("balanceUpdates", JSONArray().apply { snapshot.balanceUpdates.forEach { put(it.toJson()) } })
             put("adjustments", JSONArray().apply { snapshot.adjustments.forEach { put(it.toJson()) } })
-            put("settlements", JSONArray().apply { snapshot.settlements.forEach { put(it.toJson()) } })
         }
     }
 
@@ -86,14 +81,12 @@ class PersistentMoneyStore(
             nextTransferId = json.optLong("nextTransferId", 1),
             nextBalanceUpdateId = json.optLong("nextBalanceUpdateId", 1),
             nextAdjustmentId = json.optLong("nextAdjustmentId", 1),
-            nextSettlementId = json.optLong("nextSettlementId", 1),
             changeVersion = json.optLong("changeVersion", 0),
             accounts = json.optJSONArray("accounts").toAccountList(),
             cashFlowRecords = json.optJSONArray("cashFlowRecords").toCashFlowList(),
             transferRecords = json.optJSONArray("transferRecords").toTransferList(),
             balanceUpdates = json.optJSONArray("balanceUpdates").toBalanceUpdateList(),
             adjustments = json.optJSONArray("adjustments").toAdjustmentList(),
-            settlements = json.optJSONArray("settlements").toSettlementList(),
         )
     }
 }
@@ -169,24 +162,6 @@ private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecordEntity> =
         )
     }
 
-private fun JSONArray?.toSettlementList(): List<InvestmentSettlementEntity> =
-    this.toObjectList { item ->
-        InvestmentSettlementEntity(
-            id = item.getLong("id"),
-            accountId = item.getLong("accountId"),
-            balanceUpdateRecordId = item.getLong("balanceUpdateRecordId"),
-            previousBalance = item.getLong("previousBalance"),
-            currentBalance = item.getLong("currentBalance"),
-            netTransferIn = item.getLong("netTransferIn"),
-            netTransferOut = item.getLong("netTransferOut"),
-            pnl = item.getLong("pnl"),
-            returnRate = item.getDouble("returnRate"),
-            periodStartAt = item.getLong("periodStartAt"),
-            periodEndAt = item.getLong("periodEndAt"),
-            createdAt = item.getLong("createdAt"),
-        )
-    }
-
 private inline fun <T> JSONArray?.toObjectList(mapper: (JSONObject) -> T): List<T> {
     if (this == null) return emptyList()
     return buildList(length()) {
@@ -253,21 +228,6 @@ private fun BalanceAdjustmentRecordEntity.toJson(): JSONObject = JSONObject().ap
     put("delta", delta)
     put("sourceUpdateRecordId", sourceUpdateRecordId)
     put("occurredAt", occurredAt)
-    put("createdAt", createdAt)
-}
-
-private fun InvestmentSettlementEntity.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("accountId", accountId)
-    put("balanceUpdateRecordId", balanceUpdateRecordId)
-    put("previousBalance", previousBalance)
-    put("currentBalance", currentBalance)
-    put("netTransferIn", netTransferIn)
-    put("netTransferOut", netTransferOut)
-    put("pnl", pnl)
-    put("returnRate", returnRate)
-    put("periodStartAt", periodStartAt)
-    put("periodEndAt", periodEndAt)
     put("createdAt", createdAt)
 }
 

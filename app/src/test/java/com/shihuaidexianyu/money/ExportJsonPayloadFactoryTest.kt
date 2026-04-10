@@ -4,7 +4,6 @@ import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -43,22 +42,6 @@ class ExportJsonPayloadFactoryTest {
             balanceAdjustmentRecords = listOf(
                 BalanceAdjustmentRecordEntity(id = 1, accountId = 1, delta = 10, sourceUpdateRecordId = 1, occurredAt = 40, createdAt = 40),
             ),
-            investmentSettlements = listOf(
-                InvestmentSettlementEntity(
-                    id = 1,
-                    accountId = 2,
-                    balanceUpdateRecordId = 1,
-                    previousBalance = 100,
-                    currentBalance = 120,
-                    netTransferIn = 10,
-                    netTransferOut = 0,
-                    pnl = 10,
-                    returnRate = 0.1,
-                    periodStartAt = 1,
-                    periodEndAt = 50,
-                    createdAt = 50,
-                ),
-            ),
             settings = AppSettings(
                 homePeriod = HomePeriod.MONTH,
                 currencySymbol = "$",
@@ -82,7 +65,6 @@ class ExportJsonPayloadFactoryTest {
         assertEquals(10, payload.cashFlowRecords.first().occurredAt)
         assertEquals(1, payload.balanceUpdateRecords.size)
         assertEquals(1, payload.balanceAdjustmentRecords.size)
-        assertEquals(1, payload.investmentSettlements.size)
         assertEquals("$", payload.settings.currencySymbol)
         assertEquals(ThemeMode.DARK, payload.settings.themeMode)
         assertEquals(99, payload.exportedAt)

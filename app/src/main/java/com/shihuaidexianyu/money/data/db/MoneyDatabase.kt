@@ -10,14 +10,12 @@ import com.shihuaidexianyu.money.data.dao.AccountDao
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
-import com.shihuaidexianyu.money.data.dao.InvestmentSettlementDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
@@ -56,6 +54,15 @@ private val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+private val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP INDEX IF EXISTS `index_investment_settlements_accountId`")
+        db.execSQL("DROP INDEX IF EXISTS `index_investment_settlements_balanceUpdateRecordId`")
+        db.execSQL("DROP INDEX IF EXISTS `index_investment_settlements_periodStartAt_periodEndAt`")
+        db.execSQL("DROP TABLE IF EXISTS `investment_settlements`")
+    }
+}
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -63,10 +70,9 @@ private val MIGRATION_2_3 = object : Migration(2, 3) {
         TransferRecordEntity::class,
         BalanceUpdateRecordEntity::class,
         BalanceAdjustmentRecordEntity::class,
-        InvestmentSettlementEntity::class,
         RecurringReminderEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class MoneyDatabase : RoomDatabase() {
@@ -75,7 +81,6 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun transferRecordDao(): TransferRecordDao
     abstract fun balanceUpdateRecordDao(): BalanceUpdateRecordDao
     abstract fun balanceAdjustmentRecordDao(): BalanceAdjustmentRecordDao
-    abstract fun investmentSettlementDao(): InvestmentSettlementDao
     abstract fun recurringReminderDao(): RecurringReminderDao
 
     companion object {
@@ -88,9 +93,8 @@ abstract class MoneyDatabase : RoomDatabase() {
                     context,
                     MoneyDatabase::class.java,
                     "money.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
             }
         }
     }
 }
-

@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.domain.repository
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -44,15 +43,6 @@ interface TransactionRepository {
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity>
     suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity>
-
-    suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long
-    suspend fun updateInvestmentSettlement(record: InvestmentSettlementEntity)
-    suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity?
-    suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity>
-    suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity>
-    suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity>
-    suspend fun getLatestInvestmentSettlement(accountId: Long): InvestmentSettlementEntity?
-    suspend fun deleteInvestmentSettlementsByAccountId(accountId: Long)
 
     suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long

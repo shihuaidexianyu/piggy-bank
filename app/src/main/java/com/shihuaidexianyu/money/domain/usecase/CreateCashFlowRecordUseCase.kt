@@ -8,7 +8,6 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 class CreateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -34,9 +33,7 @@ class CreateCashFlowRecordUseCase(
                 updatedAt = now,
             ),
         )
-        recalculateInvestmentSettlementsUseCase(accountId)
         refreshAccountActivityStateUseCase(accountId)
         return recordId
     }
 }
-

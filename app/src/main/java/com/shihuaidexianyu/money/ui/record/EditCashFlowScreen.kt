@@ -54,7 +54,7 @@ fun EditCashFlowScreen(
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
             title = "删除记录",
-            message = "删除后将重新计算相关账户余额与后续统计，确认删除？",
+            message = "删除后将重新计算相关账户余额，确认删除？",
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
             confirmLabel = "确认删除",
@@ -122,7 +122,7 @@ fun EditCashFlowScreen(
         item {
             MoneyCard {
                 Text(
-                    text = "此修改会影响当前余额与后续统计",
+                    text = "此修改会影响当前余额",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -166,4 +166,3 @@ fun EditCashFlowScreen(
         }
     }
 }
-

@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.data.repository
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,13 +13,11 @@ class InMemoryTransactionRepository : TransactionRepository {
     private var nextTransferId = 1L
     private var nextBalanceUpdateId = 1L
     private var nextAdjustmentId = 1L
-    private var nextSettlementId = 1L
 
     private val cashFlowRecords = mutableListOf<CashFlowRecordEntity>()
     private val transferRecords = mutableListOf<TransferRecordEntity>()
     private val balanceUpdates = mutableListOf<BalanceUpdateRecordEntity>()
     private val adjustments = mutableListOf<BalanceAdjustmentRecordEntity>()
-    private val settlements = mutableListOf<InvestmentSettlementEntity>()
     private val changeVersion = MutableStateFlow(0L)
 
     override fun observeChangeVersion(): Flow<Long> = changeVersion.asStateFlow()
@@ -187,46 +184,6 @@ class InMemoryTransactionRepository : TransactionRepository {
         return adjustments.filter { it.accountId == accountId && it.sourceUpdateRecordId == 0L }
     }
 
-    override suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long {
-        val id = nextSettlementId++
-        settlements += record.copy(id = id)
-        bumpVersion()
-        return id
-    }
-
-    override suspend fun updateInvestmentSettlement(record: InvestmentSettlementEntity) {
-        replaceById(settlements, record.id, record)
-        bumpVersion()
-    }
-
-    override suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity? {
-        return settlements.firstOrNull { it.id == id }
-    }
-
-    override suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity> {
-        return settlements.toList()
-    }
-
-    override suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity> {
-        return settlements
-            .filter { it.periodEndAt in startAt..endAt }
-            .sortedWith(compareBy<InvestmentSettlementEntity> { it.periodEndAt }.thenBy { it.id })
-    }
-
-    override suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity> {
-        return settlements.filter { it.accountId == accountId }
-    }
-
-    override suspend fun getLatestInvestmentSettlement(accountId: Long): InvestmentSettlementEntity? {
-        return queryInvestmentSettlementsByAccountId(accountId)
-            .maxWithOrNull(compareBy<InvestmentSettlementEntity> { it.periodEndAt }.thenBy { it.id })
-    }
-
-    override suspend fun deleteInvestmentSettlementsByAccountId(accountId: Long) {
-        settlements.removeAll { it.accountId == accountId }
-        bumpVersion()
-    }
-
     override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
         return queryCashFlowRecordsByAccountId(accountId)
             .filter { it.direction == "inflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
@@ -282,7 +239,6 @@ class InMemoryTransactionRepository : TransactionRepository {
                 is TransferRecordEntity -> it.id == id
                 is BalanceUpdateRecordEntity -> it.id == id
                 is BalanceAdjustmentRecordEntity -> it.id == id
-                is InvestmentSettlementEntity -> it.id == id
                 else -> false
             }
         }

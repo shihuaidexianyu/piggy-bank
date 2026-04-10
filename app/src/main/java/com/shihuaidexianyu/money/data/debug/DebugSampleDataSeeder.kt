@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
@@ -23,7 +22,6 @@ object DebugSampleDataSeeder {
         val cashFlowDao = database.cashFlowRecordDao()
         val transferDao = database.transferRecordDao()
         val balanceUpdateDao = database.balanceUpdateRecordDao()
-        val settlementDao = database.investmentSettlementDao()
         val reminderDao = database.recurringReminderDao()
 
         val hasData =
@@ -31,7 +29,6 @@ object DebugSampleDataSeeder {
                 cashFlowDao.queryAllActive().isNotEmpty() ||
                 transferDao.queryAllActive().isNotEmpty() ||
                 balanceUpdateDao.queryAllActive().isNotEmpty() ||
-                settlementDao.queryAllActive().isNotEmpty() ||
                 reminderDao.queryAll().isNotEmpty()
         if (hasData) return
 
@@ -106,7 +103,6 @@ object DebugSampleDataSeeder {
 
             seedInvestmentSnapshots(
                 balanceUpdateDao = balanceUpdateDao,
-                settlementDao = settlementDao,
                 investmentId = investmentId,
                 zoneId = zoneId,
             )
@@ -242,12 +238,11 @@ object DebugSampleDataSeeder {
 
     private suspend fun seedInvestmentSnapshots(
         balanceUpdateDao: com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao,
-        settlementDao: com.shihuaidexianyu.money.data.dao.InvestmentSettlementDao,
         investmentId: Long,
         zoneId: ZoneId,
     ) {
         val firstUpdateAt = millisAt(zoneId, LocalDate.of(2025, 12, 31), 21, 0)
-        val firstUpdateId = balanceUpdateDao.insert(
+        balanceUpdateDao.insert(
             BalanceUpdateRecordEntity(
                 accountId = investmentId,
                 actualBalance = 1_650_000,
@@ -257,45 +252,15 @@ object DebugSampleDataSeeder {
                 createdAt = firstUpdateAt,
             ),
         )
-        settlementDao.insert(
-            InvestmentSettlementEntity(
-                accountId = investmentId,
-                balanceUpdateRecordId = firstUpdateId,
-                previousBalance = 1_580_000,
-                currentBalance = 1_650_000,
-                netTransferIn = 50_000,
-                netTransferOut = 0,
-                pnl = 20_000,
-                returnRate = 0.0127,
-                periodStartAt = millisAt(zoneId, LocalDate.of(2025, 10, 1), 0, 0),
-                periodEndAt = firstUpdateAt,
-                createdAt = firstUpdateAt,
-            ),
-        )
 
         val secondUpdateAt = millisAt(zoneId, LocalDate.of(2026, 4, 5), 21, 0)
-        val secondUpdateId = balanceUpdateDao.insert(
+        balanceUpdateDao.insert(
             BalanceUpdateRecordEntity(
                 accountId = investmentId,
                 actualBalance = 1_820_000,
                 systemBalanceBeforeUpdate = 1_750_000,
                 delta = 70_000,
                 occurredAt = secondUpdateAt,
-                createdAt = secondUpdateAt,
-            ),
-        )
-        settlementDao.insert(
-            InvestmentSettlementEntity(
-                accountId = investmentId,
-                balanceUpdateRecordId = secondUpdateId,
-                previousBalance = 1_650_000,
-                currentBalance = 1_820_000,
-                netTransferIn = 100_000,
-                netTransferOut = 0,
-                pnl = 70_000,
-                returnRate = 0.0424,
-                periodStartAt = millisAt(zoneId, LocalDate.of(2026, 1, 1), 0, 0),
-                periodEndAt = secondUpdateAt,
                 createdAt = secondUpdateAt,
             ),
         )

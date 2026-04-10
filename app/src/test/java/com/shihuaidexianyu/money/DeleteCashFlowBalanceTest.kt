@@ -8,7 +8,6 @@ import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateInvestmentSettlementsUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
@@ -24,11 +23,9 @@ class DeleteCashFlowBalanceTest {
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
-        val recalculate = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository)
         val createCashFlow = CreateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateInvestmentSettlementsUseCase = recalculate,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         createCashFlow(
@@ -52,7 +49,6 @@ class DeleteCashFlowBalanceTest {
 
         val delete = DeleteCashFlowRecordUseCase(
             transactionRepository = transactionRepository,
-            recalculateInvestmentSettlementsUseCase = RecalculateInvestmentSettlementsUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         delete(outflowId)
@@ -63,4 +59,3 @@ class DeleteCashFlowBalanceTest {
         assertNull(transactionRepository.queryCashFlowRecordById(outflowId))
     }
 }
-

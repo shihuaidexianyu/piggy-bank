@@ -146,20 +146,3 @@ enum class ReminderPeriodType(
         }
     }
 }
-
-enum class StatsPeriod(
-    val value: String,
-    val displayName: String,
-) {
-    WEEK("week", "周"),
-    MONTH("month", "月"),
-    YEAR("year", "年"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): StatsPeriod {
-            return entries.firstOrNull { it.value == value } ?: MONTH
-        }
-    }
-}
-

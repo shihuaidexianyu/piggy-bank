@@ -3,12 +3,10 @@ package com.shihuaidexianyu.money.data.repository
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
-import com.shihuaidexianyu.money.data.dao.InvestmentSettlementDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.InvestmentSettlementEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
@@ -21,7 +19,6 @@ class TransactionRepositoryImpl(
     private val transferRecordDao: TransferRecordDao,
     private val balanceUpdateRecordDao: BalanceUpdateRecordDao,
     private val balanceAdjustmentRecordDao: BalanceAdjustmentRecordDao,
-    private val investmentSettlementDao: InvestmentSettlementDao,
 ) : TransactionRepository {
     override fun observeChangeVersion(): Flow<Long> {
         return combine(
@@ -29,13 +26,11 @@ class TransactionRepositoryImpl(
             transferRecordDao.observeActiveCount(),
             balanceUpdateRecordDao.observeCount(),
             balanceAdjustmentRecordDao.observeCount(),
-            investmentSettlementDao.observeCount(),
-        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount, settlementCount ->
+        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount ->
             cashFlowCount.toLong() +
                 transferCount.toLong() +
                 balanceUpdateCount.toLong() +
-                adjustmentCount.toLong() +
-                settlementCount.toLong()
+                adjustmentCount.toLong()
         }
     }
 
@@ -114,26 +109,6 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryByAccountId(accountId)
-
-    override suspend fun insertInvestmentSettlement(record: InvestmentSettlementEntity): Long = investmentSettlementDao.insert(record)
-
-    override suspend fun updateInvestmentSettlement(record: InvestmentSettlementEntity) = investmentSettlementDao.update(record)
-
-    override suspend fun getInvestmentSettlementById(id: Long): InvestmentSettlementEntity? = investmentSettlementDao.queryById(id)
-
-    override suspend fun queryAllInvestmentSettlements(): List<InvestmentSettlementEntity> = investmentSettlementDao.queryAllActive()
-
-    override suspend fun queryInvestmentSettlementsBetween(startAt: Long, endAt: Long): List<InvestmentSettlementEntity> {
-        return investmentSettlementDao.queryBetween(startAt, endAt)
-    }
-
-    override suspend fun queryInvestmentSettlementsByAccountId(accountId: Long): List<InvestmentSettlementEntity> = investmentSettlementDao.queryByAccountId(accountId)
-
-    override suspend fun getLatestInvestmentSettlement(accountId: Long): InvestmentSettlementEntity? = investmentSettlementDao.getLatestForAccount(accountId)
-
-    override suspend fun deleteInvestmentSettlementsByAccountId(accountId: Long) {
-        investmentSettlementDao.deleteByAccountId(accountId)
-    }
 
     override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumInflowBetween(accountId, startAt, endAt)
 

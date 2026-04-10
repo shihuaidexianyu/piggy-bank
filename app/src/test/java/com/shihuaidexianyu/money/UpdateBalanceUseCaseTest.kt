@@ -1,15 +1,12 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -41,13 +38,12 @@ class UpdateBalanceUseCaseTest {
         )
 
         assertEquals(0, result.delta)
-        assertNull(result.settlementSummary)
         assertEquals(1, transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId).size)
         assertTrue(transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).isEmpty())
     }
 
     @Test
-    fun `investment update creates adjustment and settlement`() = runBlocking {
+    fun `investment update still records delta without settlement data`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -56,17 +52,6 @@ class UpdateBalanceUseCaseTest {
                 groupType = "investment",
                 initialBalance = 100_000,
                 createdAt = 1_000,
-            ),
-        )
-        transactionRepository.insertTransferRecord(
-            TransferRecordEntity(
-                fromAccountId = 99,
-                toAccountId = accountId,
-                amount = 20_000,
-                note = "入金",
-                occurredAt = 2_000,
-                createdAt = 2_000,
-                updatedAt = 2_000,
             ),
         )
 
@@ -83,13 +68,9 @@ class UpdateBalanceUseCaseTest {
             occurredAt = System.currentTimeMillis() - 1_000,
         )
 
-        assertEquals(10_000, result.delta)
-        val settlement = assertNotNull(result.settlementSummary)
-        assertEquals(100_000, settlement.previousBalance)
-        assertEquals(20_000, settlement.netTransferIn)
-        assertEquals(10_000, settlement.pnl)
+        assertEquals(30_000, result.delta)
         assertEquals(0, transactionRepository.queryBalanceAdjustmentRecordsByAccountId(accountId).size)
-        assertEquals(1, transactionRepository.queryInvestmentSettlementsByAccountId(accountId).size)
+        assertEquals(1, transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId).size)
     }
 }
 

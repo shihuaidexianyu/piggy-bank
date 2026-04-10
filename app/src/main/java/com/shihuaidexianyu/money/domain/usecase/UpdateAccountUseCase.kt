@@ -2,15 +2,12 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 
 class UpdateAccountUseCase(
     private val accountRepository: AccountRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
-    private val transactionRepository: TransactionRepository,
-    private val recalculateInvestmentSettlementsUseCase: RecalculateInvestmentSettlementsUseCase,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -30,12 +27,6 @@ class UpdateAccountUseCase(
             ),
         )
         accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)
-
-        if (groupType == AccountGroupType.INVESTMENT) {
-            recalculateInvestmentSettlementsUseCase(accountId)
-        } else {
-            transactionRepository.deleteInvestmentSettlementsByAccountId(accountId)
-        }
     }
 }
 

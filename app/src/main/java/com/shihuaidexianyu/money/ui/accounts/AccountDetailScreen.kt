@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
-import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -93,20 +92,5 @@ fun AccountDetailScreen(
                 }
             }
         }
-        if (
-            state.groupType == com.shihuaidexianyu.money.domain.model.AccountGroupType.INVESTMENT &&
-            state.latestSettlement != null
-        ) {
-            item {
-                MoneyCard {
-                    MoneySectionHeader(title = "最近结算")
-                    Text("盈亏 ${AmountFormatter.format(state.latestSettlement.pnl, state.settings)}")
-                    Text("收益率 ${"%.2f".format(state.latestSettlement.returnRate * 100)}%")
-                    Text("净转入 ${AmountFormatter.format(state.latestSettlement.netTransferIn, state.settings)}")
-                    Text("净转出 ${AmountFormatter.format(state.latestSettlement.netTransferOut, state.settings)}")
-                }
-            }
-        }
     }
 }
-

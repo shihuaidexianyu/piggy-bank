@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.InvestmentSettlementSummary
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +20,6 @@ data class BalanceUpdateDetailUiState(
     val systemBalanceBeforeUpdate: Long = 0,
     val delta: Long = 0,
     val occurredAt: Long = 0,
-    val settlementSummary: InvestmentSettlementSummary? = null,
     val isLoading: Boolean = true,
     val isDeleting: Boolean = false,
 )
@@ -82,20 +80,6 @@ class BalanceUpdateDetailViewModel(
         }
 
         val account = accountRepository.getAccountById(record.accountId)
-        val settlement = transactionRepository.queryInvestmentSettlementsByAccountId(record.accountId)
-            .firstOrNull { it.balanceUpdateRecordId == record.id }
-            ?.let {
-                InvestmentSettlementSummary(
-                    previousBalance = it.previousBalance,
-                    currentBalance = it.currentBalance,
-                    netTransferIn = it.netTransferIn,
-                    netTransferOut = it.netTransferOut,
-                    pnl = it.pnl,
-                    returnRate = it.returnRate,
-                    periodStartAt = it.periodStartAt,
-                    periodEndAt = it.periodEndAt,
-                )
-            }
 
         _uiState.value = BalanceUpdateDetailUiState(
             recordId = record.id,
@@ -105,7 +89,6 @@ class BalanceUpdateDetailViewModel(
             systemBalanceBeforeUpdate = record.systemBalanceBeforeUpdate,
             delta = record.delta,
             occurredAt = record.occurredAt,
-            settlementSummary = settlement,
             isLoading = false,
         )
     }

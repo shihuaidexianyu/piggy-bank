@@ -52,7 +52,7 @@ fun EditBalanceUpdateScreen(
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
             title = "撤销余额更新",
-            message = "撤销后会重新计算该账户当前余额和投资结算，确认继续？",
+            message = "撤销后会重新计算该账户当前余额，确认继续？",
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
             confirmLabel = "确认撤销",
@@ -110,7 +110,7 @@ fun EditBalanceUpdateScreen(
                     Text("加载中...", style = MaterialTheme.typography.bodyMedium)
                 } else {
                     Text(
-                        text = "这次修改会影响当前余额和后续投资结算",
+                        text = "这次修改会影响当前余额",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

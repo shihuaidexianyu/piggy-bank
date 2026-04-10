@@ -7,7 +7,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +41,7 @@ fun BalanceUpdateDetailScreen(
     if (showDeleteConfirm) {
         MoneyConfirmDialog(
             title = "撤销余额更新",
-            message = "撤销后会重新计算该账户当前余额和投资结算，确认继续？",
+            message = "撤销后会重新计算该账户当前余额，确认继续？",
             onConfirm = {
                 showDeleteConfirm = false
                 viewModel.delete()
@@ -79,29 +78,6 @@ fun BalanceUpdateDetailScreen(
                     MoneyInlineLabelValue(
                         label = "差额",
                         value = AmountFormatter.format(state.delta, settings),
-                    )
-                }
-            }
-        }
-        state.settlementSummary?.let { settlement ->
-            item {
-                MoneyCard {
-                    Text("结算信息", style = MaterialTheme.typography.titleMedium)
-                    MoneyInlineLabelValue(
-                        label = "本周期盈亏",
-                        value = AmountFormatter.format(settlement.pnl, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期收益率",
-                        value = "${"%.2f".format(settlement.returnRate * 100)}%",
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期净转入",
-                        value = AmountFormatter.format(settlement.netTransferIn, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = "本周期净转出",
-                        value = AmountFormatter.format(settlement.netTransferOut, settings),
                     )
                 }
             }
