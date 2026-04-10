@@ -8,8 +8,7 @@ A personal finance tracking app for Android, built with Kotlin and Jetpack Compo
 - **Cash flow recording** — Track inflow and outflow with purpose tagging
 - **Transfers** — Record money movements between accounts
 - **Balance updates** — Periodic balance snapshots with automatic delta calculation
-- **Investment settlements** — Automatic PnL and return rate calculation for investment accounts
-- **Balance trend chart** — Visual balance history per account
+- **Reminders** — Create recurring reminders for manual payments and subscriptions
 - **History & search** — Filter by account, date range, amount, and keyword
 - **Dark mode** — Full dark theme support following system settings
 - **Data export** — Export all data as JSON
