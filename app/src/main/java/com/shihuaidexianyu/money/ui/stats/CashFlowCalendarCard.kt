@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,7 +31,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,6 +44,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,6 +60,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 private val InflowRed = Color(0xFFE14848)
 private val OutflowGreen = Color(0xFF1F9D55)
@@ -81,6 +86,8 @@ fun CashFlowCalendarCard(
     val today = LocalDate.now(zoneId)
     val visibleDate = LocalDate.ofEpochDay(visibleEpochDay)
     val selectedDate = LocalDate.ofEpochDay(selectedEpochDay)
+    BoxWithConstraints(modifier = modifier) {
+        val compactLayout = maxWidth < 360.dp
     val totalsByDate = remember(events, zoneId) { buildDailyTotals(events, zoneId) }
     val visibleMonth = remember(visibleDate) { YearMonth.from(visibleDate) }
     val buckets = remember(totalsByDate, granularity, visibleDate) {
@@ -93,7 +100,6 @@ fun CashFlowCalendarCard(
     val selectedBucket = remember(buckets, selectedDate) {
         buckets.firstOrNull { selectedDate in it.startDate..it.endDate } ?: buckets.firstOrNull()
     }
-    val totalMovement = buckets.sumOf { it.inflow + it.outflow }.coerceAtLeast(1L)
     val monthStatus = remember(totalsByDate, visibleMonth, today, settings) {
         buildMonthStatus(
             totalsByDate = totalsByDate,
@@ -103,135 +109,106 @@ fun CashFlowCalendarCard(
         )
     }
 
-    MoneyCard(modifier = modifier, contentPadding = PaddingValues(18.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "现金流日历",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            monthStatus?.let { status ->
-                MoneyStatusPill(
-                    text = status,
-                    accent = Color(0xFF2B6EF2),
-                )
-            }
-        }
-
-        CashFlowControlRow(
-            mode = mode,
-            granularity = granularity,
-            displayUnit = displayUnit,
-            onModeChange = onModeChange,
-            onGranularityChange = onGranularityChange,
-            onDisplayUnitChange = onDisplayUnitChange,
-        )
-
-        when (mode) {
-            CashFlowCardMode.CALENDAR -> {
-                CalendarHeader(
-                    text = headerText(visibleDate, granularity),
-                    onPrevious = { onShiftPeriod(-1L) },
-                    onNext = { onShiftPeriod(1L) },
-                )
-                CalendarContent(
-                    granularity = granularity,
-                    today = today,
-                    visibleDate = visibleDate,
-                    selectedDate = selectedDate,
-                    totalsByDate = totalsByDate,
-                    totalMovement = totalMovement,
-                    displayUnit = displayUnit,
-                    settings = settings,
-                    onDateSelect = onDateSelect,
-                )
-            }
-            CashFlowCardMode.TREND -> {
-                selectedBucket?.let { bucket ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = bucketHeadline(bucket, granularity),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = formatBucketPrimary(bucket, displayUnit, totalMovement, settings),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = bucketPrimaryColor(bucket.netAmount),
-                        )
-                        Text(
-                            text = "入账 ${AmountFormatter.format(bucket.inflow, settings)} / 出账 ${AmountFormatter.format(bucket.outflow, settings)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        MoneyCard(contentPadding = PaddingValues(if (compactLayout) 14.dp else 16.dp)) {
+            if (compactLayout) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "现金流趋势",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    monthStatus?.let { status ->
+                        MoneyStatusPill(
+                            text = status,
+                            accent = Color(0xFF2B6EF2),
                         )
                     }
                 }
-                TrendChart(
-                    buckets = buckets,
-                    granularity = granularity,
-                    selectedDate = selectedDate,
-                    displayUnit = displayUnit,
-                    totalMovement = totalMovement,
-                    onBucketSelect = { bucket -> onDateSelect(bucket.startDate.toEpochDay()) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(246.dp),
-                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "现金流趋势",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    monthStatus?.let { status ->
+                        MoneyStatusPill(
+                            text = status,
+                            accent = Color(0xFF2B6EF2),
+                        )
+                    }
+                }
             }
+
+            CashFlowControlRow(
+                compactLayout = compactLayout,
+                granularity = granularity,
+                onGranularityChange = onGranularityChange,
+            )
+
+            CalendarHeader(
+                compactLayout = compactLayout,
+                text = headerText(visibleDate, granularity),
+                onPrevious = { onShiftPeriod(-1L) },
+                onNext = { onShiftPeriod(1L) },
+            )
+
+            selectedBucket?.let { bucket ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = bucketHeadline(bucket, granularity),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = formatBucketPrimary(bucket, settings),
+                        style = if (compactLayout) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                        color = bucketPrimaryColor(bucket.netAmount),
+                    )
+                    Text(
+                        text = "入账 ${AmountFormatter.format(bucket.inflow, settings)} / 出账 ${AmountFormatter.format(bucket.outflow, settings)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            TrendChart(
+                compactLayout = compactLayout,
+                buckets = buckets,
+                granularity = granularity,
+                selectedDate = selectedDate,
+                onBucketSelect = { bucket -> onDateSelect(bucket.startDate.toEpochDay()) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (compactLayout) 220.dp else 246.dp),
+            )
         }
     }
 }
 
 @Composable
 private fun CashFlowControlRow(
-    mode: CashFlowCardMode,
+    compactLayout: Boolean,
     granularity: CashFlowGranularity,
-    displayUnit: CashFlowDisplayUnit,
-    onModeChange: (CashFlowCardMode) -> Unit,
     onGranularityChange: (CashFlowGranularity) -> Unit,
-    onDisplayUnitChange: (CashFlowDisplayUnit) -> Unit,
 ) {
-    Row(
+    SegmentedControl(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ToggleIconButton(
-                selected = mode == CashFlowCardMode.CALENDAR,
-                onClick = { onModeChange(CashFlowCardMode.CALENDAR) },
-                icon = Icons.Outlined.CalendarMonth,
-                contentDescription = "日历视图",
-            )
-            ToggleIconButton(
-                selected = mode == CashFlowCardMode.TREND,
-                onClick = { onModeChange(CashFlowCardMode.TREND) },
-                icon = Icons.Outlined.BarChart,
-                contentDescription = "趋势视图",
-            )
-        }
-
-        SegmentedControl(
-            modifier = Modifier.weight(1f),
-            labels = CashFlowGranularity.entries.map { it.label },
-            selectedIndex = CashFlowGranularity.entries.indexOf(granularity),
-            onSelect = { index -> onGranularityChange(CashFlowGranularity.entries[index]) },
-        )
-
-        SegmentedControl(
-            labels = CashFlowDisplayUnit.entries.map { it.label },
-            selectedIndex = CashFlowDisplayUnit.entries.indexOf(displayUnit),
-            onSelect = { index -> onDisplayUnitChange(CashFlowDisplayUnit.entries[index]) },
-        )
-    }
+        labels = CashFlowGranularity.entries.map { it.label },
+        selectedIndex = CashFlowGranularity.entries.indexOf(granularity),
+        onSelect = { index -> onGranularityChange(CashFlowGranularity.entries[index]) },
+        equalWidth = true,
+        compact = compactLayout,
+    )
 }
 
 @Composable
 private fun CalendarHeader(
+    compactLayout: Boolean,
     text: String,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -247,7 +224,7 @@ private fun CalendarHeader(
         )
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium,
+            style = if (compactLayout) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
         HeaderIconButton(
@@ -259,6 +236,7 @@ private fun CalendarHeader(
 
 @Composable
 private fun CalendarContent(
+    compactLayout: Boolean,
     granularity: CashFlowGranularity,
     today: LocalDate,
     visibleDate: LocalDate,
@@ -271,6 +249,7 @@ private fun CalendarContent(
 ) {
     when (granularity) {
         CashFlowGranularity.DAY -> DayCalendarGrid(
+            compactLayout = compactLayout,
             visibleMonth = YearMonth.from(visibleDate),
             selectedDate = selectedDate,
             today = today,
@@ -281,6 +260,7 @@ private fun CalendarContent(
             onDateSelect = onDateSelect,
         )
         CashFlowGranularity.WEEK -> WeekCalendarGrid(
+            compactLayout = compactLayout,
             visibleMonth = YearMonth.from(visibleDate),
             selectedDate = selectedDate,
             totalsByDate = totalsByDate,
@@ -290,6 +270,7 @@ private fun CalendarContent(
             onDateSelect = onDateSelect,
         )
         CashFlowGranularity.MONTH -> MonthCalendarGrid(
+            compactLayout = compactLayout,
             year = visibleDate.year,
             selectedDate = selectedDate,
             totalsByDate = totalsByDate,
@@ -299,6 +280,7 @@ private fun CalendarContent(
             onDateSelect = onDateSelect,
         )
         CashFlowGranularity.YEAR -> YearCalendarGrid(
+            compactLayout = compactLayout,
             visibleDate = visibleDate,
             selectedDate = selectedDate,
             totalsByDate = totalsByDate,
@@ -312,6 +294,7 @@ private fun CalendarContent(
 
 @Composable
 private fun DayCalendarGrid(
+    compactLayout: Boolean,
     visibleMonth: YearMonth,
     selectedDate: LocalDate,
     today: LocalDate,
@@ -334,14 +317,14 @@ private fun DayCalendarGrid(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compactLayout) 4.dp else 6.dp),
         ) {
             listOf("日", "一", "二", "三", "四", "五", "六").forEach { label ->
                 Text(
                     text = label,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = if (compactLayout) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -349,7 +332,7 @@ private fun DayCalendarGrid(
         cells.chunked(7).forEach { week ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compactLayout) 4.dp else 6.dp),
             ) {
                 week.forEach { date ->
                     if (date == null) {
@@ -360,13 +343,14 @@ private fun DayCalendarGrid(
                         val isFuture = date > today
                         val label = if (date == today) "今" else date.dayOfMonth.toString()
                         val detail = when {
-                            totals.inflow == 0L && totals.outflow == 0L -> "暂无记录"
-                            else -> formatCompactValue(totals.netAmount, totals, displayUnit, totalMovement, settings)
+                            totals.inflow == 0L && totals.outflow == 0L -> if (isFuture) "" else "·"
+                            else -> formatDayCellValue(totals.netAmount, displayUnit, totalMovement)
                         }
                         DayCell(
                             modifier = Modifier.weight(1f),
                             label = label,
                             value = detail,
+                            compactLayout = compactLayout,
                             isSelected = isSelected,
                             isFuture = isFuture,
                             color = bucketTextColor(totals.netAmount, maxAbs),
@@ -381,6 +365,7 @@ private fun DayCalendarGrid(
 
 @Composable
 private fun WeekCalendarGrid(
+    compactLayout: Boolean,
     visibleMonth: YearMonth,
     selectedDate: LocalDate,
     totalsByDate: Map<LocalDate, BucketTotals>,
@@ -390,19 +375,19 @@ private fun WeekCalendarGrid(
     onDateSelect: (Long) -> Unit,
 ) {
     val buckets = buildWeekBuckets(totalsByDate, visibleMonth)
-    PeriodTileGrid(
-        columns = 2,
+    PeriodBand(
+        compactLayout = compactLayout,
         buckets = buckets,
         selectedDate = selectedDate,
         totalMovement = totalMovement,
         displayUnit = displayUnit,
-        settings = settings,
         onDateSelect = onDateSelect,
     )
 }
 
 @Composable
 private fun MonthCalendarGrid(
+    compactLayout: Boolean,
     year: Int,
     selectedDate: LocalDate,
     totalsByDate: Map<LocalDate, BucketTotals>,
@@ -421,19 +406,19 @@ private fun MonthCalendarGrid(
             totalsByDate = totalsByDate,
         )
     }
-    PeriodTileGrid(
-        columns = 3,
+    PeriodBand(
+        compactLayout = compactLayout,
         buckets = buckets,
         selectedDate = selectedDate,
         totalMovement = totalMovement,
         displayUnit = displayUnit,
-        settings = settings,
         onDateSelect = onDateSelect,
     )
 }
 
 @Composable
 private fun YearCalendarGrid(
+    compactLayout: Boolean,
     visibleDate: LocalDate,
     selectedDate: LocalDate,
     totalsByDate: Map<LocalDate, BucketTotals>,
@@ -453,46 +438,71 @@ private fun YearCalendarGrid(
             totalsByDate = totalsByDate,
         )
     }
-    PeriodTileGrid(
-        columns = 3,
+    PeriodBand(
+        compactLayout = compactLayout,
         buckets = buckets,
         selectedDate = selectedDate,
         totalMovement = totalMovement,
         displayUnit = displayUnit,
-        settings = settings,
         onDateSelect = onDateSelect,
     )
 }
 
 @Composable
-private fun PeriodTileGrid(
-    columns: Int,
+private fun PeriodBand(
+    compactLayout: Boolean,
     buckets: List<CashFlowBucket>,
     selectedDate: LocalDate,
     totalMovement: Long,
     displayUnit: CashFlowDisplayUnit,
-    settings: AppSettings,
     onDateSelect: (Long) -> Unit,
 ) {
-    val maxAbs = buckets.maxOfOrNull { abs(it.netAmount) } ?: 1L
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        buckets.chunked(columns).forEach { rowBuckets ->
+    val selectedIndex = buckets.indexOfFirst { selectedDate in it.startDate..it.endDate }.coerceAtLeast(0)
+    val selectedBucket = buckets.getOrNull(selectedIndex) ?: return
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+    val itemWidth = if (compactLayout) 72.dp else 82.dp
+    val itemSpacing = if (compactLayout) 6.dp else 8.dp
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val viewportWidth = maxWidth
+        val contentWidth = itemWidth * buckets.size + itemSpacing * (buckets.size - 1).coerceAtLeast(0)
+        LaunchedEffect(selectedIndex, viewportWidth, contentWidth) {
+            val itemWidthPx = with(density) { itemWidth.toPx() }
+            val itemSpacingPx = with(density) { itemSpacing.toPx() }
+            val viewportWidthPx = with(density) { viewportWidth.toPx() }
+            val center = selectedIndex * (itemWidthPx + itemSpacingPx) + itemWidthPx / 2f
+            val target = (center - viewportWidthPx / 2f).roundToInt().coerceAtLeast(0)
+            scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = bucketHeadline(selectedBucket, inferBandGranularity(buckets)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = formatBucketPrimaryDense(selectedBucket, displayUnit, totalMovement),
+                style = if (compactLayout) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                color = bucketPrimaryColor(selectedBucket.netAmount),
+            )
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
             ) {
-                rowBuckets.forEach { bucket ->
-                    PeriodTile(
-                        modifier = Modifier.weight(1f),
+                buckets.forEach { bucket ->
+                    PeriodBandChip(
+                        width = itemWidth,
                         title = bucket.label,
-                        value = formatCompactValue(bucket.netAmount, bucket.toTotals(), displayUnit, totalMovement, settings),
+                        value = formatBandChipValue(bucket.netAmount, displayUnit, totalMovement),
                         isSelected = selectedDate in bucket.startDate..bucket.endDate,
-                        color = bucketTextColor(bucket.netAmount, maxAbs),
+                        color = bucketPrimaryColor(bucket.netAmount),
+                        compactLayout = compactLayout,
                         onClick = { onDateSelect(bucket.startDate.toEpochDay()) },
                     )
-                }
-                repeat(columns - rowBuckets.size) {
-                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -502,10 +512,9 @@ private fun PeriodTileGrid(
 @Composable
 private fun TrendChart(
     buckets: List<CashFlowBucket>,
+    compactLayout: Boolean,
     granularity: CashFlowGranularity,
     selectedDate: LocalDate,
-    displayUnit: CashFlowDisplayUnit,
-    totalMovement: Long,
     onBucketSelect: (CashFlowBucket) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -520,8 +529,18 @@ private fun TrendChart(
 
     BoxWithConstraints(modifier = modifier) {
         val scrollState = rememberScrollState()
-        val minWidth = (buckets.size * 42).dp
+        val density = LocalDensity.current
+        val minWidth = (buckets.size * if (compactLayout) 34 else 42).dp
         val chartWidth = if (maxWidth > minWidth) maxWidth else minWidth
+        val selectedIndex = buckets.indexOfFirst { selectedDate in it.startDate..it.endDate }.coerceAtLeast(0)
+        LaunchedEffect(selectedIndex, maxWidth, chartWidth, compactLayout) {
+            val chartWidthPx = with(density) { chartWidth.toPx() }
+            val viewportWidthPx = with(density) { maxWidth.toPx() }
+            val stepX = chartWidthPx / buckets.size.toFloat()
+            val center = selectedIndex * stepX + stepX / 2f
+            val target = (center - viewportWidthPx / 2f).roundToInt().coerceAtLeast(0)
+            scrollState.animateScrollTo(target.coerceAtMost(scrollState.maxValue))
+        }
         Box(modifier = Modifier.horizontalScroll(scrollState)) {
             Canvas(
                 modifier = Modifier
@@ -545,19 +564,9 @@ private fun TrendChart(
                 val chartAreaWidth = size.width - leftPadding - rightPadding
                 val chartAreaHeight = size.height - topPadding - bottomPadding
                 val zeroY = topPadding + chartAreaHeight / 2f
-                val maxValue = when (displayUnit) {
-                    CashFlowDisplayUnit.AMOUNT -> {
-                        buckets.maxOfOrNull { abs(it.netAmount) }?.coerceAtLeast(1L)?.toFloat() ?: 1f
-                    }
-                    CashFlowDisplayUnit.PERCENT -> {
-                        buckets.maxOf {
-                            abs(it.netAmount.toDouble() / totalMovement.toDouble() * 100.0)
-                        }.coerceAtLeast(0.01).toFloat()
-                    }
-                }
+                val maxValue = buckets.maxOfOrNull { abs(it.netAmount) }?.coerceAtLeast(1L)?.toFloat() ?: 1f
                 val stepX = chartAreaWidth / buckets.size.toFloat()
-                val barWidth = stepX * 0.55f
-                val selectedIndex = buckets.indexOfFirst { selectedDate in it.startDate..it.endDate }
+                val barWidth = stepX * if (compactLayout) 0.48f else 0.55f
 
                 drawLine(
                     color = zeroLineColor,
@@ -580,10 +589,7 @@ private fun TrendChart(
 
                 buckets.forEachIndexed { index, bucket ->
                     val x = leftPadding + index * stepX + (stepX - barWidth) / 2f
-                    val value = when (displayUnit) {
-                        CashFlowDisplayUnit.AMOUNT -> bucket.netAmount.toFloat()
-                        CashFlowDisplayUnit.PERCENT -> (bucket.netAmount.toDouble() / totalMovement.toDouble() * 100.0).toFloat()
-                    }
+                    val value = bucket.netAmount.toFloat()
                     val barHeight = (abs(value) / maxValue) * (chartAreaHeight / 2f)
                     val color = if (value >= 0f) InflowRed else OutflowGreen
                     if (value >= 0f) {
@@ -607,7 +613,7 @@ private fun TrendChart(
                             size.height - 6.dp.toPx(),
                             android.graphics.Paint().apply {
                                 this.color = axisTextColor.toArgb()
-                                textSize = 10.dp.toPx()
+                                textSize = if (compactLayout) 9.dp.toPx() else 10.dp.toPx()
                                 textAlign = android.graphics.Paint.Align.CENTER
                             },
                         )
@@ -627,7 +633,7 @@ private fun EmptyCashFlowBody() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "补充记录后，日历和趋势会共用同一份现金流数据自动刷新。",
+            text = "补充记录后，柱状图会按时间粒度自动聚合刷新。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -639,6 +645,7 @@ private fun DayCell(
     modifier: Modifier = Modifier,
     label: String,
     value: String,
+    compactLayout: Boolean,
     isSelected: Boolean,
     isFuture: Boolean,
     color: Color,
@@ -646,63 +653,70 @@ private fun DayCell(
 ) {
     val background = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     val titleColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-    val valueColor = if (isSelected) Color.White else if (isFuture || value == "暂无记录") NeutralGray else color
+    val valueColor = if (isSelected) Color.White else if (isFuture || value == "·" || value.isBlank()) NeutralGray else color
     Surface(
         modifier = modifier
-            .height(72.dp)
+            .aspectRatio(if (compactLayout) 0.92f else 0.96f)
             .clickable(onClick = onClick),
         color = background,
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = if (compactLayout) 5.dp else 8.dp, vertical = if (compactLayout) 6.dp else 8.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = if (compactLayout) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall,
                 color = titleColor,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.labelMedium,
+                style = if (compactLayout) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
                 color = valueColor,
-                maxLines = 2,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
             )
         }
     }
 }
 
 @Composable
-private fun PeriodTile(
+private fun PeriodBandChip(
+    width: androidx.compose.ui.unit.Dp,
     title: String,
     value: String,
     isSelected: Boolean,
     color: Color,
+    compactLayout: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier
-            .height(84.dp)
+            .width(width)
+            .height(if (compactLayout) 64.dp else 72.dp)
             .clickable(onClick = onClick),
         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = if (compactLayout) 8.dp else 10.dp, vertical = if (compactLayout) 7.dp else 8.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodySmall,
+                style = if (compactLayout) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall,
                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
+                style = if (compactLayout) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
                 color = if (isSelected) Color.White else color,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
             )
         }
     }
@@ -714,6 +728,8 @@ private fun SegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    equalWidth: Boolean = false,
+    compact: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -726,19 +742,20 @@ private fun SegmentedControl(
     ) {
         labels.forEachIndexed { index, label ->
             Box(
-                modifier = Modifier
+                modifier = (if (equalWidth) Modifier.weight(1f) else Modifier)
                     .background(
                         color = if (selectedIndex == index) MaterialTheme.colorScheme.primary else Color.Transparent,
                         shape = RoundedCornerShape(999.dp),
                     )
                     .clickable { onSelect(index) }
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                    .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = if (compact) 6.dp else 7.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                     color = if (selectedIndex == index) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
@@ -991,22 +1008,62 @@ private fun buildMonthStatus(
 
 private fun formatBucketPrimary(
     bucket: CashFlowBucket,
+    settings: AppSettings,
+): String = AmountFormatter.format(bucket.netAmount, settings)
+
+private fun formatBucketPrimaryDense(
+    bucket: CashFlowBucket,
     unit: CashFlowDisplayUnit,
     totalMovement: Long,
-    settings: AppSettings,
 ): String {
-    return formatCompactValue(bucket.netAmount, bucket.toTotals(), unit, totalMovement, settings)
+    return when (unit) {
+        CashFlowDisplayUnit.AMOUNT -> formatCompactSignedAmount(bucket.netAmount)
+        CashFlowDisplayUnit.PERCENT -> formatDenseValue(bucket.netAmount, bucket.toTotals(), unit, totalMovement)
+    }
 }
 
-private fun formatCompactValue(
+private fun formatDayCellValue(
+    netAmount: Long,
+    unit: CashFlowDisplayUnit,
+    totalMovement: Long,
+): String {
+    return when (unit) {
+        CashFlowDisplayUnit.AMOUNT -> formatUltraCompactSignedAmount(netAmount)
+        CashFlowDisplayUnit.PERCENT -> {
+            if (totalMovement <= 0L) "0%"
+            else {
+                val ratio = netAmount.toDouble() / totalMovement.toDouble()
+                "${if (ratio > 0) "+" else ""}${ratio.times(100).roundToInt()}%"
+            }
+        }
+    }
+}
+
+private fun formatBandChipValue(
+    netAmount: Long,
+    unit: CashFlowDisplayUnit,
+    totalMovement: Long,
+): String {
+    return when (unit) {
+        CashFlowDisplayUnit.AMOUNT -> formatCompactSignedAmount(netAmount)
+        CashFlowDisplayUnit.PERCENT -> {
+            if (totalMovement <= 0L) "0%"
+            else {
+                val ratio = netAmount.toDouble() / totalMovement.toDouble()
+                "${if (ratio > 0) "+" else ""}${"%.0f".format(ratio * 100)}%"
+            }
+        }
+    }
+}
+
+private fun formatDenseValue(
     netAmount: Long,
     totals: BucketTotals,
     unit: CashFlowDisplayUnit,
     totalMovement: Long,
-    settings: AppSettings,
 ): String {
     return when (unit) {
-        CashFlowDisplayUnit.AMOUNT -> AmountFormatter.format(netAmount, settings)
+        CashFlowDisplayUnit.AMOUNT -> formatCompactSignedAmount(netAmount)
         CashFlowDisplayUnit.PERCENT -> {
             val ratio = when {
                 totalMovement <= 0L -> 0.0
@@ -1015,6 +1072,44 @@ private fun formatCompactValue(
             }
             "${if (ratio > 0) "+" else ""}${"%.1f".format(ratio * 100)}%"
         }
+    }
+}
+
+private fun formatCompactSignedAmount(amount: Long): String {
+    if (amount == 0L) return "0"
+    val sign = if (amount > 0L) "+" else "-"
+    val absAmount = abs(amount)
+    val value = when {
+        absAmount >= 10_000_000L -> "${"%.1f".format(absAmount / 10_000_000.0)}千万"
+        absAmount >= 10_000L -> "${"%.1f".format(absAmount / 10_000.0)}万"
+        absAmount >= 1_000L -> "${"%.1f".format(absAmount / 1_000.0)}k"
+        else -> absAmount.toString()
+    }
+    return sign + value.removeSuffix(".0")
+}
+
+private fun formatUltraCompactSignedAmount(amount: Long): String {
+    if (amount == 0L) return "0"
+    val sign = if (amount > 0L) "+" else "-"
+    val absAmount = abs(amount)
+    val value = when {
+        absAmount >= 10_000L -> "${(absAmount / 10_000.0).roundToInt()}万"
+        absAmount >= 1_000L -> "${(absAmount / 1_000.0).roundToInt()}k"
+        else -> absAmount.toString()
+    }
+    return sign + value
+}
+
+private fun inferBandGranularity(
+    buckets: List<CashFlowBucket>,
+): CashFlowGranularity {
+    val sample = buckets.firstOrNull() ?: return CashFlowGranularity.DAY
+    val days = java.time.temporal.ChronoUnit.DAYS.between(sample.startDate, sample.endDate).toInt() + 1
+    return when {
+        days <= 1 -> CashFlowGranularity.DAY
+        days <= 7 -> CashFlowGranularity.WEEK
+        days <= 31 -> CashFlowGranularity.MONTH
+        else -> CashFlowGranularity.YEAR
     }
 }
 
