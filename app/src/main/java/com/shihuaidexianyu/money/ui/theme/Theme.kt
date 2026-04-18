@@ -1,17 +1,12 @@
 package com.shihuaidexianyu.money.ui.theme
 
-import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 
 private val LightColors = lightColorScheme(
@@ -72,17 +67,6 @@ fun MoneyTheme(
     }
     val colorScheme = if (darkTheme) DarkColors else LightColors
     val moneyColors = if (darkTheme) DarkMoneyColorsInstance else LightMoneyColorsInstance
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.surface.toArgb()
-            val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = !darkTheme
-            controller.isAppearanceLightNavigationBars = !darkTheme
-        }
-    }
 
     CompositionLocalProvider(LocalMoneyColors provides moneyColors) {
         MaterialTheme(

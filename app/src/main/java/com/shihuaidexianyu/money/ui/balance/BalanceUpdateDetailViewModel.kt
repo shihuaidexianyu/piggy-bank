@@ -59,16 +59,15 @@ class BalanceUpdateDetailViewModel(
 
     fun delete() {
         if (_uiState.value.isDeleting) return
-
+        _uiState.value = _uiState.value.copy(isDeleting = true)
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isDeleting = true)
             runCatching {
                 deleteBalanceUpdateRecordUseCase(recordId)
             }.onSuccess {
                 emitDeletedOnce()
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isDeleting = false)
-                effects.emit(BalanceUpdateDetailEffect.ShowMessage(throwable.message ?: "撤销失败"))
+                effects.emit(BalanceUpdateDetailEffect.ShowMessage(throwable.message ?: "删除失败"))
             }
         }
     }

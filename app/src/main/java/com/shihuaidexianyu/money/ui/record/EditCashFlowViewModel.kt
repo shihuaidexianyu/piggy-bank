@@ -10,8 +10,8 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,23 +92,12 @@ class EditCashFlowViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val accountId = state.selectedAccountId ?: run {
-                effects.emit(EditCashFlowEffect.ShowMessage("请选择账户"))
-                return@launch
-            }
-            val amount = AmountInputParser.parseToMinor(state.amountText) ?: run {
-                effects.emit(EditCashFlowEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-            if (amount <= 0) {
-                effects.emit(EditCashFlowEffect.ShowMessage("金额必须大于 0"))
-                return@launch
-            }
-            val occurredAt = state.occurredAtMillis
-            if (occurredAt > System.currentTimeMillis()) {
-                effects.emit(EditCashFlowEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
+                .getOrElse { error -> effects.emit(EditCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+            val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
+                .getOrElse { error -> effects.emit(EditCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(EditCashFlowEffect.ShowMessage(error.message!!)); return@launch }
 
             updateState { copy(isSaving = true) }
             runCatching {
@@ -118,7 +107,7 @@ class EditCashFlowViewModel(
                     direction = state.direction,
                     amount = amount,
                     purpose = state.purpose,
-                    occurredAt = occurredAt,
+                    occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess {
                 effects.emit(EditCashFlowEffect.Saved)
@@ -135,6 +124,11 @@ class EditCashFlowViewModel(
 
     fun delete() {
         viewModelScope.launch {
+            val record = transactionRepository.queryCashFlowRecordById(recordId)
+            if (record == null) {
+                emitDeletedOnce()
+                return@launch
+            }
             runCatching {
                 deleteCashFlowRecordUseCase(recordId)
             }.onSuccess {

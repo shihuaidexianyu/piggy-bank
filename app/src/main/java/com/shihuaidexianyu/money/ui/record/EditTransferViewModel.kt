@@ -9,8 +9,8 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,21 +98,12 @@ class EditTransferViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val fromId = state.fromAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
-            val toId = state.toAccountId ?: run { effects.emit(EditTransferEffect.ShowMessage("请选择账户")); return@launch }
-            val amount = AmountInputParser.parseToMinor(state.amountText) ?: run {
-                effects.emit(EditTransferEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-            if (amount <= 0) {
-                effects.emit(EditTransferEffect.ShowMessage("金额必须大于 0"))
-                return@launch
-            }
-            val occurredAt = state.occurredAtMillis
-            if (occurredAt > System.currentTimeMillis()) {
-                effects.emit(EditTransferEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val (fromId, toId) = runCatching { RecordValidator.requireTransferAccounts(state.fromAccountId, state.toAccountId) }
+                .getOrElse { error -> effects.emit(EditTransferEffect.ShowMessage(error.message!!)); return@launch }
+            val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
+                .getOrElse { error -> effects.emit(EditTransferEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(EditTransferEffect.ShowMessage(error.message!!)); return@launch }
             updateState { copy(isSaving = true) }
             runCatching {
                 updateTransferRecordUseCase(
@@ -121,7 +112,7 @@ class EditTransferViewModel(
                     toAccountId = toId,
                     amount = amount,
                     note = state.note,
-                    occurredAt = occurredAt,
+                    occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess { effects.emit(EditTransferEffect.Saved) }
                 .onFailure {
@@ -137,8 +128,15 @@ class EditTransferViewModel(
 
     fun delete() {
         viewModelScope.launch {
+            val record = transactionRepository.queryTransferRecordById(recordId)
+            if (record == null) {
+                emitDeletedOnce()
+                return@launch
+            }
             runCatching { deleteTransferRecordUseCase(recordId) }
-                .onSuccess { emitDeletedOnce() }
+                .onSuccess {
+                    emitDeletedOnce()
+                }
                 .onFailure {
                     updateState { copy(showDeleteConfirm = false) }
                     effects.emit(EditTransferEffect.ShowMessage(it.message ?: "删除失败"))

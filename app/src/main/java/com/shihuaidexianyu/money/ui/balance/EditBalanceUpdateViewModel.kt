@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,6 +92,7 @@ class EditBalanceUpdateViewModel(
 
     fun updateOccurredAt(value: Long) {
         val occurredAt = DateTimeTextFormatter.floorToMinute(value)
+        val actualBalanceText = _uiState.value.actualBalanceText
         _uiState.value = _uiState.value.copy(occurredAtMillis = occurredAt)
         if (accountId <= 0) return
 
@@ -100,7 +102,7 @@ class EditBalanceUpdateViewModel(
                 occurredAt = occurredAt,
                 excludingRecordId = recordId,
             )
-            val actualBalance = AmountInputParser.parseToMinor(_uiState.value.actualBalanceText)
+            val actualBalance = AmountInputParser.parseToMinor(actualBalanceText)
             _uiState.value = _uiState.value.copy(
                 systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
                 actualBalancePreview = actualBalance,
@@ -120,15 +122,10 @@ class EditBalanceUpdateViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val actualBalance = AmountInputParser.parseToMinor(state.actualBalanceText)
-            if (actualBalance == null) {
-                effects.emit(EditBalanceUpdateEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-            if (state.occurredAtMillis > System.currentTimeMillis()) {
-                effects.emit(EditBalanceUpdateEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
+                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.message!!)); return@launch }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {

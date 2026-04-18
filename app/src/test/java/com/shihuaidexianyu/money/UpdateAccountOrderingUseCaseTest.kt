@@ -72,6 +72,18 @@ class UpdateAccountOrderingUseCaseTest {
             throw IllegalStateException("settings write failed")
         }
 
+        override suspend fun updateLastHistoryFilters(
+            keyword: String,
+            accountId: Long,
+            dateStartAt: Long,
+            dateEndAt: Long,
+            minAmountText: String,
+            maxAmountText: String,
+            amountDirection: String,
+        ) {
+            throw IllegalStateException("settings write failed")
+        }
+
         fun observeSettingsSnapshot(): AppSettings = state.value
     }
 }

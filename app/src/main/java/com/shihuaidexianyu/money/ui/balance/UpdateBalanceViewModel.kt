@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -101,30 +102,19 @@ class UpdateBalanceViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val accountId = state.selectedAccountId
-            if (accountId == null) {
-                effects.emit(UpdateBalanceEffect.ShowMessage("请选择账户"))
-                return@launch
-            }
-
-            val actualBalance = AmountInputParser.parseToMinor(state.actualBalanceText)
-            if (actualBalance == null) {
-                effects.emit(UpdateBalanceEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-
-            val occurredAt = state.occurredAtMillis
-            if (occurredAt > System.currentTimeMillis()) {
-                effects.emit(UpdateBalanceEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
+            val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.message!!)); return@launch }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {
                 updateBalanceUseCase(
                     accountId = accountId,
                     actualBalance = actualBalance,
-                    occurredAt = occurredAt,
+                    occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess { result ->
                 _uiState.value = _uiState.value.copy(

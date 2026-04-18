@@ -23,9 +23,9 @@ sealed interface BalanceAdjustmentDetailEffect {
 }
 
 class BalanceAdjustmentDetailViewModel(
-    recordId: Long,
-    accountRepository: AccountRepository,
-    transactionRepository: TransactionRepository,
+    private val recordId: Long,
+    private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(BalanceAdjustmentDetailUiState())
     val uiState: StateFlow<BalanceAdjustmentDetailUiState> = _uiState.asStateFlow()
@@ -36,23 +36,29 @@ class BalanceAdjustmentDetailViewModel(
     init {
         viewModelScope.launch {
             try {
-                val record = transactionRepository.getBalanceAdjustmentRecordById(recordId)
-                if (record == null || record.sourceUpdateRecordId > 0L) {
-                    emitClosedOnce()
-                    return@launch
+                transactionRepository.observeChangeVersion().collect {
+                    loadRecord()
                 }
-                val account = accountRepository.getAccountById(record.accountId)
-                _uiState.value = BalanceAdjustmentDetailUiState(
-                    isLoading = false,
-                    accountName = account?.name ?: "未知账户",
-                    delta = record.delta,
-                    occurredAt = record.occurredAt,
-                )
             } catch (e: Exception) {
-                android.util.Log.e("BalanceAdjustmentDetailViewModel", "Failed to load record", e)
+                android.util.Log.e("BalanceAdjustmentDetailViewModel", "Failed to observe record", e)
                 emitClosedOnce()
             }
         }
+    }
+
+    private suspend fun loadRecord() {
+        val record = transactionRepository.getBalanceAdjustmentRecordById(recordId)
+        if (record == null || record.sourceUpdateRecordId > 0L) {
+            emitClosedOnce()
+            return
+        }
+        val account = accountRepository.getAccountById(record.accountId)
+        _uiState.value = BalanceAdjustmentDetailUiState(
+            isLoading = false,
+            accountName = account?.name ?: "未知账户",
+            delta = record.delta,
+            occurredAt = record.occurredAt,
+        )
     }
 
     private suspend fun emitClosedOnce() {

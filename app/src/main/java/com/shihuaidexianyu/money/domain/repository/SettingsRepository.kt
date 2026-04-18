@@ -13,5 +13,14 @@ interface SettingsRepository {
     suspend fun updateShowStaleMark(show: Boolean)
     suspend fun updateThemeMode(themeMode: ThemeMode)
     suspend fun updateAccountGroupOrder(order: List<AccountGroupType>)
+    suspend fun updateLastHistoryFilters(
+        keyword: String,
+        accountId: Long,
+        dateStartAt: Long,
+        dateEndAt: Long,
+        minAmountText: String,
+        maxAmountText: String,
+        amountDirection: String,
+    )
 }
 

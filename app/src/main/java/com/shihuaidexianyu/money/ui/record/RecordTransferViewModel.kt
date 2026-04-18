@@ -6,8 +6,8 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
-import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,28 +91,12 @@ class RecordTransferViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val fromId = state.fromAccountId
-            val toId = state.toAccountId
-            if (fromId == null || toId == null) {
-                effects.emit(RecordTransferEffect.ShowMessage("请选择账户"))
-                return@launch
-            }
-
-            val amount = AmountInputParser.parseToMinor(state.amountText)
-            if (amount == null) {
-                effects.emit(RecordTransferEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-            if (amount <= 0) {
-                effects.emit(RecordTransferEffect.ShowMessage("金额必须大于 0"))
-                return@launch
-            }
-
-            val occurredAt = state.occurredAtMillis
-            if (occurredAt > System.currentTimeMillis()) {
-                effects.emit(RecordTransferEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val (fromId, toId) = runCatching { RecordValidator.requireTransferAccounts(state.fromAccountId, state.toAccountId) }
+                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.message!!)); return@launch }
+            val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
+                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.message!!)); return@launch }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {
@@ -121,7 +105,7 @@ class RecordTransferViewModel(
                     toAccountId = toId,
                     amount = amount,
                     note = state.note,
-                    occurredAt = occurredAt,
+                    occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess {
                 effects.emit(RecordTransferEffect.Saved)

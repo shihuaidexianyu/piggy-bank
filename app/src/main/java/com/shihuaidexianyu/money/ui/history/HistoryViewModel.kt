@@ -7,24 +7,41 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 enum class HistoryRecordKind {
     CASH_FLOW,
     TRANSFER,
     BALANCE_UPDATE,
     BALANCE_ADJUSTMENT,
+}
+
+enum class AmountDirectionFilter(val value: String, val displayName: String) {
+    ALL("all", "全部"),
+    INCREASE("increase", "金额增加"),
+    DECREASE("decrease", "金额减少"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): AmountDirectionFilter =
+            entries.firstOrNull { it.value == value } ?: ALL
+    }
 }
 
 data class HistoryRecordUiModel(
@@ -48,9 +65,11 @@ data class HistoryUiState(
     val dateEndAt: Long? = null,
     val minAmountText: String = "",
     val maxAmountText: String = "",
+    val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
     val records: List<HistoryRecordUiModel> = emptyList(),
 )
 
+@OptIn(FlowPreview::class)
 class HistoryViewModel(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
@@ -59,31 +78,55 @@ class HistoryViewModel(
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
     private var allRecords: List<HistoryRecordUiModel> = emptyList()
+    private var saveFiltersJob: Job? = null
 
     init {
         viewModelScope.launch {
             try {
-                combine(
-                    settingsRepository.observeSettings(),
-                    transactionRepository.observeChangeVersion(),
-                ) { settings, _ ->
-                    buildState(settings)
-                }
-                    .flowOn(Dispatchers.Default)
-                    .collect { newState ->
-                    allRecords = newState.records
+                val initialSettings = settingsRepository.observeSettings().first()
+                _uiState.value = HistoryUiState(
+                    keyword = initialSettings.lastHistoryKeyword,
+                    selectedAccountId = initialSettings.lastHistoryAccountId.takeIf { it >= 0 },
+                    dateStartAt = initialSettings.lastHistoryDateStartAt.takeIf { it >= 0 },
+                    dateEndAt = initialSettings.lastHistoryDateEndAt.takeIf { it >= 0 },
+                    minAmountText = initialSettings.lastHistoryMinAmountText,
+                    maxAmountText = initialSettings.lastHistoryMaxAmountText,
+                    amountDirectionFilter = AmountDirectionFilter.fromValue(
+                        initialSettings.lastHistoryAmountDirection.takeIf { it.isNotBlank() }
+                    ),
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("HistoryViewModel", "Failed to load initial filters", e)
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                settingsRepository.observeSettings().collect { settings ->
                     _uiState.update { current ->
-                        newState.copy(
-                            keyword = current.keyword,
-                            selectedAccountId = current.selectedAccountId,
-                            dateStartAt = current.dateStartAt,
-                            dateEndAt = current.dateEndAt,
-                            minAmountText = current.minAmountText,
-                            maxAmountText = current.maxAmountText,
-                            records = applyFilters(newState.records, current),
-                        )
+                        current.copy(settings = settings)
                     }
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("HistoryViewModel", "Failed to observe settings", e)
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                transactionRepository.observeChangeVersion()
+                    .debounce(300)
+                    .flowOn(Dispatchers.Default)
+                    .collect {
+                        val newState = buildRecordsState()
+                        allRecords = newState.records
+                        _uiState.update { current ->
+                            current.copy(
+                                accountOptions = newState.accountOptions,
+                                records = applyFilters(newState.records, current),
+                            )
+                        }
+                    }
             } catch (e: Exception) {
                 android.util.Log.e("HistoryViewModel", "Failed to load history", e)
             }
@@ -104,21 +147,35 @@ class HistoryViewModel(
 
     fun updateMinAmount(value: String) = applyLocalFilter { copy(minAmountText = value) }
     fun updateMaxAmount(value: String) = applyLocalFilter { copy(maxAmountText = value) }
+    fun updateAmountDirectionFilter(filter: AmountDirectionFilter) =
+        applyLocalFilter { copy(amountDirectionFilter = filter) }
 
     private fun applyLocalFilter(transform: HistoryUiState.() -> HistoryUiState) {
         _uiState.update { current ->
             val updated = current.transform()
+            saveFiltersJob?.cancel()
+            saveFiltersJob = viewModelScope.launch {
+                delay(500)
+                settingsRepository.updateLastHistoryFilters(
+                    keyword = updated.keyword,
+                    accountId = updated.selectedAccountId ?: -1L,
+                    dateStartAt = updated.dateStartAt ?: -1L,
+                    dateEndAt = updated.dateEndAt ?: -1L,
+                    minAmountText = updated.minAmountText,
+                    maxAmountText = updated.maxAmountText,
+                    amountDirection = updated.amountDirectionFilter.value,
+                )
+            }
             updated.copy(records = applyFilters(allRecords, updated))
         }
     }
 
-    private suspend fun buildState(settings: AppSettings): HistoryUiState {
+    private suspend fun buildRecordsState(): HistoryUiState {
         val accounts = (accountRepository.queryActiveAccounts() + accountRepository.queryArchivedAccounts())
             .distinctBy { it.id }
             .associateBy { it.id }
         val records = buildAllRecords(accounts)
         return HistoryUiState(
-            settings = settings,
             accountOptions = accounts.values
                 .sortedBy { it.name }
                 .map { it.toAccountOptionUiModel() },
@@ -140,7 +197,7 @@ class HistoryViewModel(
                     record.purpose
                 },
                 subtitle = accounts[record.accountId]?.name ?: "未知账户",
-                amount = if (record.direction == "inflow") record.amount else -record.amount,
+                amount = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
                 occurredAt = record.occurredAt,
                 accountIds = setOf(record.accountId),
                 keywordSource = record.purpose,
@@ -208,11 +265,15 @@ class HistoryViewModel(
             val accountOk = state.selectedAccountId == null || state.selectedAccountId in record.accountIds
             val startOk = startAt == null || record.occurredAt >= startAt
             val endOk = endAt == null || record.occurredAt <= endAt
-            val amountAbs = kotlin.math.abs(record.amount)
+            val amountAbs = abs(record.amount)
             val minOk = minAmount == null || amountAbs >= minAmount
             val maxOk = maxAmount == null || amountAbs <= maxAmount
-            keywordOk && accountOk && startOk && endOk && minOk && maxOk
+            val directionOk = when (state.amountDirectionFilter) {
+                AmountDirectionFilter.ALL -> true
+                AmountDirectionFilter.INCREASE -> record.amount > 0 && record.kind != HistoryRecordKind.TRANSFER
+                AmountDirectionFilter.DECREASE -> record.amount < 0 && record.kind != HistoryRecordKind.TRANSFER
+            }
+            keywordOk && accountOk && startOk && endOk && minOk && maxOk && directionOk
         }
     }
 }
-

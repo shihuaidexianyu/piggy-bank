@@ -35,7 +35,10 @@ fun BalanceUpdateDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        if (effect is BalanceUpdateDetailEffect.Deleted) onDeleted()
+        when (effect) {
+            BalanceUpdateDetailEffect.Deleted -> onDeleted()
+            else -> {}
+        }
     }
 
     if (showDeleteConfirm) {
@@ -96,7 +99,7 @@ fun BalanceUpdateDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isDeleting,
                 ) {
-                    Text(if (state.isDeleting) "撤销中..." else "撤销这次更新")
+                    Text(if (state.isDeleting) "删除中..." else "删除这次更新")
                 }
                 OutlinedButton(
                     onClick = onBack,

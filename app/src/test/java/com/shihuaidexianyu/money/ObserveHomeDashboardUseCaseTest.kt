@@ -124,5 +124,25 @@ class ObserveHomeDashboardUseCaseTest {
         override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {
             state.value = state.value.copy(accountGroupOrder = order)
         }
+
+        override suspend fun updateLastHistoryFilters(
+            keyword: String,
+            accountId: Long,
+            dateStartAt: Long,
+            dateEndAt: Long,
+            minAmountText: String,
+            maxAmountText: String,
+            amountDirection: String,
+        ) {
+            state.value = state.value.copy(
+                lastHistoryKeyword = keyword,
+                lastHistoryAccountId = accountId,
+                lastHistoryDateStartAt = dateStartAt,
+                lastHistoryDateEndAt = dateEndAt,
+                lastHistoryMinAmountText = minAmountText,
+                lastHistoryMaxAmountText = maxAmountText,
+                lastHistoryAmountDirection = amountDirection,
+            )
+        }
     }
 }

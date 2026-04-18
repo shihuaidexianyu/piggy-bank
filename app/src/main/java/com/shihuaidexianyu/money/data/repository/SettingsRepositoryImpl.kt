@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shihuaidexianyu.money.data.db.appSettingsDataStore
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
@@ -42,6 +43,26 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override suspend fun updateLastHistoryFilters(
+        keyword: String,
+        accountId: Long,
+        dateStartAt: Long,
+        dateEndAt: Long,
+        minAmountText: String,
+        maxAmountText: String,
+        amountDirection: String,
+    ) {
+        context.appSettingsDataStore.edit {
+            it[Keys.LastHistoryKeyword] = keyword
+            it[Keys.LastHistoryAccountId] = accountId
+            it[Keys.LastHistoryDateStartAt] = dateStartAt
+            it[Keys.LastHistoryDateEndAt] = dateEndAt
+            it[Keys.LastHistoryMinAmountText] = minAmountText
+            it[Keys.LastHistoryMaxAmountText] = maxAmountText
+            it[Keys.LastHistoryAmountDirection] = amountDirection
+        }
+    }
+
     private fun preferencesToSettings(preferences: Preferences): AppSettings {
         return AppSettings(
             homePeriod = HomePeriod.fromValue(preferences[Keys.HomePeriod]),
@@ -49,6 +70,13 @@ class SettingsRepositoryImpl(
             showStaleMark = preferences[Keys.ShowStaleMark] ?: true,
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             accountGroupOrder = AccountGroupType.fromStoredOrder(preferences[Keys.AccountGroupOrder]),
+            lastHistoryKeyword = preferences[Keys.LastHistoryKeyword] ?: "",
+            lastHistoryAccountId = preferences[Keys.LastHistoryAccountId] ?: -1L,
+            lastHistoryDateStartAt = preferences[Keys.LastHistoryDateStartAt] ?: -1L,
+            lastHistoryDateEndAt = preferences[Keys.LastHistoryDateEndAt] ?: -1L,
+            lastHistoryMinAmountText = preferences[Keys.LastHistoryMinAmountText] ?: "",
+            lastHistoryMaxAmountText = preferences[Keys.LastHistoryMaxAmountText] ?: "",
+            lastHistoryAmountDirection = preferences[Keys.LastHistoryAmountDirection] ?: "",
         )
     }
 
@@ -58,6 +86,13 @@ class SettingsRepositoryImpl(
         val ShowStaleMark = booleanPreferencesKey("show_stale_mark")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val AccountGroupOrder = stringPreferencesKey("account_group_order")
+        val LastHistoryKeyword = stringPreferencesKey("last_history_keyword")
+        val LastHistoryAccountId = longPreferencesKey("last_history_account_id")
+        val LastHistoryDateStartAt = longPreferencesKey("last_history_date_start_at")
+        val LastHistoryDateEndAt = longPreferencesKey("last_history_date_end_at")
+        val LastHistoryMinAmountText = stringPreferencesKey("last_history_min_amount_text")
+        val LastHistoryMaxAmountText = stringPreferencesKey("last_history_max_amount_text")
+        val LastHistoryAmountDirection = stringPreferencesKey("last_history_amount_direction")
     }
 }
 

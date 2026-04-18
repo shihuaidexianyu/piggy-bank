@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -186,13 +187,13 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
         return queryCashFlowRecordsByAccountId(accountId)
-            .filter { it.direction == "inflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.direction == CashFlowDirection.INFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
     }
 
     override suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
         return queryCashFlowRecordsByAccountId(accountId)
-            .filter { it.direction == "outflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.direction == CashFlowDirection.OUTFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
     }
 
@@ -216,7 +217,7 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
         val cashFlowInflow = queryAllActiveCashFlowRecords()
-            .filter { it.direction == "inflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.direction == CashFlowDirection.INFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
         val balanceUpdateInflow = balanceUpdates
             .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
@@ -226,7 +227,7 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
         val cashFlowOutflow = queryAllActiveCashFlowRecords()
-            .filter { it.direction == "outflow" && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.direction == CashFlowDirection.OUTFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
         val balanceUpdateOutflow = balanceUpdates
             .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }

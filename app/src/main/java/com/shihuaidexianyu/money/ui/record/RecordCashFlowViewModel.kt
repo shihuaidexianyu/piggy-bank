@@ -8,8 +8,8 @@ import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
-import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.util.RecordValidator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,27 +106,12 @@ class RecordCashFlowViewModel(
         }
 
         viewModelScope.launch {
-            val accountId = state.selectedAccountId
-            if (accountId == null) {
-                effects.emit(RecordCashFlowEffect.ShowMessage("请选择账户"))
-                return@launch
-            }
-
-            val amount = AmountInputParser.parseToMinor(state.amountText)
-            if (amount == null) {
-                effects.emit(RecordCashFlowEffect.ShowMessage("金额不能为空"))
-                return@launch
-            }
-            if (amount <= 0) {
-                effects.emit(RecordCashFlowEffect.ShowMessage("金额必须大于 0"))
-                return@launch
-            }
-
-            val occurredAt = state.occurredAtMillis
-            if (occurredAt > System.currentTimeMillis()) {
-                effects.emit(RecordCashFlowEffect.ShowMessage("时间不能晚于当前时间"))
-                return@launch
-            }
+            val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+            val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
+                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.message!!)); return@launch }
 
             _uiState.value = state.copy(isSaving = true, showPurposeConfirm = false)
             runCatching {
@@ -135,7 +120,7 @@ class RecordCashFlowViewModel(
                     direction = direction,
                     amount = amount,
                     purpose = state.purpose,
-                    occurredAt = occurredAt,
+                    occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess {
                 if (reminderId != null && confirmReminderUseCase != null) {

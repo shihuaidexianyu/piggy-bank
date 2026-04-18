@@ -43,6 +43,7 @@ private enum class HistoryFilterSheet {
     ACCOUNT,
     DATE,
     AMOUNT,
+    DIRECTION,
 }
 
 private enum class HistoryDateField {
@@ -59,6 +60,7 @@ fun HistoryScreen(
     onDateRangeChange: (Long?, Long?) -> Unit,
     onMinAmountChange: (String) -> Unit,
     onMaxAmountChange: (String) -> Unit,
+    onAmountDirectionChange: (AmountDirectionFilter) -> Unit,
     onRecordClick: (HistoryRecordUiModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -116,6 +118,7 @@ fun HistoryScreen(
             title = when (current) {
                 HistoryFilterSheet.DATE -> "日期"
                 HistoryFilterSheet.AMOUNT -> "金额"
+                HistoryFilterSheet.DIRECTION -> "方向"
                 else -> ""
             },
             onDismiss = { sheet = null },
@@ -178,6 +181,20 @@ fun HistoryScreen(
                         label = "最大金额",
                     )
                 }
+                HistoryFilterSheet.DIRECTION -> {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AmountDirectionFilter.entries.forEach { option ->
+                            FilterChip(
+                                selected = state.amountDirectionFilter == option,
+                                onClick = { onAmountDirectionChange(option) },
+                                label = { Text(option.displayName) },
+                            )
+                        }
+                    }
+                }
                 else -> Unit
             }
         }
@@ -223,6 +240,11 @@ fun HistoryScreen(
                     selected = state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
                     onClick = { sheet = HistoryFilterSheet.AMOUNT },
                     label = { Text(amountChipLabel(state)) },
+                )
+                FilterChip(
+                    selected = state.amountDirectionFilter != AmountDirectionFilter.ALL,
+                    onClick = { sheet = HistoryFilterSheet.DIRECTION },
+                    label = { Text(directionChipLabel(state)) },
                 )
             }
         }
@@ -344,6 +366,10 @@ private fun amountChipLabel(state: HistoryUiState): String {
     }
 }
 
+private fun directionChipLabel(state: HistoryUiState): String {
+    return state.amountDirectionFilter.displayName
+}
+
 @Composable
 private fun QuickDateChip(
     label: String,
@@ -355,4 +381,3 @@ private fun QuickDateChip(
         label = { Text(label) },
     )
 }
-

@@ -11,7 +11,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
-import com.shihuaidexianyu.money.util.AmountInputParser
+import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,20 +107,12 @@ class EditReminderViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val accountId = state.selectedAccountId
-            if (accountId == null) {
-                effects.emit(EditReminderEffect.ShowMessage("请选择账户"))
-                return@launch
-            }
-            val amount = AmountInputParser.parseToMinor(state.amountText)
-            if (amount == null || amount <= 0) {
-                effects.emit(EditReminderEffect.ShowMessage("请输入有效金额"))
-                return@launch
-            }
-            if (state.name.isBlank()) {
-                effects.emit(EditReminderEffect.ShowMessage("请输入名称"))
-                return@launch
-            }
+            val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
+                .getOrElse { error -> effects.emit(EditReminderEffect.ShowMessage(error.message!!)); return@launch }
+            val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
+                .getOrElse { error -> effects.emit(EditReminderEffect.ShowMessage(error.message!!)); return@launch }
+            runCatching { RecordValidator.requireReminderName(state.name) }
+                .getOrElse { error -> effects.emit(EditReminderEffect.ShowMessage(error.message!!)); return@launch }
 
             val scheduleInput = parseReminderScheduleInput(
                 periodType = state.periodType,
