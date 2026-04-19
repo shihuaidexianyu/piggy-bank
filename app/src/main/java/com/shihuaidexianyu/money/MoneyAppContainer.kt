@@ -28,6 +28,7 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
+import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
@@ -96,6 +97,11 @@ class MoneyAppContainer(context: Context) {
         transactionRepository = transactionRepository,
     )
 
+    val recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(
+        accountRepository = accountRepository,
+        transactionRepository = transactionRepository,
+    )
+
     val observeHomeDashboardUseCase = ObserveHomeDashboardUseCase(
         accountReminderSettingsRepository = accountReminderSettingsRepository,
         accountRepository = accountRepository,
@@ -159,17 +165,22 @@ class MoneyAppContainer(context: Context) {
         accountRepository = accountRepository,
         transactionRepository = transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
+        accountRepository = accountRepository,
         transactionRepository = transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
+        accountRepository = accountRepository,
         transactionRepository = transactionRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 

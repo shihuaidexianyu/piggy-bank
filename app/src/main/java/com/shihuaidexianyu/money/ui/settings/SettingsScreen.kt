@@ -17,6 +17,7 @@ import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -92,23 +93,42 @@ fun SettingsScreen(
         title = "设置",
         modifier = modifier,
     ) {
-        item { MoneySectionHeader(title = "显示") }
+        item {
+            MoneyCard {
+                Text(
+                    text = "偏好概览",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "把首页展示、主题和货币符号收在一起，常用设置一眼就能找到。",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                MoneyInlineLabelValue(label = "首页周期", value = settings.homePeriod.displayName)
+                MoneyInlineLabelValue(label = "主题模式", value = settings.themeMode.displayName)
+                MoneyInlineLabelValue(label = "货币符号", value = settings.currencySymbol)
+            }
+        }
+        item { MoneySectionHeader(title = "显示与偏好") }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "首页默认周期",
+                    subtitle = "控制首页净流入和净流出的默认周期",
                     trailing = settings.homePeriod.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.HomePeriod },
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "主题模式",
+                    subtitle = "跟随系统，或固定为浅色 / 深色",
                     trailing = settings.themeMode.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "货币符号",
+                    subtitle = "影响金额显示格式",
                     trailing = settings.currencySymbol,
                     modifier = Modifier.clickable {
                         currencyDraft = settings.currencySymbol
@@ -118,6 +138,7 @@ fun SettingsScreen(
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "显示过期账户标记",
+                    subtitle = "在首页和账户页提醒哪些余额需要更新",
                     showChevron = false,
                     accessory = {
                         Switch(
@@ -129,11 +150,12 @@ fun SettingsScreen(
             }
         }
 
-        item { MoneySectionHeader(title = "账户") }
+        item { MoneySectionHeader(title = "账户管理") }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "账户顺序",
+                    subtitle = "调整账户页和选择器里的展示顺序",
                     trailing = "自定义",
                     modifier = Modifier.clickable(onClick = onManageAccountOrder),
                 )

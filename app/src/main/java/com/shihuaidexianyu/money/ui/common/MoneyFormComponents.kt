@@ -53,9 +53,8 @@ fun MoneyFormPage(
         MoneyPageTitle(
             title = title,
             trailing = trailing,
-            modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
         )
-        MoneySectionDivider()
         LazyColumn(
             contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,

@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
 class TransactionRepositoryImpl(
@@ -20,17 +21,21 @@ class TransactionRepositoryImpl(
     private val balanceUpdateRecordDao: BalanceUpdateRecordDao,
     private val balanceAdjustmentRecordDao: BalanceAdjustmentRecordDao,
 ) : TransactionRepository {
+    private val mutationVersion = MutableStateFlow(0L)
+
     override fun observeChangeVersion(): Flow<Long> {
         return combine(
             cashFlowRecordDao.observeActiveCount(),
             transferRecordDao.observeActiveCount(),
             balanceUpdateRecordDao.observeCount(),
             balanceAdjustmentRecordDao.observeCount(),
-        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount ->
+            mutationVersion,
+        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount, version ->
             cashFlowCount.toLong() +
                 transferCount.toLong() +
                 balanceUpdateCount.toLong() +
-                adjustmentCount.toLong()
+                adjustmentCount.toLong() +
+                version
         }
     }
 
@@ -38,11 +43,19 @@ class TransactionRepositoryImpl(
         return database.withTransaction { block() }
     }
 
-    override suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long = cashFlowRecordDao.insert(record)
+    override suspend fun insertCashFlowRecord(record: CashFlowRecordEntity): Long {
+        return cashFlowRecordDao.insert(record).also { bumpVersion() }
+    }
 
-    override suspend fun updateCashFlowRecord(record: CashFlowRecordEntity) = cashFlowRecordDao.update(record)
+    override suspend fun updateCashFlowRecord(record: CashFlowRecordEntity) {
+        cashFlowRecordDao.update(record)
+        bumpVersion()
+    }
 
-    override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) = cashFlowRecordDao.softDelete(id, updatedAt)
+    override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
+        cashFlowRecordDao.softDelete(id, updatedAt)
+        bumpVersion()
+    }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecordEntity? = cashFlowRecordDao.queryById(id)
 
@@ -52,11 +65,19 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryByAccountId(accountId)
 
-    override suspend fun insertTransferRecord(record: TransferRecordEntity): Long = transferRecordDao.insert(record)
+    override suspend fun insertTransferRecord(record: TransferRecordEntity): Long {
+        return transferRecordDao.insert(record).also { bumpVersion() }
+    }
 
-    override suspend fun updateTransferRecord(record: TransferRecordEntity) = transferRecordDao.update(record)
+    override suspend fun updateTransferRecord(record: TransferRecordEntity) {
+        transferRecordDao.update(record)
+        bumpVersion()
+    }
 
-    override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) = transferRecordDao.softDelete(id, updatedAt)
+    override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
+        transferRecordDao.softDelete(id, updatedAt)
+        bumpVersion()
+    }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecordEntity? = transferRecordDao.queryById(id)
 
@@ -70,11 +91,19 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity> = transferRecordDao.queryByAccountId(accountId)
 
-    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long = balanceUpdateRecordDao.insert(record)
+    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long {
+        return balanceUpdateRecordDao.insert(record).also { bumpVersion() }
+    }
 
-    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity) = balanceUpdateRecordDao.update(record)
+    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity) {
+        balanceUpdateRecordDao.update(record)
+        bumpVersion()
+    }
 
-    override suspend fun deleteBalanceUpdateRecord(id: Long) = balanceUpdateRecordDao.deleteById(id)
+    override suspend fun deleteBalanceUpdateRecord(id: Long) {
+        balanceUpdateRecordDao.deleteById(id)
+        bumpVersion()
+    }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecordEntity? = balanceUpdateRecordDao.queryById(id)
 
@@ -92,14 +121,20 @@ class TransactionRepositoryImpl(
         return balanceUpdateRecordDao.getLatestForAccountAtOrBefore(accountId, occurredAt)
     }
 
-    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity): Long = balanceAdjustmentRecordDao.insert(record)
+    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity): Long {
+        return balanceAdjustmentRecordDao.insert(record).also { bumpVersion() }
+    }
 
-    override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity) = balanceAdjustmentRecordDao.update(record)
+    override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecordEntity) {
+        balanceAdjustmentRecordDao.update(record)
+        bumpVersion()
+    }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecordEntity? = balanceAdjustmentRecordDao.queryById(id)
 
     override suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long) {
         balanceAdjustmentRecordDao.deleteBySourceUpdateRecordId(sourceUpdateRecordId)
+        bumpVersion()
     }
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecordEntity> = balanceAdjustmentRecordDao.queryAllActive()
@@ -131,4 +166,8 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity> = cashFlowRecordDao.queryActiveBetween(startAt, endAt)
+
+    private fun bumpVersion() {
+        mutationVersion.value = mutationVersion.value + 1
+    }
 }

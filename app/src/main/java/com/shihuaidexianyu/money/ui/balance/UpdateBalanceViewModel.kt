@@ -12,6 +12,7 @@ import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,21 +50,18 @@ class UpdateBalanceViewModel(
 
     private val effects = MutableSharedFlow<UpdateBalanceEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var previewJob: Job? = null
 
     init {
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryActiveAccounts()
                 val selected = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id
-                val systemBalance = selected?.let { calculateCurrentBalanceUseCase(it) } ?: 0L
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.toAccountOptionUiModels(),
                     selectedAccountId = selected,
-                    actualBalanceText = AmountFormatter.formatPlain(systemBalance),
-                    systemBalanceBeforeUpdate = systemBalance,
-                    actualBalancePreview = systemBalance,
-                    deltaPreview = 0,
                 )
+                refreshPreview(resetActualBalanceToSystem = true)
             } catch (e: Exception) {
                 android.util.Log.e("UpdateBalanceViewModel", "Failed to load accounts", e)
             }
@@ -71,16 +69,8 @@ class UpdateBalanceViewModel(
     }
 
     fun updateAccount(accountId: Long) {
-        viewModelScope.launch {
-            val systemBalance = calculateCurrentBalanceUseCase(accountId)
-            _uiState.value = _uiState.value.copy(
-                selectedAccountId = accountId,
-                actualBalanceText = AmountFormatter.formatPlain(systemBalance),
-                systemBalanceBeforeUpdate = systemBalance,
-                actualBalancePreview = systemBalance,
-                deltaPreview = 0,
-            )
-        }
+        _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
+        refreshPreview(resetActualBalanceToSystem = true)
     }
 
     fun updateActualBalance(value: String) {
@@ -97,6 +87,7 @@ class UpdateBalanceViewModel(
         _uiState.value = _uiState.value.copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
         )
+        refreshPreview(resetActualBalanceToSystem = false)
     }
 
     fun save() {
@@ -130,6 +121,40 @@ class UpdateBalanceViewModel(
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(UpdateBalanceEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
+        }
+    }
+
+    private fun refreshPreview(resetActualBalanceToSystem: Boolean) {
+        val snapshot = _uiState.value
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch {
+            val systemBalance = snapshot.selectedAccountId
+                ?.let { calculateCurrentBalanceUseCase(it, snapshot.occurredAtMillis) }
+                ?: 0L
+            val current = _uiState.value
+            if (current.selectedAccountId != snapshot.selectedAccountId ||
+                current.occurredAtMillis != snapshot.occurredAtMillis
+            ) {
+                return@launch
+            }
+
+            val actualBalanceText = if (resetActualBalanceToSystem) {
+                AmountFormatter.formatPlain(systemBalance)
+            } else {
+                current.actualBalanceText
+            }
+            val actualBalancePreview = if (resetActualBalanceToSystem) {
+                systemBalance
+            } else {
+                AmountInputParser.parseToMinor(actualBalanceText)
+            }
+
+            _uiState.value = current.copy(
+                actualBalanceText = actualBalanceText,
+                systemBalanceBeforeUpdate = systemBalance,
+                actualBalancePreview = actualBalancePreview,
+                deltaPreview = actualBalancePreview?.minus(systemBalance),
+            )
         }
     }
 }

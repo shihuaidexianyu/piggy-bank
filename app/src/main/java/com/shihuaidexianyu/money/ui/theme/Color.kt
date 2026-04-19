@@ -62,16 +62,16 @@ data class MoneyColors(
 )
 
 private val LightMoneyColors = MoneyColors(
-    income = CoralRed,
-    expense = SageGreen,
+    income = SageGreen,
+    expense = CoralRed,
     current = Amber600,
     transfer = TransferBlue,
     reminder = ReminderPurple,
 )
 
 private val DarkMoneyColors = MoneyColors(
-    income = Color(0xFFE57373),
-    expense = Color(0xFF66BB6A),
+    income = Color(0xFF66BB6A),
+    expense = Color(0xFFE57373),
     current = Color(0xFFE5B84C),
     transfer = Color(0xFF90CAF9),
     reminder = Color(0xFFCE93D8),

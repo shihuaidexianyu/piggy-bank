@@ -19,7 +19,8 @@ class CreateCashFlowRecordUseCase(
     ): Long {
         require(amount > 0) { "金额必须大于 0" }
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
-        requireNotNull(accountRepository.getAccountById(accountId))
+        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.insertCashFlowRecord(

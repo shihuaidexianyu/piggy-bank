@@ -2,6 +2,11 @@ package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -19,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -33,14 +37,18 @@ private fun isTopLevelTransition(initial: String?, target: String?): Boolean {
     return initial in topLevelRouteSet && target in topLevelRouteSet
 }
 
-private fun topLevelDirection(initial: String, target: String): AnimatedContentTransitionScope.SlideDirection {
-    val initialIndex = topLevelRoutes.indexOf(initial)
-    val targetIndex = topLevelRoutes.indexOf(target)
-    return if (targetIndex > initialIndex) {
-        AnimatedContentTransitionScope.SlideDirection.Left
-    } else {
-        AnimatedContentTransitionScope.SlideDirection.Right
-    }
+private fun topLevelEnterTransition(): EnterTransition {
+    return fadeIn(animationSpec = tween(220)) + scaleIn(
+        initialScale = 0.98f,
+        animationSpec = tween(220),
+    )
+}
+
+private fun topLevelExitTransition(): ExitTransition {
+    return fadeOut(animationSpec = tween(180)) + scaleOut(
+        targetScale = 1.01f,
+        animationSpec = tween(180),
+    )
 }
 
 @Composable
@@ -98,10 +106,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
                     if (isTopLevelTransition(initial, target)) {
-                        slideIntoContainer(
-                            topLevelDirection(initial!!, target!!),
-                            animationSpec = tween(250),
-                        )
+                        topLevelEnterTransition()
                     } else {
                         slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Left,
@@ -113,10 +118,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
                     if (isTopLevelTransition(initial, target)) {
-                        slideOutOfContainer(
-                            topLevelDirection(initial!!, target!!),
-                            animationSpec = tween(250),
-                        )
+                        topLevelExitTransition()
                     } else {
                         slideOutOfContainer(
                             AnimatedContentTransitionScope.SlideDirection.Left,
@@ -128,10 +130,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
                     if (isTopLevelTransition(initial, target)) {
-                        slideIntoContainer(
-                            topLevelDirection(target!!, initial!!),
-                            animationSpec = tween(250),
-                        )
+                        topLevelEnterTransition()
                     } else {
                         EnterTransition.None
                     }
@@ -140,10 +139,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
                     if (isTopLevelTransition(initial, target)) {
-                        slideOutOfContainer(
-                            topLevelDirection(target!!, initial!!),
-                            animationSpec = tween(250),
-                        )
+                        topLevelExitTransition()
                     } else {
                         slideOutOfContainer(
                             AnimatedContentTransitionScope.SlideDirection.Right,

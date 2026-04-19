@@ -22,3 +22,5 @@ local.properties
 .android-local*
 .kotlin
 /.idea
+
+.gradle-review/

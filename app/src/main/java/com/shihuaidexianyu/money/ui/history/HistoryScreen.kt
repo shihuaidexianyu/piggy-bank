@@ -8,17 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -46,6 +40,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -217,48 +212,55 @@ fun HistoryScreen(
     MoneyFormPage(
         title = "历史",
         modifier = modifier,
+        trailing = {
+            Text(
+                text = "${state.records.size} 条",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
         contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Text(
-                text = "${state.records.size} 条记录",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        item {
-            SearchField(
-                value = state.keyword,
-                onValueChange = onKeywordChange,
-                placeholder = "搜索用途或备注",
-            )
-        }
-        item {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilterChip(
-                    selected = state.selectedAccountId != null,
-                    onClick = { sheet = HistoryFilterSheet.ACCOUNT },
-                    label = { Text(accountChipLabel(state)) },
+            MoneyCard {
+                SearchField(
+                    value = state.keyword,
+                    onValueChange = onKeywordChange,
+                    placeholder = "搜索用途或备注",
                 )
-                FilterChip(
-                    selected = state.dateStartAt != null || state.dateEndAt != null,
-                    onClick = { sheet = HistoryFilterSheet.DATE },
-                    label = { Text(dateChipLabel(state)) },
-                )
-                FilterChip(
-                    selected = state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
-                    onClick = { sheet = HistoryFilterSheet.AMOUNT },
-                    label = { Text(amountChipLabel(state)) },
-                )
-                FilterChip(
-                    selected = state.amountDirectionFilter != AmountDirectionFilter.ALL,
-                    onClick = { sheet = HistoryFilterSheet.DIRECTION },
-                    label = { Text(directionChipLabel(state)) },
-                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.selectedAccountId != null,
+                        onClick = { sheet = HistoryFilterSheet.ACCOUNT },
+                        label = { Text(accountChipLabel(state)) },
+                    )
+                    FilterChip(
+                        selected = state.dateStartAt != null || state.dateEndAt != null,
+                        onClick = { sheet = HistoryFilterSheet.DATE },
+                        label = { Text(dateChipLabel(state)) },
+                    )
+                    FilterChip(
+                        selected = state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
+                        onClick = { sheet = HistoryFilterSheet.AMOUNT },
+                        label = { Text(amountChipLabel(state)) },
+                    )
+                    FilterChip(
+                        selected = state.amountDirectionFilter != AmountDirectionFilter.ALL,
+                        onClick = { sheet = HistoryFilterSheet.DIRECTION },
+                        label = { Text(directionChipLabel(state)) },
+                    )
+                }
+                activeFilterSummary(state)?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         if (state.records.isEmpty()) {
@@ -273,8 +275,6 @@ fun HistoryScreen(
                 HistoryRow(
                     record = record,
                     settings = state.settings,
-                    isFirst = index == 0,
-                    isLast = index == state.records.lastIndex,
                     onClick = { onRecordClick(record) },
                 )
             }
@@ -338,11 +338,9 @@ private fun HistoryFilterSheetContent(
 private fun HistoryRow(
     record: HistoryRecordUiModel,
     settings: com.shihuaidexianyu.money.domain.model.AppSettings,
-    isFirst: Boolean,
-    isLast: Boolean,
     onClick: () -> Unit,
 ) {
-    val dotColor = when (record.kind) {
+    val accent = when (record.kind) {
         HistoryRecordKind.CASH_FLOW ->
             if (record.amount > 0) LocalMoneyColors.current.income else LocalMoneyColors.current.expense
         HistoryRecordKind.TRANSFER -> LocalMoneyColors.current.transfer
@@ -350,99 +348,68 @@ private fun HistoryRow(
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> LocalMoneyColors.current.current
     }
-    val lineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-
-    Row(
+    MoneyCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
+            .clickable(onClick = onClick),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .padding(end = 12.dp)
-                .width(24.dp)
-                .fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .weight(1f)
-                    .background(
-                        color = if (!isFirst) lineColor else Color.Transparent,
-                        shape = RoundedCornerShape(1.dp),
-                    ),
+            MoneyStatusPill(
+                text = historyKindLabel(record),
+                accent = accent,
             )
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 4.dp)
-                    .size(8.dp)
-                    .background(color = dotColor, shape = CircleShape),
-            )
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .weight(1f)
-                    .background(
-                        color = if (!isLast) lineColor else Color.Transparent,
-                        shape = RoundedCornerShape(1.dp),
-                    ),
+            Text(
+                text = DateTimeTextFormatter.format(record.occurredAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        MoneyCard(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(record.title, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = "${record.subtitle}｜${DateTimeTextFormatter.format(record.occurredAt)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(record.title, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = AmountFormatter.format(record.amount, settings),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = when {
-                        record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
-                        record.amount > 0 -> LocalMoneyColors.current.income
-                        record.amount < 0 -> LocalMoneyColors.current.expense
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    text = record.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Text(
+                text = AmountFormatter.format(record.amount, settings),
+                style = MaterialTheme.typography.titleLarge,
+                color = when {
+                    record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
+                    record.amount > 0 -> LocalMoneyColors.current.income
+                    record.amount < 0 -> LocalMoneyColors.current.expense
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
         }
     }
 }
 
 private fun accountChipLabel(state: HistoryUiState): String {
     val account = state.accountOptions.firstOrNull { it.id == state.selectedAccountId }
-    return account?.name ?: "全部账户"
+    return account?.let {
+        if (it.name.length > 6) "账户已选" else it.name
+    } ?: "全部账户"
 }
 
 private fun dateChipLabel(state: HistoryUiState): String {
     val start = state.dateStartAt
     val end = state.dateEndAt
-    return if (start == null && end == null) {
-        "日期"
-    } else if (start != null && end != null) {
-        "${DateTimeTextFormatter.formatDateOnly(start)} 至 ${DateTimeTextFormatter.formatDateOnly(end)}"
-    } else if (start != null) {
-        "${DateTimeTextFormatter.formatDateOnly(start)} 起"
-    } else {
-        "截至 ${DateTimeTextFormatter.formatDateOnly(requireNotNull(end))}"
-    }
+    return if (start == null && end == null) "日期" else "日期已选"
 }
 
 private fun amountChipLabel(state: HistoryUiState): String {
@@ -454,7 +421,31 @@ private fun amountChipLabel(state: HistoryUiState): String {
 }
 
 private fun directionChipLabel(state: HistoryUiState): String {
-    return state.amountDirectionFilter.displayName
+    return if (state.amountDirectionFilter == AmountDirectionFilter.ALL) "方向" else state.amountDirectionFilter.displayName
+}
+
+private fun activeFilterSummary(state: HistoryUiState): String? {
+    val count = listOf(
+        state.selectedAccountId != null,
+        state.dateStartAt != null || state.dateEndAt != null,
+        state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
+        state.amountDirectionFilter != AmountDirectionFilter.ALL,
+    ).count { it }
+    return if (count == 0 && state.keyword.isBlank()) {
+        null
+    } else {
+        val filterText = if (count > 0) "$count 个筛选条件" else "关键词搜索"
+        "当前已启用$filterText"
+    }
+}
+
+private fun historyKindLabel(record: HistoryRecordUiModel): String {
+    return when (record.kind) {
+        HistoryRecordKind.CASH_FLOW -> if (record.amount > 0) "入账" else "出账"
+        HistoryRecordKind.TRANSFER -> "转账"
+        HistoryRecordKind.BALANCE_UPDATE -> "余额更新"
+        HistoryRecordKind.BALANCE_ADJUSTMENT -> "手动调整"
+    }
 }
 
 @Composable

@@ -16,6 +16,7 @@ class UpdateBalanceUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
+    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -26,21 +27,25 @@ class UpdateBalanceUseCase(
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
 
         val account = requireNotNull(accountRepository.getAccountById(accountId))
+        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
         val context = resolveBalanceUpdateContextUseCase(accountId, occurredAt)
         val systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate
         val delta = actualBalance - systemBalanceBeforeUpdate
         val now = System.currentTimeMillis()
 
-        transactionRepository.insertBalanceUpdateRecord(
-            BalanceUpdateRecordEntity(
-                accountId = accountId,
-                actualBalance = actualBalance,
-                systemBalanceBeforeUpdate = systemBalanceBeforeUpdate,
-                delta = delta,
-                occurredAt = occurredAt,
-                createdAt = now,
-            ),
-        )
+        transactionRepository.runInTransaction {
+            transactionRepository.insertBalanceUpdateRecord(
+                BalanceUpdateRecordEntity(
+                    accountId = accountId,
+                    actualBalance = actualBalance,
+                    systemBalanceBeforeUpdate = systemBalanceBeforeUpdate,
+                    delta = delta,
+                    occurredAt = occurredAt,
+                    createdAt = now,
+                ),
+            )
+            recalculateBalanceUpdateChainUseCase(accountId)
+        }
 
         refreshAccountActivityStateUseCase(accountId)
 

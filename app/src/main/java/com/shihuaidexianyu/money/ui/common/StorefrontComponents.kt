@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -37,8 +39,22 @@ fun MoneyGradientBackground(
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            content = content,
-        )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f),
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.background,
+                            ),
+                        ),
+                    ),
+            )
+            content()
+        }
     }
 }
 
@@ -95,6 +111,7 @@ fun MoneyPageTitle(
 fun MoneySectionHeader(
     title: String,
     trailing: String? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -107,12 +124,16 @@ fun MoneySectionHeader(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        trailing?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (trailingContent != null) {
+            trailingContent()
+        } else {
+            trailing?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

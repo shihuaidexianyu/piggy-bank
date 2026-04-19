@@ -1,15 +1,12 @@
 package com.shihuaidexianyu.money.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -117,7 +114,17 @@ fun HomeScreen(
             }
             if (state.dueReminders.isNotEmpty()) {
                 item {
-                    MoneySectionHeader(title = "待处理提醒")
+                    MoneySectionHeader(
+                        title = "待处理提醒",
+                        trailingContent = {
+                            Text(
+                                text = "管理全部",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(onClick = onAllRemindersClick),
+                            )
+                        },
+                    )
                 }
                 items(state.dueReminders) { reminder ->
                     MoneyCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)) {
@@ -128,7 +135,10 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -146,23 +156,22 @@ fun HomeScreen(
                                     )
                                 }
                                 Text(
-                                    text = reminder.amountFormatted,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = "轻点处理这条提醒",
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             Text(
-                                text = "管理全部 >",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable(onClick = onAllRemindersClick),
+                                text = reminder.amountFormatted,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = LocalMoneyColors.current.current,
                             )
                         }
                     }
                 }
             }
             item {
-                MoneySectionHeader(title = "记一笔")
+                MoneySectionHeader(title = "快速记录")
             }
             item {
                 ActionGrid(
@@ -220,6 +229,15 @@ private fun TotalAssetsBlock(
                     MaterialTheme.colorScheme.primary
                 },
             )
+            Text(
+                text = if (staleCount > 0 && showStaleMark) {
+                    "先处理待更新账户，再记账会更准确。"
+                } else {
+                    "近期收支会实时反映在总资产里。"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -269,8 +287,8 @@ private fun ActionGrid(
             ActionTile(
                 label = "入账",
                 icon = { Icon(Icons.Outlined.SouthWest, contentDescription = null) },
-                tint = LocalMoneyColors.current.expense,
-                bgColor = LocalMoneyColors.current.expense.copy(alpha = 0.08f),
+                tint = LocalMoneyColors.current.income,
+                bgColor = LocalMoneyColors.current.income.copy(alpha = 0.08f),
                 onClick = onInflow,
                 enabled = enabled,
                 modifier = Modifier.weight(1f),
@@ -278,8 +296,8 @@ private fun ActionGrid(
             ActionTile(
                 label = "出账",
                 icon = { Icon(Icons.Outlined.NorthEast, contentDescription = null) },
-                tint = LocalMoneyColors.current.income,
-                bgColor = LocalMoneyColors.current.income.copy(alpha = 0.08f),
+                tint = LocalMoneyColors.current.expense,
+                bgColor = LocalMoneyColors.current.expense.copy(alpha = 0.08f),
                 onClick = onOutflow,
                 enabled = enabled,
                 modifier = Modifier.weight(1f),
@@ -312,7 +330,7 @@ private fun ActionGrid(
             bgColor = LocalMoneyColors.current.reminder.copy(alpha = 0.08f),
             onClick = onReminders,
             enabled = true,
-            modifier = Modifier.fillMaxWidth(0.5f),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -356,5 +374,3 @@ private fun ActionTile(
         }
     }
 }
-
-

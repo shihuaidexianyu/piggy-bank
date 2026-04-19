@@ -19,8 +19,10 @@ class UpdateTransferRecordUseCase(
         require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
         require(amount > 0) { "金额必须大于 0" }
         require(occurredAt <= System.currentTimeMillis()) { "时间不能晚于当前时间" }
-        requireNotNull(accountRepository.getAccountById(fromAccountId))
-        requireNotNull(accountRepository.getAccountById(toAccountId))
+        val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId))
+        val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId))
+        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)
+        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 
         val existing = requireNotNull(transactionRepository.queryTransferRecordById(recordId)) { "记录不存在或已删除" }
         val updated = existing.copy(
