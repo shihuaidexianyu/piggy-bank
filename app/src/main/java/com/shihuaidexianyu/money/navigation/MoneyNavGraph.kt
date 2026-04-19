@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -132,10 +133,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                             animationSpec = tween(250),
                         )
                     } else {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(250),
-                        )
+                        EnterTransition.None
                     }
                 },
                 popExitTransition = {

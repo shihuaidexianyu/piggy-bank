@@ -8,12 +8,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -265,10 +269,12 @@ fun HistoryScreen(
                 )
             }
         } else {
-            items(state.records, key = { it.id }) { record ->
+            itemsIndexed(state.records, key = { _, record -> record.id }) { index, record ->
                 HistoryRow(
                     record = record,
                     settings = state.settings,
+                    isFirst = index == 0,
+                    isLast = index == state.records.lastIndex,
                     onClick = { onRecordClick(record) },
                 )
             }
@@ -332,6 +338,8 @@ private fun HistoryFilterSheetContent(
 private fun HistoryRow(
     record: HistoryRecordUiModel,
     settings: com.shihuaidexianyu.money.domain.model.AppSettings,
+    isFirst: Boolean,
+    isLast: Boolean,
     onClick: () -> Unit,
 ) {
     val dotColor = when (record.kind) {
@@ -342,20 +350,47 @@ private fun HistoryRow(
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> LocalMoneyColors.current.current
     }
+    val lineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
+            .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .padding(end = 12.dp)
-                .size(8.dp)
-                .background(color = dotColor, shape = CircleShape),
-        )
+                .width(24.dp)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .weight(1f)
+                    .background(
+                        color = if (!isFirst) lineColor else Color.Transparent,
+                        shape = RoundedCornerShape(1.dp),
+                    ),
+            )
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .size(8.dp)
+                    .background(color = dotColor, shape = CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .weight(1f)
+                    .background(
+                        color = if (!isLast) lineColor else Color.Transparent,
+                        shape = RoundedCornerShape(1.dp),
+                    ),
+            )
+        }
         MoneyCard(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
