@@ -172,31 +172,15 @@ private fun AccountCard(
     onClick: () -> Unit,
 ) {
     val (icon, iconBg, iconTint) = accountGroupVisuals(account.groupType)
-    val statusLabel = when {
-        account.isArchived -> "已归档"
-        account.isStale -> "待更新"
-        else -> account.groupType.displayName
-    }
-    val statusColor = when {
-        account.isArchived -> MaterialTheme.colorScheme.outline
-        account.isStale -> LocalMoneyColors.current.current
-        else -> iconTint
-    }
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardColor = when {
-        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.16f else 0.08f)
-        account.isArchived -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDarkTheme) 0.90f else 0.80f)
+        account.isArchived -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.80f)
         else -> MaterialTheme.colorScheme.surface
     }
     val borderColor = MaterialTheme.colorScheme.outlineVariant
-    val iconContainerColor = when {
-        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.24f else 0.14f)
-        else -> iconBg
-    }
     val accentBarColor = when {
-        account.isStale -> statusColor
-        account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkTheme) 0.9f else 0.7f)
-        else -> Color.Transparent
+        account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
+        account.isStale -> LocalMoneyColors.current.expense
+        else -> LocalMoneyColors.current.income
     }
 
     Surface(
@@ -212,7 +196,7 @@ private fun AccountCard(
         color = cardColor,
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 0.dp,
-        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
+        shadowElevation = 0.dp,
     ) {
         Row(
             modifier = Modifier
@@ -220,22 +204,20 @@ private fun AccountCard(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (account.isArchived || account.isStale) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .background(
-                            color = accentBarColor,
-                            shape = RoundedCornerShape(999.dp),
-                        ),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            }
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(48.dp)
+                    .background(
+                        color = accentBarColor,
+                        shape = RoundedCornerShape(999.dp),
+                    ),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .background(color = iconContainerColor, shape = CircleShape),
+                    .background(color = iconBg, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -258,12 +240,6 @@ private fun AccountCard(
                         text = account.name,
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    if (account.isArchived || account.isStale) {
-                        MoneyStatusPill(
-                            text = statusLabel,
-                            accent = statusColor,
-                        )
-                    }
                 }
                 Text(
                     text = account.groupType.displayName,
