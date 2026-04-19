@@ -18,18 +18,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
 
+private val topLevelRoutes = MoneyDestination.topLevel.map { it.route }
+private val topLevelRouteSet = topLevelRoutes.toSet()
+
+private fun isTopLevelTransition(initial: String?, target: String?): Boolean {
+    return initial in topLevelRouteSet && target in topLevelRouteSet
+}
+
+private fun topLevelDirection(initial: String, target: String): AnimatedContentTransitionScope.SlideDirection {
+    val initialIndex = topLevelRoutes.indexOf(initial)
+    val targetIndex = topLevelRoutes.indexOf(target)
+    return if (targetIndex > initialIndex) {
+        AnimatedContentTransitionScope.SlideDirection.Left
+    } else {
+        AnimatedContentTransitionScope.SlideDirection.Right
+    }
+}
+
 @Composable
 fun MoneyNavGraph(container: MoneyAppContainer) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val topLevelRoutes = MoneyDestination.topLevel.map { it.route }.toSet()
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -77,28 +94,64 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                 startDestination = MoneyDestination.Home.route,
                 modifier = Modifier.padding(innerPadding),
                 enterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(250),
-                    )
+                    val initial = initialState.destination.route
+                    val target = targetState.destination.route
+                    if (isTopLevelTransition(initial, target)) {
+                        slideIntoContainer(
+                            topLevelDirection(initial!!, target!!),
+                            animationSpec = tween(250),
+                        )
+                    } else {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(250),
+                        )
+                    }
                 },
                 exitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Left,
-                        animationSpec = tween(250),
-                    )
+                    val initial = initialState.destination.route
+                    val target = targetState.destination.route
+                    if (isTopLevelTransition(initial, target)) {
+                        slideOutOfContainer(
+                            topLevelDirection(initial!!, target!!),
+                            animationSpec = tween(250),
+                        )
+                    } else {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(250),
+                        )
+                    }
                 },
                 popEnterTransition = {
-                    slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(250),
-                    )
+                    val initial = initialState.destination.route
+                    val target = targetState.destination.route
+                    if (isTopLevelTransition(initial, target)) {
+                        slideIntoContainer(
+                            topLevelDirection(target!!, initial!!),
+                            animationSpec = tween(250),
+                        )
+                    } else {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(250),
+                        )
+                    }
                 },
                 popExitTransition = {
-                    slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Right,
-                        animationSpec = tween(250),
-                    )
+                    val initial = initialState.destination.route
+                    val target = targetState.destination.route
+                    if (isTopLevelTransition(initial, target)) {
+                        slideOutOfContainer(
+                            topLevelDirection(target!!, initial!!),
+                            animationSpec = tween(250),
+                        )
+                    } else {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(250),
+                        )
+                    }
                 },
             ) {
                 addTopLevelGraph(navController = navController, container = container)
