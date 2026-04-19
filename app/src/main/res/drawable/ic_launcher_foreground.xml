@@ -3,46 +3,46 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 笔记本/卡片外框 -->
+    <!-- 笔记本外框：原 64x64 内容平移 +22 居中 -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M33,22 L75,22 A6,6 0,0 1,81 28 L81,74 A6,6 0,0 1,75 80 L33,80 A6,6 0,0 1,27 74 L27,28 A6,6 0,0 1,33 22 Z" />
+        android:pathData="M36,30 L72,30 A4,4 0,0 1,76 34 L76,74 A4,4 0,0 1,72 78 L36,78 A4,4 0,0 1,32 74 L32,34 A4,4 0,0 1,36 30 Z" />
     <!-- 横线1 -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:pathData="M37,36 L71,36" />
+        android:pathData="M44,42 L64,42" />
     <!-- 横线2 -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:pathData="M37,46 L71,46" />
+        android:pathData="M44,50 L64,50" />
     <!-- 横线3 -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:pathData="M37,56 L57,56" />
+        android:pathData="M44,58 L54,58" />
     <!-- 圆形加号背景 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M70,59 A11,11 0,1 1,70 81 A11,11 0,1 1,70 59 Z" />
-    <!-- 加号竖线 (amber，与背景同色形成镂空感) -->
+        android:pathData="M68,58 A10,10 0,1 1,68 78 A10,10 0,1 1,68 58 Z" />
+    <!-- 加号竖线 (amber 镂空) -->
     <path
         android:strokeColor="#C4943A"
         android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:pathData="M70,64 L70,76" />
+        android:pathData="M68,63 L68,73" />
     <!-- 加号横线 -->
     <path
         android:strokeColor="#C4943A"
         android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:pathData="M64,70 L76,70" />
+        android:pathData="M63,68 L73,68" />
 </vector>

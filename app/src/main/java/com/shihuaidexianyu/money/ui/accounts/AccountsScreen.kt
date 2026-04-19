@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -181,25 +182,21 @@ private fun AccountCard(
         account.isStale -> LocalMoneyColors.current.current
         else -> iconTint
     }
-    val amountHint = when {
-        account.isArchived -> "已归档"
-        account.isStale -> "建议更新"
-        else -> "当前余额"
-    }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardColor = when {
-        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.20f else 0.12f)
+        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.16f else 0.08f)
         account.isArchived -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isDarkTheme) 0.90f else 0.80f)
         else -> MaterialTheme.colorScheme.surface
     }
-    val borderColor = when {
-        account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.55f else 0.28f)
-        account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkTheme) 0.70f else 0.45f)
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     val iconContainerColor = when {
         account.isStale -> statusColor.copy(alpha = if (isDarkTheme) 0.24f else 0.14f)
         else -> iconBg
+    }
+    val accentBarColor = when {
+        account.isStale -> statusColor
+        account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = if (isDarkTheme) 0.9f else 0.7f)
+        else -> Color.Transparent
     }
 
     Surface(
@@ -223,6 +220,18 @@ private fun AccountCard(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (account.isArchived || account.isStale) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(48.dp)
+                        .background(
+                            color = accentBarColor,
+                            shape = RoundedCornerShape(999.dp),
+                        ),
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -267,11 +276,6 @@ private fun AccountCard(
                     text = AmountFormatter.format(account.balance, currencySettings),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = amountHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = statusColor,
                 )
             }
         }
