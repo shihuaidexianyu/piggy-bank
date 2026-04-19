@@ -25,7 +25,6 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.ExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
@@ -187,15 +186,6 @@ class MoneyAppContainer(context: Context) {
         accountRepository = accountRepository,
         settingsRepository = settingsRepository,
         updateAccountDisplayOrderUseCase = updateAccountDisplayOrderUseCase,
-    )
-
-    val exportJsonUseCase = ExportJsonUseCase(
-        context = appContext,
-        accountRepository = accountRepository,
-        accountReminderSettingsRepository = accountReminderSettingsRepository,
-        transactionRepository = transactionRepository,
-        settingsRepository = settingsRepository,
-        recurringReminderRepository = recurringReminderRepository,
     )
 
     val createReminderUseCase = CreateReminderUseCase(

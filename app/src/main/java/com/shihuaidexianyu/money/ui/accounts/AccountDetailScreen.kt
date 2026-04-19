@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
-import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
+import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -26,25 +26,13 @@ fun AccountDetailScreen(
     onBackToAccounts: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
+    MoneyFormPage(
+        title = state.name.ifEmpty { "账户详情" },
+        trailing = if (state.isMissing) null else {
+            { TextButton(onClick = onManageAccount) { Text("管理") } }
+        },
         modifier = modifier,
-        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        item {
-            MoneyPageTitle(
-                title = state.name.ifEmpty { "账户详情" },
-                trailing = if (state.isMissing) {
-                    null
-                } else {
-                    {
-                        TextButton(onClick = onManageAccount) {
-                            Text("管理")
-                        }
-                    }
-                },
-            )
-        }
         if (state.isMissing) {
             item {
                 MoneyEmptyStateCard(
@@ -60,7 +48,7 @@ fun AccountDetailScreen(
                     },
                 )
             }
-            return@LazyColumn
+            return@MoneyFormPage
         }
         item {
             MoneyCard {

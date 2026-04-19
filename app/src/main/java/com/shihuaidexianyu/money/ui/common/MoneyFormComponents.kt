@@ -6,14 +6,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -40,17 +44,22 @@ fun MoneyFormPage(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null,
     trailing: (@Composable () -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(20.dp),
     content: LazyListScope.() -> Unit,
 ) {
     Column(modifier = modifier) {
         snackbarHostState?.let { SnackbarHost(hostState = it) }
+        MoneyPageTitle(
+            title = title,
+            trailing = trailing,
+            modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
+        )
+        MoneySectionDivider()
         LazyColumn(
             contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,
         ) {
-            item { MoneyPageTitle(title = title, trailing = trailing) }
             content()
         }
     }
@@ -128,6 +137,12 @@ fun MoneySingleLineField(
         enabled = enabled,
         singleLine = true,
         textStyle = textStyle,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
     )
 }
 
@@ -261,6 +276,12 @@ fun MoneyAmountField(
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = MaterialTheme.typography.displayMedium,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
     )
 }
 
@@ -277,8 +298,16 @@ fun MoneySaveButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled && !isSaving,
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
     ) {
-        Text(if (isSaving) savingLabel else label)
+        Text(
+            text = if (isSaving) savingLabel else label,
+            style = MaterialTheme.typography.titleMedium,
+        )
     }
 }
 
@@ -315,4 +344,3 @@ fun <T> MoneyPickerField(
         modifier = modifier.clickable { showDialog = true },
     )
 }
-

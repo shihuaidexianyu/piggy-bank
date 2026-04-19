@@ -1,10 +1,7 @@
 package com.shihuaidexianyu.money.ui.settings
 
-import android.content.Intent
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,7 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
 import com.shihuaidexianyu.money.domain.model.HomePeriod
@@ -22,11 +18,9 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private sealed interface SettingsDialog {
     data object HomePeriod : SettingsDialog
@@ -42,10 +36,8 @@ fun SettingsScreen(
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
-    onExportJson: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val settings = state.settings
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
     var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
@@ -148,57 +140,6 @@ fun SettingsScreen(
             }
         }
 
-        item { MoneySectionHeader(title = "数据") }
-        item {
-            MoneyCard {
-                MoneySaveButton(
-                    onClick = onExportJson,
-                    isSaving = state.isExporting,
-                    label = "导出 JSON 备份",
-                    savingLabel = "正在导出...",
-                )
-                state.exportError?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-                if (state.lastExportFileName != null && state.lastExportUri != null) {
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = "最近导出",
-                        trailing = state.lastExportFileName,
-                        showChevron = false,
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = "保存位置",
-                        trailing = state.lastExportRelativePath ?: "下载目录",
-                        showChevron = false,
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = "导出时间",
-                        trailing = state.lastExportedAt?.let(DateTimeTextFormatter::format) ?: "-",
-                        showChevron = false,
-                    )
-                    MoneySaveButton(
-                        onClick = {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/json"
-                                putExtra(Intent.EXTRA_STREAM, state.lastExportUri)
-                                putExtra(Intent.EXTRA_SUBJECT, state.lastExportFileName)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "分享备份文件"))
-                        },
-                        isSaving = false,
-                        label = "分享备份文件",
-                    )
-                }
-            }
-        }
+
     }
 }

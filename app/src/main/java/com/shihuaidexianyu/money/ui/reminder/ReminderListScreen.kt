@@ -62,30 +62,34 @@ fun ReminderListScreen(
             }
         },
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = modifier.padding(innerPadding),
-            contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                MoneyPageTitle(title = "定期提醒")
-            }
-            if (!state.isLoading && state.reminders.isEmpty()) {
-                item {
-                    Text(
-                        text = "暂无提醒，点击右下角添加",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 24.dp),
+            MoneyPageTitle(
+                title = "定期提醒",
+                modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
+            )
+            LazyColumn(
+                contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (!state.isLoading && state.reminders.isEmpty()) {
+                    item {
+                        Text(
+                            text = "暂无提醒，点击右下角添加",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 24.dp),
+                        )
+                    }
+                }
+                items(state.reminders, key = { it.id }) { reminder ->
+                    ReminderListItem(
+                        reminder = reminder,
+                        onClick = { onEditReminder(reminder.id) },
+                        onDelete = { deleteTarget = reminder.id },
                     )
                 }
-            }
-            items(state.reminders, key = { it.id }) { reminder ->
-                ReminderListItem(
-                    reminder = reminder,
-                    onClick = { onEditReminder(reminder.id) },
-                    onDelete = { deleteTarget = reminder.id },
-                )
             }
         }
     }

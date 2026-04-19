@@ -119,7 +119,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
-            onExportJson = viewModel::exportJson,
         )
     }
 }

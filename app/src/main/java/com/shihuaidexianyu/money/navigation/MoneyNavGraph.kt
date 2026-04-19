@@ -1,5 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +40,7 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 0.dp,
+                            tonalElevation = 2.dp,
                         ) {
                             MoneyDestination.topLevel.forEach { destination ->
                                 NavigationBarItem(
@@ -74,10 +76,30 @@ fun MoneyNavGraph(container: MoneyAppContainer) {
                 navController = navController,
                 startDestination = MoneyDestination.Home.route,
                 modifier = Modifier.padding(innerPadding),
-                enterTransition = { androidx.compose.animation.EnterTransition.None },
-                exitTransition = { androidx.compose.animation.ExitTransition.None },
-                popEnterTransition = { androidx.compose.animation.EnterTransition.None },
-                popExitTransition = { androidx.compose.animation.ExitTransition.None },
+                enterTransition = {
+                    slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(250),
+                    )
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(250),
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(250),
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(250),
+                    )
+                },
             ) {
                 addTopLevelGraph(navController = navController, container = container)
                 addAccountsGraph(navController = navController, container = container)

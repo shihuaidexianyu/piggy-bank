@@ -24,7 +24,6 @@ internal fun rememberSettingsViewModel(
         factory = moneyViewModelFactory {
             SettingsViewModel(
                 settingsRepository = container.settingsRepository,
-                exportJsonUseCase = container.exportJsonUseCase,
             )
         },
     )

@@ -1,7 +1,9 @@
 package com.shihuaidexianyu.money.ui.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,11 +12,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,9 +39,9 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -203,7 +213,7 @@ fun HistoryScreen(
     MoneyFormPage(
         title = "历史",
         modifier = modifier,
-        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -214,10 +224,9 @@ fun HistoryScreen(
             )
         }
         item {
-            MoneySingleLineField(
+            SearchField(
                 value = state.keyword,
                 onValueChange = onKeywordChange,
-                label = "搜索",
                 placeholder = "搜索用途或备注",
             )
         }
@@ -267,6 +276,38 @@ fun HistoryScreen(
     }
 }
 
+@Composable
+private fun SearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(placeholder) },
+        singleLine = true,
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            errorIndicatorColor = Color.Transparent,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilterSheetContent(
@@ -293,48 +334,59 @@ private fun HistoryRow(
     settings: com.shihuaidexianyu.money.domain.model.AppSettings,
     onClick: () -> Unit,
 ) {
-    val amountColor = recordAmountColor(record)
-
-    MoneyCard(
-        modifier = Modifier.clickable(onClick = onClick),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(record.title, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "${record.subtitle}｜${DateTimeTextFormatter.format(record.occurredAt)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = AmountFormatter.format(record.amount, settings),
-                style = MaterialTheme.typography.titleLarge,
-                color = amountColor,
-            )
-        }
-    }
-}
-
-@Composable
-private fun recordAmountColor(record: HistoryRecordUiModel): Color {
-    return when (record.kind) {
-        HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
-        HistoryRecordKind.CASH_FLOW,
+    val dotColor = when (record.kind) {
+        HistoryRecordKind.CASH_FLOW ->
+            if (record.amount > 0) LocalMoneyColors.current.income else LocalMoneyColors.current.expense
+        HistoryRecordKind.TRANSFER -> LocalMoneyColors.current.transfer
         HistoryRecordKind.BALANCE_UPDATE,
         HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> when {
-            record.amount > 0 -> LocalMoneyColors.current.income
-            record.amount < 0 -> LocalMoneyColors.current.expense
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        -> LocalMoneyColors.current.current
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(end = 12.dp)
+                .size(8.dp)
+                .background(color = dotColor, shape = CircleShape),
+        )
+        MoneyCard(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(record.title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "${record.subtitle}｜${DateTimeTextFormatter.format(record.occurredAt)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = AmountFormatter.format(record.amount, settings),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = when {
+                        record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
+                        record.amount > 0 -> LocalMoneyColors.current.income
+                        record.amount < 0 -> LocalMoneyColors.current.expense
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
         }
     }
 }
