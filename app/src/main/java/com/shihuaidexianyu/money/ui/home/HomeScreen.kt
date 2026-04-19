@@ -1,5 +1,7 @@
 package com.shihuaidexianyu.money.ui.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NorthEast
@@ -31,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -195,12 +199,24 @@ private fun TotalAssetsBlock(
     staleCount: Int,
     showStaleMark: Boolean,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val borderColor = if (staleCount > 0 && showStaleMark) {
+        MaterialTheme.colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.50f else 0.22f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(28.dp),
+            ),
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(28.dp),
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        shadowElevation = if (isDarkTheme) 0.dp else 2.dp,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
@@ -249,25 +265,45 @@ private fun FlowPill(
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
-        modifier = modifier,
-        color = accent.copy(alpha = 0.08f),
+        modifier = modifier.border(
+            width = 1.dp,
+            color = accent.copy(alpha = if (isDarkTheme) 0.40f else 0.18f),
+            shape = RoundedCornerShape(20.dp),
+        ),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = if (isDarkTheme) 0.dp else 1.dp,
         shape = RoundedCornerShape(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(
+                        color = accent.copy(alpha = if (isDarkTheme) 0.85f else 0.95f),
+                        shape = CircleShape,
+                    ),
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                color = accent,
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = accent,
+                )
+            }
         }
     }
 }
@@ -345,19 +381,37 @@ private fun ActionTile(
     enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
         modifier = modifier
+            .border(
+                width = 1.dp,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.outlineVariant
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                },
+                shape = RoundedCornerShape(20.dp),
+            )
             .clip(RoundedCornerShape(20.dp))
             .clickable(enabled = enabled, onClick = onClick),
-        color = bgColor,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
+        tonalElevation = 0.dp,
+        shadowElevation = if (isDarkTheme) 0.dp else 1.dp,
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        color = bgColor,
+                        shape = CircleShape,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 androidx.compose.runtime.CompositionLocalProvider(
