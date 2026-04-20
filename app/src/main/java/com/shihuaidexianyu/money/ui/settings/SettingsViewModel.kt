@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
@@ -43,5 +44,9 @@ class SettingsViewModel(
 
     fun updateThemeMode(themeMode: ThemeMode) {
         viewModelScope.launch { settingsRepository.updateThemeMode(themeMode) }
+    }
+
+    fun updateAmountColorMode(amountColorMode: AmountColorMode) {
+        viewModelScope.launch { settingsRepository.updateAmountColorMode(amountColorMode) }
     }
 }

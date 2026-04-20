@@ -28,6 +28,7 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
     val totalAssets: Long = 0,
+    val periodAssetChange: Long = 0,
     val periodNetInflow: Long = 0,
     val periodNetOutflow: Long = 0,
     val staleAccountCount: Int = 0,
@@ -49,6 +50,7 @@ class HomeViewModel(
                         isLoading = false,
                         settings = snapshot.settings,
                         totalAssets = snapshot.totalAssets,
+                        periodAssetChange = snapshot.periodAssetChange,
                         periodNetInflow = snapshot.periodNetInflow,
                         periodNetOutflow = snapshot.periodNetOutflow,
                         staleAccountCount = snapshot.staleAccountCount,
@@ -73,4 +75,3 @@ class HomeViewModel(
         }
     }
 }
-

@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
@@ -119,6 +120,10 @@ class ObserveHomeDashboardUseCaseTest {
 
         override suspend fun updateThemeMode(themeMode: ThemeMode) {
             state.value = state.value.copy(themeMode = themeMode)
+        }
+
+        override suspend fun updateAmountColorMode(amountColorMode: AmountColorMode) {
+            state.value = state.value.copy(amountColorMode = amountColorMode)
         }
 
         override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {

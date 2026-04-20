@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.PaddingValues
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -25,6 +25,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 private sealed interface SettingsDialog {
     data object HomePeriod : SettingsDialog
     data object ThemeMode : SettingsDialog
+    data object AmountColorMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
 }
 
@@ -33,6 +34,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onHomePeriodChange: (HomePeriod) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
@@ -66,6 +68,20 @@ fun SettingsScreen(
                     label = { it.displayName },
                     onSelect = {
                         onThemeModeChange(it)
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                )
+            }
+
+            SettingsDialog.AmountColorMode -> {
+                MoneyChoiceDialog(
+                    title = "金额颜色习惯",
+                    options = AmountColorMode.entries,
+                    selected = settings.amountColorMode,
+                    label = { it.displayName },
+                    onSelect = {
+                        onAmountColorModeChange(it)
                         dialog = null
                     },
                     onDismiss = { dialog = null },
@@ -107,6 +123,13 @@ fun SettingsScreen(
                     subtitle = "跟随系统，或固定为浅色 / 深色",
                     trailing = settings.themeMode.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "金额颜色习惯",
+                    subtitle = "统一首页、历史和金额差额的红绿显示",
+                    trailing = settings.amountColorMode.displayName,
+                    modifier = Modifier.clickable { dialog = SettingsDialog.AmountColorMode },
                 )
                 MoneySectionDivider()
                 MoneyListRow(

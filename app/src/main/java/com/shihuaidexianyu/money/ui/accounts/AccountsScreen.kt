@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -43,7 +44,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.theme.Amber600
-import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
+import com.shihuaidexianyu.money.ui.theme.CoralRed
+import com.shihuaidexianyu.money.ui.theme.SageGreen
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
@@ -174,8 +176,8 @@ private fun AccountCard(
     val borderColor = MaterialTheme.colorScheme.outlineVariant
     val accentBarColor = when {
         account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
-        account.isStale -> LocalMoneyColors.current.expense
-        else -> LocalMoneyColors.current.income
+        account.isStale -> CoralRed
+        else -> SageGreen
     }
 
     Surface(
@@ -234,6 +236,8 @@ private fun AccountCard(
                     Text(
                         text = account.name,
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Text(
@@ -247,6 +251,7 @@ private fun AccountCard(
                     text = AmountFormatter.format(account.balance, currencySettings),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
                 )
             }
         }

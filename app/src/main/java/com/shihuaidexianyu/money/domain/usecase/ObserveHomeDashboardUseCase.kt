@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.mapLatest
 data class HomeDashboardSnapshot(
     val settings: AppSettings,
     val totalAssets: Long,
+    val periodAssetChange: Long,
     val periodNetInflow: Long,
     val periodNetOutflow: Long,
     val staleAccountCount: Int,
@@ -61,16 +62,25 @@ class ObserveHomeDashboardUseCase(
         dueReminders: List<RecurringReminderEntity>,
     ): HomeDashboardSnapshot = coroutineScope {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
+        val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
         val balanceJobs = accounts.map { account ->
             async { account.id to calculateCurrentBalanceUseCase(account.id) }
         }
+        val openingBalanceJobs = accounts
+            .filter { it.createdAt <= periodStartBaselineAt }
+            .map { account ->
+                async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
+            }
         val inflowJob = async { transactionRepository.sumAllInflowBetween(range.startAtMillis, range.endAtMillis) }
         val outflowJob = async { transactionRepository.sumAllOutflowBetween(range.startAtMillis, range.endAtMillis) }
 
         val balances = balanceJobs.associate { it.await() }
+        val totalAssets = balances.values.sum()
+        val openingTotalAssets = openingBalanceJobs.sumOf { it.await() }
         HomeDashboardSnapshot(
             settings = settings,
-            totalAssets = balances.values.sum(),
+            totalAssets = totalAssets,
+            periodAssetChange = totalAssets - openingTotalAssets,
             periodNetInflow = inflowJob.await(),
             periodNetOutflow = outflowJob.await(),
             staleAccountCount = accounts.count { account ->
@@ -84,4 +94,3 @@ class ObserveHomeDashboardUseCase(
         )
     }
 }
-

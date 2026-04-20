@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 
 // ===== Primary palette =====
 val Amber600 = Color(0xFFC4943A)
@@ -62,20 +63,40 @@ data class MoneyColors(
 )
 
 private val LightMoneyColors = MoneyColors(
-    income = SageGreen,
-    expense = CoralRed,
+    income = CoralRed,
+    expense = SageGreen,
     current = Amber600,
     transfer = TransferBlue,
     reminder = ReminderPurple,
 )
 
 private val DarkMoneyColors = MoneyColors(
-    income = Color(0xFF66BB6A),
-    expense = Color(0xFFE57373),
+    income = Color(0xFFE57373),
+    expense = Color(0xFF66BB6A),
     current = Color(0xFFE5B84C),
     transfer = Color(0xFF90CAF9),
     reminder = Color(0xFFCE93D8),
 )
+
+private val LightInvertedMoneyColors = LightMoneyColors.copy(
+    income = SageGreen,
+    expense = CoralRed,
+)
+
+private val DarkInvertedMoneyColors = DarkMoneyColors.copy(
+    income = Color(0xFF66BB6A),
+    expense = Color(0xFFE57373),
+)
+
+fun moneyColorsFor(
+    darkTheme: Boolean,
+    amountColorMode: AmountColorMode,
+): MoneyColors {
+    return when (amountColorMode) {
+        AmountColorMode.RED_INCOME_GREEN_EXPENSE -> if (darkTheme) DarkMoneyColors else LightMoneyColors
+        AmountColorMode.GREEN_INCOME_RED_EXPENSE -> if (darkTheme) DarkInvertedMoneyColors else LightInvertedMoneyColors
+    }
+}
 
 val LocalMoneyColors = staticCompositionLocalOf { LightMoneyColors }
 

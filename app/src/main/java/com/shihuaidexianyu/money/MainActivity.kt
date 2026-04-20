@@ -17,10 +17,12 @@ class MainActivity : ComponentActivity() {
             val settings = container.settingsRepository.observeSettings().collectAsStateWithLifecycle(
                 initialValue = com.shihuaidexianyu.money.domain.model.AppSettings(),
             )
-            MoneyTheme(themeMode = settings.value.themeMode) {
+            MoneyTheme(
+                themeMode = settings.value.themeMode,
+                amountColorMode = settings.value.amountColorMode,
+            ) {
                 MoneyApp(container = container)
             }
         }
     }
 }
-

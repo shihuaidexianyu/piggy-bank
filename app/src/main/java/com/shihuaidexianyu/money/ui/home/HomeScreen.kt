@@ -34,8 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -93,8 +93,16 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             item {
+                val assetChangeAccent = when {
+                    state.periodAssetChange > 0 -> LocalMoneyColors.current.income
+                    state.periodAssetChange < 0 -> LocalMoneyColors.current.expense
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
                 TotalAssetsBlock(
                     totalAssets = AmountFormatter.format(state.totalAssets, state.settings),
+                    assetChangeLabel = "${state.settings.homePeriod.displayName}资产变化",
+                    assetChange = formatSignedAmount(state.periodAssetChange, state.settings),
+                    assetChangeAccent = assetChangeAccent,
                     accountCount = state.accountOptions.size,
                     staleCount = state.staleAccountCount,
                     showStaleMark = state.settings.showStaleMark,
@@ -195,6 +203,9 @@ fun HomeScreen(
 @Composable
 private fun TotalAssetsBlock(
     totalAssets: String,
+    assetChangeLabel: String,
+    assetChange: String,
+    assetChangeAccent: Color,
     accountCount: Int,
     staleCount: Int,
     showStaleMark: Boolean,
@@ -231,6 +242,22 @@ private fun TotalAssetsBlock(
                 style = MaterialTheme.typography.displayLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = assetChangeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = assetChange,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = assetChangeAccent,
+                )
+            }
             val statusText = if (staleCount > 0 && showStaleMark) {
                 "$staleCount 个账户待更新"
             } else {
@@ -254,6 +281,13 @@ private fun TotalAssetsBlock(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
+    return when {
+        amount > 0 -> "+${AmountFormatter.format(amount, settings)}"
+        else -> AmountFormatter.format(amount, settings)
     }
 }
 

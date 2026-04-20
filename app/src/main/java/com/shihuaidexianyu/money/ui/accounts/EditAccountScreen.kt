@@ -1,17 +1,15 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -54,7 +52,7 @@ fun EditAccountScreen(
                 MoneyTextInputDialog(
                     title = "账户名称",
                     value = nameDraft,
-                    onValueChange = { nameDraft = it },
+                    onValueChange = { nameDraft = it.take(MAX_ACCOUNT_NAME_LENGTH) },
                     onConfirm = {
                         viewModel.updateName(nameDraft)
                         dialog = null
@@ -133,4 +131,3 @@ fun EditAccountScreen(
         }
     }
 }
-

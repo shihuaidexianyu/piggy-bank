@@ -12,6 +12,17 @@ enum class ThemeMode(val value: String, val displayName: String) {
     }
 }
 
+enum class AmountColorMode(val value: String, val displayName: String) {
+    RED_INCOME_GREEN_EXPENSE("red_income_green_expense", "红入绿出"),
+    GREEN_INCOME_RED_EXPENSE("green_income_red_expense", "绿入红出");
+
+    companion object {
+        fun fromValue(value: String?): AmountColorMode {
+            return entries.firstOrNull { it.value == value } ?: RED_INCOME_GREEN_EXPENSE
+        }
+    }
+}
+
 enum class AccountGroupType(
     val value: String,
     val displayName: String,

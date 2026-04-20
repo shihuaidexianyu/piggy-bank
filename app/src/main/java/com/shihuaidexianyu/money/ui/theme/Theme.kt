@@ -7,6 +7,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 
 private val LightColors = lightColorScheme(
@@ -62,6 +63,7 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
+    amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
@@ -70,7 +72,10 @@ fun MoneyTheme(
         ThemeMode.DARK -> true
     }
     val colorScheme = if (darkTheme) DarkColors else LightColors
-    val moneyColors = if (darkTheme) DarkMoneyColorsInstance else LightMoneyColorsInstance
+    val moneyColors = moneyColorsFor(
+        darkTheme = darkTheme,
+        amountColorMode = amountColorMode,
+    )
 
     CompositionLocalProvider(LocalMoneyColors provides moneyColors) {
         MaterialTheme(

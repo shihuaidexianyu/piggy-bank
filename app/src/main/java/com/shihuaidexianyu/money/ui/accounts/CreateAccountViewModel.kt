@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
+import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +40,7 @@ class CreateAccountViewModel(
     val effectFlow = effects.asSharedFlow()
 
     fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value)
+        _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
     }
 
     fun updateGroupType(value: AccountGroupType) {

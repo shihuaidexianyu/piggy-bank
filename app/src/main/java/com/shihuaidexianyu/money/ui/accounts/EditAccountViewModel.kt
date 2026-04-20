@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
+import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,7 +68,7 @@ class EditAccountViewModel(
     }
 
     fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value)
+        _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
     }
 
     fun updateGroupType(value: AccountGroupType) {
