@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyBackButton
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
@@ -58,7 +59,7 @@ fun ReminderListScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
-                Icon(Icons.Outlined.Add, contentDescription = "添加提醒")
+                Icon(Icons.Rounded.Add, contentDescription = "添加提醒")
             }
         },
     ) { innerPadding ->
@@ -67,6 +68,7 @@ fun ReminderListScreen(
         ) {
             MoneyPageTitle(
                 title = "定期提醒",
+                leading = { MoneyBackButton(onClick = onBack) },
                 modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
             )
             LazyColumn(
@@ -155,7 +157,7 @@ private fun ReminderListItem(
             }
             IconButton(onClick = onDelete) {
                 Icon(
-                    Icons.Outlined.Delete,
+                    Icons.Rounded.Delete,
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

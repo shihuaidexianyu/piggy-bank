@@ -37,8 +37,13 @@ class AmountInputParserTest {
     }
 
     @Test
-    fun `extra decimal places are truncated`() {
-        assertEquals(1234, AmountInputParser.parseToMinor("12.349"))
+    fun `extra decimal places are rejected`() {
+        assertNull(AmountInputParser.parseToMinor("12.349"))
+    }
+
+    @Test
+    fun `extra trailing zero decimal places are accepted`() {
+        assertEquals(1234, AmountInputParser.parseToMinor("12.340"))
     }
 
     @Test

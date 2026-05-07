@@ -111,6 +111,7 @@ fun RecordCashFlowScreen(
         title = state.direction.displayName,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {
@@ -148,4 +149,3 @@ fun RecordCashFlowScreen(
         }
     }
 }
-

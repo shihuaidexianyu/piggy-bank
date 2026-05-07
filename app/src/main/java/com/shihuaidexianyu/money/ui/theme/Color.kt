@@ -16,19 +16,19 @@ val TransferBlue = Color(0xFF5B8DB8)
 val ReminderPurple = Color(0xFF9B7CB6)
 
 // ===== Backgrounds =====
-val BackgroundCream = Color(0xFFF5F0E8)
-val SurfaceWarm = Color(0xFFF1E8DD)
+val BackgroundCream = Color(0xFFF7F8FA)
+val SurfaceWarm = Color(0xFFEFF2F5)
 val SurfaceWhite = Color(0xFFFFFFFF)
-val InputBg = Color(0xFFF2ECE4)
+val InputBg = Color(0xFFF2F4F7)
 
 // ===== Text =====
-val CharcoalWarm = Color(0xFF2C2721)
-val WarmGray = Color(0xFF6B6560)
-val MutedWarm = Color(0xFFD5CFC8)
+val CharcoalWarm = Color(0xFF202124)
+val WarmGray = Color(0xFF646B73)
+val MutedWarm = Color(0xFFD4D9DF)
 
 // ===== Borders & dividers =====
-val WarmBorder = Color(0xFFE1D7C8)
-val WarmBorderFocused = Color(0xFFCFC0AE)
+val WarmBorder = Color(0xFFDDE2E8)
+val WarmBorderFocused = Color(0xFFB8C1CC)
 
 // ===== Dark mode =====
 val Night950 = Color(0xFF141210)

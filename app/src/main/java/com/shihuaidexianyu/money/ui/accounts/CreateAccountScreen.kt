@@ -43,6 +43,7 @@ fun CreateAccountScreen(
         title = "新建账户",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {

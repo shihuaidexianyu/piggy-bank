@@ -62,6 +62,7 @@ fun EditReminderScreen(
     MoneyFormPage(
         title = "编辑提醒",
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
         modifier = modifier,
     ) {
         item {

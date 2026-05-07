@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.common
 
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -43,6 +45,7 @@ fun MoneyFormPage(
     title: String,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState? = null,
+    onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(20.dp),
@@ -52,6 +55,7 @@ fun MoneyFormPage(
         snackbarHostState?.let { SnackbarHost(hostState = it) }
         MoneyPageTitle(
             title = title,
+            leading = onBack?.let { { MoneyBackButton(onClick = it) } },
             trailing = trailing,
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
         )
@@ -275,6 +279,7 @@ fun MoneyAmountField(
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = MaterialTheme.typography.displayMedium,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -297,7 +302,7 @@ fun MoneySaveButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled && !isSaving,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

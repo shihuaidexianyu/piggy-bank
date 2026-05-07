@@ -118,6 +118,7 @@ fun EditCashFlowScreen(
         title = "编辑${state.direction.displayName}",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {

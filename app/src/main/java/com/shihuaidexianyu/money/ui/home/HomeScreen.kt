@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.NorthEast
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.SouthWest
-import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.SouthWest
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -213,7 +213,7 @@ private fun TotalAssetsBlock(
     val borderColor = if (staleCount > 0 && showStaleMark) {
         MaterialTheme.colorScheme.secondary.copy(alpha = 0.22f)
     } else {
-        MaterialTheme.colorScheme.outlineVariant
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
     }
     Surface(
         modifier = Modifier
@@ -221,10 +221,10 @@ private fun TotalAssetsBlock(
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(20.dp),
             ),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(20.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -302,13 +302,13 @@ private fun FlowPill(
         modifier = modifier
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                shape = RoundedCornerShape(16.dp),
             ),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -355,7 +355,7 @@ private fun ActionGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActionTile(
                 label = "入账",
-                icon = { Icon(Icons.Outlined.SouthWest, contentDescription = null) },
+                icon = { Icon(Icons.Rounded.SouthWest, contentDescription = null) },
                 tint = LocalMoneyColors.current.income,
                 bgColor = LocalMoneyColors.current.income.copy(alpha = 0.08f),
                 onClick = onInflow,
@@ -364,7 +364,7 @@ private fun ActionGrid(
             )
             ActionTile(
                 label = "出账",
-                icon = { Icon(Icons.Outlined.NorthEast, contentDescription = null) },
+                icon = { Icon(Icons.Rounded.NorthEast, contentDescription = null) },
                 tint = LocalMoneyColors.current.expense,
                 bgColor = LocalMoneyColors.current.expense.copy(alpha = 0.08f),
                 onClick = onOutflow,
@@ -375,7 +375,7 @@ private fun ActionGrid(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActionTile(
                 label = "转账",
-                icon = { Icon(Icons.Outlined.SwapHoriz, contentDescription = null) },
+                icon = { Icon(Icons.Rounded.SwapHoriz, contentDescription = null) },
                 tint = LocalMoneyColors.current.transfer,
                 bgColor = LocalMoneyColors.current.transfer.copy(alpha = 0.08f),
                 onClick = onTransfer,
@@ -384,7 +384,7 @@ private fun ActionGrid(
             )
             ActionTile(
                 label = "更新余额",
-                icon = { Icon(Icons.Outlined.Sync, contentDescription = null) },
+                icon = { Icon(Icons.Rounded.Sync, contentDescription = null) },
                 tint = LocalMoneyColors.current.current,
                 bgColor = LocalMoneyColors.current.current.copy(alpha = 0.08f),
                 onClick = onUpdateBalance,
@@ -394,7 +394,7 @@ private fun ActionGrid(
         }
         ActionTile(
             label = "定期提醒",
-            icon = { Icon(Icons.Outlined.Notifications, contentDescription = null) },
+            icon = { Icon(Icons.Rounded.Notifications, contentDescription = null) },
             tint = LocalMoneyColors.current.reminder,
             bgColor = LocalMoneyColors.current.reminder.copy(alpha = 0.08f),
             onClick = onReminders,
@@ -419,16 +419,16 @@ private fun ActionTile(
             .border(
                 width = 1.dp,
                 color = if (enabled) {
-                    MaterialTheme.colorScheme.outlineVariant
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
                 },
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(16.dp),
             )
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(enabled = enabled, onClick = onClick),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {

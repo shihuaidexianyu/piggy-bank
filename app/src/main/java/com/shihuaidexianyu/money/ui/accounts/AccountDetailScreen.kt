@@ -31,6 +31,7 @@ fun AccountDetailScreen(
         trailing = if (state.isMissing) null else {
             { TextButton(onClick = onManageAccount) { Text("管理") } }
         },
+        onBack = onBackToAccounts,
         modifier = modifier,
     ) {
         if (state.isMissing) {

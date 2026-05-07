@@ -165,6 +165,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
             viewModel = viewModel,
             settings = settingsState.settings,
             onShowResult = { navController.navigate(MoneyDestination.balanceUpdateResultRoute(accountId)) },
+            onBack = { navController.popBackStack() },
         )
     }
 

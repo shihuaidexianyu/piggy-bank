@@ -54,6 +54,7 @@ fun CreateReminderScreen(
     MoneyFormPage(
         title = "新建提醒",
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
         modifier = modifier,
     ) {
         item {

@@ -36,6 +36,7 @@ fun UpdateBalanceScreen(
     viewModel: UpdateBalanceViewModel,
     settings: AppSettings,
     onShowResult: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -104,6 +105,7 @@ fun UpdateBalanceScreen(
         title = "更新余额",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {
@@ -168,4 +170,3 @@ fun UpdateBalanceScreen(
         }
     }
 }
-

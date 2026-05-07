@@ -3,7 +3,7 @@ package com.shihuaidexianyu.money.util
 object RecordValidator {
     fun requireAmount(amountText: String): Long {
         val amount = AmountInputParser.parseToMinor(amountText)
-            ?: throw ValidationException("金额不能为空")
+            ?: throw ValidationException(invalidAmountMessage(amountText))
         if (amount <= 0) {
             throw ValidationException("金额必须大于 0")
         }
@@ -12,7 +12,7 @@ object RecordValidator {
 
     fun requireNonNegativeAmount(amountText: String): Long {
         return AmountInputParser.parseToMinor(amountText)
-            ?: throw ValidationException("金额不能为空")
+            ?: throw ValidationException(invalidAmountMessage(amountText))
     }
 
     fun requireOccurredAt(occurredAt: Long) {
@@ -28,6 +28,9 @@ object RecordValidator {
     fun requireTransferAccounts(fromId: Long?, toId: Long?): Pair<Long, Long> {
         val from = fromId ?: throw ValidationException("请选择账户")
         val to = toId ?: throw ValidationException("请选择账户")
+        if (from == to) {
+            throw ValidationException("请选择不同的转出和转入账户")
+        }
         return from to to
     }
 
@@ -38,4 +41,12 @@ object RecordValidator {
     }
 
     class ValidationException(override val message: String) : Exception(message)
+
+    private fun invalidAmountMessage(amountText: String): String {
+        return if (amountText.isBlank()) {
+            "金额不能为空"
+        } else {
+            "请输入有效金额，最多保留两位小数"
+        }
+    }
 }

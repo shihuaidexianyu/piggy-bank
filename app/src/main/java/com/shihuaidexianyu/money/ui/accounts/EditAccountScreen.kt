@@ -90,6 +90,7 @@ fun EditAccountScreen(
         title = "账户管理",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item { MoneySectionHeader(title = "账户信息") }
         item {

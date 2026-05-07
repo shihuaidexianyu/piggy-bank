@@ -103,6 +103,7 @@ fun EditBalanceUpdateScreen(
         title = "修改余额更新",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {

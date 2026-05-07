@@ -18,10 +18,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +43,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.theme.Amber600
 import com.shihuaidexianyu.money.ui.theme.CoralRed
 import com.shihuaidexianyu.money.ui.theme.SageGreen
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -69,12 +68,12 @@ fun AccountsScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            color = Amber600,
+                            color = MaterialTheme.colorScheme.primary,
                             shape = CircleShape,
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Add,
+                        imageVector = Icons.Rounded.Add,
                         contentDescription = "新建账户",
                         tint = Color.White,
                     )
@@ -173,7 +172,7 @@ private fun AccountCard(
 ) {
     val (icon, iconBg, iconTint) = accountGroupVisuals(account.groupType)
     val cardColor = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
     val accentBarColor = when {
         account.isArchived -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
         account.isStale -> CoralRed
@@ -186,12 +185,12 @@ private fun AccountCard(
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(16.dp),
             )
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         color = cardColor,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -261,17 +260,17 @@ private fun AccountCard(
 private fun accountGroupVisuals(groupType: AccountGroupType): Triple<ImageVector, Color, Color> {
     return when (groupType) {
         AccountGroupType.PAYMENT -> Triple(
-            Icons.Outlined.AccountBalanceWallet,
+            Icons.Rounded.AccountBalanceWallet,
             Color(0xFFFFF3D6),
             Color(0xFFC4943A),
         )
         AccountGroupType.BANK -> Triple(
-            Icons.Outlined.AccountBalance,
+            Icons.Rounded.AccountBalance,
             Color(0xFFE3F2FD),
             Color(0xFF5B8DB8),
         )
         AccountGroupType.INVESTMENT -> Triple(
-            Icons.AutoMirrored.Outlined.TrendingUp,
+            Icons.AutoMirrored.Rounded.TrendingUp,
             Color(0xFFE8F5E9),
             Color(0xFF5A8A6E),
         )

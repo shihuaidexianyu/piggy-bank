@@ -42,6 +42,7 @@ fun ReorderAccountsScreen(
         title = "账户顺序",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
         contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -133,4 +134,3 @@ fun ReorderAccountsScreen(
         }
     }
 }
-

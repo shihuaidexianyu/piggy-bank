@@ -11,9 +11,9 @@ import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 
 private val LightColors = lightColorScheme(
-    primary = Amber600,
+    primary = Teal600,
     onPrimary = SurfaceWhite,
-    primaryContainer = Amber100,
+    primaryContainer = Teal100,
     onPrimaryContainer = CharcoalWarm,
     secondary = CoralRed,
     onSecondary = SurfaceWhite,
@@ -21,7 +21,7 @@ private val LightColors = lightColorScheme(
     onTertiary = SurfaceWhite,
     background = BackgroundCream,
     onBackground = CharcoalWarm,
-    surface = Color(0xFFFFFCF8),
+    surface = Color(0xFFFFFFFF),
     onSurface = CharcoalWarm,
     surfaceVariant = SurfaceWarm,
     onSurfaceVariant = WarmGray,

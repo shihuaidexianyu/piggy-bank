@@ -59,6 +59,7 @@ fun BalanceUpdateDetailScreen(
         title = "余额更新详情",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {
@@ -100,12 +101,6 @@ fun BalanceUpdateDetailScreen(
                     enabled = !state.isLoading && !state.isDeleting,
                 ) {
                     Text(if (state.isDeleting) "删除中..." else "删除这次更新")
-                }
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("返回")
                 }
             }
         }

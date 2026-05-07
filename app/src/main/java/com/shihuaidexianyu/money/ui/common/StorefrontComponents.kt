@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -63,7 +66,7 @@ fun MoneyGradientBackground(
 @Composable
 fun MoneyCard(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(20.dp),
+    contentPadding: PaddingValues = PaddingValues(18.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -71,11 +74,11 @@ fun MoneyCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                shape = RoundedCornerShape(16.dp),
             ),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -90,6 +93,7 @@ fun MoneyCard(
 @Composable
 fun MoneyPageTitle(
     title: String,
+    leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -99,13 +103,35 @@ fun MoneyPageTitle(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leading?.invoke()
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             trailing?.invoke()
         }
+    }
+}
+
+@Composable
+fun MoneyBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "返回",
+        )
     }
 }
 
@@ -240,11 +266,11 @@ fun MoneyListSection(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                shape = RoundedCornerShape(14.dp),
             ),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -292,7 +318,7 @@ fun MoneyListRow(
             accessory?.invoke()
             if (showChevron) {
                 Icon(
-                    imageVector = Icons.Outlined.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp),
@@ -318,7 +344,7 @@ fun MoneySelectionField(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
     ) {
         Row(
             modifier = Modifier
@@ -349,7 +375,7 @@ fun MoneySelectionField(
                 }
             }
             Icon(
-                imageVector = Icons.Outlined.ChevronRight,
+                imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )

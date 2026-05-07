@@ -6,13 +6,14 @@ object AmountInputParser {
     fun parseToMinor(text: String): Long? {
         val normalized = text.trim().replace(",", "")
         if (normalized.isEmpty()) return null
-        if (normalized.startsWith("-")) return null
+        val decimal = normalized.toBigDecimalOrNull() ?: return null
+        if (decimal.signum() < 0) return null
 
         return runCatching {
-            normalized.toBigDecimalOrNull()
-                ?.setScale(2, RoundingMode.DOWN)
-                ?.movePointRight(2)
-                ?.longValueExact()
+            decimal
+                .setScale(2, RoundingMode.UNNECESSARY)
+                .movePointRight(2)
+                .longValueExact()
         }.getOrNull()
     }
 }

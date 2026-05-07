@@ -1,8 +1,6 @@
 package com.shihuaidexianyu.money.ui.balance
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +33,7 @@ fun BalanceAdjustmentDetailScreen(
     MoneyFormPage(
         title = "余额矫正详情",
         modifier = modifier,
+        onBack = onBack,
     ) {
         if (state.isLoading) {
             item {
@@ -55,13 +54,6 @@ fun BalanceAdjustmentDetailScreen(
                         label = "矫正差额",
                         value = AmountFormatter.format(state.delta, settings),
                     )
-                }
-            }
-        }
-        item {
-            MoneyCard {
-                OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                    Text("返回")
                 }
             }
         }

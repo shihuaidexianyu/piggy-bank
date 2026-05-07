@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,7 +72,7 @@ fun AccountPickerDialog(
                             accessory = {
                                 if (selectedAccountId == null) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Check,
+                                        imageVector = Icons.Rounded.Check,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
@@ -105,7 +105,7 @@ fun AccountPickerDialog(
                                         when {
                                             selectedAccountId == account.id -> {
                                                 Icon(
-                                                    imageVector = Icons.Outlined.Check,
+                                                    imageVector = Icons.Rounded.Check,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.primary,
                                                 )
@@ -113,7 +113,7 @@ fun AccountPickerDialog(
 
                                             isDisabled -> {
                                                 Icon(
-                                                    imageVector = Icons.Outlined.Block,
+                                                    imageVector = Icons.Rounded.Block,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )

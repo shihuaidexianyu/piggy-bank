@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
@@ -119,6 +119,7 @@ fun RecordTransferScreen(
         title = "转账",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        onBack = onBack,
     ) {
         item {
             MoneyCard {
@@ -134,7 +135,7 @@ fun RecordTransferScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     androidx.compose.material3.TextButton(onClick = viewModel::swapAccounts) {
-                        Icon(Icons.Outlined.SwapHoriz, contentDescription = null)
+                        Icon(Icons.Rounded.SwapHoriz, contentDescription = null)
                         Text("互换", modifier = Modifier.padding(start = 6.dp))
                     }
                 }
@@ -168,4 +169,3 @@ fun RecordTransferScreen(
         }
     }
 }
-
