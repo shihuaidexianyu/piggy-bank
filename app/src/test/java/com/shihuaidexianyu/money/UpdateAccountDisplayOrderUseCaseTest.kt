@@ -13,13 +13,13 @@ class UpdateAccountDisplayOrderUseCaseTest {
     fun `reorders active accounts by provided ids`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val firstId = repository.createAccount(
-            AccountEntity(name = "A", groupType = "payment", initialBalance = 0, createdAt = 1, displayOrder = 0),
+            AccountEntity(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
         )
         val secondId = repository.createAccount(
-            AccountEntity(name = "B", groupType = "bank", initialBalance = 0, createdAt = 1, displayOrder = 1),
+            AccountEntity(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
         )
         val thirdId = repository.createAccount(
-            AccountEntity(name = "C", groupType = "investment", initialBalance = 0, createdAt = 1, displayOrder = 2),
+            AccountEntity(name = "C", initialBalance = 0, createdAt = 1, displayOrder = 2),
         )
 
         UpdateAccountDisplayOrderUseCase(repository)(
@@ -35,10 +35,10 @@ class UpdateAccountDisplayOrderUseCaseTest {
     fun `rejects incomplete account ids to avoid inconsistent display orders`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val firstId = repository.createAccount(
-            AccountEntity(name = "A", groupType = "payment", initialBalance = 0, createdAt = 1, displayOrder = 0),
+            AccountEntity(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
         )
         repository.createAccount(
-            AccountEntity(name = "B", groupType = "bank", initialBalance = 0, createdAt = 1, displayOrder = 1),
+            AccountEntity(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
         )
 
         val error = assertFailsWith<IllegalArgumentException> {

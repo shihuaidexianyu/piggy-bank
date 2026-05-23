@@ -63,6 +63,56 @@ private val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+private val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `accounts_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `initialBalance` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `archivedAt` INTEGER,
+                `isArchived` INTEGER NOT NULL,
+                `lastUsedAt` INTEGER,
+                `lastBalanceUpdateAt` INTEGER,
+                `displayOrder` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO `accounts_new` (
+                `id`,
+                `name`,
+                `initialBalance`,
+                `createdAt`,
+                `archivedAt`,
+                `isArchived`,
+                `lastUsedAt`,
+                `lastBalanceUpdateAt`,
+                `displayOrder`
+            )
+            SELECT
+                `id`,
+                `name`,
+                `initialBalance`,
+                `createdAt`,
+                `archivedAt`,
+                `isArchived`,
+                `lastUsedAt`,
+                `lastBalanceUpdateAt`,
+                `displayOrder`
+            FROM `accounts`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `accounts`")
+        db.execSQL("ALTER TABLE `accounts_new` RENAME TO `accounts`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_accounts_name` ON `accounts` (`name`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_accounts_isArchived` ON `accounts` (`isArchived`)")
+    }
+}
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -72,7 +122,7 @@ private val MIGRATION_3_4 = object : Migration(3, 4) {
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class MoneyDatabase : RoomDatabase() {
@@ -93,7 +143,8 @@ abstract class MoneyDatabase : RoomDatabase() {
                     context,
                     MoneyDatabase::class.java,
                     "money.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+                    .also { INSTANCE = it }
             }
         }
     }

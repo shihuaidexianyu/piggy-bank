@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -27,7 +26,6 @@ import kotlinx.coroutines.withContext
 data class BatchReconcileAccountUiModel(
     val accountId: Long,
     val name: String,
-    val groupType: AccountGroupType,
     val systemBalance: Long,
     val lastBalanceUpdateAt: Long?,
     val isSelected: Boolean = true,
@@ -160,7 +158,6 @@ class BatchReconcileViewModel(
             BatchReconcileAccountUiModel(
                 accountId = account.id,
                 name = account.name,
-                groupType = AccountGroupType.fromValue(account.groupType),
                 systemBalance = calculateCurrentBalanceUseCase(account.id),
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
             )

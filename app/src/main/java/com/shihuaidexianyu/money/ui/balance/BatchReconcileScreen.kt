@@ -161,7 +161,7 @@ private fun BatchReconcileAccountRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 MoneyStatusPill(
-                    text = if (account.isFailed) "失败" else account.groupType.displayName,
+                    text = if (account.isFailed) "失败" else "待核对",
                     accent = if (account.isFailed) {
                         MaterialTheme.colorScheme.error
                     } else {

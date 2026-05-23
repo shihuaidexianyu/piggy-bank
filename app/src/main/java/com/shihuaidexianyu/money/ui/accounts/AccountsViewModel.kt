@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -24,7 +23,6 @@ import kotlinx.coroutines.withContext
 data class AccountListItemUiModel(
     val id: Long,
     val name: String,
-    val groupType: AccountGroupType,
     val balance: Long,
     val isArchived: Boolean,
     val isStale: Boolean,
@@ -68,8 +66,8 @@ class AccountsViewModel(
                 ) { active, archived, reminderConfigs, settings, _ ->
                     AccountsSnapshot(
                         settings = settings,
-                        activeAccounts = buildItems(active, reminderConfigs, settings),
-                        archivedAccounts = buildItems(archived, reminderConfigs, settings),
+                        activeAccounts = buildItems(active, reminderConfigs),
+                        archivedAccounts = buildItems(archived, reminderConfigs),
                     )
                 }
                 combine(snapshotFlow, showArchivedFlow) { snapshot, showArchived ->
@@ -96,14 +94,9 @@ class AccountsViewModel(
     private suspend fun buildItems(
         accounts: List<AccountEntity>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-        settings: AppSettings,
     ): List<AccountListItemUiModel> = withContext(Dispatchers.Default) {
         val items = accounts.map { mapItem(it, reminderConfigs[it.id]) }
-        val groupOrderIndex = settings.accountGroupOrder.withIndex().associate { it.value to it.index }
-        items.sortedWith(
-            compareBy<AccountListItemUiModel> { groupOrderIndex[it.groupType] ?: Int.MAX_VALUE }
-                .thenBy { it.displayOrder },
-        )
+        items.sortedBy { it.displayOrder }
     }
 
     private suspend fun mapItem(
@@ -113,7 +106,6 @@ class AccountsViewModel(
         return AccountListItemUiModel(
             id = account.id,
             name = account.name,
-            groupType = AccountGroupType.fromValue(account.groupType),
             balance = calculateCurrentBalanceUseCase(account.id),
             isArchived = account.isArchived,
             isStale = AccountStatusUtils.isStale(
@@ -124,4 +116,3 @@ class AccountsViewModel(
         )
     }
 }
-

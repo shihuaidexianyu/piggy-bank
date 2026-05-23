@@ -21,7 +21,6 @@ class AccountStatusUtilsTest {
         val account = AccountEntity(
             id = 1,
             name = "银行卡",
-            groupType = "bank",
             initialBalance = 0,
             createdAt = updatedAt,
             lastBalanceUpdateAt = updatedAt,

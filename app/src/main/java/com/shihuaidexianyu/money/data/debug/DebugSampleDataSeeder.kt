@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -45,7 +44,6 @@ object DebugSampleDataSeeder {
             val paymentId = accountDao.insert(
                 AccountEntity(
                     name = "微信支付",
-                    groupType = AccountGroupType.PAYMENT.value,
                     initialBalance = 28_500,
                     createdAt = paymentCreatedAt,
                     lastUsedAt = millisAt(zoneId, today, 20, 10),
@@ -55,7 +53,6 @@ object DebugSampleDataSeeder {
             val bankId = accountDao.insert(
                 AccountEntity(
                     name = "招商银行",
-                    groupType = AccountGroupType.BANK.value,
                     initialBalance = 1_250_000,
                     createdAt = bankCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(1), 18, 10),
@@ -65,7 +62,6 @@ object DebugSampleDataSeeder {
             val savingsId = accountDao.insert(
                 AccountEntity(
                     name = "应急储蓄",
-                    groupType = AccountGroupType.BANK.value,
                     initialBalance = 800_000,
                     createdAt = savingsCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(3), 19, 40),
@@ -75,7 +71,6 @@ object DebugSampleDataSeeder {
             val investmentId = accountDao.insert(
                 AccountEntity(
                     name = "指数基金",
-                    groupType = AccountGroupType.INVESTMENT.value,
                     initialBalance = 1_000_000,
                     createdAt = investmentCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(4), 15, 0),

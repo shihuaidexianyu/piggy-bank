@@ -4,10 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
-import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import java.math.BigDecimal
@@ -42,6 +43,7 @@ class RecordCashFlowViewModel(
     prefillPurpose: String? = null,
     private val reminderId: Long? = null,
     private val accountRepository: AccountRepository,
+    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
     private val confirmReminderUseCase: ConfirmReminderUseCase? = null,
 ) : ViewModel() {
@@ -67,7 +69,11 @@ class RecordCashFlowViewModel(
             try {
                 val accounts = accountRepository.queryActiveAccounts()
                 _uiState.value = _uiState.value.copy(
-                    accounts = accounts.toAccountOptionUiModels(),
+                    accounts = accounts.map { account ->
+                        account.toAccountOptionUiModel(
+                            balance = calculateCurrentBalanceUseCase(account.id),
+                        )
+                    },
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
                 )
             } catch (e: Exception) {
@@ -134,4 +140,3 @@ class RecordCashFlowViewModel(
         }
     }
 }
-

@@ -18,8 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.IconButton
@@ -33,10 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -56,8 +52,6 @@ fun AccountsScreen(
     onToggleArchiveVisibility: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val groupedActiveAccounts = state.activeAccounts.groupBy { it.groupType }
-    val groupedArchivedAccounts = state.archivedAccounts.groupBy { it.groupType }
     val hasArchivedAccounts = state.archivedAccounts.isNotEmpty()
 
     Column(modifier = modifier) {
@@ -108,21 +102,14 @@ fun AccountsScreen(
                         MoneySectionHeader(title = "$staleCount 个账户待核对")
                     }
                 }
-                state.settings.accountGroupOrder.forEach { groupType ->
-                    val accounts = groupedActiveAccounts[groupType].orEmpty()
-                    if (accounts.isEmpty()) return@forEach
-                    item {
-                        MoneySectionHeader(title = groupType.displayName)
-                    }
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            accounts.forEach { account ->
-                                AccountCard(
-                                    account = account,
-                                    currencySettings = state.settings,
-                                    onClick = { onAccountClick(account.id) },
-                                )
-                            }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.activeAccounts.forEach { account ->
+                            AccountCard(
+                                account = account,
+                                currencySettings = state.settings,
+                                onClick = { onAccountClick(account.id) },
+                            )
                         }
                     }
                 }
@@ -148,21 +135,17 @@ fun AccountsScreen(
                 }
             }
             if (state.showArchived) {
-                state.settings.accountGroupOrder.forEach { groupType ->
-                    val accounts = groupedArchivedAccounts[groupType].orEmpty()
-                    if (accounts.isEmpty()) return@forEach
-                    item {
-                        MoneySectionHeader(title = "${groupType.displayName} · 已归档")
-                    }
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            accounts.forEach { account ->
-                                AccountCard(
-                                    account = account,
-                                    currencySettings = state.settings,
-                                    onClick = { onAccountClick(account.id) },
-                                )
-                            }
+                item {
+                    MoneySectionHeader(title = "已归档")
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.archivedAccounts.forEach { account ->
+                            AccountCard(
+                                account = account,
+                                currencySettings = state.settings,
+                                onClick = { onAccountClick(account.id) },
+                            )
                         }
                     }
                 }
@@ -177,7 +160,6 @@ private fun AccountCard(
     currencySettings: AppSettings,
     onClick: () -> Unit,
 ) {
-    val (icon, iconBg, iconTint) = accountGroupVisuals(account.groupType)
     val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)
     val accentBarColor = when {
@@ -220,13 +202,13 @@ private fun AccountCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(color = iconBg, shape = CircleShape),
+                    .background(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = icon,
+                    imageVector = Icons.Rounded.AccountBalanceWallet,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -246,11 +228,6 @@ private fun AccountCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    text = account.groupType.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 if (account.isStale && !account.isArchived) {
                     MoneyStatusPill(
                         text = "待核对",
@@ -267,25 +244,5 @@ private fun AccountCard(
                 )
             }
         }
-    }
-}
-
-private fun accountGroupVisuals(groupType: AccountGroupType): Triple<ImageVector, Color, Color> {
-    return when (groupType) {
-        AccountGroupType.PAYMENT -> Triple(
-            Icons.Rounded.AccountBalanceWallet,
-            Color(0xFFFFF3D6),
-            Color(0xFFC4943A),
-        )
-        AccountGroupType.BANK -> Triple(
-            Icons.Rounded.AccountBalance,
-            Color(0xFFE3F2FD),
-            Color(0xFF5B8DB8),
-        )
-        AccountGroupType.INVESTMENT -> Triple(
-            Icons.AutoMirrored.Rounded.TrendingUp,
-            Color(0xFFE8F5E9),
-            Color(0xFF5A8A6E),
-        )
     }
 }

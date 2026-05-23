@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shihuaidexianyu.money.data.db.appSettingsDataStore
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
@@ -42,12 +41,6 @@ class SettingsRepositoryImpl(
         context.appSettingsDataStore.edit { it[Keys.AmountColorMode] = amountColorMode.value }
     }
 
-    override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {
-        context.appSettingsDataStore.edit {
-            it[Keys.AccountGroupOrder] = AccountGroupType.toStoredOrder(order)
-        }
-    }
-
     override suspend fun updateLastHistoryFilters(
         keyword: String,
         accountId: Long,
@@ -75,7 +68,6 @@ class SettingsRepositoryImpl(
             showStaleMark = preferences[Keys.ShowStaleMark] ?: true,
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             amountColorMode = AmountColorMode.fromValue(preferences[Keys.AmountColorMode]),
-            accountGroupOrder = AccountGroupType.fromStoredOrder(preferences[Keys.AccountGroupOrder]),
             lastHistoryKeyword = preferences[Keys.LastHistoryKeyword] ?: "",
             lastHistoryAccountId = preferences[Keys.LastHistoryAccountId] ?: -1L,
             lastHistoryDateStartAt = preferences[Keys.LastHistoryDateStartAt] ?: -1L,
@@ -92,7 +84,6 @@ class SettingsRepositoryImpl(
         val ShowStaleMark = booleanPreferencesKey("show_stale_mark")
         val ThemeMode = stringPreferencesKey("theme_mode")
         val AmountColorMode = stringPreferencesKey("amount_color_mode")
-        val AccountGroupOrder = stringPreferencesKey("account_group_order")
         val LastHistoryKeyword = stringPreferencesKey("last_history_keyword")
         val LastHistoryAccountId = longPreferencesKey("last_history_account_id")
         val LastHistoryDateStartAt = longPreferencesKey("last_history_date_start_at")

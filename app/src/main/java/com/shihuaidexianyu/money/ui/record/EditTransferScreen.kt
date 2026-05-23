@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -155,7 +154,6 @@ fun EditTransferScreen(
                 MoneySelectionField(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
-                    subtitle = fromAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.FROM },
                 )
                 Row(
@@ -171,7 +169,6 @@ fun EditTransferScreen(
                 MoneySelectionField(
                     label = "转入账户",
                     value = toAccount?.name ?: "请选择",
-                    subtitle = toAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.TO },
                 )
             }

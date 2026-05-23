@@ -19,7 +19,7 @@ class DeleteCashFlowBalanceTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(name = "现金", groupType = "payment", initialBalance = 10_000, createdAt = 1_000),
+            AccountEntity(name = "现金", initialBalance = 10_000, createdAt = 1_000),
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)

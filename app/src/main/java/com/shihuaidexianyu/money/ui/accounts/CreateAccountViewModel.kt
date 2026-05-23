@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
@@ -17,7 +16,6 @@ import kotlinx.coroutines.launch
 
 data class CreateAccountUiState(
     val name: String = "",
-    val groupType: AccountGroupType = AccountGroupType.PAYMENT,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val amountText: String = "",
     val isSaving: Boolean = false,
@@ -41,10 +39,6 @@ class CreateAccountViewModel(
 
     fun updateName(value: String) {
         _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
-    }
-
-    fun updateGroupType(value: AccountGroupType) {
-        _uiState.value = _uiState.value.copy(groupType = value)
     }
 
     fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
@@ -75,7 +69,6 @@ class CreateAccountViewModel(
             runCatching {
                 createAccountUseCase(
                     name = _uiState.value.name,
-                    groupType = _uiState.value.groupType,
                     initialBalance = amount,
                     balanceUpdateReminderConfig = _uiState.value.reminderConfig,
                 )

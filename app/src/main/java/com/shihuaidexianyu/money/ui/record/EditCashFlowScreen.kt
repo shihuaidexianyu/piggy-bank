@@ -2,20 +2,20 @@ package com.shihuaidexianyu.money.ui.record
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -67,6 +67,10 @@ fun EditCashFlowScreen(
             title = "选择账户",
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
+            sortMode = when (state.direction) {
+                CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
+                CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
+            },
             onDismiss = { showAccountPicker = false },
             onPick = {
                 viewModel.updateAccount(it)
@@ -134,7 +138,6 @@ fun EditCashFlowScreen(
                 MoneySelectionField(
                     label = "账户",
                     value = selectedAccount?.name ?: "请选择",
-                    subtitle = selectedAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { showAccountPicker = true },
                 )
             }

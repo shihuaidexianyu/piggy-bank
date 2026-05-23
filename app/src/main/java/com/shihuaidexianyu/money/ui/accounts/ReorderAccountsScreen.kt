@@ -4,12 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -46,7 +44,7 @@ fun ReorderAccountsScreen(
         contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        if (state.groupOrder.all { state.accountsByGroup[it].isNullOrEmpty() }) {
+        if (state.accounts.isEmpty()) {
             item {
                 MoneyEmptyStateCard(
                     title = "还没有账户",
@@ -55,26 +53,26 @@ fun ReorderAccountsScreen(
             }
         } else {
             item {
-                MoneySectionHeader(title = "分类顺序")
+                MoneySectionHeader(title = "账户顺序")
             }
             item {
                 MoneyListSection {
-                    state.groupOrder.forEachIndexed { index, groupType ->
+                    state.accounts.forEachIndexed { index, account ->
                         MoneyListRow(
-                            title = groupType.displayName,
+                            title = account.name,
                             showChevron = false,
                             accessory = {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(
-                                        onClick = { viewModel.moveGroupUp(groupType) },
+                                        onClick = { viewModel.moveAccountUp(account.id) },
                                         enabled = index > 0,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     ) {
                                         Text("上移")
                                     }
                                     OutlinedButton(
-                                        onClick = { viewModel.moveGroupDown(groupType) },
-                                        enabled = index < state.groupOrder.lastIndex,
+                                        onClick = { viewModel.moveAccountDown(account.id) },
+                                        enabled = index < state.accounts.lastIndex,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     ) {
                                         Text("下移")
@@ -82,46 +80,8 @@ fun ReorderAccountsScreen(
                                 }
                             },
                         )
-                        if (index != state.groupOrder.lastIndex) {
+                        if (index != state.accounts.lastIndex) {
                             MoneySectionDivider()
-                        }
-                    }
-                }
-            }
-            state.groupOrder.forEach { groupType ->
-                val accounts = state.accountsByGroup[groupType].orEmpty()
-                if (accounts.isEmpty()) return@forEach
-                item {
-                    MoneySectionHeader(title = "${groupType.displayName}内顺序")
-                }
-                item {
-                    MoneyListSection {
-                        accounts.forEachIndexed { index, account ->
-                            MoneyListRow(
-                                title = account.name,
-                                showChevron = false,
-                                accessory = {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedButton(
-                                            onClick = { viewModel.moveAccountUp(groupType, account.id) },
-                                            enabled = index > 0,
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                        ) {
-                                            Text("上移")
-                                        }
-                                        OutlinedButton(
-                                            onClick = { viewModel.moveAccountDown(groupType, account.id) },
-                                            enabled = index < accounts.lastIndex,
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                        ) {
-                                            Text("下移")
-                                        }
-                                    }
-                                },
-                            )
-                            if (index != accounts.lastIndex) {
-                                MoneySectionDivider()
-                            }
                         }
                     }
                 }

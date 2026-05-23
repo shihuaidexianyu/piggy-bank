@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -36,7 +35,6 @@ class ObserveHomeDashboardUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "主账户",
-                groupType = AccountGroupType.BANK.value,
                 initialBalance = 10_000,
                 createdAt = range.startAtMillis - 60_000,
             ),
@@ -113,7 +111,6 @@ class ObserveHomeDashboardUseCaseTest {
         val staleBankId = accountRepository.createAccount(
             AccountEntity(
                 name = "银行卡",
-                groupType = AccountGroupType.BANK.value,
                 initialBalance = 10_000,
                 createdAt = oldTime,
                 lastBalanceUpdateAt = oldTime,
@@ -122,7 +119,6 @@ class ObserveHomeDashboardUseCaseTest {
         val stalePaymentId = accountRepository.createAccount(
             AccountEntity(
                 name = "零钱",
-                groupType = AccountGroupType.PAYMENT.value,
                 initialBalance = 2_000,
                 createdAt = oldTime,
                 lastBalanceUpdateAt = oldTime,
@@ -131,7 +127,6 @@ class ObserveHomeDashboardUseCaseTest {
         val freshId = accountRepository.createAccount(
             AccountEntity(
                 name = "新账户",
-                groupType = AccountGroupType.BANK.value,
                 initialBalance = 3_000,
                 createdAt = oldTime,
                 lastBalanceUpdateAt = System.currentTimeMillis(),
@@ -140,7 +135,6 @@ class ObserveHomeDashboardUseCaseTest {
         val archivedId = accountRepository.createAccount(
             AccountEntity(
                 name = "归档账户",
-                groupType = AccountGroupType.BANK.value,
                 initialBalance = 4_000,
                 createdAt = oldTime,
                 lastBalanceUpdateAt = oldTime,
@@ -198,10 +192,6 @@ class ObserveHomeDashboardUseCaseTest {
 
         override suspend fun updateAmountColorMode(amountColorMode: AmountColorMode) {
             state.value = state.value.copy(amountColorMode = amountColorMode)
-        }
-
-        override suspend fun updateAccountGroupOrder(order: List<AccountGroupType>) {
-            state.value = state.value.copy(accountGroupOrder = order)
         }
 
         override suspend fun updateLastHistoryFilters(

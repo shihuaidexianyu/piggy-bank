@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
@@ -16,7 +15,6 @@ data class AccountDetailUiState(
     val isMissing: Boolean = false,
     val accountId: Long = 0,
     val name: String = "",
-    val groupType: AccountGroupType = AccountGroupType.PAYMENT,
     val currentBalance: Long = 0,
     val lastBalanceUpdateAt: Long? = null,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
@@ -48,7 +46,6 @@ class AccountDetailViewModel(
                             isLoading = false,
                             accountId = account.id,
                             name = account.name,
-                            groupType = AccountGroupType.fromValue(account.groupType),
                             currentBalance = snapshot.currentBalance,
                             lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                             reminderConfig = snapshot.reminderConfig,

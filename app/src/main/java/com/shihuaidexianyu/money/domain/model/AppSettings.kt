@@ -6,7 +6,6 @@ data class AppSettings(
     val showStaleMark: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
-    val accountGroupOrder: List<AccountGroupType> = AccountGroupType.entries,
     val lastHistoryKeyword: String = "",
     val lastHistoryAccountId: Long = -1L,
     val lastHistoryDateStartAt: Long = -1L,

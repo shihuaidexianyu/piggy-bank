@@ -1,9 +1,6 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,7 +50,6 @@ fun AccountDetailScreen(
         }
         item {
             MoneyCard {
-                MoneyStatusPill(text = state.groupType.displayName)
                 Text(
                     text = AmountFormatter.format(state.currentBalance, state.settings),
                     style = MaterialTheme.typography.displayLarge,

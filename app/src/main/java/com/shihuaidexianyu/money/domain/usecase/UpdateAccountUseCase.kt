@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 
@@ -13,7 +12,6 @@ class UpdateAccountUseCase(
     suspend operator fun invoke(
         accountId: Long,
         name: String,
-        groupType: AccountGroupType,
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     ) {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
@@ -25,7 +23,6 @@ class UpdateAccountUseCase(
         accountRepository.updateAccount(
             account.copy(
                 name = normalizedName,
-                groupType = groupType.value,
             ),
         )
         accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)

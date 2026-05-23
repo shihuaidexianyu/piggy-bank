@@ -34,7 +34,6 @@ import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCa
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateAccountOrderingUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
@@ -191,12 +190,6 @@ class MoneyAppContainer(context: Context) {
 
     val updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(
         accountRepository = accountRepository,
-    )
-
-    val updateAccountOrderingUseCase = UpdateAccountOrderingUseCase(
-        accountRepository = accountRepository,
-        settingsRepository = settingsRepository,
-        updateAccountDisplayOrderUseCase = updateAccountDisplayOrderUseCase,
     )
 
     val createReminderUseCase = CreateReminderUseCase(

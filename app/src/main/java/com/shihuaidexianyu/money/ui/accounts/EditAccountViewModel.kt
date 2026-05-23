@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
@@ -19,7 +18,6 @@ import kotlinx.coroutines.launch
 data class EditAccountUiState(
     val isLoading: Boolean = true,
     val name: String = "",
-    val groupType: AccountGroupType = AccountGroupType.PAYMENT,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
 )
@@ -57,7 +55,6 @@ class EditAccountViewModel(
                 _uiState.value = EditAccountUiState(
                     isLoading = false,
                     name = account.name,
-                    groupType = AccountGroupType.fromValue(account.groupType),
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
             } catch (e: Exception) {
@@ -69,10 +66,6 @@ class EditAccountViewModel(
 
     fun updateName(value: String) {
         _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
-    }
-
-    fun updateGroupType(value: AccountGroupType) {
-        _uiState.value = _uiState.value.copy(groupType = value)
     }
 
     fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
@@ -95,7 +88,6 @@ class EditAccountViewModel(
                 updateAccountUseCase(
                     accountId = accountId,
                     name = state.name,
-                    groupType = state.groupType,
                     balanceUpdateReminderConfig = state.reminderConfig,
                 )
             }.onSuccess {

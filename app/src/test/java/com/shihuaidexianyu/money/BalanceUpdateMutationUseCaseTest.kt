@@ -44,7 +44,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "银行卡",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -99,7 +98,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "证券账户",
-                groupType = "investment",
                 initialBalance = 100_000,
                 createdAt = 1_000,
             ),
@@ -150,7 +148,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "活期",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -203,7 +200,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "银河",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -244,7 +240,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "主账户",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -294,7 +289,6 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "副账户",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),

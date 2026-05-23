@@ -15,7 +15,6 @@ data class AccountEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val groupType: String,
     val initialBalance: Long,
     val createdAt: Long,
     val archivedAt: Long? = null,

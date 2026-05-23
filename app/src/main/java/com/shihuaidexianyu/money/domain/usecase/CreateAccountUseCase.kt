@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -14,7 +13,6 @@ class CreateAccountUseCase(
 ) {
     suspend operator fun invoke(
         name: String,
-        groupType: AccountGroupType,
         initialBalance: Long,
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
         createdAt: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
@@ -27,7 +25,6 @@ class CreateAccountUseCase(
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = normalizedName,
-                groupType = groupType.value,
                 initialBalance = initialBalance,
                 createdAt = createdAt,
                 lastUsedAt = createdAt,

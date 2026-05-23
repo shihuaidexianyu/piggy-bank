@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.domain.repository
 
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
@@ -14,7 +13,6 @@ interface SettingsRepository {
     suspend fun updateShowStaleMark(show: Boolean)
     suspend fun updateThemeMode(themeMode: ThemeMode)
     suspend fun updateAmountColorMode(amountColorMode: AmountColorMode)
-    suspend fun updateAccountGroupOrder(order: List<AccountGroupType>)
     suspend fun updateLastHistoryFilters(
         keyword: String,
         accountId: Long,

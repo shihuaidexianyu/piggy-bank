@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
@@ -20,7 +19,7 @@ class CreateAccountUseCaseTest {
         )
 
         val error = assertFailsWith<IllegalArgumentException> {
-            useCase(name = "   ", groupType = AccountGroupType.PAYMENT, initialBalance = 0)
+            useCase(name = "   ", initialBalance = 0)
         }
 
         assertEquals("账户名称不能为空", error.message)
@@ -36,7 +35,6 @@ class CreateAccountUseCaseTest {
         )
         useCase(
             name = "现金",
-            groupType = AccountGroupType.PAYMENT,
             initialBalance = 100,
             balanceUpdateReminderConfig = BalanceUpdateReminderConfig(weekday = BalanceUpdateReminderWeekday.MONDAY),
         )
@@ -44,7 +42,6 @@ class CreateAccountUseCaseTest {
         val error = assertFailsWith<IllegalArgumentException> {
             useCase(
                 name = "现金",
-                groupType = AccountGroupType.BANK,
                 initialBalance = 200,
                 balanceUpdateReminderConfig = BalanceUpdateReminderConfig(weekday = BalanceUpdateReminderWeekday.MONDAY),
             )
@@ -64,7 +61,6 @@ class CreateAccountUseCaseTest {
 
         val accountId = useCase(
             name = "信用卡",
-            groupType = AccountGroupType.BANK,
             initialBalance = 100,
             balanceUpdateReminderConfig = BalanceUpdateReminderConfig(
                 weekday = BalanceUpdateReminderWeekday.FRIDAY,

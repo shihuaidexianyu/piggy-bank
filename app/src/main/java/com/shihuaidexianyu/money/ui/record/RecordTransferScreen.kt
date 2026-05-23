@@ -7,12 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -130,7 +128,6 @@ fun RecordTransferScreen(
                 MoneySelectionField(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
-                    subtitle = fromAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.FROM },
                 )
                 Row(
@@ -146,7 +143,6 @@ fun RecordTransferScreen(
                 MoneySelectionField(
                     label = "转入账户",
                     value = toAccount?.name ?: "请选择",
-                    subtitle = toAccount?.groupType?.displayName,
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.TO },
                 )
             }

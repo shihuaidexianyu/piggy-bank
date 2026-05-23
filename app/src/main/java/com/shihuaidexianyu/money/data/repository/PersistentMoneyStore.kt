@@ -96,7 +96,6 @@ private fun JSONArray?.toAccountList(): List<AccountEntity> =
         AccountEntity(
             id = item.getLong("id"),
             name = item.getString("name"),
-            groupType = item.getString("groupType"),
             initialBalance = item.getLong("initialBalance"),
             createdAt = item.getLong("createdAt"),
             archivedAt = item.optNullableLong("archivedAt"),
@@ -178,7 +177,6 @@ private fun JSONObject.optNullableLong(key: String): Long? {
 private fun AccountEntity.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("name", name)
-    put("groupType", groupType)
     put("initialBalance", initialBalance)
     put("createdAt", createdAt)
     put("archivedAt", archivedAt ?: JSONObject.NULL)

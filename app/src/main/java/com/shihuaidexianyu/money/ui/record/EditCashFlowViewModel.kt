@@ -5,10 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
-import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
@@ -43,6 +44,7 @@ class EditCashFlowViewModel(
     private val recordId: Long,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val updateCashFlowRecordUseCase: UpdateCashFlowRecordUseCase,
     private val deleteCashFlowRecordUseCase: DeleteCashFlowRecordUseCase,
 ) : ViewModel() {
@@ -65,7 +67,11 @@ class EditCashFlowViewModel(
                 _uiState.value = EditCashFlowUiState(
                     isLoading = false,
                     direction = CashFlowDirection.fromValue(record.direction),
-                    accounts = accounts.toAccountOptionUiModels(),
+                    accounts = accounts.map { account ->
+                        account.toAccountOptionUiModel(
+                            balance = calculateCurrentBalanceUseCase(account.id),
+                        )
+                    },
                     selectedAccountId = record.accountId,
                     amountText = AmountFormatter.formatPlain(record.amount),
                     purpose = record.purpose,

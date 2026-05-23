@@ -20,7 +20,6 @@ class UpdateBalanceUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "银行卡",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -51,7 +50,6 @@ class UpdateBalanceUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "证券账户",
-                groupType = "investment",
                 initialBalance = 100_000,
                 createdAt = 1_000,
             ),

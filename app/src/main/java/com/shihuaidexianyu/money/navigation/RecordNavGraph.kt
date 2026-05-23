@@ -1,4 +1,5 @@
 package com.shihuaidexianyu.money.navigation
+
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -41,7 +42,7 @@ internal fun NavGraphBuilder.addRecordGraph(
             navArgument("purpose") { type = NavType.StringType; defaultValue = "" },
             navArgument("reminderId") { type = NavType.LongType; defaultValue = 0L },
         ),
-        ) { entry ->
+    ) { entry ->
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
         val prefillAmount = entry.arguments?.getLong("amount") ?: 0L
@@ -57,6 +58,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     prefillPurpose = prefillPurpose.takeIf { it.isNotEmpty() },
                     reminderId = reminderId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
                     confirmReminderUseCase = container.confirmReminderUseCase,
                 )
@@ -101,6 +103,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     updateCashFlowRecordUseCase = container.updateCashFlowRecordUseCase,
                     deleteCashFlowRecordUseCase = container.deleteCashFlowRecordUseCase,
                 )

@@ -20,7 +20,6 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "活期",
-                groupType = "bank",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
@@ -81,7 +80,6 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "证券",
-                groupType = "investment",
                 initialBalance = 100_000,
                 createdAt = 1_000,
             ),
@@ -132,7 +130,6 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "现金",
-                groupType = "cash",
                 initialBalance = 10_000,
                 createdAt = 1712106635000,
             ),

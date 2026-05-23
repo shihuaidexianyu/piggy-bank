@@ -27,7 +27,6 @@ class ReminderUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "信用卡",
-                groupType = "bank",
                 initialBalance = 0,
                 createdAt = 1L,
             ),
@@ -57,7 +56,6 @@ class ReminderUseCaseTest {
         val accountId = accountRepository.createAccount(
             AccountEntity(
                 name = "储蓄卡",
-                groupType = "bank",
                 initialBalance = 0,
                 createdAt = 1L,
             ),

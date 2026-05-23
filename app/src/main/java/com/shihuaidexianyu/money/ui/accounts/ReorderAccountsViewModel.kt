@@ -3,28 +3,23 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
-import com.shihuaidexianyu.money.domain.usecase.UpdateAccountOrderingUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ReorderAccountItemUiModel(
     val id: Long,
     val name: String,
-    val groupType: AccountGroupType,
 )
 
 data class ReorderAccountsUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    val groupOrder: List<AccountGroupType> = AccountGroupType.entries,
-    val accountsByGroup: Map<AccountGroupType, List<ReorderAccountItemUiModel>> = emptyMap(),
+    val accounts: List<ReorderAccountItemUiModel> = emptyList(),
 )
 
 sealed interface ReorderAccountsEffect {
@@ -36,8 +31,7 @@ sealed interface ReorderAccountsEffect {
 
 class ReorderAccountsViewModel(
     private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
-    private val updateAccountOrderingUseCase: UpdateAccountOrderingUseCase,
+    private val updateAccountDisplayOrderUseCase: UpdateAccountDisplayOrderUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReorderAccountsUiState())
     val uiState: StateFlow<ReorderAccountsUiState> = _uiState.asStateFlow()
@@ -48,23 +42,17 @@ class ReorderAccountsViewModel(
     init {
         viewModelScope.launch {
             try {
-                val settings = settingsRepository.observeSettings().first()
-                val groupOrder = settings.accountGroupOrder
-                val accountsByGroup = accountRepository.queryActiveAccounts()
-                    .groupBy { AccountGroupType.fromValue(it.groupType) }
-                    .mapValues { (_, accounts) ->
-                        accounts.sortedBy { it.displayOrder }.map {
-                            ReorderAccountItemUiModel(
-                                id = it.id,
-                                name = it.name,
-                                groupType = AccountGroupType.fromValue(it.groupType),
-                            )
-                        }
+                val accounts = accountRepository.queryActiveAccounts()
+                    .sortedBy { it.displayOrder }
+                    .map {
+                        ReorderAccountItemUiModel(
+                            id = it.id,
+                            name = it.name,
+                        )
                     }
                 _uiState.value = ReorderAccountsUiState(
                     isLoading = false,
-                    groupOrder = groupOrder,
-                    accountsByGroup = groupOrder.associateWith { group -> accountsByGroup[group].orEmpty() },
+                    accounts = accounts,
                 )
             } catch (e: Exception) {
                 android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e)
@@ -73,44 +61,22 @@ class ReorderAccountsViewModel(
         }
     }
 
-    fun moveGroupUp(groupType: AccountGroupType) {
-        val groups = _uiState.value.groupOrder.toMutableList()
-        val index = groups.indexOf(groupType)
-        if (index <= 0) return
-        val item = groups.removeAt(index)
-        groups.add(index - 1, item)
-        _uiState.value = _uiState.value.copy(groupOrder = groups)
-    }
-
-    fun moveGroupDown(groupType: AccountGroupType) {
-        val groups = _uiState.value.groupOrder.toMutableList()
-        val index = groups.indexOf(groupType)
-        if (index < 0 || index >= groups.lastIndex) return
-        val item = groups.removeAt(index)
-        groups.add(index + 1, item)
-        _uiState.value = _uiState.value.copy(groupOrder = groups)
-    }
-
-    fun moveAccountUp(groupType: AccountGroupType, accountId: Long) {
-        val items = _uiState.value.accountsByGroup[groupType].orEmpty().toMutableList()
+    fun moveAccountUp(accountId: Long) {
+        val items = _uiState.value.accounts.toMutableList()
         val index = items.indexOfFirst { it.id == accountId }
         if (index <= 0) return
         val item = items.removeAt(index)
         items.add(index - 1, item)
-        _uiState.value = _uiState.value.copy(
-            accountsByGroup = _uiState.value.accountsByGroup + (groupType to items),
-        )
+        _uiState.value = _uiState.value.copy(accounts = items)
     }
 
-    fun moveAccountDown(groupType: AccountGroupType, accountId: Long) {
-        val items = _uiState.value.accountsByGroup[groupType].orEmpty().toMutableList()
+    fun moveAccountDown(accountId: Long) {
+        val items = _uiState.value.accounts.toMutableList()
         val index = items.indexOfFirst { it.id == accountId }
         if (index < 0 || index >= items.lastIndex) return
         val item = items.removeAt(index)
         items.add(index + 1, item)
-        _uiState.value = _uiState.value.copy(
-            accountsByGroup = _uiState.value.accountsByGroup + (groupType to items),
-        )
+        _uiState.value = _uiState.value.copy(accounts = items)
     }
 
     fun save() {
@@ -119,11 +85,8 @@ class ReorderAccountsViewModel(
             _uiState.value = _uiState.value.copy(isSaving = true)
             runCatching {
                 val state = _uiState.value
-                updateAccountOrderingUseCase(
-                    groupOrder = state.groupOrder,
-                    orderedAccountIds = state.groupOrder.flatMap { group ->
-                        state.accountsByGroup[group].orEmpty().map { it.id }
-                    },
+                updateAccountDisplayOrderUseCase(
+                    orderedAccountIds = state.accounts.map { it.id },
                 )
             }.onSuccess {
                 effects.emit(ReorderAccountsEffect.Saved)

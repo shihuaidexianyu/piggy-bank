@@ -23,7 +23,6 @@ class RecordTimeValidationTest {
             val accountId = accountRepository.createAccount(
                 AccountEntity(
                     name = "钱包",
-                    groupType = "payment",
                     initialBalance = 0,
                     createdAt = 61_000,
                 ),
@@ -54,7 +53,6 @@ class RecordTimeValidationTest {
             val fromAccountId = accountRepository.createAccount(
                 AccountEntity(
                     name = "旧卡",
-                    groupType = "bank",
                     initialBalance = 0,
                     createdAt = 1_000,
                 ),
@@ -62,7 +60,6 @@ class RecordTimeValidationTest {
             val toAccountId = accountRepository.createAccount(
                 AccountEntity(
                     name = "新卡",
-                    groupType = "bank",
                     initialBalance = 0,
                     createdAt = 121_000,
                 ),
@@ -93,7 +90,6 @@ class RecordTimeValidationTest {
             val accountId = accountRepository.createAccount(
                 AccountEntity(
                     name = "储蓄卡",
-                    groupType = "bank",
                     initialBalance = 10_000,
                     createdAt = 61_000,
                 ),

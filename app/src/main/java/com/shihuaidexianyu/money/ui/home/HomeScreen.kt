@@ -47,6 +47,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
@@ -84,6 +85,11 @@ fun HomeScreen(
         AccountPickerDialog(
             title = "选择${direction.displayName}账户",
             accounts = state.accountOptions,
+            sortMode = when (direction) {
+                CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
+                CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
+            },
+            settings = state.settings,
             onDismiss = { pickerDirection = null },
             onPick = { accountId ->
                 pickerDirection = null

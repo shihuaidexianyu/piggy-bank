@@ -78,10 +78,8 @@ fun EditAccountScreen(
 
     AccountSettingsPickerDialog(
         picker = picker,
-        groupType = state.groupType,
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
-        onGroupTypeSelected = viewModel::updateGroupType,
         onReminderWeekdaySelected = viewModel::updateReminderWeekday,
         onReminderTimeSelected = viewModel::updateReminderTime,
     )
@@ -106,10 +104,8 @@ fun EditAccountScreen(
             }
         }
         item {
-            AccountTypeReminderListSection(
-                groupType = state.groupType,
+            AccountReminderListSection(
                 reminderConfig = state.reminderConfig,
-                onAccountTypeClick = { picker = AccountSettingsPicker.ACCOUNT_TYPE },
                 onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
                 onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
             )

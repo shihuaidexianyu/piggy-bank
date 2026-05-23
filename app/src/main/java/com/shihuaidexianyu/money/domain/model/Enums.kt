@@ -23,39 +23,6 @@ enum class AmountColorMode(val value: String, val displayName: String) {
     }
 }
 
-enum class AccountGroupType(
-    val value: String,
-    val displayName: String,
-) {
-    PAYMENT("payment", "支付类"),
-    BANK("bank", "银行类"),
-    INVESTMENT("investment", "投资类"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): AccountGroupType {
-            return entries.firstOrNull { it.value == value } ?: PAYMENT
-        }
-
-        fun normalizeOrder(values: List<AccountGroupType>): List<AccountGroupType> {
-            val deduped = values.distinct()
-            return deduped + entries.filterNot { it in deduped }
-        }
-
-        fun fromStoredOrder(value: String?): List<AccountGroupType> {
-            val parsed = value
-                ?.split(",")
-                ?.mapNotNull { raw -> entries.firstOrNull { it.value == raw.trim() } }
-                .orEmpty()
-            return normalizeOrder(parsed)
-        }
-
-        fun toStoredOrder(values: List<AccountGroupType>): String {
-            return normalizeOrder(values).joinToString(",") { it.value }
-        }
-    }
-}
-
 const val DEFAULT_BALANCE_UPDATE_REMINDER_WEEKDAY = "friday"
 const val DEFAULT_BALANCE_UPDATE_REMINDER_HOUR = 22
 const val DEFAULT_BALANCE_UPDATE_REMINDER_MINUTE = 0

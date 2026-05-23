@@ -2,13 +2,12 @@ package com.shihuaidexianyu.money.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AccountGroupType
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
-import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +27,6 @@ data class DueReminderUiModel(
 data class StaleAccountUiModel(
     val accountId: Long,
     val name: String,
-    val groupType: AccountGroupType,
     val currentBalance: Long,
     val lastBalanceUpdateAt: Long?,
 )
@@ -68,12 +66,15 @@ class HomeViewModel(
                             StaleAccountUiModel(
                                 accountId = account.id,
                                 name = account.name,
-                                groupType = AccountGroupType.fromValue(account.groupType),
                                 currentBalance = snapshot.accountBalances[account.id] ?: 0L,
                                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                             )
                         },
-                        accountOptions = snapshot.activeAccounts.toAccountOptionUiModels(),
+                        accountOptions = snapshot.activeAccounts.map { account ->
+                            account.toAccountOptionUiModel(
+                                balance = snapshot.accountBalances[account.id] ?: 0L,
+                            )
+                        },
                         dueReminders = snapshot.dueReminders.map { reminder ->
                             DueReminderUiModel(
                                 id = reminder.id,
