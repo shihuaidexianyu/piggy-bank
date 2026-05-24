@@ -47,7 +47,6 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
-import com.shihuaidexianyu.money.ui.common.AccountPickerPresentation
 import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -90,7 +89,6 @@ fun HomeScreen(
                 CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
                 CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
             },
-            presentation = AccountPickerPresentation.FULL_SCREEN,
             settings = state.settings,
             onDismiss = { pickerDirection = null },
             onPick = { accountId ->
@@ -105,7 +103,6 @@ fun HomeScreen(
             title = "选择核对余额账户",
             accounts = state.accountOptions,
             sortMode = AccountPickerSortMode.STALE_FIRST,
-            presentation = AccountPickerPresentation.FULL_SCREEN,
             onDismiss = { showUpdateBalancePicker = false },
             onPick = { accountId ->
                 showUpdateBalancePicker = false

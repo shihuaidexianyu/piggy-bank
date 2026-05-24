@@ -2,11 +2,8 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
@@ -20,22 +17,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 enum class AccountPickerSortMode {
     DEFAULT,
     MOST_USED,
     HIGHEST_BALANCE,
     STALE_FIRST,
-}
-
-enum class AccountPickerPresentation {
-    BOTTOM_SHEET,
-    FULL_SCREEN,
 }
 
 data class AccountOptionUiModel(
@@ -55,7 +44,6 @@ fun AccountPickerDialog(
     selectedAccountId: Long? = null,
     disabledAccountIds: Set<Long> = emptySet(),
     sortMode: AccountPickerSortMode = AccountPickerSortMode.DEFAULT,
-    presentation: AccountPickerPresentation = AccountPickerPresentation.BOTTOM_SHEET,
     settings: AppSettings = AppSettings(),
     noSelectionLabel: String? = null,
     onDismiss: () -> Unit,
@@ -64,59 +52,19 @@ fun AccountPickerDialog(
 ) {
     val sortedAccounts = accounts.sortedForPicker(sortMode)
 
-    when (presentation) {
-        AccountPickerPresentation.BOTTOM_SHEET -> {
-            ModalBottomSheet(onDismissRequest = onDismiss) {
-                AccountPickerList(
-                    title = title,
-                    accounts = sortedAccounts,
-                    selectedAccountId = selectedAccountId,
-                    disabledAccountIds = disabledAccountIds,
-                    settings = settings,
-                    noSelectionLabel = noSelectionLabel,
-                    onClearSelection = onClearSelection,
-                    onPick = onPick,
-                    showInlineTitle = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
-                )
-            }
-        }
-
-        AccountPickerPresentation.FULL_SCREEN -> {
-            Dialog(
-                onDismissRequest = onDismiss,
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-            ) {
-                androidx.compose.material3.Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                    contentColor = MaterialTheme.colorScheme.onBackground,
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        MoneyPageTitle(
-                            title = title,
-                            leading = { MoneyBackButton(onClick = onDismiss) },
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
-                        )
-                        AccountPickerList(
-                            title = title,
-                            accounts = sortedAccounts,
-                            selectedAccountId = selectedAccountId,
-                            disabledAccountIds = disabledAccountIds,
-                            settings = settings,
-                            noSelectionLabel = noSelectionLabel,
-                            onClearSelection = onClearSelection,
-                            onPick = onPick,
-                            showInlineTitle = false,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
-                        )
-                    }
-                }
-            }
-        }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        AccountPickerList(
+            title = title,
+            accounts = sortedAccounts,
+            selectedAccountId = selectedAccountId,
+            disabledAccountIds = disabledAccountIds,
+            settings = settings,
+            noSelectionLabel = noSelectionLabel,
+            onClearSelection = onClearSelection,
+            onPick = onPick,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+        )
     }
 }
 
@@ -130,7 +78,6 @@ private fun AccountPickerList(
     noSelectionLabel: String?,
     onClearSelection: (() -> Unit)?,
     onPick: (Long) -> Unit,
-    showInlineTitle: Boolean,
     modifier: Modifier,
     contentPadding: PaddingValues,
 ) {
@@ -139,10 +86,8 @@ private fun AccountPickerList(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (showInlineTitle) {
-            item {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-            }
+        item {
+            Text(title, style = MaterialTheme.typography.titleLarge)
         }
 
         if (noSelectionLabel != null && onClearSelection != null) {
@@ -172,10 +117,7 @@ private fun AccountPickerList(
                     val isDisabled = account.id in disabledAccountIds
                     MoneyListRow(
                         title = account.name,
-                        subtitle = account.pickerSubtitle(
-                            settings = settings,
-                            isDisabled = isDisabled,
-                        ),
+                        subtitle = account.pickerSubtitle(settings),
                         showChevron = false,
                         modifier = Modifier
                             .alpha(if (isDisabled) 0.45f else 1f)
@@ -233,14 +175,7 @@ private fun List<AccountOptionUiModel>.sortedForPicker(
 
 private fun AccountOptionUiModel.pickerSubtitle(
     settings: AppSettings,
-    isDisabled: Boolean,
 ): String? {
-    if (isDisabled) return "当前场景不可选"
-    val parts = buildList {
-        if (isStale) add("待核对")
-        balance?.let { add("余额 ${AmountFormatter.format(it, settings)}") }
-        lastUsedAt?.let { add("最近使用 ${DateTimeTextFormatter.format(it)}") }
-    }
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    return balance?.let { "余额 ${AmountFormatter.format(it, settings)}" }
 }
 
