@@ -20,7 +20,7 @@ class MoneyDatabaseMigrationTest {
     )
 
     @Test
-    fun migrateFromVersion4DropsAccountGroupTypeAndAddsVisualDefaults() {
+    fun migrateFromVersion4DropsAccountGroupTypeAndAddsColorDefault() {
         helper.createDatabase(TEST_DB, 4).apply {
             createVersion4AccountsTable()
             execSQL(
@@ -55,7 +55,7 @@ class MoneyDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             name = TEST_DB,
-            version = 6,
+            version = 7,
             validateDroppedTables = true,
             *MONEY_DATABASE_MIGRATIONS,
         )
@@ -67,21 +67,20 @@ class MoneyDatabaseMigrationTest {
                 columns += tableInfoCursor.getString(tableInfoCursor.getColumnIndexOrThrow("name"))
             }
             assertFalse("groupType" in columns)
-            assertEquals(true, "iconName" in columns)
+            assertFalse("iconName" in columns)
             assertEquals(true, "colorName" in columns)
         } finally {
             tableInfoCursor.close()
         }
         val accountCursor = migrated.query(
-            "SELECT name, initialBalance, displayOrder, iconName, colorName FROM accounts WHERE id = 1",
+            "SELECT name, initialBalance, displayOrder, colorName FROM accounts WHERE id = 1",
         )
         try {
             accountCursor.moveToFirst()
             assertEquals("招商银行", accountCursor.getString(0))
             assertEquals(120000L, accountCursor.getLong(1))
             assertEquals(3, accountCursor.getInt(2))
-            assertEquals("wallet", accountCursor.getString(3))
-            assertEquals("blue", accountCursor.getString(4))
+            assertEquals("blue", accountCursor.getString(3))
         } finally {
             accountCursor.close()
         }

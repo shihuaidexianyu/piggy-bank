@@ -78,11 +78,9 @@ fun EditAccountScreen(
 
     AccountSettingsPickerDialog(
         picker = picker,
-        iconName = state.iconName,
         colorName = state.colorName,
         reminderConfig = state.reminderConfig,
         onDismiss = { picker = null },
-        onIconSelected = viewModel::updateIconName,
         onColorSelected = viewModel::updateColorName,
         onReminderWeekdaySelected = viewModel::updateReminderWeekday,
         onReminderTimeSelected = viewModel::updateReminderTime,
@@ -106,9 +104,7 @@ fun EditAccountScreen(
                     },
                 )
                 AccountVisualListRows(
-                    iconName = state.iconName,
                     colorName = state.colorName,
-                    onIconClick = { picker = AccountSettingsPicker.ICON },
                     onColorClick = { picker = AccountSettingsPicker.COLOR },
                 )
             }

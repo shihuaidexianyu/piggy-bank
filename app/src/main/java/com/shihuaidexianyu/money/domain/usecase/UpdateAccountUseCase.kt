@@ -3,11 +3,9 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
-import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
-import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 
 class UpdateAccountUseCase(
     private val accountRepository: AccountRepository,
@@ -17,7 +15,6 @@ class UpdateAccountUseCase(
         accountId: Long,
         name: String,
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
-        iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
         colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     ) {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
@@ -29,7 +26,6 @@ class UpdateAccountUseCase(
         accountRepository.updateAccount(
             account.copy(
                 name = normalizedName,
-                iconName = normalizeAccountIconName(iconName),
                 colorName = normalizeAccountColorName(colorName),
             ),
         )

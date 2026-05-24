@@ -2,8 +2,11 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
@@ -17,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -28,10 +33,14 @@ enum class AccountPickerSortMode {
     STALE_FIRST,
 }
 
+enum class AccountPickerPresentation {
+    BOTTOM_SHEET,
+    FULL_SCREEN,
+}
+
 data class AccountOptionUiModel(
     val id: Long,
     val name: String,
-    val iconName: String = "wallet",
     val colorName: String = "blue",
     val balance: Long? = null,
     val lastUsedAt: Long? = null,
@@ -46,6 +55,7 @@ fun AccountPickerDialog(
     selectedAccountId: Long? = null,
     disabledAccountIds: Set<Long> = emptySet(),
     sortMode: AccountPickerSortMode = AccountPickerSortMode.DEFAULT,
+    presentation: AccountPickerPresentation = AccountPickerPresentation.BOTTOM_SHEET,
     settings: AppSettings = AppSettings(),
     noSelectionLabel: String? = null,
     onDismiss: () -> Unit,
@@ -54,82 +64,144 @@ fun AccountPickerDialog(
 ) {
     val sortedAccounts = accounts.sortedForPicker(sortMode)
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+    when (presentation) {
+        AccountPickerPresentation.BOTTOM_SHEET -> {
+            ModalBottomSheet(onDismissRequest = onDismiss) {
+                AccountPickerList(
+                    title = title,
+                    accounts = sortedAccounts,
+                    selectedAccountId = selectedAccountId,
+                    disabledAccountIds = disabledAccountIds,
+                    settings = settings,
+                    noSelectionLabel = noSelectionLabel,
+                    onClearSelection = onClearSelection,
+                    onPick = onPick,
+                    showInlineTitle = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+                )
+            }
+        }
+
+        AccountPickerPresentation.FULL_SCREEN -> {
+            Dialog(
+                onDismissRequest = onDismiss,
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        MoneyPageTitle(
+                            title = title,
+                            leading = { MoneyBackButton(onClick = onDismiss) },
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
+                        )
+                        AccountPickerList(
+                            title = title,
+                            accounts = sortedAccounts,
+                            selectedAccountId = selectedAccountId,
+                            disabledAccountIds = disabledAccountIds,
+                            settings = settings,
+                            noSelectionLabel = noSelectionLabel,
+                            onClearSelection = onClearSelection,
+                            onPick = onPick,
+                            showInlineTitle = false,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountPickerList(
+    title: String,
+    accounts: List<AccountOptionUiModel>,
+    selectedAccountId: Long?,
+    disabledAccountIds: Set<Long>,
+    settings: AppSettings,
+    noSelectionLabel: String?,
+    onClearSelection: (() -> Unit)?,
+    onPick: (Long) -> Unit,
+    showInlineTitle: Boolean,
+    modifier: Modifier,
+    contentPadding: PaddingValues,
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        if (showInlineTitle) {
             item {
                 Text(title, style = MaterialTheme.typography.titleLarge)
             }
+        }
 
-            if (noSelectionLabel != null && onClearSelection != null) {
-                item {
-                    MoneyListSection {
-                        MoneyListRow(
-                            title = noSelectionLabel,
-                            showChevron = false,
-                            modifier = Modifier.clickable { onClearSelection() },
-                            accessory = {
-                                if (selectedAccountId == null) {
+        if (noSelectionLabel != null && onClearSelection != null) {
+            item {
+                MoneyListSection {
+                    MoneyListRow(
+                        title = noSelectionLabel,
+                        showChevron = false,
+                        modifier = Modifier.clickable { onClearSelection() },
+                        accessory = {
+                            if (selectedAccountId == null) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
+
+        item {
+            MoneyListSection {
+                accounts.forEachIndexed { index, account ->
+                    val isDisabled = account.id in disabledAccountIds
+                    MoneyListRow(
+                        title = account.name,
+                        subtitle = account.pickerSubtitle(
+                            settings = settings,
+                            isDisabled = isDisabled,
+                        ),
+                        showChevron = false,
+                        modifier = Modifier
+                            .alpha(if (isDisabled) 0.45f else 1f)
+                            .clickable(enabled = !isDisabled) { onPick(account.id) },
+                        accessory = {
+                            when {
+                                selectedAccountId == account.id -> {
                                     Icon(
                                         imageVector = Icons.Rounded.Check,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                            },
-                        )
-                    }
-                }
-            }
 
-            item {
-                MoneyListSection {
-                    sortedAccounts.forEachIndexed { index, account ->
-                        val isDisabled = account.id in disabledAccountIds
-                        MoneyListRow(
-                            title = account.name,
-                            subtitle = account.pickerSubtitle(
-                                settings = settings,
-                                isDisabled = isDisabled,
-                            ),
-                            showChevron = false,
-                            leading = {
-                                AccountVisualIcon(
-                                    iconName = account.iconName,
-                                    colorName = account.colorName,
-                                    containerSize = 34.dp,
-                                    iconSize = 18.dp,
-                                )
-                            },
-                            modifier = Modifier
-                                .alpha(if (isDisabled) 0.45f else 1f)
-                                .clickable(enabled = !isDisabled) { onPick(account.id) },
-                            accessory = {
-                                when {
-                                    selectedAccountId == account.id -> {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                        )
-                                    }
-
-                                    isDisabled -> {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Block,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+                                isDisabled -> {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Block,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
-                            },
-                        )
-                        if (index != sortedAccounts.lastIndex) {
-                            MoneySectionDivider()
-                        }
+                            }
+                        },
+                    )
+                    if (index != accounts.lastIndex) {
+                        MoneySectionDivider()
                     }
                 }
             }

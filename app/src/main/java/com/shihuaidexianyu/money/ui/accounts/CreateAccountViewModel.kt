@@ -5,10 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
-import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
-import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +18,6 @@ import kotlinx.coroutines.launch
 
 data class CreateAccountUiState(
     val name: String = "",
-    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val amountText: String = "",
@@ -45,10 +42,6 @@ class CreateAccountViewModel(
 
     fun updateName(value: String) {
         _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
-    }
-
-    fun updateIconName(value: String) {
-        _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
     }
 
     fun updateColorName(value: String) {
@@ -85,7 +78,6 @@ class CreateAccountViewModel(
                     name = _uiState.value.name,
                     initialBalance = amount,
                     balanceUpdateReminderConfig = _uiState.value.reminderConfig,
-                    iconName = _uiState.value.iconName,
                     colorName = _uiState.value.colorName,
                 )
             }.onSuccess {

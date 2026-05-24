@@ -26,7 +26,6 @@ data class DueReminderUiModel(
 data class StaleAccountUiModel(
     val accountId: Long,
     val name: String,
-    val iconName: String,
     val colorName: String,
     val currentBalance: Long,
     val lastBalanceUpdateAt: Long?,
@@ -68,7 +67,6 @@ class HomeViewModel(
                             StaleAccountUiModel(
                                 accountId = account.id,
                                 name = account.name,
-                                iconName = account.iconName,
                                 colorName = account.colorName,
                                 currentBalance = snapshot.accountBalances[account.id] ?: 0L,
                                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,

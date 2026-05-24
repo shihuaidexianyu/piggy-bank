@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.ui.common.AccountVisualIcon
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -199,15 +198,6 @@ private fun AccountCard(
                     ),
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Box(
-                modifier = Modifier.size(40.dp),
-            ) {
-                AccountVisualIcon(
-                    iconName = account.iconName,
-                    colorName = account.colorName,
-                )
-            }
-            Spacer(modifier = Modifier.width(14.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp),

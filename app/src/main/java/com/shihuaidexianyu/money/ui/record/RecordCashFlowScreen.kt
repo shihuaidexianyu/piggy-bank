@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AccountPickerPresentation
 import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
@@ -58,6 +59,7 @@ fun RecordCashFlowScreen(
                 CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
                 CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
             },
+            presentation = AccountPickerPresentation.FULL_SCREEN,
             onDismiss = { showAccountPicker = false },
             onPick = {
                 viewModel.updateAccount(it)

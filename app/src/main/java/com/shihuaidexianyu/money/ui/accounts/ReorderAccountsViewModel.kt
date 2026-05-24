@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 data class ReorderAccountItemUiModel(
     val id: Long,
     val name: String,
-    val iconName: String,
     val colorName: String,
     val balance: Long,
     val lastUsedAt: Long?,
@@ -54,7 +53,6 @@ class ReorderAccountsViewModel(
                         ReorderAccountItemUiModel(
                             id = it.id,
                             name = it.name,
-                            iconName = it.iconName,
                             colorName = it.colorName,
                             balance = calculateCurrentBalanceUseCase(it.id),
                             lastUsedAt = it.lastUsedAt,

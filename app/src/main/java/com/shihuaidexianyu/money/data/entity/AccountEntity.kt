@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
-import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 
 @Entity(
     tableName = "accounts",
@@ -24,7 +23,6 @@ data class AccountEntity(
     val lastUsedAt: Long? = null,
     val lastBalanceUpdateAt: Long? = null,
     val displayOrder: Int = 0,
-    val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
 )
 

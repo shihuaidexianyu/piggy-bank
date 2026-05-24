@@ -120,12 +120,66 @@ private val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+private val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `accounts_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `initialBalance` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `archivedAt` INTEGER,
+                `isArchived` INTEGER NOT NULL,
+                `lastUsedAt` INTEGER,
+                `lastBalanceUpdateAt` INTEGER,
+                `displayOrder` INTEGER NOT NULL,
+                `colorName` TEXT NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO `accounts_new` (
+                `id`,
+                `name`,
+                `initialBalance`,
+                `createdAt`,
+                `archivedAt`,
+                `isArchived`,
+                `lastUsedAt`,
+                `lastBalanceUpdateAt`,
+                `displayOrder`,
+                `colorName`
+            )
+            SELECT
+                `id`,
+                `name`,
+                `initialBalance`,
+                `createdAt`,
+                `archivedAt`,
+                `isArchived`,
+                `lastUsedAt`,
+                `lastBalanceUpdateAt`,
+                `displayOrder`,
+                `colorName`
+            FROM `accounts`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `accounts`")
+        db.execSQL("ALTER TABLE `accounts_new` RENAME TO `accounts`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_accounts_name` ON `accounts` (`name`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_accounts_isArchived` ON `accounts` (`isArchived`)")
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
     MIGRATION_3_4,
     MIGRATION_4_5,
     MIGRATION_5_6,
+    MIGRATION_6_7,
 )
 
 @Database(
@@ -137,7 +191,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class MoneyDatabase : RoomDatabase() {

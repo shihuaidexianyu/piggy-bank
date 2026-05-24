@@ -1,17 +1,13 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.ui.common.AccountVisualIcon
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -54,20 +50,10 @@ fun AccountDetailScreen(
         }
         item {
             MoneyCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AccountVisualIcon(
-                        iconName = state.iconName,
-                        colorName = state.colorName,
-                    )
-                    Text(
-                        text = AmountFormatter.format(state.currentBalance, state.settings),
-                        style = MaterialTheme.typography.displayLarge,
-                    )
-                }
+                Text(
+                    text = AmountFormatter.format(state.currentBalance, state.settings),
+                    style = MaterialTheme.typography.displayLarge,
+                )
                 Text(
                     text = state.lastBalanceUpdateAt?.let {
                         "最近核对 ${DateTimeTextFormatter.format(it)}"

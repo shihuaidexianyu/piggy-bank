@@ -23,7 +23,6 @@ import kotlinx.coroutines.withContext
 data class AccountListItemUiModel(
     val id: Long,
     val name: String,
-    val iconName: String,
     val colorName: String,
     val balance: Long,
     val isArchived: Boolean,
@@ -108,7 +107,6 @@ class AccountsViewModel(
         return AccountListItemUiModel(
             id = account.id,
             name = account.name,
-            iconName = account.iconName,
             colorName = account.colorName,
             balance = calculateCurrentBalanceUseCase(account.id),
             isArchived = account.isArchived,

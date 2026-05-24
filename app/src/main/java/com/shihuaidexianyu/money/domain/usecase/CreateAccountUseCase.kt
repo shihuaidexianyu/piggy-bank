@@ -6,9 +6,7 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
-import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
-import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 class CreateAccountUseCase(
@@ -19,7 +17,6 @@ class CreateAccountUseCase(
         name: String,
         initialBalance: Long,
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
-        iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
         colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
         createdAt: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     ): Long {
@@ -35,7 +32,6 @@ class CreateAccountUseCase(
                 createdAt = createdAt,
                 lastUsedAt = createdAt,
                 displayOrder = accountRepository.nextDisplayOrder(),
-                iconName = normalizeAccountIconName(iconName),
                 colorName = normalizeAccountColorName(colorName),
             ),
         )
