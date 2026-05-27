@@ -56,6 +56,18 @@ interface CashFlowRecordDao {
 
     @Query(
         """
+        SELECT * FROM cash_flow_records
+        WHERE direction = :direction
+            AND isDeleted = 0
+            AND occurredAt >= :startAt
+            AND occurredAt <= :endAt
+        ORDER BY occurredAt ASC, id ASC
+        """,
+    )
+    suspend fun queryActiveByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecordEntity>
+
+    @Query(
+        """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE accountId = :accountId
             AND direction = 'inflow'

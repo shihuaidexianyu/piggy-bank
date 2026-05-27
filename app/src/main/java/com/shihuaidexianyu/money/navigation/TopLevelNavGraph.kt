@@ -18,6 +18,8 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
+import com.shihuaidexianyu.money.ui.stats.StatsScreen
+import com.shihuaidexianyu.money.ui.stats.StatsViewModel
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -92,6 +94,21 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
                 }
             },
+        )
+    }
+
+    composable(MoneyDestination.Stats.route) {
+        val viewModel = viewModel<StatsViewModel>(
+            factory = moneyViewModelFactory {
+                StatsViewModel(
+                    observeStatsDashboardUseCase = container.observeStatsDashboardUseCase,
+                )
+            },
+        )
+        val state by viewModel.uiState.collectAsStateWithLifecycle()
+        StatsScreen(
+            state = state,
+            onPeriodChange = viewModel::updatePeriod,
         )
     }
 

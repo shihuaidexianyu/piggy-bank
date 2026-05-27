@@ -82,6 +82,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                 RecordTransferViewModel(
                     initialFromAccountId = fromAccountId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
+                    transactionRepository = container.transactionRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createTransferRecordUseCase = container.createTransferRecordUseCase,
                 )

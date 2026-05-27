@@ -17,6 +17,7 @@ interface TransactionRepository {
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecordEntity>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecordEntity>
     suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
+    suspend fun queryActiveCashFlowRecordsByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecordEntity>
 
     suspend fun insertTransferRecord(record: TransferRecordEntity): Long
     suspend fun updateTransferRecord(record: TransferRecordEntity)
@@ -26,6 +27,7 @@ interface TransactionRepository {
     suspend fun queryAllActiveTransferRecords(): List<TransferRecordEntity>
     suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecordEntity>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity>
+    suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
 
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecordEntity)

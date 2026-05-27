@@ -53,6 +53,20 @@ interface TransferRecordDao {
 
     @Query(
         """
+        SELECT note FROM transfer_records
+        WHERE (:fromAccountId IS NULL OR fromAccountId = :fromAccountId)
+            AND (:toAccountId IS NULL OR toAccountId = :toAccountId)
+            AND isDeleted = 0
+            AND TRIM(note) != ''
+        GROUP BY note
+        ORDER BY MAX(occurredAt) DESC, MAX(id) DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun queryRecentNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
+
+    @Query(
+        """
         SELECT COALESCE(SUM(amount), 0) FROM transfer_records
         WHERE toAccountId = :accountId
             AND isDeleted = 0

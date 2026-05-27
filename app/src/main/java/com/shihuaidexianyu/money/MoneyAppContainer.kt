@@ -28,6 +28,7 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
@@ -105,6 +106,13 @@ class MoneyAppContainer(context: Context) {
         accountReminderSettingsRepository = accountReminderSettingsRepository,
         accountRepository = accountRepository,
         recurringReminderRepository = recurringReminderRepository,
+        settingsRepository = settingsRepository,
+        transactionRepository = transactionRepository,
+        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+    )
+
+    val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
+        accountRepository = accountRepository,
         settingsRepository = settingsRepository,
         transactionRepository = transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,

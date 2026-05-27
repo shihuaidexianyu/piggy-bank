@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.util
 
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -40,6 +41,28 @@ object TimeRangeUtils {
         val nowDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
         val start = nowDate.withDayOfMonth(1)
         val end = nowDate.withDayOfMonth(nowDate.lengthOfMonth())
+        return buildRange(start, end, zoneId)
+    }
+
+    fun currentStatsRange(
+        period: StatsPeriod,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        nowMillis: Long = System.currentTimeMillis(),
+    ): TimeRange {
+        return when (period) {
+            StatsPeriod.WEEK -> currentWeekRange(zoneId, nowMillis)
+            StatsPeriod.MONTH -> currentMonthRange(zoneId, nowMillis)
+            StatsPeriod.YEAR -> currentYearRange(zoneId, nowMillis)
+        }
+    }
+
+    fun currentYearRange(
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        nowMillis: Long = System.currentTimeMillis(),
+    ): TimeRange {
+        val nowDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        val start = nowDate.withDayOfYear(1)
+        val end = nowDate.withDayOfYear(nowDate.lengthOfYear())
         return buildRange(start, end, zoneId)
     }
 

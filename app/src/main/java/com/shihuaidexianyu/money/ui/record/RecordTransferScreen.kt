@@ -4,10 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -160,6 +164,19 @@ fun RecordTransferScreen(
                     onValueChange = viewModel::updateNote,
                     label = "备注",
                 )
+                if (state.noteSuggestions.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(min = 36.dp),
+                    ) {
+                        items(state.noteSuggestions) { suggestion ->
+                            SuggestionChip(
+                                onClick = { viewModel.applyNoteSuggestion(suggestion) },
+                                label = { Text(suggestion) },
+                            )
+                        }
+                    }
+                }
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },

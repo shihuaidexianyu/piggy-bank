@@ -71,6 +71,16 @@ class InMemoryTransactionRepository : TransactionRepository {
             .toList()
     }
 
+    override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
+        direction: String,
+        startAt: Long,
+        endAt: Long,
+    ): List<CashFlowRecordEntity> {
+        return queryAllActiveCashFlowRecords()
+            .filter { it.direction == direction && it.occurredAt in startAt..endAt }
+            .sortedWith(compareBy<CashFlowRecordEntity> { it.occurredAt }.thenBy { it.id })
+    }
+
     override suspend fun insertTransferRecord(record: TransferRecordEntity): Long {
         val id = nextTransferId++
         transferRecords += record.copy(id = id)
@@ -110,6 +120,19 @@ class InMemoryTransactionRepository : TransactionRepository {
         return queryAllActiveTransferRecords().filter {
             it.fromAccountId == accountId || it.toAccountId == accountId
         }
+    }
+
+    override suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String> {
+        return queryAllActiveTransferRecords()
+            .asSequence()
+            .filter { fromAccountId == null || it.fromAccountId == fromAccountId }
+            .filter { toAccountId == null || it.toAccountId == toAccountId }
+            .filter { it.note.isNotBlank() }
+            .sortedWith(compareByDescending<TransferRecordEntity> { it.occurredAt }.thenByDescending { it.id })
+            .map { it.note }
+            .distinct()
+            .take(limit)
+            .toList()
     }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long {

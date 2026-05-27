@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -23,6 +24,7 @@ data class RecordTransferUiState(
     val amountText: String = "",
     val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val noteSuggestions: List<String> = emptyList(),
     val isSaving: Boolean = false,
 )
 
@@ -36,6 +38,7 @@ sealed interface RecordTransferEffect {
 class RecordTransferViewModel(
     initialFromAccountId: Long?,
     private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createTransferRecordUseCase: CreateTransferRecordUseCase,
 ) : ViewModel() {
@@ -65,6 +68,7 @@ class RecordTransferViewModel(
                     fromAccountId = fromAccountId,
                     toAccountId = toAccountId,
                 )
+                refreshNoteSuggestions()
             } catch (e: Exception) {
                 android.util.Log.e("RecordTransferViewModel", "Failed to load accounts", e)
             }
@@ -79,6 +83,7 @@ class RecordTransferViewModel(
                 ?.takeIf { it != accountId }
                 ?: state.accounts.firstOrNull { it.id != accountId }?.id,
         )
+        refreshNoteSuggestions()
     }
 
     fun updateToAccount(accountId: Long) {
@@ -89,6 +94,7 @@ class RecordTransferViewModel(
                 ?: state.accounts.firstOrNull { it.id != accountId }?.id,
             toAccountId = accountId,
         )
+        refreshNoteSuggestions()
     }
 
     fun swapAccounts() {
@@ -97,6 +103,7 @@ class RecordTransferViewModel(
             fromAccountId = state.toAccountId,
             toAccountId = state.fromAccountId,
         )
+        refreshNoteSuggestions()
     }
 
     fun updateAmount(value: String) {
@@ -107,10 +114,35 @@ class RecordTransferViewModel(
         _uiState.value = _uiState.value.copy(note = value)
     }
 
+    fun applyNoteSuggestion(value: String) {
+        _uiState.value = _uiState.value.copy(note = value)
+    }
+
     fun updateOccurredAt(value: Long) {
         _uiState.value = _uiState.value.copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
         )
+    }
+
+    private fun refreshNoteSuggestions() {
+        val state = _uiState.value
+        viewModelScope.launch {
+            runCatching {
+                transactionRepository.queryRecentTransferNotes(
+                    fromAccountId = state.fromAccountId,
+                    toAccountId = state.toAccountId,
+                    limit = 6,
+                ).ifEmpty {
+                    transactionRepository.queryRecentTransferNotes(
+                        fromAccountId = null,
+                        toAccountId = null,
+                        limit = 6,
+                    )
+                }
+            }.onSuccess { suggestions ->
+                _uiState.value = _uiState.value.copy(noteSuggestions = suggestions)
+            }
+        }
     }
 
     fun save() {

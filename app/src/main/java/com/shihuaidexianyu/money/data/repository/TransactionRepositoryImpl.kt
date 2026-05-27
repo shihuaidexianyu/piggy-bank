@@ -69,6 +69,14 @@ class TransactionRepositoryImpl(
         return cashFlowRecordDao.queryRecentPurposes(direction = direction, accountId = accountId, limit = limit)
     }
 
+    override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
+        direction: String,
+        startAt: Long,
+        endAt: Long,
+    ): List<CashFlowRecordEntity> {
+        return cashFlowRecordDao.queryActiveByDirectionBetween(direction, startAt, endAt)
+    }
+
     override suspend fun insertTransferRecord(record: TransferRecordEntity): Long {
         return transferRecordDao.insert(record).also { bumpVersion() }
     }
@@ -94,6 +102,14 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecordEntity> = transferRecordDao.queryByAccountId(accountId)
+
+    override suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String> {
+        return transferRecordDao.queryRecentNotes(
+            fromAccountId = fromAccountId,
+            toAccountId = toAccountId,
+            limit = limit,
+        )
+    }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecordEntity): Long {
         return balanceUpdateRecordDao.insert(record).also { bumpVersion() }
