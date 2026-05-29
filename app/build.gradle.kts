@@ -6,9 +6,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val keystorePropertiesFile = rootProject.file("../timeline/keystore.properties")
+val localKeystorePropertiesFile = rootProject.file("signing/keystore.properties")
+val legacyKeystorePropertiesFile = rootProject.file("../timeline/keystore.properties")
+val keystorePropertiesFile = listOf(localKeystorePropertiesFile, legacyKeystorePropertiesFile)
+    .firstOrNull { it.exists() }
 val keystoreProperties = Properties().apply {
-    if (keystorePropertiesFile.exists()) {
+    if (keystorePropertiesFile != null) {
         keystorePropertiesFile.inputStream().use(::load)
     }
 }
@@ -28,9 +31,9 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (keystorePropertiesFile != null) {
             create("release") {
-                storeFile = rootProject.file("../timeline/${keystoreProperties.getProperty("storeFile")}")
+                storeFile = keystorePropertiesFile.parentFile.resolve(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
