@@ -10,15 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,22 +23,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
-import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
-import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
-import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 @Composable
@@ -67,41 +57,6 @@ fun StatsScreen(
             }
             item {
                 AssetFlowCard(state = state)
-            }
-            item {
-                MoneySectionHeader(title = "支出用途", trailing = state.rangeText)
-            }
-            item {
-                if (state.purposeBreakdown.isEmpty()) {
-                    MoneyEmptyStateCard(
-                        title = "暂无支出记录",
-                        subtitle = "这个时间段还没有出账，稍后会在这里看到用途排行。",
-                    )
-                } else {
-                    PurposeBreakdownList(
-                        items = state.purposeBreakdown,
-                        accent = LocalMoneyColors.current.expense,
-                    )
-                }
-            }
-            item {
-                MoneySectionHeader(title = "现金流趋势")
-            }
-            item {
-                TrendCard(points = state.trendPoints)
-            }
-            item {
-                MoneySectionHeader(title = "账户分布")
-            }
-            item {
-                if (state.accountBalances.isEmpty()) {
-                    MoneyEmptyStateCard(
-                        title = "暂无账户",
-                        subtitle = "创建账户后，这里会显示当前余额分布。",
-                    )
-                } else {
-                    AccountBalanceList(items = state.accountBalances)
-                }
             }
         }
     }
@@ -254,10 +209,10 @@ private fun AssetFlowDiagram(
     val topNodeCenterY = 39.dp
     val middleNodeCenterY = 135.dp
     val bottomNodeCenterY = 231.dp
-    val topNodeBottomY = 74.dp
-    val middleNodeTopY = 100.dp
-    val middleNodeBottomY = 170.dp
-    val bottomNodeTopY = 196.dp
+    val topNodeBottomY = 78.dp
+    val middleNodeTopY = 96.dp
+    val middleNodeBottomY = 174.dp
+    val bottomNodeTopY = 192.dp
     val branchY = 86.dp
     val mergeY = 184.dp
 
@@ -332,7 +287,7 @@ private fun AssetFlowDiagram(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = (topNodeCenterY - 35.dp)),
+                .padding(top = (topNodeCenterY - 39.dp)),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             FlowNode(
@@ -352,7 +307,7 @@ private fun AssetFlowDiagram(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = (middleNodeCenterY - 35.dp)),
+                .padding(top = (middleNodeCenterY - 39.dp)),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             FlowNode(
@@ -380,7 +335,7 @@ private fun AssetFlowDiagram(
             accent = currentAccent,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = (bottomNodeCenterY - 35.dp))
+                .padding(top = (bottomNodeCenterY - 39.dp))
                 .widthIn(min = 128.dp, max = 180.dp),
         )
     }
@@ -394,7 +349,7 @@ private fun FlowNode(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(70.dp),
+        modifier = modifier.height(78.dp),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(
@@ -411,7 +366,7 @@ private fun FlowNode(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -420,13 +375,13 @@ private fun FlowNode(
             Text(
                 text = value,
                 style = when {
-                    value.length > 15 -> MaterialTheme.typography.labelLarge
-                    value.length > 11 -> MaterialTheme.typography.bodyMedium
-                    else -> MaterialTheme.typography.titleMedium
+                    value.length > 15 -> MaterialTheme.typography.labelMedium
+                    value.length > 11 -> MaterialTheme.typography.labelLarge
+                    else -> MaterialTheme.typography.bodyMedium
                 },
                 color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
                 textAlign = TextAlign.Center,
             )
         }
@@ -451,239 +406,20 @@ private fun FlowSummaryMetric(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = value,
                 style = when {
-                    value.length > 18 -> MaterialTheme.typography.bodyMedium
-                    value.length > 13 -> MaterialTheme.typography.titleMedium
-                    else -> MaterialTheme.typography.titleLarge
+                    value.length > 18 -> MaterialTheme.typography.labelLarge
+                    value.length > 13 -> MaterialTheme.typography.bodyMedium
+                    else -> MaterialTheme.typography.titleMedium
                 },
                 color = accent,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )
         }
-    }
-}
-
-@Composable
-private fun PurposeBreakdownList(
-    items: List<StatsPurposeUiModel>,
-    accent: Color,
-) {
-    MoneyListSection {
-        items.forEachIndexed { index, item ->
-            RankingRow(
-                title = item.purpose,
-                value = item.amountText,
-                share = item.share,
-                accent = accent,
-            )
-            if (index != items.lastIndex) {
-                MoneySectionDivider()
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountBalanceList(items: List<StatsAccountUiModel>) {
-    MoneyListSection {
-        items.forEachIndexed { index, item ->
-            RankingRow(
-                title = item.name,
-                value = item.balanceText,
-                share = item.share,
-                accent = MaterialTheme.colorScheme.primary,
-                leading = {
-                    AccountColorSwatch(colorName = item.colorName, size = 18.dp)
-                },
-            )
-            if (index != items.lastIndex) {
-                MoneySectionDivider()
-            }
-        }
-    }
-}
-
-@Composable
-private fun RankingRow(
-    title: String,
-    value: String,
-    share: Float,
-    accent: Color,
-    leading: (@Composable () -> Unit)? = null,
-) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                leading?.invoke()
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = value,
-                modifier = Modifier.padding(start = 12.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        ProgressBar(
-            share = share,
-            accent = accent,
-        )
-    }
-}
-
-@Composable
-private fun ProgressBar(
-    share: Float,
-    accent: Color,
-) {
-    val fraction = share.coerceIn(0f, 1f)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
-    ) {
-        if (fraction > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction.coerceAtLeast(0.02f))
-                    .fillMaxHeight()
-                    .background(accent),
-            )
-        }
-    }
-}
-
-@Composable
-private fun TrendCard(points: List<StatsTrendUiPoint>) {
-    MoneyCard {
-        if (points.isEmpty() || points.all { it.inflow == 0L && it.outflow == 0L }) {
-            Text(
-                text = "这个时间段还没有现金流记录。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@MoneyCard
-        }
-        TrendChart(
-            points = points,
-            incomeColor = LocalMoneyColors.current.income,
-            expenseColor = LocalMoneyColors.current.expense,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LegendItem(label = "收入", color = LocalMoneyColors.current.income)
-            LegendItem(label = "支出", color = LocalMoneyColors.current.expense)
-        }
-    }
-}
-
-@Composable
-private fun TrendChart(
-    points: List<StatsTrendUiPoint>,
-    incomeColor: Color,
-    expenseColor: Color,
-) {
-    val axisColor = MaterialTheme.colorScheme.outlineVariant
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val maxValue = points.maxOf { maxOf(it.inflow, it.outflow) }.coerceAtLeast(1L)
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(156.dp),
-    ) {
-        val chartHeight = size.height - 26.dp.toPx()
-        val baseline = chartHeight
-        val slotWidth = size.width / points.size
-        drawLine(
-            color = axisColor,
-            start = Offset(0f, baseline),
-            end = Offset(size.width, baseline),
-            strokeWidth = 1.dp.toPx(),
-        )
-        points.forEachIndexed { index, point ->
-            val centerX = slotWidth * index + slotWidth / 2f
-            val barWidth = (slotWidth * 0.24f).coerceIn(2.dp.toPx(), 8.dp.toPx())
-            val inflowHeight = chartHeight * (point.inflow.toFloat() / maxValue)
-            val outflowHeight = chartHeight * (point.outflow.toFloat() / maxValue)
-            drawRoundRect(
-                color = incomeColor,
-                topLeft = Offset(centerX - barWidth - 1.dp.toPx(), baseline - inflowHeight),
-                size = Size(barWidth, inflowHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx()),
-            )
-            drawRoundRect(
-                color = expenseColor,
-                topLeft = Offset(centerX + 1.dp.toPx(), baseline - outflowHeight),
-                size = Size(barWidth, outflowHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx()),
-            )
-        }
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        points.filterIndexed { index, _ ->
-            when {
-                points.size <= 12 -> true
-                index == 0 || index == points.lastIndex -> true
-                (index + 1) % 5 == 0 -> true
-                else -> false
-            }
-        }.forEach { point ->
-            Text(
-                text = point.label,
-                style = MaterialTheme.typography.bodySmall,
-                color = labelColor,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: Color) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color = color, shape = CircleShape),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

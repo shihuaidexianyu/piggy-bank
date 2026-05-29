@@ -110,12 +110,6 @@ fun HomeScreen(
             },
         )
     }
-    val assetChangeAccent = when {
-        state.periodAssetChange > 0 -> LocalMoneyColors.current.income
-        state.periodAssetChange < 0 -> LocalMoneyColors.current.expense
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
     Column(modifier = modifier) {
         SnackbarHost(hostState = snackbarHostState)
         MoneyPageTitle(
@@ -155,17 +149,6 @@ fun HomeScreen(
                         onAllRemindersClick = onAllRemindersClick,
                     )
                 }
-            }
-            item {
-                PeriodFormulaBlock(
-                    assetChangeLabel = "${state.settings.homePeriod.displayName}资产变化",
-                    assetChange = formatSignedAmount(state.periodAssetChange, state.settings),
-                    assetChangeAccent = assetChangeAccent,
-                    inflowLabel = "${state.settings.homePeriod.displayName}净流入",
-                    inflowValue = AmountFormatter.format(state.periodNetInflow, state.settings),
-                    outflowLabel = "${state.settings.homePeriod.displayName}净流出",
-                    outflowValue = AmountFormatter.format(state.periodNetOutflow, state.settings),
-                )
             }
             item {
                 MoneySectionHeader(title = "快速记录")
@@ -424,145 +407,6 @@ private fun TotalAssetsBlock(
             }
         }
     }
-}
-
-@Composable
-private fun PeriodFormulaBlock(
-    assetChangeLabel: String,
-    assetChange: String,
-    assetChangeAccent: Color,
-    inflowLabel: String,
-    inflowValue: String,
-    outflowLabel: String,
-    outflowValue: String,
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
-                shape = RoundedCornerShape(12.dp),
-            ),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = assetChangeLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "净流入 - 净流出",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                AmountValueText(
-                    value = assetChange,
-                    accent = assetChangeAccent,
-                    prominent = true,
-                )
-            }
-            MoneySectionDivider()
-            FormulaLine(
-                symbol = "+",
-                label = inflowLabel,
-                value = inflowValue,
-                accent = LocalMoneyColors.current.income,
-            )
-            FormulaLine(
-                symbol = "-",
-                label = outflowLabel,
-                value = outflowValue,
-                accent = LocalMoneyColors.current.expense,
-            )
-        }
-    }
-}
-
-private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
-    return when {
-        amount > 0 -> "+${AmountFormatter.format(amount, settings)}"
-        else -> AmountFormatter.format(amount, settings)
-    }
-}
-
-@Composable
-private fun FormulaLine(
-    symbol: String,
-    label: String,
-    value: String,
-    accent: Color,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .background(
-                    color = accent.copy(alpha = 0.08f),
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = symbol,
-                style = MaterialTheme.typography.titleMedium,
-                color = accent,
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            AmountValueText(value = value, accent = accent)
-        }
-    }
-}
-
-@Composable
-private fun AmountValueText(
-    value: String,
-    accent: Color,
-    prominent: Boolean = false,
-) {
-    val style = when {
-        prominent && value.length <= 18 -> MaterialTheme.typography.headlineSmall
-        prominent -> MaterialTheme.typography.titleLarge
-        value.length > 18 -> MaterialTheme.typography.bodyMedium
-        value.length > 14 -> MaterialTheme.typography.titleMedium
-        else -> MaterialTheme.typography.titleLarge
-    }
-    Text(
-        text = value,
-        style = style,
-        color = accent,
-        maxLines = 1,
-        overflow = TextOverflow.Clip,
-    )
 }
 
 @Composable

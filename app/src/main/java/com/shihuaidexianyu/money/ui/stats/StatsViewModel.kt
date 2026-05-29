@@ -13,28 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class StatsPurposeUiModel(
-    val purpose: String,
-    val amount: Long,
-    val amountText: String,
-    val share: Float,
-)
-
-data class StatsTrendUiPoint(
-    val label: String,
-    val inflow: Long,
-    val outflow: Long,
-)
-
-data class StatsAccountUiModel(
-    val accountId: Long,
-    val name: String,
-    val colorName: String,
-    val balance: Long,
-    val balanceText: String,
-    val share: Float,
-)
-
 data class StatsUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
@@ -54,9 +32,6 @@ data class StatsUiState(
     val netCashFlowText: String = "",
     val assetChangeText: String = "",
     val assetAdjustmentText: String = "",
-    val purposeBreakdown: List<StatsPurposeUiModel> = emptyList(),
-    val trendPoints: List<StatsTrendUiPoint> = emptyList(),
-    val accountBalances: List<StatsAccountUiModel> = emptyList(),
 )
 
 class StatsViewModel(
@@ -103,80 +78,7 @@ class StatsViewModel(
             netCashFlowText = formatSignedAmount(netCashFlow, settings),
             assetChangeText = formatSignedAmount(assetChange, settings),
             assetAdjustmentText = formatSignedAmount(assetAdjustment, settings),
-            purposeBreakdown = purposeBreakdown.toPurposeUi(totalOutflow, settings),
-            trendPoints = toTrendUiPoints(),
-            accountBalances = accountBalances.toAccountUi(settings),
         )
-    }
-
-    private fun List<com.shihuaidexianyu.money.domain.usecase.StatsPurposeBreakdown>.toPurposeUi(
-        totalOutflow: Long,
-        settings: AppSettings,
-    ): List<StatsPurposeUiModel> {
-        return take(8).map { item ->
-            StatsPurposeUiModel(
-                purpose = item.purpose,
-                amount = item.amount,
-                amountText = AmountFormatter.format(item.amount, settings),
-                share = if (totalOutflow > 0L) item.amount.toFloat() / totalOutflow else 0f,
-            )
-        }
-    }
-
-    private fun StatsDashboardSnapshot.toTrendUiPoints(): List<StatsTrendUiPoint> {
-        return when (period) {
-            StatsPeriod.YEAR -> dailyPoints
-                .groupBy { it.date.monthValue }
-                .map { (month, points) ->
-                    StatsTrendUiPoint(
-                        label = "${month}月",
-                        inflow = points.sumOf { it.inflow },
-                        outflow = points.sumOf { it.outflow },
-                    )
-                }
-            StatsPeriod.WEEK -> dailyPoints.map { point ->
-                StatsTrendUiPoint(
-                    label = when (point.date.dayOfWeek.value) {
-                        1 -> "一"
-                        2 -> "二"
-                        3 -> "三"
-                        4 -> "四"
-                        5 -> "五"
-                        6 -> "六"
-                        else -> "日"
-                    },
-                    inflow = point.inflow,
-                    outflow = point.outflow,
-                )
-            }
-            StatsPeriod.MONTH -> dailyPoints.map { point ->
-                StatsTrendUiPoint(
-                    label = "${point.date.dayOfMonth}",
-                    inflow = point.inflow,
-                    outflow = point.outflow,
-                )
-            }
-        }
-    }
-
-    private fun List<com.shihuaidexianyu.money.domain.usecase.StatsAccountBalance>.toAccountUi(
-        settings: AppSettings,
-    ): List<StatsAccountUiModel> {
-        val positiveTotal = sumOf { it.balance.coerceAtLeast(0L) }
-        return map { account ->
-            StatsAccountUiModel(
-                accountId = account.accountId,
-                name = account.name,
-                colorName = account.colorName,
-                balance = account.balance,
-                balanceText = AmountFormatter.format(account.balance, settings),
-                share = if (positiveTotal > 0L && account.balance > 0L) {
-                    account.balance.toFloat() / positiveTotal
-                } else {
-                    0f
-                },
-            )
-        }
     }
 }
 
