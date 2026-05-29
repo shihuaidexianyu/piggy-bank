@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -134,22 +135,6 @@ fun HomeScreen(
                     showStaleMark = state.settings.showStaleMark,
                 )
             }
-            if (state.staleAccounts.isNotEmpty() || state.dueReminders.isNotEmpty()) {
-                item {
-                    MoneySectionHeader(title = "待处理")
-                }
-                item {
-                    PendingActionsBlock(
-                        staleAccounts = state.staleAccounts.take(3),
-                        reminders = state.dueReminders,
-                        settings = state.settings,
-                        onAccountClick = { onStartUpdateBalance(it) },
-                        onBatchClick = onStartBatchReconcile,
-                        onReminderClick = onReminderClick,
-                        onAllRemindersClick = onAllRemindersClick,
-                    )
-                }
-            }
             item {
                 MoneySectionHeader(title = "快速记录")
             }
@@ -162,6 +147,22 @@ fun HomeScreen(
                     enabled = state.accountOptions.isNotEmpty(),
                     transferEnabled = state.accountOptions.size >= 2,
                 )
+            }
+            if (state.staleAccounts.isNotEmpty() || state.dueReminders.isNotEmpty()) {
+                item {
+                    MoneySectionHeader(title = "待办事项")
+                }
+                item {
+                    PendingActionsBlock(
+                        staleAccounts = state.staleAccounts.take(3),
+                        reminders = state.dueReminders,
+                        settings = state.settings,
+                        onAccountClick = { onStartUpdateBalance(it) },
+                        onBatchClick = onStartBatchReconcile,
+                        onReminderClick = onReminderClick,
+                        onAllRemindersClick = onAllRemindersClick,
+                    )
+                }
             }
         }
     }
@@ -483,42 +484,46 @@ private fun ActionGrid(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ActionTile(
-                label = "入账",
-                icon = Icons.Rounded.SouthWest,
-                tint = LocalMoneyColors.current.income,
-                onClick = onInflow,
-                enabled = enabled,
-                modifier = Modifier.weight(1f),
-            )
-            ActionTile(
-                label = "出账",
-                icon = Icons.Rounded.NorthEast,
-                tint = LocalMoneyColors.current.expense,
-                onClick = onOutflow,
-                enabled = enabled,
-                modifier = Modifier.weight(1f),
-            )
-            ActionTile(
-                label = "转账",
-                icon = Icons.Rounded.SwapHoriz,
-                tint = LocalMoneyColors.current.transfer,
-                onClick = onTransfer,
-                enabled = transferEnabled,
-                modifier = Modifier.weight(1f),
-            )
-            ActionTile(
-                label = "余额",
-                icon = Icons.Rounded.Sync,
-                tint = LocalMoneyColors.current.current,
-                onClick = onUpdateBalance,
-                enabled = enabled,
-                modifier = Modifier.weight(1f),
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ActionTile(
+                    label = "入账",
+                    icon = Icons.Rounded.SouthWest,
+                    tint = LocalMoneyColors.current.income,
+                    onClick = onInflow,
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f),
+                )
+                ActionTile(
+                    label = "出账",
+                    icon = Icons.Rounded.NorthEast,
+                    tint = LocalMoneyColors.current.expense,
+                    onClick = onOutflow,
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ActionTile(
+                    label = "转账",
+                    icon = Icons.Rounded.SwapHoriz,
+                    tint = LocalMoneyColors.current.transfer,
+                    onClick = onTransfer,
+                    enabled = transferEnabled,
+                    modifier = Modifier.weight(1f),
+                )
+                ActionTile(
+                    label = "余额",
+                    icon = Icons.Rounded.Sync,
+                    tint = LocalMoneyColors.current.current,
+                    onClick = onUpdateBalance,
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -534,17 +539,22 @@ private fun ActionTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .heightIn(min = 94.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                color = tint.copy(alpha = if (enabled) 0.07f else 0.04f),
+                shape = RoundedCornerShape(12.dp),
+            )
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(48.dp)
                 .background(
-                    color = tint.copy(alpha = if (enabled) 0.08f else 0.05f),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = if (enabled) 0.82f else 0.62f),
                     shape = CircleShape,
                 ),
             contentAlignment = Alignment.Center,
@@ -553,12 +563,12 @@ private fun ActionTile(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (enabled) tint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(23.dp),
+                modifier = Modifier.size(26.dp),
             )
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleSmall,
             color = if (enabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )

@@ -28,10 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -254,7 +254,7 @@ private fun AccountCard(
     onClick: () -> Unit,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
     val balanceText = AmountFormatter.format(account.balance, currencySettings)
     val balanceStyle = when {
         balanceText.length > 18 -> MaterialTheme.typography.bodyMedium
@@ -280,26 +280,24 @@ private fun AccountCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AccountColorSwatch(colorName = account.colorName, size = 18.dp)
+            AccountInitialBadge(
+                name = account.name,
+                isArchived = account.isArchived,
+            )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = account.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text(
+                    text = account.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     text = when {
                         account.isArchived -> "已归档"
@@ -313,7 +311,7 @@ private fun AccountCard(
             }
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     text = balanceText,
@@ -331,4 +329,38 @@ private fun AccountCard(
             }
         }
     }
+}
+
+@Composable
+private fun AccountInitialBadge(
+    name: String,
+    isArchived: Boolean,
+) {
+    val accent = if (isArchived) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val initial = accountInitial(name)
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .background(
+                color = accent.copy(alpha = 0.10f),
+                shape = RoundedCornerShape(14.dp),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = initial,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = accent,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun accountInitial(name: String): String {
+    return name.trim().firstOrNull()?.toString() ?: "账"
 }

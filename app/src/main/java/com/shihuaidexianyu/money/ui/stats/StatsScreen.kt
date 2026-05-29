@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,28 +15,34 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
+import kotlin.math.roundToInt
 
 @Composable
 fun StatsScreen(
@@ -190,33 +197,39 @@ private fun AssetFlowDiagram(
     adjustmentAccent: Color,
 ) {
     val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)
-    val topNodeCenterY = 34.dp
-    val middleNodeCenterY = 126.dp
-    val bottomNodeCenterY = 216.dp
-    val topNodeBottomY = 68.dp
-    val middleNodeTopY = 92.dp
-    val middleNodeBottomY = 160.dp
-    val bottomNodeTopY = 182.dp
-    val branchY = 80.dp
-    val mergeY = 172.dp
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(252.dp),
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(252.dp)) {
-            val edgeNodeWidth = 116.dp.toPx()
-            val middleNodeWidth = 104.dp.toPx()
-            val topLeftX = edgeNodeWidth / 2f
+        val middleGap = (maxWidth * 0.012f).coerceIn(4.dp, 6.dp)
+        val middleNodeWidth = (maxWidth - middleGap * 2) / 3
+        val topNodeWidth = middleNodeWidth
+        val bottomNodeWidth = middleNodeWidth * 1.36f
+        val nodeHeight = (middleNodeWidth * 0.48f).coerceIn(48.dp, 56.dp)
+        val rowGap = (nodeHeight * 0.46f).coerceIn(20.dp, 26.dp)
+        val middleNodeTop = nodeHeight + rowGap
+        val bottomNodeTop = middleNodeTop + nodeHeight + rowGap
+        val branchY = nodeHeight + rowGap / 2
+        val mergeY = middleNodeTop + nodeHeight + rowGap / 2
+        val diagramHeight = bottomNodeTop + nodeHeight
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(diagramHeight),
+        ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(diagramHeight)) {
+            val topNodeWidthPx = topNodeWidth.toPx()
+            val middleNodeWidthPx = middleNodeWidth.toPx()
+            val topLeftX = topNodeWidthPx / 2f
             val centerX = size.width / 2f
-            val topRightX = size.width - edgeNodeWidth / 2f
-            val leftMiddleX = middleNodeWidth / 2f
-            val rightMiddleX = size.width - middleNodeWidth / 2f
-            val topNodeBottom = topNodeBottomY.toPx()
-            val middleNodeTop = middleNodeTopY.toPx()
-            val middleNodeBottom = middleNodeBottomY.toPx()
-            val bottomNodeTop = bottomNodeTopY.toPx()
+            val topRightX = size.width - topNodeWidthPx / 2f
+            val leftMiddleX = middleNodeWidthPx / 2f
+            val rightMiddleX = size.width - middleNodeWidthPx / 2f
+            val topNodeBottom = nodeHeight.toPx()
+            val middleNodeTopPx = middleNodeTop.toPx()
+            val middleNodeBottom = (middleNodeTop + nodeHeight).toPx()
+            val bottomNodeTopPx = bottomNodeTop.toPx()
             val branch = branchY.toPx()
             val merge = mergeY.toPx()
 
@@ -244,7 +257,7 @@ private fun AssetFlowDiagram(
             drawLine(
                 color = lineColor,
                 start = Offset(centerX, branch),
-                end = Offset(centerX, middleNodeTop),
+                end = Offset(centerX, middleNodeTopPx),
                 strokeWidth = 1.dp.toPx(),
                 cap = StrokeCap.Round,
             )
@@ -267,7 +280,7 @@ private fun AssetFlowDiagram(
             drawLine(
                 color = lineColor,
                 start = Offset(centerX, merge),
-                end = Offset(centerX, bottomNodeTop),
+                end = Offset(centerX, bottomNodeTopPx),
                 strokeWidth = 1.dp.toPx(),
                 cap = StrokeCap.Round,
             )
@@ -275,56 +288,63 @@ private fun AssetFlowDiagram(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = (topNodeCenterY - 34.dp)),
+                .padding(top = 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             FlowNode(
                 label = "收入",
                 value = state.totalInflowFlowText,
                 accent = incomeAccent,
-                modifier = Modifier.width(116.dp),
+                nodeHeight = nodeHeight,
+                modifier = Modifier.width(topNodeWidth),
             )
             FlowNode(
                 label = "支出",
                 value = state.totalOutflowFlowText,
                 accent = expenseAccent,
-                modifier = Modifier.width(116.dp),
+                nodeHeight = nodeHeight,
+                modifier = Modifier.width(topNodeWidth),
             )
         }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = (middleNodeCenterY - 34.dp)),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(top = middleNodeTop),
+            horizontalArrangement = Arrangement.spacedBy(middleGap),
         ) {
             FlowNode(
                 label = "期初资产",
                 value = state.openingAssetsFlowText,
                 accent = currentAccent,
-                modifier = Modifier.width(104.dp),
+                nodeHeight = nodeHeight,
+                modifier = Modifier.width(middleNodeWidth),
             )
             FlowNode(
                 label = "净流入",
                 value = state.netCashFlowFlowText,
                 accent = netAccent,
-                modifier = Modifier.width(104.dp),
+                nodeHeight = nodeHeight,
+                modifier = Modifier.width(middleNodeWidth),
             )
             FlowNode(
                 label = "资产校准",
                 value = state.assetAdjustmentFlowText,
                 accent = adjustmentAccent,
-                modifier = Modifier.width(104.dp),
+                nodeHeight = nodeHeight,
+                modifier = Modifier.width(middleNodeWidth),
             )
         }
         FlowNode(
             label = "期末资产",
             value = state.closingAssetsFlowText,
             accent = currentAccent,
+            nodeHeight = nodeHeight,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = (bottomNodeCenterY - 34.dp))
-                .width(168.dp),
+                .padding(top = bottomNodeTop)
+                .width(bottomNodeWidth),
         )
+        }
     }
 }
 
@@ -333,55 +353,79 @@ private fun FlowNode(
     label: String,
     value: String,
     accent: Color,
+    nodeHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(68.dp),
+        modifier = modifier.height(nodeHeight),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.68f),
         ),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 3.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val horizontalPadding = maxWidth * 0.02f
+            val amountStyle = rememberFittingAmountStyle(
+                value = value,
+                maxWidth = maxWidth - horizontalPadding * 2,
             )
-            Text(
-                text = value,
-                style = flowAmountStyle(value),
-                color = accent,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Clip,
-                textAlign = TextAlign.Center,
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = horizontalPadding, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = value,
+                    style = amountStyle,
+                    color = accent,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
 
-private fun flowAmountStyle(value: String): TextStyle {
-    val fontSize = when {
-        value.length >= 10 -> 11.sp
-        value.length >= 9 -> 12.sp
-        value.length >= 7 -> 14.sp
-        else -> 16.sp
+@Composable
+private fun rememberFittingAmountStyle(value: String, maxWidth: Dp): TextStyle {
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    return remember(value, maxWidth, density, textMeasurer) {
+        val maxWidthPx = with(density) { maxWidth.toPx().roundToInt().coerceAtLeast(1) }
+        val fontSize = (16 downTo 8).firstOrNull { size ->
+            val result = textMeasurer.measure(
+                text = AnnotatedString(value),
+                style = TextStyle(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = size.sp,
+                    lineHeight = (size + 2).sp,
+                ),
+                maxLines = 1,
+                softWrap = false,
+                constraints = Constraints(maxWidth = maxWidthPx),
+            )
+            !result.hasVisualOverflow && result.size.width <= maxWidthPx
+        } ?: 8
+        TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = fontSize.sp,
+            lineHeight = (fontSize + 2).sp,
+        )
     }
-    return TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = fontSize,
-        lineHeight = (fontSize.value + 4).sp,
-    )
 }
