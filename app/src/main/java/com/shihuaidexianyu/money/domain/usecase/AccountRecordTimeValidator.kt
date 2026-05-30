@@ -1,11 +1,11 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 object AccountRecordTimeValidator {
     fun requireOccurredAtOnOrAfterAccountCreated(
-        account: AccountEntity,
+        account: Account,
         occurredAt: Long,
     ) {
         val minimumOccurredAt = DateTimeTextFormatter.floorToMinute(account.createdAt)

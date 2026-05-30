@@ -1,31 +1,31 @@
 package com.shihuaidexianyu.money.data.repository
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 
 class InMemoryAccountRepository : AccountRepository {
-    private val accounts = MutableStateFlow<List<AccountEntity>>(emptyList())
+    private val accounts = MutableStateFlow<List<Account>>(emptyList())
     private var nextId = 1L
 
-    override fun observeActiveAccounts(): Flow<List<AccountEntity>> {
+    override fun observeActiveAccounts(): Flow<List<Account>> {
         return accounts.map(::activeAccounts)
     }
 
-    override fun observeArchivedAccounts(): Flow<List<AccountEntity>> {
+    override fun observeArchivedAccounts(): Flow<List<Account>> {
         return accounts.map(::archivedAccounts)
     }
 
-    override suspend fun queryActiveAccounts(): List<AccountEntity> {
+    override suspend fun queryActiveAccounts(): List<Account> {
         return activeAccounts(accounts.value)
     }
 
-    override suspend fun queryArchivedAccounts(): List<AccountEntity> {
+    override suspend fun queryArchivedAccounts(): List<Account> {
         return archivedAccounts(accounts.value)
     }
 
-    override suspend fun getAccountById(id: Long): AccountEntity? {
+    override suspend fun getAccountById(id: Long): Account? {
         return accounts.value.firstOrNull { it.id == id }
     }
 
@@ -36,13 +36,13 @@ class InMemoryAccountRepository : AccountRepository {
         }
     }
 
-    override suspend fun createAccount(account: AccountEntity): Long {
+    override suspend fun createAccount(account: Account): Long {
         val id = nextId++
         accounts.value = accounts.value + account.copy(id = id)
         return id
     }
 
-    override suspend fun updateAccount(account: AccountEntity) {
+    override suspend fun updateAccount(account: Account) {
         accounts.value = accounts.value.map { existing ->
             if (existing.id == account.id) account else existing
         }
@@ -71,17 +71,16 @@ class InMemoryAccountRepository : AccountRepository {
     }
 
     override suspend fun nextDisplayOrder(): Int {
-        return (accounts.value.filterNot(AccountEntity::isArchived).maxOfOrNull { it.displayOrder } ?: -1) + 1
+        return (accounts.value.filterNot(Account::isArchived).maxOfOrNull { it.displayOrder } ?: -1) + 1
     }
 
-    private fun activeAccounts(list: List<AccountEntity>): List<AccountEntity> {
-        return list.filterNot(AccountEntity::isArchived)
-            .sortedWith(compareBy<AccountEntity> { it.displayOrder }.thenBy { it.createdAt })
+    private fun activeAccounts(list: List<Account>): List<Account> {
+        return list.filterNot(Account::isArchived)
+            .sortedWith(compareBy<Account> { it.displayOrder }.thenBy { it.createdAt })
     }
 
-    private fun archivedAccounts(list: List<AccountEntity>): List<AccountEntity> {
-        return list.filter(AccountEntity::isArchived)
-            .sortedWith(compareByDescending<AccountEntity> { it.archivedAt }.thenByDescending { it.createdAt })
+    private fun archivedAccounts(list: List<Account>): List<Account> {
+        return list.filter(Account::isArchived)
+            .sortedWith(compareByDescending<Account> { it.archivedAt }.thenByDescending { it.createdAt })
     }
 }
-

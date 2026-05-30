@@ -1,9 +1,9 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -42,14 +42,14 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "银行卡",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
@@ -96,14 +96,14 @@ class BalanceUpdateMutationUseCaseTest {
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "证券账户",
                 initialBalance = 100_000,
                 createdAt = 1_000,
             ),
         )
         transactionRepository.insertTransferRecord(
-            TransferRecordEntity(
+            TransferRecord(
                 fromAccountId = 99,
                 toAccountId = accountId,
                 amount = 20_000,
@@ -146,14 +146,14 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "活期",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
@@ -198,7 +198,7 @@ class BalanceUpdateMutationUseCaseTest {
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "银河",
                 initialBalance = 10_000,
                 createdAt = 1_000,
@@ -208,7 +208,7 @@ class BalanceUpdateMutationUseCaseTest {
         updateBalanceUseCase(accountId = accountId, actualBalance = 9_000, occurredAt = 3_000)
         val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
         transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecordEntity(
+            BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -1_000,
                 sourceUpdateRecordId = recordId,
@@ -238,14 +238,14 @@ class BalanceUpdateMutationUseCaseTest {
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "主账户",
                 initialBalance = 10_000,
                 createdAt = 1_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 1_000,
@@ -287,7 +287,7 @@ class BalanceUpdateMutationUseCaseTest {
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "副账户",
                 initialBalance = 10_000,
                 createdAt = 1_000,
@@ -303,7 +303,7 @@ class BalanceUpdateMutationUseCaseTest {
                 .id
         }
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 1_000,

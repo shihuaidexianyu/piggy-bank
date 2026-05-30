@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import kotlin.test.assertEquals
@@ -35,8 +35,8 @@ class TransactionRepositoryPurposeSuggestionTest {
         accountId: Long,
         purpose: String,
         occurredAt: Long,
-    ): CashFlowRecordEntity {
-        return CashFlowRecordEntity(
+    ): CashFlowRecord {
+        return CashFlowRecord(
             accountId = accountId,
             direction = CashFlowDirection.OUTFLOW.value,
             amount = 100,

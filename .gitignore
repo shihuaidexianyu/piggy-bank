@@ -25,3 +25,9 @@ local.properties
 
 .gradle-review/
 signing/
+/.vscode/
+/_preview/
+/_screenshots/
+qa_*.png
+launcher_preview*.png
+icon_preview.png

@@ -1,10 +1,11 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
+import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -63,39 +64,47 @@ class ObserveStatsDashboardUseCase(
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
-    operator fun invoke(periodFlow: Flow<StatsPeriod>): Flow<StatsDashboardSnapshot> {
+    operator fun invoke(selectionFlow: Flow<StatsRangeSelection>): Flow<StatsDashboardSnapshot> {
         return combine(
             accountRepository.observeActiveAccounts(),
             settingsRepository.observeSettings(),
             transactionRepository.observeChangeVersion(),
-            periodFlow,
-        ) { accounts, settings, _, period ->
-            StatsSource(accounts, settings, period)
+            selectionFlow,
+        ) { accounts, settings, _, selection ->
+            StatsSource(accounts, settings, selection)
         }.mapLatest { source ->
-            buildSnapshot(source.accounts, source.settings, source.period)
+            buildSnapshot(source.accounts, source.settings, source.selection)
         }.flowOn(Dispatchers.Default)
     }
 
     private suspend fun buildSnapshot(
-        accounts: List<AccountEntity>,
+        accounts: List<Account>,
         settings: AppSettings,
-        period: StatsPeriod,
+        selection: StatsRangeSelection,
     ): StatsDashboardSnapshot = coroutineScope {
         val zoneId = ZoneId.systemDefault()
-        val range = TimeRangeUtils.currentStatsRange(period, zoneId)
+        val range = TimeRangeUtils.statsRange(selection.period, zoneId, selection.anchorMillis)
         val startBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
-        val inflowJob = async {
-            transactionRepository.queryActiveCashFlowRecordsByDirectionBetween(
+        val zoneOffsetSeconds = zoneId.rules.getOffset(Instant.ofEpochMilli(range.startAtMillis)).totalSeconds
+        val inflowTotalsJob = async {
+            transactionRepository.queryPurposeTotals(
                 direction = CashFlowDirection.INFLOW.value,
                 startAt = range.startAtMillis,
                 endAt = range.endAtMillis,
             )
         }
-        val outflowJob = async {
-            transactionRepository.queryActiveCashFlowRecordsByDirectionBetween(
+        val purposeBreakdownJob = async {
+            transactionRepository.queryPurposeTotals(
                 direction = CashFlowDirection.OUTFLOW.value,
                 startAt = range.startAtMillis,
                 endAt = range.endAtMillis,
+            )
+        }
+        val dailyTotalsJob = async {
+            transactionRepository.queryDailyCashFlowTotals(
+                startAt = range.startAtMillis,
+                endAt = range.endAtMillis,
+                zoneOffsetSeconds = zoneOffsetSeconds,
             )
         }
         val balanceJobs = accounts.map { account ->
@@ -109,8 +118,10 @@ class ObserveStatsDashboardUseCase(
                 async { calculateCurrentBalanceUseCase(account.id, startBaselineAt) }
             }
 
-        val inflowRecords = inflowJob.await()
-        val outflowRecords = outflowJob.await()
+        val inflowTotals = inflowTotalsJob.await()
+        val outflowTotals = purposeBreakdownJob.await()
+        val totalInflow = inflowTotals.sumOf { it.amount }
+        val totalOutflow = outflowTotals.sumOf { it.amount }
         val accountBalances = balanceJobs.map { it.await() }.map { (account, balance) ->
             StatsAccountBalance(
                 accountId = account.id,
@@ -121,14 +132,12 @@ class ObserveStatsDashboardUseCase(
         }.sortedByDescending { it.balance }
         val currentAssets = accountBalances.sumOf { it.balance }
         val openingAssets = openingBalanceJobs.sumOf { it.await() }
-        val totalInflow = inflowRecords.sumOf { it.amount }
-        val totalOutflow = outflowRecords.sumOf { it.amount }
         val netCashFlow = totalInflow - totalOutflow
         val assetChange = currentAssets - openingAssets
 
         StatsDashboardSnapshot(
             settings = settings,
-            period = period,
+            period = selection.period,
             range = range,
             openingAssets = openingAssets,
             closingAssets = currentAssets,
@@ -137,34 +146,27 @@ class ObserveStatsDashboardUseCase(
             netCashFlow = netCashFlow,
             assetChange = assetChange,
             assetAdjustment = assetChange - netCashFlow,
-            purposeBreakdown = buildPurposeBreakdown(outflowRecords),
-            dailyPoints = buildDailyPoints(inflowRecords, outflowRecords, range, zoneId),
+            purposeBreakdown = outflowTotals.map {
+                StatsPurposeBreakdown(purpose = it.purpose, amount = it.amount)
+            },
+            dailyPoints = buildDailyPoints(dailyTotalsJob.await(), range, zoneId),
             accountBalances = accountBalances,
         )
     }
 
-    private fun buildPurposeBreakdown(records: List<CashFlowRecordEntity>): List<StatsPurposeBreakdown> {
-        return records
-            .groupBy { it.purpose.ifBlank { "未填写用途" } }
-            .map { (purpose, recordsInGroup) ->
-                StatsPurposeBreakdown(
-                    purpose = purpose,
-                    amount = recordsInGroup.sumOf { it.amount },
-                )
-            }
-            .sortedByDescending { it.amount }
-    }
-
     private fun buildDailyPoints(
-        inflowRecords: List<CashFlowRecordEntity>,
-        outflowRecords: List<CashFlowRecordEntity>,
+        dailyTotals: List<CashFlowDailyTotal>,
         range: TimeRange,
         zoneId: ZoneId,
     ): List<StatsDailyPoint> {
         val startDate = Instant.ofEpochMilli(range.startAtMillis).atZone(zoneId).toLocalDate()
         val endDate = Instant.ofEpochMilli(range.endAtMillis).atZone(zoneId).toLocalDate()
-        val inflowByDate = inflowRecords.groupByDate(zoneId)
-        val outflowByDate = outflowRecords.groupByDate(zoneId)
+        val inflowByDate = dailyTotals
+            .filter { it.direction == CashFlowDirection.INFLOW.value }
+            .associate { LocalDate.ofEpochDay(it.epochDay) to it.amount }
+        val outflowByDate = dailyTotals
+            .filter { it.direction == CashFlowDirection.OUTFLOW.value }
+            .associate { LocalDate.ofEpochDay(it.epochDay) to it.amount }
         return generateSequence(startDate) { date ->
             date.plusDays(1).takeIf { !it.isAfter(endDate) }
         }.map { date ->
@@ -175,16 +177,10 @@ class ObserveStatsDashboardUseCase(
             )
         }.toList()
     }
-
-    private fun List<CashFlowRecordEntity>.groupByDate(zoneId: ZoneId): Map<LocalDate, Long> {
-        return groupBy { record ->
-            Instant.ofEpochMilli(record.occurredAt).atZone(zoneId).toLocalDate()
-        }.mapValues { (_, records) -> records.sumOf { it.amount } }
-    }
 }
 
 private data class StatsSource(
-    val accounts: List<AccountEntity>,
+    val accounts: List<Account>,
     val settings: AppSettings,
-    val period: StatsPeriod,
+    val selection: StatsRangeSelection,
 )

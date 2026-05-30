@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -25,7 +25,7 @@ class ReminderUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "信用卡",
                 initialBalance = 0,
                 createdAt = 1L,
@@ -54,14 +54,14 @@ class ReminderUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "储蓄卡",
                 initialBalance = 0,
                 createdAt = 1L,
             ),
         )
         val reminderId = reminderRepository.insertReminder(
-            RecurringReminderEntity(
+            RecurringReminder(
                 name = "水费",
                 type = ReminderType.MANUAL.value,
                 accountId = accountId,
@@ -99,7 +99,7 @@ class ReminderUseCaseTest {
     fun `confirm reminder advances overdue reminder into the future`() = runBlocking {
         val reminderRepository = InMemoryRecurringReminderRepository()
         val reminderId = reminderRepository.insertReminder(
-            RecurringReminderEntity(
+            RecurringReminder(
                 name = "订阅",
                 type = ReminderType.SUBSCRIPTION.value,
                 accountId = 1L,
@@ -144,7 +144,7 @@ class ReminderUseCaseTest {
         val ticker = MutableStateFlow(900L)
         val reminderRepository = InMemoryRecurringReminderRepository(ticker)
         val reminderId = reminderRepository.insertReminder(
-            RecurringReminderEntity(
+            RecurringReminder(
                 name = "宽带",
                 type = ReminderType.SUBSCRIPTION.value,
                 accountId = 1L,

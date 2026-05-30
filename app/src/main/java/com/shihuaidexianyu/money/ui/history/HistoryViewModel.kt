@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -121,7 +121,7 @@ class HistoryViewModel(
                     transactionRepository.observeChangeVersion().debounce(300),
                 ) { activeAccounts, archivedAccounts, settings, _ ->
                     Triple(
-                        (activeAccounts + archivedAccounts).distinctBy(AccountEntity::id),
+                        (activeAccounts + archivedAccounts).distinctBy(Account::id),
                         settings,
                         Unit,
                     )
@@ -202,21 +202,21 @@ class HistoryViewModel(
     }
 
     private suspend fun buildBaseData(
-        accounts: List<AccountEntity>,
+        accounts: List<Account>,
         settings: AppSettings,
     ): HistoryBaseData = withContext(Dispatchers.Default) {
-        val accountMap = accounts.associateBy(AccountEntity::id)
+        val accountMap = accounts.associateBy(Account::id)
         HistoryBaseData(
             settings = settings,
             accountOptions = accountMap.values
-                .sortedBy(AccountEntity::name)
-                .map(AccountEntity::toAccountOptionUiModel),
+                .sortedBy(Account::name)
+                .map(Account::toAccountOptionUiModel),
             allRecords = buildAllRecords(accountMap),
         )
     }
 
     private suspend fun buildAllRecords(
-        accounts: Map<Long, AccountEntity>,
+        accounts: Map<Long, Account>,
     ): List<HistoryRecordUiModel> {
         val cashFlowRecords = transactionRepository.queryAllActiveCashFlowRecords().map { record ->
             HistoryRecordUiModel(

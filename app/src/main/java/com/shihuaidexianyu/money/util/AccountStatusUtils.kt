@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.util
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import java.time.Instant
@@ -10,7 +10,7 @@ import java.time.ZoneId
 
 object AccountStatusUtils {
     fun isStale(
-        account: AccountEntity,
+        account: Account,
         reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
         nowMillis: Long = System.currentTimeMillis(),
     ): Boolean {
@@ -48,4 +48,3 @@ object AccountStatusUtils {
             .toEpochMilli()
     }
 }
-

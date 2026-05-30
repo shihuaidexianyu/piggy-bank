@@ -1,38 +1,41 @@
 package com.shihuaidexianyu.money.data.repository
 
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.util.minuteTickerFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 class RecurringReminderRepositoryImpl(
     private val dao: RecurringReminderDao,
     private val tickerFlow: Flow<Long> = minuteTickerFlow(),
 ) : RecurringReminderRepository {
-    override fun observeAllReminders(): Flow<List<RecurringReminderEntity>> = dao.observeAll()
+    override fun observeAllReminders(): Flow<List<RecurringReminder>> =
+        dao.observeAll().map { reminders -> reminders.map { it.toDomain() } }
 
-    override fun observeDueReminders(): Flow<List<RecurringReminderEntity>> =
+    override fun observeDueReminders(): Flow<List<RecurringReminder>> =
         combine(
             dao.observeAll(),
             tickerFlow,
         ) { reminders, now ->
             reminders.filter { it.isEnabled && it.nextDueAt <= now }
+                .map { it.toDomain() }
         }.distinctUntilChanged()
 
-    override suspend fun getReminderById(id: Long): RecurringReminderEntity? = dao.queryById(id)
+    override suspend fun getReminderById(id: Long): RecurringReminder? = dao.queryById(id)?.toDomain()
 
-    override suspend fun queryAll(): List<RecurringReminderEntity> = dao.queryAll()
+    override suspend fun queryAll(): List<RecurringReminder> = dao.queryAll().map { it.toDomain() }
 
-    override suspend fun queryDue(): List<RecurringReminderEntity> =
-        dao.queryDue(System.currentTimeMillis())
+    override suspend fun queryDue(): List<RecurringReminder> =
+        dao.queryDue(System.currentTimeMillis()).map { it.toDomain() }
 
-    override suspend fun insertReminder(reminder: RecurringReminderEntity): Long =
-        dao.insert(reminder)
+    override suspend fun insertReminder(reminder: RecurringReminder): Long =
+        dao.insert(reminder.toEntity())
 
-    override suspend fun updateReminder(reminder: RecurringReminderEntity) = dao.update(reminder)
+    override suspend fun updateReminder(reminder: RecurringReminder) = dao.update(reminder.toEntity())
 
     override suspend fun deleteReminder(id: Long) = dao.delete(id)
 }

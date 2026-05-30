@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +53,9 @@ import kotlin.math.roundToInt
 fun StatsScreen(
     state: StatsUiState,
     onPeriodChange: (StatsPeriod) -> Unit,
+    onPreviousRange: () -> Unit,
+    onNextRange: () -> Unit,
+    onResetRange: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -66,7 +74,80 @@ fun StatsScreen(
                 )
             }
             item {
+                StatsRangeNavigator(
+                    rangeText = state.rangeText,
+                    isCurrentRange = state.isCurrentRange,
+                    onPreviousRange = onPreviousRange,
+                    onNextRange = onNextRange,
+                    onResetRange = onResetRange,
+                )
+            }
+            item {
                 AssetFlowCard(state = state)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsRangeNavigator(
+    rangeText: String,
+    isCurrentRange: Boolean,
+    onPreviousRange: () -> Unit,
+    onNextRange: () -> Unit,
+    onResetRange: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
+                shape = RoundedCornerShape(12.dp),
+            ),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onPreviousRange) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                    contentDescription = "上一期",
+                )
+            }
+            Text(
+                text = rangeText,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!isCurrentRange) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f),
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(8.dp),
+                    onClick = onResetRange,
+                ) {
+                    Text(
+                        text = "回到本期",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        maxLines = 1,
+                    )
+                }
+            }
+            IconButton(onClick = onNextRange) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = "下一期",
+                )
             }
         }
     }
@@ -151,7 +232,7 @@ private fun AssetFlowCard(state: StatsUiState) {
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(
-                    text = state.selectedPeriod.displayName,
+                    text = "${state.selectedPeriod.displayName}视图",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
@@ -201,17 +282,18 @@ private fun AssetFlowDiagram(
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        val middleGap = (maxWidth * 0.012f).coerceIn(4.dp, 6.dp)
-        val middleNodeWidth = (maxWidth - middleGap * 2) / 3
-        val topNodeWidth = middleNodeWidth
-        val bottomNodeWidth = middleNodeWidth * 1.36f
-        val nodeHeight = (middleNodeWidth * 0.48f).coerceIn(48.dp, 56.dp)
-        val rowGap = (nodeHeight * 0.46f).coerceIn(20.dp, 26.dp)
-        val middleNodeTop = nodeHeight + rowGap
-        val bottomNodeTop = middleNodeTop + nodeHeight + rowGap
-        val branchY = nodeHeight + rowGap / 2
-        val mergeY = middleNodeTop + nodeHeight + rowGap / 2
-        val diagramHeight = bottomNodeTop + nodeHeight
+        val density = LocalDensity.current
+        val layout = remember(maxWidth, density) {
+            with(density) { calculateAssetFlowLayout(maxWidth.toPx()) }
+        }
+        val middleGap = with(density) { layout.middleGap.toDp() }
+        val middleNodeWidth = with(density) { layout.middleNodeWidth.toDp() }
+        val topNodeWidth = with(density) { layout.topNodeWidth.toDp() }
+        val bottomNodeWidth = with(density) { layout.bottomNodeWidth.toDp() }
+        val nodeHeight = with(density) { layout.nodeHeight.toDp() }
+        val middleNodeTop = with(density) { layout.middleNodeTop.toDp() }
+        val bottomNodeTop = with(density) { layout.bottomNodeTop.toDp() }
+        val diagramHeight = with(density) { layout.diagramHeight.toDp() }
 
         Box(
             modifier = Modifier
@@ -230,8 +312,8 @@ private fun AssetFlowDiagram(
             val middleNodeTopPx = middleNodeTop.toPx()
             val middleNodeBottom = (middleNodeTop + nodeHeight).toPx()
             val bottomNodeTopPx = bottomNodeTop.toPx()
-            val branch = branchY.toPx()
-            val merge = mergeY.toPx()
+            val branch = layout.branchY
+            val merge = layout.mergeY
 
             drawLine(
                 color = lineColor,
@@ -327,7 +409,7 @@ private fun AssetFlowDiagram(
                 modifier = Modifier.width(middleNodeWidth),
             )
             FlowNode(
-                label = "资产校准",
+                label = "资产调整",
                 value = state.assetAdjustmentFlowText,
                 accent = adjustmentAccent,
                 nodeHeight = nodeHeight,

@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -33,7 +33,7 @@ class CreateReminderUseCase(
         )
         val now = System.currentTimeMillis()
         return reminderRepository.insertReminder(
-            RecurringReminderEntity(
+            RecurringReminder(
                 name = name.trim(),
                 type = type.value,
                 accountId = accountId,

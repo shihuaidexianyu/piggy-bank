@@ -49,10 +49,18 @@ object TimeRangeUtils {
         zoneId: ZoneId = ZoneId.systemDefault(),
         nowMillis: Long = System.currentTimeMillis(),
     ): TimeRange {
+        return statsRange(period, zoneId, nowMillis)
+    }
+
+    fun statsRange(
+        period: StatsPeriod,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        anchorMillis: Long = System.currentTimeMillis(),
+    ): TimeRange {
         return when (period) {
-            StatsPeriod.WEEK -> currentWeekRange(zoneId, nowMillis)
-            StatsPeriod.MONTH -> currentMonthRange(zoneId, nowMillis)
-            StatsPeriod.YEAR -> currentYearRange(zoneId, nowMillis)
+            StatsPeriod.WEEK -> currentWeekRange(zoneId, anchorMillis)
+            StatsPeriod.MONTH -> currentMonthRange(zoneId, anchorMillis)
+            StatsPeriod.YEAR -> currentYearRange(zoneId, anchorMillis)
         }
     }
 

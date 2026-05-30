@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -56,6 +57,14 @@ class TimeRangeUtilsTest {
         val monthRange = TimeRangeUtils.currentMonthRange(utc, now)
         val dispatched = TimeRangeUtils.currentRange(HomePeriod.MONTH, utc, now)
         assertEquals(monthRange, dispatched)
+    }
+
+    @Test
+    fun `statsRange uses anchor month instead of current month`() {
+        val anchor = Instant.parse("2024-01-15T10:00:00Z").toEpochMilli()
+        val range = TimeRangeUtils.statsRange(StatsPeriod.MONTH, utc, anchor)
+        assertEquals(Instant.parse("2024-01-01T00:00:00Z").toEpochMilli(), range.startAtMillis)
+        assertEquals(Instant.parse("2024-02-01T00:00:00Z").toEpochMilli() - 1, range.endAtMillis)
     }
 
     @Test

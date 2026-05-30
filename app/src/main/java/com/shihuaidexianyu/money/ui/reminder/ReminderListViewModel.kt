@@ -2,14 +2,15 @@ package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,17 +29,28 @@ data class ReminderUiModel(
     val nextDueFormatted: String,
     val isEnabled: Boolean,
     val isOverdue: Boolean,
+    val accountId: Long,
+    val direction: String,
+    val amount: Long,
+)
+
+data class BalanceReminderUiModel(
+    val accountId: Long,
+    val name: String,
+    val currentBalanceFormatted: String,
+    val lastBalanceUpdateText: String,
 )
 
 data class ReminderListUiState(
     val isLoading: Boolean = true,
+    val balanceReminders: List<BalanceReminderUiModel> = emptyList(),
     val reminders: List<ReminderUiModel> = emptyList(),
 )
 
 class ReminderListViewModel(
     private val reminderRepository: RecurringReminderRepository,
-    private val settingsRepository: SettingsRepository,
     private val deleteReminderUseCase: DeleteReminderUseCase,
+    private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReminderListUiState())
     val uiState: StateFlow<ReminderListUiState> = _uiState.asStateFlow()
@@ -47,12 +59,25 @@ class ReminderListViewModel(
         viewModelScope.launch {
             combine(
                 reminderRepository.observeAllReminders(),
-                settingsRepository.observeSettings(),
-            ) { reminders, settings -> reminders to settings }
-                .collect { (reminders, settings) ->
+                observeHomeDashboardUseCase(),
+            ) { reminders, snapshot -> reminders to snapshot }
+                .collect { (reminders, snapshot) ->
                     _uiState.value = ReminderListUiState(
                         isLoading = false,
-                        reminders = reminders.map { it.toUiModel(settings) },
+                        balanceReminders = snapshot.staleAccounts.map { account ->
+                            BalanceReminderUiModel(
+                                accountId = account.id,
+                                name = account.name,
+                                currentBalanceFormatted = AmountFormatter.format(
+                                    snapshot.accountBalances[account.id] ?: 0L,
+                                    snapshot.settings,
+                                ),
+                                lastBalanceUpdateText = account.lastBalanceUpdateAt?.let {
+                                    "最近核对 ${DateTimeTextFormatter.format(it)}"
+                                } ?: "尚未核对",
+                            )
+                        },
+                        reminders = reminders.map { it.toUiModel(snapshot.settings) },
                     )
                 }
         }
@@ -67,7 +92,7 @@ class ReminderListViewModel(
 
 private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
 
-internal fun RecurringReminderEntity.toUiModel(settings: AppSettings): ReminderUiModel {
+internal fun RecurringReminder.toUiModel(settings: AppSettings): ReminderUiModel {
     val periodType = ReminderPeriodType.fromValue(this.periodType)
     val periodDesc = when (periodType) {
         ReminderPeriodType.MONTHLY -> "每月${periodValue}日"
@@ -86,5 +111,8 @@ internal fun RecurringReminderEntity.toUiModel(settings: AppSettings): ReminderU
         nextDueFormatted = nextDate.format(dateFormatter),
         isEnabled = isEnabled,
         isOverdue = isEnabled && nextDueAt <= System.currentTimeMillis(),
+        accountId = accountId,
+        direction = direction,
+        amount = amount,
     )
 }

@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -21,7 +21,7 @@ class RecordTimeValidationTest {
             val accountRepository = InMemoryAccountRepository()
             val transactionRepository = InMemoryTransactionRepository()
             val accountId = accountRepository.createAccount(
-                AccountEntity(
+                Account(
                     name = "钱包",
                     initialBalance = 0,
                     createdAt = 61_000,
@@ -51,14 +51,14 @@ class RecordTimeValidationTest {
             val accountRepository = InMemoryAccountRepository()
             val transactionRepository = InMemoryTransactionRepository()
             val fromAccountId = accountRepository.createAccount(
-                AccountEntity(
+                Account(
                     name = "旧卡",
                     initialBalance = 0,
                     createdAt = 1_000,
                 ),
             )
             val toAccountId = accountRepository.createAccount(
-                AccountEntity(
+                Account(
                     name = "新卡",
                     initialBalance = 0,
                     createdAt = 121_000,
@@ -88,7 +88,7 @@ class RecordTimeValidationTest {
             val accountRepository = InMemoryAccountRepository()
             val transactionRepository = InMemoryTransactionRepository()
             val accountId = accountRepository.createAccount(
-                AccountEntity(
+                Account(
                     name = "储蓄卡",
                     initialBalance = 10_000,
                     createdAt = 61_000,

@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -26,7 +26,7 @@ class CreateAccountUseCase(
         require(accountRepository.isActiveNameAvailable(normalizedName)) { "已存在同名账户" }
 
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = normalizedName,
                 initialBalance = initialBalance,
                 createdAt = createdAt,
@@ -39,4 +39,3 @@ class CreateAccountUseCase(
         return accountId
     }
 }
-

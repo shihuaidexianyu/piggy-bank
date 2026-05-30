@@ -1,8 +1,8 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
+import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -31,14 +32,14 @@ class ObserveStatsDashboardUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "主账户",
                 initialBalance = 10_000,
                 createdAt = range.startAtMillis - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 3_000,
@@ -49,7 +50,7 @@ class ObserveStatsDashboardUseCaseTest {
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 800,
@@ -60,7 +61,7 @@ class ObserveStatsDashboardUseCaseTest {
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecordEntity(
+            BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -200,
                 sourceUpdateRecordId = 0L,
@@ -76,7 +77,14 @@ class ObserveStatsDashboardUseCaseTest {
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
         )
 
-        val snapshot = useCase(MutableStateFlow(StatsPeriod.MONTH)).first()
+        val snapshot = useCase(
+            MutableStateFlow(
+                StatsRangeSelection(
+                    period = StatsPeriod.MONTH,
+                    anchorMillis = now,
+                ),
+            ),
+        ).first()
 
         assertEquals(10_000, snapshot.openingAssets)
         assertEquals(12_000, snapshot.closingAssets)
@@ -89,6 +97,56 @@ class ObserveStatsDashboardUseCaseTest {
             snapshot.closingAssets,
             snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,
         )
+    }
+
+    @Test
+    fun `stats dashboard can target a past month`() = runBlocking {
+        val zoneId = java.time.ZoneId.systemDefault()
+        val januaryAnchor = java.time.LocalDate.of(2024, 1, 15)
+            .atStartOfDay(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val januaryRange = TimeRangeUtils.statsRange(StatsPeriod.MONTH, zoneId, januaryAnchor)
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "主账户",
+                initialBalance = 10_000,
+                createdAt = januaryRange.startAtMillis - 60_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 3_000,
+                purpose = "一月工资",
+                occurredAt = januaryRange.startAtMillis + 1_000,
+                createdAt = januaryRange.startAtMillis + 1_000,
+                updatedAt = januaryRange.startAtMillis + 1_000,
+            ),
+        )
+
+        val useCase = ObserveStatsDashboardUseCase(
+            accountRepository = accountRepository,
+            settingsRepository = FakeSettingsRepository(),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+        )
+
+        val snapshot = useCase(
+            MutableStateFlow(
+                StatsRangeSelection(
+                    period = StatsPeriod.MONTH,
+                    anchorMillis = januaryAnchor,
+                ),
+            ),
+        ).first()
+
+        assertEquals(januaryRange, snapshot.range)
+        assertEquals(3_000, snapshot.totalInflow)
+        assertEquals(13_000, snapshot.closingAssets)
     }
 
     private class FakeSettingsRepository : SettingsRepository {

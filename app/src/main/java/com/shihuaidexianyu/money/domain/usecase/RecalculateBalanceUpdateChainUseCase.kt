@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -12,7 +12,7 @@ class RecalculateBalanceUpdateChainUseCase(
     suspend operator fun invoke(accountId: Long) {
         val account = requireNotNull(accountRepository.getAccountById(accountId))
         val updates = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
-            .sortedWith(compareBy<BalanceUpdateRecordEntity> { it.occurredAt }.thenBy { it.id })
+            .sortedWith(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
 
         var anchorBalance = account.initialBalance
         var anchorTime = (DateTimeTextFormatter.floorToMinute(account.createdAt) - 1L).coerceAtLeast(-1L)

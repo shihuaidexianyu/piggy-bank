@@ -1,11 +1,11 @@
 package com.shihuaidexianyu.money.data.repository
 
 import android.content.Context
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,11 +20,11 @@ data class MoneySnapshot(
     val nextBalanceUpdateId: Long = 1,
     val nextAdjustmentId: Long = 1,
     val changeVersion: Long = 0,
-    val accounts: List<AccountEntity> = emptyList(),
-    val cashFlowRecords: List<CashFlowRecordEntity> = emptyList(),
-    val transferRecords: List<TransferRecordEntity> = emptyList(),
-    val balanceUpdates: List<BalanceUpdateRecordEntity> = emptyList(),
-    val adjustments: List<BalanceAdjustmentRecordEntity> = emptyList(),
+    val accounts: List<Account> = emptyList(),
+    val cashFlowRecords: List<CashFlowRecord> = emptyList(),
+    val transferRecords: List<TransferRecord> = emptyList(),
+    val balanceUpdates: List<BalanceUpdateRecord> = emptyList(),
+    val adjustments: List<BalanceAdjustmentRecord> = emptyList(),
 )
 
 class PersistentMoneyStore(
@@ -91,9 +91,9 @@ class PersistentMoneyStore(
     }
 }
 
-private fun JSONArray?.toAccountList(): List<AccountEntity> =
+private fun JSONArray?.toAccountList(): List<Account> =
     this.toObjectList { item ->
-        AccountEntity(
+        Account(
             id = item.getLong("id"),
             name = item.getString("name"),
             initialBalance = item.getLong("initialBalance"),
@@ -107,9 +107,9 @@ private fun JSONArray?.toAccountList(): List<AccountEntity> =
         )
     }
 
-private fun JSONArray?.toCashFlowList(): List<CashFlowRecordEntity> =
+private fun JSONArray?.toCashFlowList(): List<CashFlowRecord> =
     this.toObjectList { item ->
-        CashFlowRecordEntity(
+        CashFlowRecord(
             id = item.getLong("id"),
             accountId = item.getLong("accountId"),
             direction = item.getString("direction"),
@@ -122,9 +122,9 @@ private fun JSONArray?.toCashFlowList(): List<CashFlowRecordEntity> =
         )
     }
 
-private fun JSONArray?.toTransferList(): List<TransferRecordEntity> =
+private fun JSONArray?.toTransferList(): List<TransferRecord> =
     this.toObjectList { item ->
-        TransferRecordEntity(
+        TransferRecord(
             id = item.getLong("id"),
             fromAccountId = item.getLong("fromAccountId"),
             toAccountId = item.getLong("toAccountId"),
@@ -137,9 +137,9 @@ private fun JSONArray?.toTransferList(): List<TransferRecordEntity> =
         )
     }
 
-private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecordEntity> =
+private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecord> =
     this.toObjectList { item ->
-        BalanceUpdateRecordEntity(
+        BalanceUpdateRecord(
             id = item.getLong("id"),
             accountId = item.getLong("accountId"),
             actualBalance = item.getLong("actualBalance"),
@@ -150,9 +150,9 @@ private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecordEntity> =
         )
     }
 
-private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecordEntity> =
+private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecord> =
     this.toObjectList { item ->
-        BalanceAdjustmentRecordEntity(
+        BalanceAdjustmentRecord(
             id = item.getLong("id"),
             accountId = item.getLong("accountId"),
             delta = item.getLong("delta"),
@@ -175,7 +175,7 @@ private fun JSONObject.optNullableLong(key: String): Long? {
     return if (has(key) && !isNull(key)) getLong(key) else null
 }
 
-private fun AccountEntity.toJson(): JSONObject = JSONObject().apply {
+private fun Account.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("name", name)
     put("initialBalance", initialBalance)
@@ -188,7 +188,7 @@ private fun AccountEntity.toJson(): JSONObject = JSONObject().apply {
     put("colorName", colorName)
 }
 
-private fun CashFlowRecordEntity.toJson(): JSONObject = JSONObject().apply {
+private fun CashFlowRecord.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("accountId", accountId)
     put("direction", direction)
@@ -200,7 +200,7 @@ private fun CashFlowRecordEntity.toJson(): JSONObject = JSONObject().apply {
     put("isDeleted", isDeleted)
 }
 
-private fun TransferRecordEntity.toJson(): JSONObject = JSONObject().apply {
+private fun TransferRecord.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("fromAccountId", fromAccountId)
     put("toAccountId", toAccountId)
@@ -212,7 +212,7 @@ private fun TransferRecordEntity.toJson(): JSONObject = JSONObject().apply {
     put("isDeleted", isDeleted)
 }
 
-private fun BalanceUpdateRecordEntity.toJson(): JSONObject = JSONObject().apply {
+private fun BalanceUpdateRecord.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("accountId", accountId)
     put("actualBalance", actualBalance)
@@ -222,7 +222,7 @@ private fun BalanceUpdateRecordEntity.toJson(): JSONObject = JSONObject().apply 
     put("createdAt", createdAt)
 }
 
-private fun BalanceAdjustmentRecordEntity.toJson(): JSONObject = JSONObject().apply {
+private fun BalanceAdjustmentRecord.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("accountId", accountId)
     put("delta", delta)
@@ -230,4 +230,3 @@ private fun BalanceAdjustmentRecordEntity.toJson(): JSONObject = JSONObject().ap
     put("occurredAt", occurredAt)
     put("createdAt", createdAt)
 }
-

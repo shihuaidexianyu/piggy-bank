@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
@@ -19,7 +19,7 @@ class DeleteCashFlowBalanceTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(name = "现金", initialBalance = 10_000, createdAt = 1_000),
+            Account(name = "现金", initialBalance = 10_000, createdAt = 1_000),
         )
 
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)

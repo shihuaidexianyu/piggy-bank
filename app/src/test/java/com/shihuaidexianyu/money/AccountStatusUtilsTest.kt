@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.util.AccountStatusUtils
@@ -18,7 +18,7 @@ class AccountStatusUtilsTest {
             .atZone(zoneId)
             .toInstant()
             .toEpochMilli()
-        val account = AccountEntity(
+        val account = Account(
             id = 1,
             name = "银行卡",
             initialBalance = 0,
@@ -57,4 +57,3 @@ class AccountStatusUtilsTest {
         )
     }
 }
-

@@ -4,7 +4,7 @@ enum class StatsPeriod(
     val value: String,
     val displayName: String,
 ) {
-    WEEK("week", "本周"),
-    MONTH("month", "本月"),
-    YEAR("year", "今年"),
+    WEEK("week", "周"),
+    MONTH("month", "月"),
+    YEAR("year", "年"),
 }

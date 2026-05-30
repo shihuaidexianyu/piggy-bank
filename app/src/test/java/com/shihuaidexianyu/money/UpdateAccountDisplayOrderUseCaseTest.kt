@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlin.test.assertEquals
@@ -13,13 +13,13 @@ class UpdateAccountDisplayOrderUseCaseTest {
     fun `reorders active accounts by provided ids`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val firstId = repository.createAccount(
-            AccountEntity(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
+            Account(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
         )
         val secondId = repository.createAccount(
-            AccountEntity(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
+            Account(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
         )
         val thirdId = repository.createAccount(
-            AccountEntity(name = "C", initialBalance = 0, createdAt = 1, displayOrder = 2),
+            Account(name = "C", initialBalance = 0, createdAt = 1, displayOrder = 2),
         )
 
         UpdateAccountDisplayOrderUseCase(repository)(
@@ -35,10 +35,10 @@ class UpdateAccountDisplayOrderUseCaseTest {
     fun `rejects incomplete account ids to avoid inconsistent display orders`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val firstId = repository.createAccount(
-            AccountEntity(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
+            Account(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
         )
         repository.createAccount(
-            AccountEntity(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
+            Account(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
         )
 
         val error = assertFailsWith<IllegalArgumentException> {
@@ -50,4 +50,3 @@ class UpdateAccountDisplayOrderUseCaseTest {
         assertEquals("账户顺序必须覆盖全部活跃账户", error.message)
     }
 }
-

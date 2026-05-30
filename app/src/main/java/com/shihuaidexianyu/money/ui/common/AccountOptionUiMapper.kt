@@ -1,8 +1,8 @@
 package com.shihuaidexianyu.money.ui.common
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 
-fun AccountEntity.toAccountOptionUiModel(): AccountOptionUiModel {
+fun Account.toAccountOptionUiModel(): AccountOptionUiModel {
     return AccountOptionUiModel(
         id = id,
         name = name,
@@ -11,11 +11,11 @@ fun AccountEntity.toAccountOptionUiModel(): AccountOptionUiModel {
     )
 }
 
-fun List<AccountEntity>.toAccountOptionUiModels(): List<AccountOptionUiModel> {
-    return map(AccountEntity::toAccountOptionUiModel)
+fun List<Account>.toAccountOptionUiModels(): List<AccountOptionUiModel> {
+    return map(Account::toAccountOptionUiModel)
 }
 
-fun AccountEntity.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
+fun Account.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
     return AccountOptionUiModel(
         id = id,
         name = name,
@@ -25,7 +25,7 @@ fun AccountEntity.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
     )
 }
 
-fun AccountEntity.toAccountOptionUiModel(
+fun Account.toAccountOptionUiModel(
     balance: Long,
     isStale: Boolean,
 ): AccountOptionUiModel {
@@ -38,4 +38,3 @@ fun AccountEntity.toAccountOptionUiModel(
         isStale = isStale,
     )
 }
-

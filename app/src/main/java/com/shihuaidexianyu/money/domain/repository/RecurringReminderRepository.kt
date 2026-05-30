@@ -1,15 +1,15 @@
 package com.shihuaidexianyu.money.domain.repository
 
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import kotlinx.coroutines.flow.Flow
 
 interface RecurringReminderRepository {
-    fun observeAllReminders(): Flow<List<RecurringReminderEntity>>
-    fun observeDueReminders(): Flow<List<RecurringReminderEntity>>
-    suspend fun getReminderById(id: Long): RecurringReminderEntity?
-    suspend fun queryAll(): List<RecurringReminderEntity>
-    suspend fun queryDue(): List<RecurringReminderEntity>
-    suspend fun insertReminder(reminder: RecurringReminderEntity): Long
-    suspend fun updateReminder(reminder: RecurringReminderEntity)
+    fun observeAllReminders(): Flow<List<RecurringReminder>>
+    fun observeDueReminders(): Flow<List<RecurringReminder>>
+    suspend fun getReminderById(id: Long): RecurringReminder?
+    suspend fun queryAll(): List<RecurringReminder>
+    suspend fun queryDue(): List<RecurringReminder>
+    suspend fun insertReminder(reminder: RecurringReminder): Long
+    suspend fun updateReminder(reminder: RecurringReminder)
     suspend fun deleteReminder(id: Long)
 }

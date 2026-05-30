@@ -1,13 +1,13 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 data class BalanceUpdateContext(
     val systemBalanceBeforeUpdate: Long,
-    val previousUpdate: BalanceUpdateRecordEntity?,
+    val previousUpdate: BalanceUpdateRecord?,
 )
 
 class ResolveBalanceUpdateContextUseCase(
@@ -22,7 +22,7 @@ class ResolveBalanceUpdateContextUseCase(
         val account = requireNotNull(accountRepository.getAccountById(accountId))
         val previousUpdate = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
             .filter { it.id != excludingRecordId && it.occurredAt <= occurredAt }
-            .maxWithOrNull(compareBy<BalanceUpdateRecordEntity> { it.occurredAt }.thenBy { it.id })
+            .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
 
         val anchorBalance = previousUpdate?.actualBalance ?: account.initialBalance
         val anchorTime = previousUpdate?.occurredAt

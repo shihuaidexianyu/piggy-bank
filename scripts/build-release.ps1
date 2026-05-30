@@ -2,6 +2,7 @@ param(
     [string]$VersionName,
     [int]$VersionCode,
     [string]$CommitMessage = "",
+    [string]$Branch = "",
     [switch]$RunTests,
     [switch]$Commit,
     [switch]$Push
@@ -100,7 +101,13 @@ if ($Commit) {
     }
 
     if ($Push) {
-        git push origin main
+        if (-not $Branch) {
+            $Branch = (git branch --show-current).Trim()
+        }
+        if (-not $Branch) {
+            throw "Cannot determine current branch. Pass -Branch explicitly."
+        }
+        git push origin $Branch
         if ($LASTEXITCODE -ne 0) {
             throw "Git push failed"
         }

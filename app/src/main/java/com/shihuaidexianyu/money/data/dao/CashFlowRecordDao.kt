@@ -120,4 +120,44 @@ interface CashFlowRecordDao {
         """,
     )
     suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
+
+    @Query(
+        """
+        SELECT
+            CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END AS purpose,
+            COALESCE(SUM(amount), 0) AS amount
+        FROM cash_flow_records
+        WHERE direction = :direction
+            AND isDeleted = 0
+            AND occurredAt >= :startAt
+            AND occurredAt <= :endAt
+        GROUP BY CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END
+        ORDER BY amount DESC
+        """,
+    )
+    suspend fun queryPurposeTotals(
+        direction: String,
+        startAt: Long,
+        endAt: Long,
+    ): List<PurposeTotalRow>
+
+    @Query(
+        """
+        SELECT
+            CAST(((occurredAt / 1000) + :zoneOffsetSeconds) / 86400 AS INTEGER) AS epochDay,
+            direction AS direction,
+            COALESCE(SUM(amount), 0) AS amount
+        FROM cash_flow_records
+        WHERE isDeleted = 0
+            AND occurredAt >= :startAt
+            AND occurredAt <= :endAt
+        GROUP BY epochDay, direction
+        ORDER BY epochDay ASC
+        """,
+    )
+    suspend fun queryDailyTotals(
+        startAt: Long,
+        endAt: Long,
+        zoneOffsetSeconds: Int,
+    ): List<CashFlowDailyTotalRow>
 }

@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -27,10 +27,10 @@ data class HomeDashboardSnapshot(
     val periodNetInflow: Long,
     val periodNetOutflow: Long,
     val staleAccountCount: Int,
-    val activeAccounts: List<AccountEntity>,
-    val staleAccounts: List<AccountEntity>,
+    val activeAccounts: List<Account>,
+    val staleAccounts: List<Account>,
     val accountBalances: Map<Long, Long>,
-    val dueReminders: List<RecurringReminderEntity>,
+    val dueReminders: List<RecurringReminder>,
 )
 
 class ObserveHomeDashboardUseCase(
@@ -58,10 +58,10 @@ class ObserveHomeDashboardUseCase(
     }
 
     private suspend fun buildSnapshot(
-        accounts: List<AccountEntity>,
+        accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
-        dueReminders: List<RecurringReminderEntity>,
+        dueReminders: List<RecurringReminder>,
     ): HomeDashboardSnapshot = coroutineScope {
         val range = TimeRangeUtils.currentRange(settings.homePeriod)
         val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)

@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -14,7 +13,6 @@ import com.shihuaidexianyu.money.ui.accounts.AccountsViewModel
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.history.HistoryScreen
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
-import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
@@ -49,19 +47,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             },
             onStartTransfer = { navController.navigate(MoneyDestination.recordTransferRoute()) },
             onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
-            onStartBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
-            onReminderClick = { reminder ->
-                val direction = CashFlowDirection.fromValue(reminder.direction)
-                navController.navigate(
-                    MoneyDestination.recordCashFlowRoute(
-                        direction = direction,
-                        accountId = reminder.accountId,
-                        amount = reminder.amount,
-                        purpose = reminder.name,
-                        reminderId = reminder.id,
-                    ),
-                )
-            },
             onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
             modifier = Modifier,
         )
@@ -109,6 +94,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         StatsScreen(
             state = state,
             onPeriodChange = viewModel::updatePeriod,
+            onPreviousRange = viewModel::moveToPreviousRange,
+            onNextRange = viewModel::moveToNextRange,
+            onResetRange = viewModel::resetToCurrentRange,
         )
     }
 

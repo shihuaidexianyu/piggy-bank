@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
@@ -18,7 +18,7 @@ class UpdateBalanceUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "银行卡",
                 initialBalance = 10_000,
                 createdAt = 1_000,
@@ -48,7 +48,7 @@ class UpdateBalanceUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "证券账户",
                 initialBalance = 100_000,
                 createdAt = 1_000,
@@ -74,4 +74,3 @@ class UpdateBalanceUseCaseTest {
         assertEquals(1, transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId).size)
     }
 }
-

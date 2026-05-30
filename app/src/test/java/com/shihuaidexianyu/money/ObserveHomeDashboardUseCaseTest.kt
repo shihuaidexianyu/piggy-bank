@@ -1,8 +1,8 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
@@ -33,14 +33,14 @@ class ObserveHomeDashboardUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "主账户",
                 initialBalance = 10_000,
                 createdAt = range.startAtMillis - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
@@ -51,7 +51,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "outflow",
                 amount = 500,
@@ -62,7 +62,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
-            BalanceUpdateRecordEntity(
+            BalanceUpdateRecord(
                 accountId = accountId,
                 actualBalance = 11_800,
                 systemBalanceBeforeUpdate = 11_500,
@@ -72,7 +72,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
-            BalanceUpdateRecordEntity(
+            BalanceUpdateRecord(
                 accountId = accountId,
                 actualBalance = 11_100,
                 systemBalanceBeforeUpdate = 11_800,
@@ -109,7 +109,7 @@ class ObserveHomeDashboardUseCaseTest {
         )
         val oldTime = 1_000L
         val staleBankId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "银行卡",
                 initialBalance = 10_000,
                 createdAt = oldTime,
@@ -117,7 +117,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         val stalePaymentId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "零钱",
                 initialBalance = 2_000,
                 createdAt = oldTime,
@@ -125,7 +125,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         val freshId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "新账户",
                 initialBalance = 3_000,
                 createdAt = oldTime,
@@ -133,7 +133,7 @@ class ObserveHomeDashboardUseCaseTest {
             ),
         )
         val archivedId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "归档账户",
                 initialBalance = 4_000,
                 createdAt = oldTime,

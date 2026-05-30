@@ -21,7 +21,6 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material3.Button
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -44,19 +43,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
-import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun HomeScreen(
@@ -66,8 +60,6 @@ fun HomeScreen(
     onStartCashFlow: (CashFlowDirection, Long) -> Unit,
     onStartTransfer: () -> Unit,
     onStartUpdateBalance: (Long) -> Unit,
-    onStartBatchReconcile: () -> Unit,
-    onReminderClick: (DueReminderUiModel) -> Unit,
     onAllRemindersClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -117,7 +109,7 @@ fun HomeScreen(
             title = "首页",
             trailing = {
                 ReminderHeaderButton(
-                    dueCount = state.dueReminders.size,
+                    dueCount = state.dueReminders.size + state.staleAccountCount,
                     onClick = onAllRemindersClick,
                 )
             },
@@ -147,151 +139,6 @@ fun HomeScreen(
                     enabled = state.accountOptions.isNotEmpty(),
                     transferEnabled = state.accountOptions.size >= 2,
                 )
-            }
-            if (state.staleAccounts.isNotEmpty() || state.dueReminders.isNotEmpty()) {
-                item {
-                    MoneySectionHeader(title = "待办事项")
-                }
-                item {
-                    PendingActionsBlock(
-                        staleAccounts = state.staleAccounts.take(3),
-                        reminders = state.dueReminders,
-                        settings = state.settings,
-                        onAccountClick = { onStartUpdateBalance(it) },
-                        onBatchClick = onStartBatchReconcile,
-                        onReminderClick = onReminderClick,
-                        onAllRemindersClick = onAllRemindersClick,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PendingActionsBlock(
-    staleAccounts: List<StaleAccountUiModel>,
-    reminders: List<DueReminderUiModel>,
-    settings: AppSettings,
-    onAccountClick: (Long) -> Unit,
-    onBatchClick: () -> Unit,
-    onReminderClick: (DueReminderUiModel) -> Unit,
-    onAllRemindersClick: () -> Unit,
-) {
-    MoneyListSection {
-        val hasStaleAccounts = staleAccounts.isNotEmpty()
-        val hasReminders = reminders.isNotEmpty()
-        staleAccounts.forEachIndexed { index, account ->
-            StaleAccountRow(
-                account = account,
-                settings = settings,
-                onClick = { onAccountClick(account.accountId) },
-            )
-            if (index != staleAccounts.lastIndex || hasReminders || hasStaleAccounts) {
-                MoneySectionDivider()
-            }
-        }
-        if (hasStaleAccounts) {
-            PendingActionLinkRow(
-                title = "批量确认无变化",
-                action = "去核对",
-                onClick = onBatchClick,
-            )
-            if (hasReminders) {
-                MoneySectionDivider()
-            }
-        }
-        reminders.forEachIndexed { index, reminder ->
-            ReminderRow(
-                reminder = reminder,
-                onClick = { onReminderClick(reminder) },
-            )
-            if (index != reminders.lastIndex) {
-                MoneySectionDivider()
-            }
-        }
-        if (hasReminders) {
-            MoneySectionDivider()
-            PendingActionLinkRow(
-                title = "管理全部提醒",
-                action = "查看",
-                onClick = onAllRemindersClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PendingActionLinkRow(
-    title: String,
-    action: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        Text(
-            text = action,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-@Composable
-private fun StaleAccountRow(
-    account: StaleAccountUiModel,
-    settings: AppSettings,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = account.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = account.lastBalanceUpdateAt?.let {
-                    "最近核对 ${DateTimeTextFormatter.format(it)}"
-                } ?: "尚未核对",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = AmountFormatter.format(account.currentBalance, settings),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-            )
-            Button(onClick = onClick) {
-                Text("核对")
             }
         }
     }
@@ -407,58 +254,6 @@ private fun TotalAssetsBlock(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ReminderRow(
-    reminder: DueReminderUiModel,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = reminder.name,
-                    modifier = Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                MoneyStatusPill(
-                    text = when (reminder.type) {
-                        ReminderType.MANUAL -> "待缴费"
-                        ReminderType.SUBSCRIPTION -> "待确认"
-                    },
-                    accent = MaterialTheme.colorScheme.error,
-                )
-            }
-            Text(
-                text = "轻点处理",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Text(
-            text = reminder.amountFormatted,
-            modifier = Modifier.padding(start = 12.dp),
-            style = MaterialTheme.typography.titleMedium,
-            color = LocalMoneyColors.current.current,
-            maxLines = 1,
-        )
     }
 }
 

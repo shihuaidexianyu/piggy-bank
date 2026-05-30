@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 
 data class AccountDetailSnapshot(
-    val account: AccountEntity?,
+    val account: Account?,
     val settings: AppSettings,
     val reminderConfig: BalanceUpdateReminderConfig,
     val currentBalance: Long,
@@ -51,7 +51,7 @@ class ObserveAccountDetailUseCase(
     }
 
     private suspend fun buildSnapshot(
-        account: AccountEntity?,
+        account: Account?,
         settings: AppSettings,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): AccountDetailSnapshot {

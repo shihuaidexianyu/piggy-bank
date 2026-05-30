@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,7 +31,11 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyBackButton
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
+import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
+import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 
 @Composable
@@ -38,7 +43,10 @@ fun ReminderListScreen(
     state: ReminderListUiState,
     onCreateReminder: () -> Unit,
     onEditReminder: (Long) -> Unit,
+    onProcessReminder: (ReminderUiModel) -> Unit,
     onDeleteReminder: (Long) -> Unit,
+    onUpdateBalance: (Long) -> Unit,
+    onBatchReconcile: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,7 +75,7 @@ fun ReminderListScreen(
             modifier = modifier.padding(innerPadding),
         ) {
             MoneyPageTitle(
-                title = "定期提醒",
+                title = "提醒中心",
                 leading = { MoneyBackButton(onClick = onBack) },
                 modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
             )
@@ -75,24 +83,152 @@ fun ReminderListScreen(
                 contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (!state.isLoading && state.reminders.isEmpty()) {
+                if (!state.isLoading && state.balanceReminders.isEmpty() && state.reminders.isEmpty()) {
                     item {
-                        Text(
-                            text = "暂无提醒，点击右下角添加",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 24.dp),
+                        MoneyEmptyStateCard(
+                            title = "暂无待处理提醒",
+                            subtitle = "余额核对和定期提醒都会显示在这里。",
+                            action = {
+                                Button(
+                                    onClick = onCreateReminder,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("添加定期提醒")
+                                }
+                            },
+                        )
+                    }
+                }
+                if (state.balanceReminders.isNotEmpty()) {
+                    item {
+                        MoneySectionHeader(
+                            title = "余额待核对",
+                            trailing = "${state.balanceReminders.size} 个账户",
+                        )
+                    }
+                    item {
+                        BalanceReminderSection(
+                            reminders = state.balanceReminders,
+                            onUpdateBalance = onUpdateBalance,
+                            onBatchReconcile = onBatchReconcile,
+                        )
+                    }
+                }
+                if (state.reminders.isNotEmpty()) {
+                    item {
+                        MoneySectionHeader(
+                            title = "定期提醒",
+                            trailing = "${state.reminders.size} 条",
                         )
                     }
                 }
                 items(state.reminders, key = { it.id }) { reminder ->
                     ReminderListItem(
                         reminder = reminder,
-                        onClick = { onEditReminder(reminder.id) },
+                        onClick = {
+                            if (reminder.isOverdue && reminder.isEnabled) {
+                                onProcessReminder(reminder)
+                            } else {
+                                onEditReminder(reminder.id)
+                            }
+                        },
                         onDelete = { deleteTarget = reminder.id },
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BalanceReminderSection(
+    reminders: List<BalanceReminderUiModel>,
+    onUpdateBalance: (Long) -> Unit,
+    onBatchReconcile: () -> Unit,
+) {
+    MoneyListSection {
+        reminders.forEach { reminder ->
+            BalanceReminderRow(
+                reminder = reminder,
+                onClick = { onUpdateBalance(reminder.accountId) },
+            )
+            MoneySectionDivider()
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onBatchReconcile)
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("批量确认无变化", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "适合余额没有实际变化的账户",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = "去核对",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BalanceReminderRow(
+    reminder: BalanceReminderUiModel,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = reminder.name,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                MoneyStatusPill(
+                    text = "待核对",
+                    accent = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            Text(
+                text = reminder.lastBalanceUpdateText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = reminder.currentBalanceFormatted,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+            )
+            Text(
+                text = "核对",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

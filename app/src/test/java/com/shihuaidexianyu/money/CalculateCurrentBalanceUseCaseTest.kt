@@ -1,10 +1,10 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.entity.AccountEntity
-import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
-import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -18,7 +18,7 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "活期",
                 initialBalance = 10_000,
                 createdAt = 1_000,
@@ -26,7 +26,7 @@ class CalculateCurrentBalanceUseCaseTest {
         )
 
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
@@ -37,7 +37,7 @@ class CalculateCurrentBalanceUseCaseTest {
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "outflow",
                 amount = 500,
@@ -48,7 +48,7 @@ class CalculateCurrentBalanceUseCaseTest {
             ),
         )
         transactionRepository.insertTransferRecord(
-            TransferRecordEntity(
+            TransferRecord(
                 fromAccountId = 99,
                 toAccountId = accountId,
                 amount = 300,
@@ -59,7 +59,7 @@ class CalculateCurrentBalanceUseCaseTest {
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecordEntity(
+            BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -100,
                 sourceUpdateRecordId = 0,
@@ -78,7 +78,7 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "证券",
                 initialBalance = 100_000,
                 createdAt = 1_000,
@@ -86,7 +86,7 @@ class CalculateCurrentBalanceUseCaseTest {
         )
 
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "inflow",
                 amount = 10_000,
@@ -97,7 +97,7 @@ class CalculateCurrentBalanceUseCaseTest {
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
-            BalanceUpdateRecordEntity(
+            BalanceUpdateRecord(
                 accountId = accountId,
                 actualBalance = 120_000,
                 systemBalanceBeforeUpdate = 110_000,
@@ -107,7 +107,7 @@ class CalculateCurrentBalanceUseCaseTest {
             ),
         )
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "outflow",
                 amount = 5_000,
@@ -128,7 +128,7 @@ class CalculateCurrentBalanceUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
-            AccountEntity(
+            Account(
                 name = "现金",
                 initialBalance = 10_000,
                 createdAt = 1712106635000,
@@ -136,7 +136,7 @@ class CalculateCurrentBalanceUseCaseTest {
         )
 
         transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = "outflow",
                 amount = 2_000,
@@ -152,4 +152,3 @@ class CalculateCurrentBalanceUseCaseTest {
         assertEquals(8_000, useCase(accountId))
     }
 }
-

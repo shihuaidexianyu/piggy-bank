@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 
@@ -35,7 +35,7 @@ class UpdateBalanceUseCase(
 
         transactionRepository.runInTransaction {
             transactionRepository.insertBalanceUpdateRecord(
-                BalanceUpdateRecordEntity(
+                BalanceUpdateRecord(
                     accountId = accountId,
                     actualBalance = actualBalance,
                     systemBalanceBeforeUpdate = systemBalanceBeforeUpdate,
@@ -58,4 +58,3 @@ class UpdateBalanceUseCase(
         )
     }
 }
-

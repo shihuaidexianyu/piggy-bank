@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -24,7 +24,7 @@ class CreateCashFlowRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.insertCashFlowRecord(
-            CashFlowRecordEntity(
+            CashFlowRecord(
                 accountId = accountId,
                 direction = direction.value,
                 amount = amount,

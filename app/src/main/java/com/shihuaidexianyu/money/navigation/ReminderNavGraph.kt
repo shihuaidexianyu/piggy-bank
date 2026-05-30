@@ -9,6 +9,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.reminder.CreateReminderScreen
 import com.shihuaidexianyu.money.ui.reminder.CreateReminderViewModel
 import com.shihuaidexianyu.money.ui.reminder.EditReminderScreen
@@ -25,8 +26,8 @@ internal fun NavGraphBuilder.addReminderGraph(
             factory = moneyViewModelFactory {
                 ReminderListViewModel(
                     reminderRepository = container.recurringReminderRepository,
-                    settingsRepository = container.settingsRepository,
                     deleteReminderUseCase = container.deleteReminderUseCase,
+                    observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                 )
             },
         )
@@ -35,7 +36,21 @@ internal fun NavGraphBuilder.addReminderGraph(
             state = state,
             onCreateReminder = { navController.navigate(MoneyDestination.CreateReminderRoute) },
             onEditReminder = { navController.navigate(MoneyDestination.editReminderRoute(it)) },
+            onProcessReminder = { reminder ->
+                val direction = CashFlowDirection.fromValue(reminder.direction)
+                navController.navigate(
+                    MoneyDestination.recordCashFlowRoute(
+                        direction = direction,
+                        accountId = reminder.accountId,
+                        amount = reminder.amount,
+                        purpose = reminder.name,
+                        reminderId = reminder.id,
+                    ),
+                )
+            },
             onDeleteReminder = viewModel::deleteReminder,
+            onUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
+            onBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
             onBack = { navController.popBackStack() },
         )
     }

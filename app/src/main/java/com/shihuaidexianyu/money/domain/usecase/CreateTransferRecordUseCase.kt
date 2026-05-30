@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 
@@ -26,7 +26,7 @@ class CreateTransferRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.insertTransferRecord(
-            TransferRecordEntity(
+            TransferRecord(
                 fromAccountId = fromAccountId,
                 toAccountId = toAccountId,
                 amount = amount,

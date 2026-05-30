@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.balance
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -146,7 +146,7 @@ class BatchReconcileViewModel(
     }
 
     private suspend fun buildItems(
-        accounts: List<AccountEntity>,
+        accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): List<BatchReconcileAccountUiModel> = withContext(Dispatchers.Default) {
         accounts.filter { account ->

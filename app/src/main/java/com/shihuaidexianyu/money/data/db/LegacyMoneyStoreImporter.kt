@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.data.db
 import android.content.Context
 import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.repository.PersistentMoneyStore
+import com.shihuaidexianyu.money.data.repository.toEntity
 
 object LegacyMoneyStoreImporter {
     suspend fun importIfNeeded(
@@ -23,12 +24,11 @@ object LegacyMoneyStoreImporter {
         if (!hasLegacyData) return
 
         database.withTransaction {
-            snapshot.accounts.sortedBy { it.id }.forEach { database.accountDao().insert(it) }
-            snapshot.cashFlowRecords.sortedBy { it.id }.forEach { database.cashFlowRecordDao().insert(it) }
-            snapshot.transferRecords.sortedBy { it.id }.forEach { database.transferRecordDao().insert(it) }
-            snapshot.balanceUpdates.sortedBy { it.id }.forEach { database.balanceUpdateRecordDao().insert(it) }
-            snapshot.adjustments.sortedBy { it.id }.forEach { database.balanceAdjustmentRecordDao().insert(it) }
+            snapshot.accounts.sortedBy { it.id }.forEach { database.accountDao().insert(it.toEntity()) }
+            snapshot.cashFlowRecords.sortedBy { it.id }.forEach { database.cashFlowRecordDao().insert(it.toEntity()) }
+            snapshot.transferRecords.sortedBy { it.id }.forEach { database.transferRecordDao().insert(it.toEntity()) }
+            snapshot.balanceUpdates.sortedBy { it.id }.forEach { database.balanceUpdateRecordDao().insert(it.toEntity()) }
+            snapshot.adjustments.sortedBy { it.id }.forEach { database.balanceAdjustmentRecordDao().insert(it.toEntity()) }
         }
     }
 }
-

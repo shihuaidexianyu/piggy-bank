@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
@@ -93,7 +93,7 @@ class AccountsViewModel(
     }
 
     private suspend fun buildItems(
-        accounts: List<AccountEntity>,
+        accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): List<AccountListItemUiModel> = withContext(Dispatchers.Default) {
         val items = accounts.map { mapItem(it, reminderConfigs[it.id]) }
@@ -101,7 +101,7 @@ class AccountsViewModel(
     }
 
     private suspend fun mapItem(
-        account: AccountEntity,
+        account: Account,
         reminderConfig: BalanceUpdateReminderConfig?,
     ): AccountListItemUiModel {
         return AccountListItemUiModel(
