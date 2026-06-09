@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -50,6 +51,7 @@ data class ReminderListUiState(
 class ReminderListViewModel(
     private val reminderRepository: RecurringReminderRepository,
     private val deleteReminderUseCase: DeleteReminderUseCase,
+    private val confirmReminderUseCase: ConfirmReminderUseCase,
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReminderListUiState())
@@ -86,6 +88,12 @@ class ReminderListViewModel(
     fun deleteReminder(id: Long) {
         viewModelScope.launch {
             deleteReminderUseCase(id)
+        }
+    }
+
+    fun confirmReminder(id: Long) {
+        viewModelScope.launch {
+            confirmReminderUseCase(id)
         }
     }
 }

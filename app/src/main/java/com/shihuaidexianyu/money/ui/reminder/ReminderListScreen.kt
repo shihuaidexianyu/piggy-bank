@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,7 @@ fun ReminderListScreen(
     onEditReminder: (Long) -> Unit,
     onProcessReminder: (ReminderUiModel) -> Unit,
     onDeleteReminder: (Long) -> Unit,
+    onConfirmReminder: (Long) -> Unit,
     onUpdateBalance: (Long) -> Unit,
     onBatchReconcile: () -> Unit,
     onBack: () -> Unit,
@@ -132,6 +134,7 @@ fun ReminderListScreen(
                                 onEditReminder(reminder.id)
                             }
                         },
+                        onConfirmOnly = { onConfirmReminder(reminder.id) },
                         onDelete = { deleteTarget = reminder.id },
                     )
                 }
@@ -237,6 +240,7 @@ private fun BalanceReminderRow(
 private fun ReminderListItem(
     reminder: ReminderUiModel,
     onClick: () -> Unit,
+    onConfirmOnly: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -297,6 +301,19 @@ private fun ReminderListItem(
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+        if (reminder.isOverdue && reminder.isEnabled) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onClick) {
+                    Text("生成记录")
+                }
+                TextButton(onClick = onConfirmOnly) {
+                    Text("仅确认")
+                }
             }
         }
     }

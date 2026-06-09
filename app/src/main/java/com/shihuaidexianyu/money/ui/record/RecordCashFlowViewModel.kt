@@ -7,7 +7,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.userMessage
@@ -49,7 +49,7 @@ class RecordCashFlowViewModel(
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
-    private val confirmReminderUseCase: ConfirmReminderUseCase? = null,
+    private val processDueReminderUseCase: ProcessDueReminderUseCase? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         RecordCashFlowUiState(
@@ -152,17 +152,23 @@ class RecordCashFlowViewModel(
 
             _uiState.value = state.copy(isSaving = true, showPurposeConfirm = false)
             runCatching {
-                createCashFlowRecordUseCase(
-                    accountId = accountId,
-                    direction = direction,
-                    amount = amount,
-                    purpose = state.purpose,
-                    occurredAt = state.occurredAtMillis,
-                )
-            }.onSuccess {
-                if (reminderId != null && confirmReminderUseCase != null) {
-                    runCatching { confirmReminderUseCase(reminderId) }
+                if (reminderId != null && processDueReminderUseCase != null) {
+                    processDueReminderUseCase(
+                        reminderId = reminderId,
+                        occurredAt = state.occurredAtMillis,
+                        amount = amount,
+                        purpose = state.purpose,
+                    )
+                } else {
+                    createCashFlowRecordUseCase(
+                        accountId = accountId,
+                        direction = direction,
+                        amount = amount,
+                        purpose = state.purpose,
+                        occurredAt = state.occurredAtMillis,
+                    )
                 }
+            }.onSuccess {
                 effects.emit(RecordCashFlowEffect.Saved)
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isSaving = false)

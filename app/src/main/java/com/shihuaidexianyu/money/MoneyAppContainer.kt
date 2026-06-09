@@ -39,6 +39,7 @@ import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
@@ -256,6 +257,14 @@ class MoneyAppContainer(context: Context) {
     val confirmReminderUseCase = ConfirmReminderUseCase(
         accountRepository = accountRepository,
         reminderRepository = recurringReminderRepository,
+    )
+
+    val processDueReminderUseCase = ProcessDueReminderUseCase(
+        accountRepository = accountRepository,
+        transactionRepository = transactionRepository,
+        reminderRepository = recurringReminderRepository,
+        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val observeDueRemindersUseCase = ObserveDueRemindersUseCase(

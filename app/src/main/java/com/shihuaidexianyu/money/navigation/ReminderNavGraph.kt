@@ -27,6 +27,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                 ReminderListViewModel(
                     reminderRepository = container.recurringReminderRepository,
                     deleteReminderUseCase = container.deleteReminderUseCase,
+                    confirmReminderUseCase = container.confirmReminderUseCase,
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                 )
             },
@@ -49,6 +50,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                 )
             },
             onDeleteReminder = viewModel::deleteReminder,
+            onConfirmReminder = viewModel::confirmReminder,
             onUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
             onBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
             onBack = { navController.popBackStack() },

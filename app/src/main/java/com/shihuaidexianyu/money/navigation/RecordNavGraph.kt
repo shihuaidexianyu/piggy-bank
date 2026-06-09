@@ -61,7 +61,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     transactionRepository = container.transactionRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
-                    confirmReminderUseCase = container.confirmReminderUseCase,
+                    processDueReminderUseCase = container.processDueReminderUseCase,
                 )
             },
         )
