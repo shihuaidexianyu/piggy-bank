@@ -62,6 +62,7 @@ data class HistoryUiState(
     val settings: AppSettings = AppSettings(),
     val accountOptions: List<AccountOptionUiModel> = emptyList(),
     val keyword: String = "",
+    val excludeKeyword: String = "",
     val selectedAccountId: Long? = null,
     val dateStartAt: Long? = null,
     val dateEndAt: Long? = null,
@@ -71,8 +72,9 @@ data class HistoryUiState(
     val records: List<HistoryRecordUiModel> = emptyList(),
 )
 
-private data class HistoryFilterState(
+internal data class HistoryFilterState(
     val keyword: String = "",
+    val excludeKeyword: String = "",
     val selectedAccountId: Long? = null,
     val dateStartAt: Long? = null,
     val dateEndAt: Long? = null,
@@ -105,6 +107,7 @@ class HistoryViewModel(
                 val initialSettings = settingsRepository.observeSettings().first()
                 filterState.value = HistoryFilterState(
                     keyword = initialSettings.lastHistoryKeyword,
+                    excludeKeyword = initialSettings.lastHistoryExcludeKeyword,
                     selectedAccountId = initialSettings.lastHistoryAccountId.takeIf { it >= 0 },
                     dateStartAt = initialSettings.lastHistoryDateStartAt.takeIf { it >= 0 },
                     dateEndAt = initialSettings.lastHistoryDateEndAt.takeIf { it >= 0 },
@@ -135,6 +138,7 @@ class HistoryViewModel(
                         settings = baseData.settings,
                         accountOptions = baseData.accountOptions,
                         keyword = filters.keyword,
+                        excludeKeyword = filters.excludeKeyword,
                         selectedAccountId = filters.selectedAccountId,
                         dateStartAt = filters.dateStartAt,
                         dateEndAt = filters.dateEndAt,
@@ -153,6 +157,7 @@ class HistoryViewModel(
     }
 
     fun updateKeyword(value: String) = applyLocalFilter { copy(keyword = value) }
+    fun updateExcludeKeyword(value: String) = applyLocalFilter { copy(excludeKeyword = value) }
     fun updateAccount(accountId: Long?) = applyLocalFilter { copy(selectedAccountId = accountId) }
     fun updateDateRange(startAt: Long?, endAt: Long?) {
         val normalizedStart = startAt
@@ -178,6 +183,7 @@ class HistoryViewModel(
             delay(500)
             settingsRepository.updateLastHistoryFilters(
                 keyword = updatedFilters.keyword,
+                excludeKeyword = updatedFilters.excludeKeyword,
                 accountId = updatedFilters.selectedAccountId ?: -1L,
                 dateStartAt = updatedFilters.dateStartAt ?: -1L,
                 dateEndAt = updatedFilters.dateEndAt ?: -1L,
@@ -190,6 +196,7 @@ class HistoryViewModel(
         _uiState.update { current ->
             current.copy(
                 keyword = updatedFilters.keyword,
+                excludeKeyword = updatedFilters.excludeKeyword,
                 selectedAccountId = updatedFilters.selectedAccountId,
                 dateStartAt = updatedFilters.dateStartAt,
                 dateEndAt = updatedFilters.dateEndAt,
@@ -284,27 +291,34 @@ class HistoryViewModel(
     private fun applyFilters(
         source: List<HistoryRecordUiModel>,
         filters: HistoryFilterState,
-    ): List<HistoryRecordUiModel> {
-        val keyword = filters.keyword.trim().lowercase()
-        val startAt = filters.dateStartAt
-        val endAt = filters.dateEndAt
-        val minAmount = AmountInputParser.parseToMinor(filters.minAmountText)
-        val maxAmount = AmountInputParser.parseToMinor(filters.maxAmountText)
+    ): List<HistoryRecordUiModel> = filterHistoryRecords(source, filters)
+}
 
-        return source.filter { record ->
-            val keywordOk = keyword.isBlank() || record.keywordSource.lowercase().contains(keyword)
-            val accountOk = filters.selectedAccountId == null || filters.selectedAccountId in record.accountIds
-            val startOk = startAt == null || record.occurredAt >= startAt
-            val endOk = endAt == null || record.occurredAt <= endAt
-            val amountAbs = abs(record.amount)
-            val minOk = minAmount == null || amountAbs >= minAmount
-            val maxOk = maxAmount == null || amountAbs <= maxAmount
-            val directionOk = when (filters.amountDirectionFilter) {
-                AmountDirectionFilter.ALL -> true
-                AmountDirectionFilter.INCREASE -> record.amount > 0 && record.kind != HistoryRecordKind.TRANSFER
-                AmountDirectionFilter.DECREASE -> record.amount < 0 && record.kind != HistoryRecordKind.TRANSFER
-            }
-            keywordOk && accountOk && startOk && endOk && minOk && maxOk && directionOk
+internal fun filterHistoryRecords(
+    source: List<HistoryRecordUiModel>,
+    filters: HistoryFilterState,
+): List<HistoryRecordUiModel> {
+    val keyword = filters.keyword.trim().lowercase()
+    val excludeKeyword = filters.excludeKeyword.trim().lowercase()
+    val startAt = filters.dateStartAt
+    val endAt = filters.dateEndAt
+    val minAmount = AmountInputParser.parseToMinor(filters.minAmountText)
+    val maxAmount = AmountInputParser.parseToMinor(filters.maxAmountText)
+
+    return source.filter { record ->
+        val keywordOk = keyword.isBlank() || record.keywordSource.lowercase().contains(keyword)
+        val excludeOk = excludeKeyword.isBlank() || !record.keywordSource.lowercase().contains(excludeKeyword)
+        val accountOk = filters.selectedAccountId == null || filters.selectedAccountId in record.accountIds
+        val startOk = startAt == null || record.occurredAt >= startAt
+        val endOk = endAt == null || record.occurredAt <= endAt
+        val amountAbs = abs(record.amount)
+        val minOk = minAmount == null || amountAbs >= minAmount
+        val maxOk = maxAmount == null || amountAbs <= maxAmount
+        val directionOk = when (filters.amountDirectionFilter) {
+            AmountDirectionFilter.ALL -> true
+            AmountDirectionFilter.INCREASE -> record.amount > 0 && record.kind != HistoryRecordKind.TRANSFER
+            AmountDirectionFilter.DECREASE -> record.amount < 0 && record.kind != HistoryRecordKind.TRANSFER
         }
+        keywordOk && excludeOk && accountOk && startOk && endOk && minOk && maxOk && directionOk
     }
 }

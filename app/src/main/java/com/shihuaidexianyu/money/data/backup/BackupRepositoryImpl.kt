@@ -149,6 +149,7 @@ private fun BackupSettings.toDomain(): AppSettings =
         themeMode = ThemeMode.fromValue(themeMode),
         amountColorMode = AmountColorMode.fromValue(amountColorMode),
         lastHistoryKeyword = lastHistoryKeyword,
+        lastHistoryExcludeKeyword = lastHistoryExcludeKeyword,
         lastHistoryAccountId = lastHistoryAccountId,
         lastHistoryDateStartAt = lastHistoryDateStartAt,
         lastHistoryDateEndAt = lastHistoryDateEndAt,

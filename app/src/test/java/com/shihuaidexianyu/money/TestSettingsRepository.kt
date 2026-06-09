@@ -38,6 +38,7 @@ class TestSettingsRepository(
 
     override suspend fun updateLastHistoryFilters(
         keyword: String,
+        excludeKeyword: String,
         accountId: Long,
         dateStartAt: Long,
         dateEndAt: Long,
@@ -47,6 +48,7 @@ class TestSettingsRepository(
     ) {
         state.value = state.value.copy(
             lastHistoryKeyword = keyword,
+            lastHistoryExcludeKeyword = excludeKeyword,
             lastHistoryAccountId = accountId,
             lastHistoryDateStartAt = dateStartAt,
             lastHistoryDateEndAt = dateEndAt,

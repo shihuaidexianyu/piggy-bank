@@ -66,6 +66,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         HistoryScreen(
             state = state,
             onKeywordChange = viewModel::updateKeyword,
+            onExcludeKeywordChange = viewModel::updateExcludeKeyword,
             onAccountChange = viewModel::updateAccount,
             onDateRangeChange = viewModel::updateDateRange,
             onMinAmountChange = viewModel::updateMinAmount,

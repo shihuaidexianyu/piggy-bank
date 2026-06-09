@@ -34,6 +34,7 @@ data class BackupSettings(
     val themeMode: String,
     val amountColorMode: String,
     val lastHistoryKeyword: String,
+    val lastHistoryExcludeKeyword: String = "",
     val lastHistoryAccountId: Long,
     val lastHistoryDateStartAt: Long,
     val lastHistoryDateEndAt: Long,

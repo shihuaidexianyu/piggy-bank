@@ -21,6 +21,7 @@ interface SettingsRepository {
         updateAmountColorMode(settings.amountColorMode)
         updateLastHistoryFilters(
             keyword = settings.lastHistoryKeyword,
+            excludeKeyword = settings.lastHistoryExcludeKeyword,
             accountId = settings.lastHistoryAccountId,
             dateStartAt = settings.lastHistoryDateStartAt,
             dateEndAt = settings.lastHistoryDateEndAt,
@@ -32,6 +33,7 @@ interface SettingsRepository {
 
     suspend fun updateLastHistoryFilters(
         keyword: String,
+        excludeKeyword: String,
         accountId: Long,
         dateStartAt: Long,
         dateEndAt: Long,

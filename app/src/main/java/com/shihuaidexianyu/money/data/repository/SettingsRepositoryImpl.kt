@@ -52,6 +52,7 @@ class SettingsRepositoryImpl(
             it[Keys.ThemeMode] = settings.themeMode.value
             it[Keys.AmountColorMode] = settings.amountColorMode.value
             it[Keys.LastHistoryKeyword] = settings.lastHistoryKeyword
+            it[Keys.LastHistoryExcludeKeyword] = settings.lastHistoryExcludeKeyword
             it[Keys.LastHistoryAccountId] = settings.lastHistoryAccountId
             it[Keys.LastHistoryDateStartAt] = settings.lastHistoryDateStartAt
             it[Keys.LastHistoryDateEndAt] = settings.lastHistoryDateEndAt
@@ -63,6 +64,7 @@ class SettingsRepositoryImpl(
 
     override suspend fun updateLastHistoryFilters(
         keyword: String,
+        excludeKeyword: String,
         accountId: Long,
         dateStartAt: Long,
         dateEndAt: Long,
@@ -72,6 +74,7 @@ class SettingsRepositoryImpl(
     ) {
         context.appSettingsDataStore.edit {
             it[Keys.LastHistoryKeyword] = keyword
+            it[Keys.LastHistoryExcludeKeyword] = excludeKeyword
             it[Keys.LastHistoryAccountId] = accountId
             it[Keys.LastHistoryDateStartAt] = dateStartAt
             it[Keys.LastHistoryDateEndAt] = dateEndAt
@@ -89,6 +92,7 @@ class SettingsRepositoryImpl(
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             amountColorMode = AmountColorMode.fromValue(preferences[Keys.AmountColorMode]),
             lastHistoryKeyword = preferences[Keys.LastHistoryKeyword] ?: "",
+            lastHistoryExcludeKeyword = preferences[Keys.LastHistoryExcludeKeyword] ?: "",
             lastHistoryAccountId = preferences[Keys.LastHistoryAccountId] ?: -1L,
             lastHistoryDateStartAt = preferences[Keys.LastHistoryDateStartAt] ?: -1L,
             lastHistoryDateEndAt = preferences[Keys.LastHistoryDateEndAt] ?: -1L,
@@ -105,6 +109,7 @@ class SettingsRepositoryImpl(
         val ThemeMode = stringPreferencesKey("theme_mode")
         val AmountColorMode = stringPreferencesKey("amount_color_mode")
         val LastHistoryKeyword = stringPreferencesKey("last_history_keyword")
+        val LastHistoryExcludeKeyword = stringPreferencesKey("last_history_exclude_keyword")
         val LastHistoryAccountId = longPreferencesKey("last_history_account_id")
         val LastHistoryDateStartAt = longPreferencesKey("last_history_date_start_at")
         val LastHistoryDateEndAt = longPreferencesKey("last_history_date_end_at")

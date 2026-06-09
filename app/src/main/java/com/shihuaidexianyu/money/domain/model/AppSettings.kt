@@ -15,6 +15,7 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
     val lastHistoryKeyword: String = "",
+    val lastHistoryExcludeKeyword: String = "",
     val lastHistoryAccountId: Long = -1L,
     val lastHistoryDateStartAt: Long = -1L,
     val lastHistoryDateEndAt: Long = -1L,

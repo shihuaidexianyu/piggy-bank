@@ -70,6 +70,7 @@ private enum class HistoryDateField {
 fun HistoryScreen(
     state: HistoryUiState,
     onKeywordChange: (String) -> Unit,
+    onExcludeKeywordChange: (String) -> Unit,
     onAccountChange: (Long?) -> Unit,
     onDateRangeChange: (Long?, Long?) -> Unit,
     onMinAmountChange: (String) -> Unit,
@@ -267,7 +268,12 @@ fun HistoryScreen(
                 SearchField(
                     value = state.keyword,
                     onValueChange = onKeywordChange,
-                    placeholder = "搜索用途或备注",
+                    placeholder = "包含关键词",
+                )
+                SearchField(
+                    value = state.excludeKeyword,
+                    onValueChange = onExcludeKeywordChange,
+                    placeholder = "排除关键词",
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -286,6 +292,8 @@ fun HistoryScreen(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable {
                                 onAccountChange(null)
+                                onKeywordChange("")
+                                onExcludeKeywordChange("")
                                 onDateRangeChange(null, null)
                                 onMinAmountChange("")
                                 onMaxAmountChange("")
@@ -495,6 +503,8 @@ private fun hasActiveFilters(state: HistoryUiState): Boolean {
 
 private fun activeFilterCount(state: HistoryUiState): Int {
     return listOf(
+        state.keyword.isNotBlank(),
+        state.excludeKeyword.isNotBlank(),
         state.selectedAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
@@ -504,11 +514,10 @@ private fun activeFilterCount(state: HistoryUiState): Int {
 
 private fun activeFilterSummary(state: HistoryUiState): String? {
     val count = activeFilterCount(state)
-    return if (count == 0 && state.keyword.isBlank()) {
+    return if (count == 0) {
         null
     } else {
-        val filterText = if (count > 0) "$count 个筛选条件" else "关键词搜索"
-        "当前已启用$filterText"
+        "当前已启用$count 个筛选条件"
     }
 }
 

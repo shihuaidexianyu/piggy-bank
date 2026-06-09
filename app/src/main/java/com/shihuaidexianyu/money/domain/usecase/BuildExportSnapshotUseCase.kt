@@ -158,6 +158,7 @@ private fun AppSettings.toBackup(): BackupSettings =
         themeMode = themeMode.value,
         amountColorMode = amountColorMode.value,
         lastHistoryKeyword = lastHistoryKeyword,
+        lastHistoryExcludeKeyword = lastHistoryExcludeKeyword,
         lastHistoryAccountId = lastHistoryAccountId,
         lastHistoryDateStartAt = lastHistoryDateStartAt,
         lastHistoryDateEndAt = lastHistoryDateEndAt,
