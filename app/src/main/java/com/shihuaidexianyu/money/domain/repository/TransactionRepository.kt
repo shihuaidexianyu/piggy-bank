@@ -9,9 +9,12 @@ import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
 
-interface TransactionRepository {
+interface TransactionChangeRepository {
     fun observeChangeVersion(): Flow<Long>
     suspend fun <T> runInTransaction(block: suspend () -> T): T
+}
+
+interface CashFlowTransactionRepository {
     suspend fun insertCashFlowRecord(record: CashFlowRecord): Long
     suspend fun updateCashFlowRecord(record: CashFlowRecord)
     suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long)
@@ -22,7 +25,12 @@ interface TransactionRepository {
     suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
     suspend fun queryRecentCashFlowTemplates(direction: String, accountId: Long?, limit: Int): List<CashFlowTemplate>
     suspend fun queryActiveCashFlowRecordsByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecord>
+    suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord>
+    suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal>
+    suspend fun queryDailyCashFlowTotals(startAt: Long, endAt: Long, zoneOffsetSeconds: Int): List<CashFlowDailyTotal>
+}
 
+interface TransferTransactionRepository {
     suspend fun insertTransferRecord(record: TransferRecord): Long
     suspend fun updateTransferRecord(record: TransferRecord)
     suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long)
@@ -32,7 +40,9 @@ interface TransactionRepository {
     suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecord>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord>
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
+}
 
+interface BalanceUpdateTransactionRepository {
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord)
     suspend fun deleteBalanceUpdateRecord(id: Long)
@@ -42,7 +52,9 @@ interface TransactionRepository {
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
     suspend fun getLatestBalanceUpdateAtOrBefore(accountId: Long, occurredAt: Long): BalanceUpdateRecord?
+}
 
+interface BalanceAdjustmentTransactionRepository {
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
@@ -50,7 +62,9 @@ interface TransactionRepository {
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
     suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>
+}
 
+interface TransactionStatsRepository {
     suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long
@@ -62,7 +76,12 @@ interface TransactionRepository {
     suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long
     suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long
     suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long
-    suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord>
-    suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal>
-    suspend fun queryDailyCashFlowTotals(startAt: Long, endAt: Long, zoneOffsetSeconds: Int): List<CashFlowDailyTotal>
 }
+
+interface TransactionRepository :
+    TransactionChangeRepository,
+    CashFlowTransactionRepository,
+    TransferTransactionRepository,
+    BalanceUpdateTransactionRepository,
+    BalanceAdjustmentTransactionRepository,
+    TransactionStatsRepository

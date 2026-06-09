@@ -1,298 +1,95 @@
 package com.shihuaidexianyu.money
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
-import com.shihuaidexianyu.money.data.backup.BackupFileReader
-import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
-import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
-import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
-import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
-import com.shihuaidexianyu.money.data.db.MoneyDatabase
-import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
-import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.SettingsRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
-import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
-import com.shihuaidexianyu.money.domain.repository.BackupRepository
-import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
-import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
-import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
-import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
-import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
-import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
-import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
-import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
-import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
-import kotlinx.coroutines.runBlocking
+import com.shihuaidexianyu.money.di.DataGraph
+import com.shihuaidexianyu.money.di.UseCaseGraph
 
 class MoneyAppContainer(context: Context) {
-    private val appContext = context.applicationContext
-    private val moneyDatabase = MoneyDatabase.getInstance(appContext)
-
-    init {
-        runBlocking {
-            LegacyMoneyStoreImporter.importIfNeeded(
-                context = appContext,
-                database = moneyDatabase,
-            )
-        }
-    }
+    private val dataGraph = DataGraph(context)
+    private val useCaseGraph = UseCaseGraph(dataGraph)
 
     suspend fun seedDebugSampleDataIfNeeded() {
-        val isDebuggableApp = (appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (isDebuggableApp) {
-            DebugSampleDataSeeder.seedIfNeeded(moneyDatabase)
-        }
+        dataGraph.seedDebugSampleDataIfNeeded()
     }
 
-    val accountRepository: AccountRepository =
-        AccountRepositoryImpl(moneyDatabase.accountDao())
+    val accountRepository get() = dataGraph.accountRepository
 
-    val transactionRepository: TransactionRepository =
-        TransactionRepositoryImpl(
-            database = moneyDatabase,
-            cashFlowRecordDao = moneyDatabase.cashFlowRecordDao(),
-            transferRecordDao = moneyDatabase.transferRecordDao(),
-            balanceUpdateRecordDao = moneyDatabase.balanceUpdateRecordDao(),
-            balanceAdjustmentRecordDao = moneyDatabase.balanceAdjustmentRecordDao(),
-        )
+    val transactionRepository get() = dataGraph.transactionRepository
 
-    val settingsRepository: SettingsRepository =
-        SettingsRepositoryImpl(appContext)
+    val settingsRepository get() = dataGraph.settingsRepository
 
-    val accountReminderSettingsRepository: AccountReminderSettingsRepository =
-        AccountReminderSettingsRepositoryImpl(appContext)
+    val accountReminderSettingsRepository get() = dataGraph.accountReminderSettingsRepository
 
-    val recurringReminderRepository: RecurringReminderRepository =
-        RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
+    val recurringReminderRepository get() = dataGraph.recurringReminderRepository
 
-    val backupRepository: BackupRepository =
-        BackupRepositoryImpl(
-            database = moneyDatabase,
-            settingsRepository = settingsRepository,
-            accountReminderSettingsRepository = accountReminderSettingsRepository,
-        )
+    val backupRepository get() = dataGraph.backupRepository
 
-    val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-    )
+    val calculateCurrentBalanceUseCase get() = useCaseGraph.calculateCurrentBalanceUseCase
 
-    val calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(
-        transactionRepository = transactionRepository,
-    )
+    val calculateAccountBalancesUseCase get() = useCaseGraph.calculateAccountBalancesUseCase
 
-    val resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-    )
+    val resolveBalanceUpdateContextUseCase get() = useCaseGraph.resolveBalanceUpdateContextUseCase
 
-    val refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-    )
+    val refreshAccountActivityStateUseCase get() = useCaseGraph.refreshAccountActivityStateUseCase
 
-    val recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-    )
+    val recalculateBalanceUpdateChainUseCase get() = useCaseGraph.recalculateBalanceUpdateChainUseCase
 
-    val observeHomeDashboardUseCase = ObserveHomeDashboardUseCase(
-        accountReminderSettingsRepository = accountReminderSettingsRepository,
-        accountRepository = accountRepository,
-        recurringReminderRepository = recurringReminderRepository,
-        settingsRepository = settingsRepository,
-        transactionRepository = transactionRepository,
-        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
-        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
-    )
+    val observeHomeDashboardUseCase get() = useCaseGraph.observeHomeDashboardUseCase
 
-    val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
-        accountRepository = accountRepository,
-        settingsRepository = settingsRepository,
-        transactionRepository = transactionRepository,
-        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
-        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
-    )
+    val observeStatsDashboardUseCase get() = useCaseGraph.observeStatsDashboardUseCase
 
-    fun observeAccountDetailUseCase(accountId: Long): ObserveAccountDetailUseCase {
-        return ObserveAccountDetailUseCase(
-            accountId = accountId,
-            accountReminderSettingsRepository = accountReminderSettingsRepository,
-            accountRepository = accountRepository,
-            settingsRepository = settingsRepository,
-            transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
-        )
-    }
+    fun observeAccountDetailUseCase(accountId: Long) =
+        useCaseGraph.observeAccountDetailUseCase(accountId)
 
-    val createAccountUseCase = CreateAccountUseCase(
-        accountRepository = accountRepository,
-        accountReminderSettingsRepository = accountReminderSettingsRepository,
-    )
+    val createAccountUseCase get() = useCaseGraph.createAccountUseCase
 
-    val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val createCashFlowRecordUseCase get() = useCaseGraph.createCashFlowRecordUseCase
 
-    val createTransferRecordUseCase = CreateTransferRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val createTransferRecordUseCase get() = useCaseGraph.createTransferRecordUseCase
 
-    val updateCashFlowRecordUseCase = UpdateCashFlowRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val updateCashFlowRecordUseCase get() = useCaseGraph.updateCashFlowRecordUseCase
 
-    val deleteCashFlowRecordUseCase = DeleteCashFlowRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val deleteCashFlowRecordUseCase get() = useCaseGraph.deleteCashFlowRecordUseCase
 
-    val updateTransferRecordUseCase = UpdateTransferRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val updateTransferRecordUseCase get() = useCaseGraph.updateTransferRecordUseCase
 
-    val deleteTransferRecordUseCase = DeleteTransferRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val deleteTransferRecordUseCase get() = useCaseGraph.deleteTransferRecordUseCase
 
-    val updateBalanceUseCase = UpdateBalanceUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val updateBalanceUseCase get() = useCaseGraph.updateBalanceUseCase
 
-    val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val updateBalanceUpdateRecordUseCase get() = useCaseGraph.updateBalanceUpdateRecordUseCase
 
-    val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val deleteBalanceUpdateRecordUseCase get() = useCaseGraph.deleteBalanceUpdateRecordUseCase
 
-    val updateAccountUseCase = UpdateAccountUseCase(
-        accountRepository = accountRepository,
-        accountReminderSettingsRepository = accountReminderSettingsRepository,
-    )
+    val updateAccountUseCase get() = useCaseGraph.updateAccountUseCase
 
-    val archiveAccountUseCase = ArchiveAccountUseCase(
-        accountRepository = accountRepository,
-        reminderRepository = recurringReminderRepository,
-        transactionRepository = transactionRepository,
-    )
+    val archiveAccountUseCase get() = useCaseGraph.archiveAccountUseCase
 
-    val updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(
-        accountRepository = accountRepository,
-    )
+    val updateAccountDisplayOrderUseCase get() = useCaseGraph.updateAccountDisplayOrderUseCase
 
-    val createReminderUseCase = CreateReminderUseCase(
-        accountRepository = accountRepository,
-        reminderRepository = recurringReminderRepository,
-    )
+    val createReminderUseCase get() = useCaseGraph.createReminderUseCase
 
-    val updateReminderUseCase = UpdateReminderUseCase(
-        accountRepository = accountRepository,
-        reminderRepository = recurringReminderRepository,
-    )
+    val updateReminderUseCase get() = useCaseGraph.updateReminderUseCase
 
-    val deleteReminderUseCase = DeleteReminderUseCase(
-        accountRepository = accountRepository,
-        reminderRepository = recurringReminderRepository,
-    )
+    val deleteReminderUseCase get() = useCaseGraph.deleteReminderUseCase
 
-    val confirmReminderUseCase = ConfirmReminderUseCase(
-        accountRepository = accountRepository,
-        reminderRepository = recurringReminderRepository,
-    )
+    val confirmReminderUseCase get() = useCaseGraph.confirmReminderUseCase
 
-    val processDueReminderUseCase = ProcessDueReminderUseCase(
-        accountRepository = accountRepository,
-        transactionRepository = transactionRepository,
-        reminderRepository = recurringReminderRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
-        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
-    )
+    val processDueReminderUseCase get() = useCaseGraph.processDueReminderUseCase
 
-    val observeDueRemindersUseCase = ObserveDueRemindersUseCase(
-        reminderRepository = recurringReminderRepository,
-    )
+    val observeDueRemindersUseCase get() = useCaseGraph.observeDueRemindersUseCase
 
-    val buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
-        accountReminderSettingsRepository = accountReminderSettingsRepository,
-        accountRepository = accountRepository,
-        recurringReminderRepository = recurringReminderRepository,
-        settingsRepository = settingsRepository,
-        transactionRepository = transactionRepository,
-    )
+    val buildExportSnapshotUseCase get() = useCaseGraph.buildExportSnapshotUseCase
 
-    val buildExportJsonUseCase = BuildExportJsonUseCase(
-        buildExportSnapshotUseCase = buildExportSnapshotUseCase,
-    )
+    val buildExportJsonUseCase get() = useCaseGraph.buildExportJsonUseCase
 
-    val validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase()
+    val validateBackupSnapshotUseCase get() = useCaseGraph.validateBackupSnapshotUseCase
 
-    val importBackupUseCase = ImportBackupUseCase(
-        backupRepository = backupRepository,
-        validateBackupSnapshotUseCase = validateBackupSnapshotUseCase,
-    )
+    val importBackupUseCase get() = useCaseGraph.importBackupUseCase
 
-    val exportJsonFileWriter = ExportJsonFileWriter(appContext)
+    val exportJsonFileWriter get() = dataGraph.exportJsonFileWriter
 
-    val backupFileReader = BackupFileReader(appContext)
+    val backupFileReader get() = dataGraph.backupFileReader
 
-    val preImportBackupWriter = PreImportBackupWriter(appContext)
+    val preImportBackupWriter get() = dataGraph.preImportBackupWriter
 }
