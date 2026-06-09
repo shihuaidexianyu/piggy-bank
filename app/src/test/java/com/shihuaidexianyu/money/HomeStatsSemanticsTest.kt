@@ -12,7 +12,7 @@ import org.junit.Test
 
 class HomeStatsSemanticsTest {
     @Test
-    fun `current home stats include balance update delta in all inflow and outflow`() = runBlocking {
+    fun `stats split cash flow balance updates and manual adjustments`() = runBlocking {
         val repository = InMemoryTransactionRepository()
         val startAt = 1_000L
         val endAt = 10_000L
@@ -80,7 +80,11 @@ class HomeStatsSemanticsTest {
             ),
         )
 
-        assertEquals(2_300, repository.sumAllInflowBetween(startAt, endAt))
-        assertEquals(1_200, repository.sumAllOutflowBetween(startAt, endAt))
+        assertEquals(2_000L, repository.sumCashInflowBetween(startAt, endAt))
+        assertEquals(500L, repository.sumCashOutflowBetween(startAt, endAt))
+        assertEquals(300L, repository.sumBalanceUpdateIncreaseBetween(startAt, endAt))
+        assertEquals(700L, repository.sumBalanceUpdateDecreaseBetween(startAt, endAt))
+        assertEquals(400L, repository.sumManualAdjustmentIncreaseBetween(startAt, endAt))
+        assertEquals(0L, repository.sumManualAdjustmentDecreaseBetween(startAt, endAt))
     }
 }

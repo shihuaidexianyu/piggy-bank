@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import kotlin.math.roundToInt
@@ -244,7 +245,7 @@ private fun AssetFlowCard(state: StatsUiState) {
                 )
             }
             Text(
-                text = "转账不计入收支",
+                text = "转账不计入现金流",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
@@ -265,6 +266,10 @@ private fun AssetFlowCard(state: StatsUiState) {
             netAccent = netAccent,
             adjustmentAccent = adjustmentAccent,
         )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MoneyInlineLabelValue(label = "手动调整", value = state.manualAdjustmentText)
+            MoneyInlineLabelValue(label = "对账差额", value = state.reconciliationText)
+        }
     }
 }
 
@@ -374,14 +379,14 @@ private fun AssetFlowDiagram(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             FlowNode(
-                label = "收入",
+                label = "现金入账",
                 value = state.totalInflowFlowText,
                 accent = incomeAccent,
                 nodeHeight = nodeHeight,
                 modifier = Modifier.width(topNodeWidth),
             )
             FlowNode(
-                label = "支出",
+                label = "现金出账",
                 value = state.totalOutflowFlowText,
                 accent = expenseAccent,
                 nodeHeight = nodeHeight,
@@ -402,14 +407,14 @@ private fun AssetFlowDiagram(
                 modifier = Modifier.width(middleNodeWidth),
             )
             FlowNode(
-                label = "净流入",
+                label = "现金净额",
                 value = state.netCashFlowFlowText,
                 accent = netAccent,
                 nodeHeight = nodeHeight,
                 modifier = Modifier.width(middleNodeWidth),
             )
             FlowNode(
-                label = "资产调整",
+                label = "调账/对账",
                 value = state.assetAdjustmentFlowText,
                 accent = adjustmentAccent,
                 nodeHeight = nodeHeight,

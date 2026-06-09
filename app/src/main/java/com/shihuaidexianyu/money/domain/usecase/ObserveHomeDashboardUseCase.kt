@@ -23,15 +23,34 @@ import kotlinx.coroutines.flow.mapLatest
 data class HomeDashboardSnapshot(
     val settings: AppSettings,
     val totalAssets: Long,
-    val periodAssetChange: Long,
-    val periodNetInflow: Long,
-    val periodNetOutflow: Long,
+    val periodBreakdown: PeriodAssetBreakdown,
     val staleAccountCount: Int,
     val activeAccounts: List<Account>,
     val staleAccounts: List<Account>,
     val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminder>,
 )
+
+data class PeriodAssetBreakdown(
+    val openingAssets: Long,
+    val closingAssets: Long,
+    val assetChange: Long,
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val manualAdjustmentIncrease: Long,
+    val manualAdjustmentDecrease: Long,
+    val reconciliationIncrease: Long,
+    val reconciliationDecrease: Long,
+) {
+    val cashNet: Long
+        get() = cashInflow - cashOutflow
+
+    val manualAdjustmentNet: Long
+        get() = manualAdjustmentIncrease - manualAdjustmentDecrease
+
+    val reconciliationNet: Long
+        get() = reconciliationIncrease - reconciliationDecrease
+}
 
 class ObserveHomeDashboardUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
@@ -72,12 +91,35 @@ class ObserveHomeDashboardUseCase(
             .map { account ->
                 async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
             }
-        val inflowJob = async { transactionRepository.sumAllInflowBetween(range.startAtMillis, range.endAtMillis) }
-        val outflowJob = async { transactionRepository.sumAllOutflowBetween(range.startAtMillis, range.endAtMillis) }
+        val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startAtMillis, range.endAtMillis) }
+        val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startAtMillis, range.endAtMillis) }
+        val reconciliationIncreaseJob = async {
+            transactionRepository.sumBalanceUpdateIncreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val reconciliationDecreaseJob = async {
+            transactionRepository.sumBalanceUpdateDecreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val manualAdjustmentIncreaseJob = async {
+            transactionRepository.sumManualAdjustmentIncreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val manualAdjustmentDecreaseJob = async {
+            transactionRepository.sumManualAdjustmentDecreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
 
         val balances = balanceJob.await()
         val totalAssets = balances.values.sum()
         val openingTotalAssets = openingBalanceJobs.sumOf { it.await() }
+        val periodBreakdown = PeriodAssetBreakdown(
+            openingAssets = openingTotalAssets,
+            closingAssets = totalAssets,
+            assetChange = totalAssets - openingTotalAssets,
+            cashInflow = cashInflowJob.await(),
+            cashOutflow = cashOutflowJob.await(),
+            manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await(),
+            manualAdjustmentDecrease = manualAdjustmentDecreaseJob.await(),
+            reconciliationIncrease = reconciliationIncreaseJob.await(),
+            reconciliationDecrease = reconciliationDecreaseJob.await(),
+        )
         val staleAccounts = accounts.filter { account ->
             AccountStatusUtils.isStale(
                 account,
@@ -87,9 +129,7 @@ class ObserveHomeDashboardUseCase(
         HomeDashboardSnapshot(
             settings = settings,
             totalAssets = totalAssets,
-            periodAssetChange = totalAssets - openingTotalAssets,
-            periodNetInflow = inflowJob.await(),
-            periodNetOutflow = outflowJob.await(),
+            periodBreakdown = periodBreakdown,
             staleAccountCount = staleAccounts.size,
             activeAccounts = accounts,
             staleAccounts = staleAccounts,

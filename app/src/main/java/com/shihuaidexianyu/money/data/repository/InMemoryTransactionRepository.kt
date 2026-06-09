@@ -255,25 +255,37 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sumOf { it.delta }
     }
 
-    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
-        val cashFlowInflow = queryAllActiveCashFlowRecords()
+    override suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long {
+        return queryAllActiveCashFlowRecords()
             .filter { it.direction == CashFlowDirection.INFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
-        val balanceUpdateInflow = balanceUpdates
-            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
-            .sumOf { it.delta }
-        return cashFlowInflow + balanceUpdateInflow
     }
 
-    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
-        val cashFlowOutflow = queryAllActiveCashFlowRecords()
+    override suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long {
+        return queryAllActiveCashFlowRecords()
             .filter { it.direction == CashFlowDirection.OUTFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.amount }
-        val balanceUpdateOutflow = balanceUpdates
+    }
+
+    override suspend fun sumBalanceUpdateIncreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceUpdates
+            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .sumOf { it.delta }
+
+    override suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceUpdates
             .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { -it.delta }
-        return cashFlowOutflow + balanceUpdateOutflow
-    }
+
+    override suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long =
+        adjustments
+            .filter { it.sourceUpdateRecordId == 0L && it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .sumOf { it.delta }
+
+    override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
+        adjustments
+            .filter { it.sourceUpdateRecordId == 0L && it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .sumOf { -it.delta }
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> {
         return queryAllActiveCashFlowRecords()

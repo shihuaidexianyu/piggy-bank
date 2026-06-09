@@ -177,15 +177,23 @@ class TransactionRepositoryImpl(
 
     override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long = balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startAt, endAt)
 
-    override suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long {
-        return cashFlowRecordDao.sumAllInflowBetween(startAt, endAt) +
-            balanceUpdateRecordDao.sumPositiveDeltaBetween(startAt, endAt)
-    }
+    override suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long =
+        cashFlowRecordDao.sumCashInflowBetween(startAt, endAt)
 
-    override suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long {
-        return cashFlowRecordDao.sumAllOutflowBetween(startAt, endAt) +
-            balanceUpdateRecordDao.sumNegativeDeltaBetween(startAt, endAt)
-    }
+    override suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long =
+        cashFlowRecordDao.sumCashOutflowBetween(startAt, endAt)
+
+    override suspend fun sumBalanceUpdateIncreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceUpdateRecordDao.sumPositiveDeltaBetween(startAt, endAt)
+
+    override suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceUpdateRecordDao.sumNegativeDeltaBetween(startAt, endAt)
+
+    override suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceAdjustmentRecordDao.sumPositiveManualAdjustmentBetween(startAt, endAt)
+
+    override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
+        balanceAdjustmentRecordDao.sumNegativeManualAdjustmentBetween(startAt, endAt)
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startAt, endAt).map { it.toDomain() }
 

@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
@@ -70,6 +71,16 @@ class ObserveStatsDashboardUseCaseTest {
                 createdAt = now,
             ),
         )
+        transactionRepository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = accountId,
+                actualBalance = 12_500,
+                systemBalanceBeforeUpdate = 12_000,
+                delta = 500,
+                occurredAt = now + 3_000,
+                createdAt = now,
+            ),
+        )
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
@@ -89,12 +100,14 @@ class ObserveStatsDashboardUseCaseTest {
         ).first()
 
         assertEquals(10_000, snapshot.openingAssets)
-        assertEquals(12_000, snapshot.closingAssets)
+        assertEquals(12_500, snapshot.closingAssets)
         assertEquals(3_000, snapshot.totalInflow)
         assertEquals(800, snapshot.totalOutflow)
         assertEquals(2_200, snapshot.netCashFlow)
-        assertEquals(2_000, snapshot.assetChange)
-        assertEquals(-200, snapshot.assetAdjustment)
+        assertEquals(2_500, snapshot.assetChange)
+        assertEquals(300, snapshot.assetAdjustment)
+        assertEquals(-200, snapshot.manualAdjustmentNet)
+        assertEquals(500, snapshot.reconciliationNet)
         assertEquals(
             snapshot.closingAssets,
             snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,

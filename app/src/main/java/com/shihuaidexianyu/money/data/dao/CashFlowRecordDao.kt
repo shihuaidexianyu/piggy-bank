@@ -102,7 +102,7 @@ interface CashFlowRecordDao {
             AND occurredAt <= :endAt
         """,
     )
-    suspend fun sumAllInflowBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long
 
     @Query(
         """
@@ -113,7 +113,7 @@ interface CashFlowRecordDao {
             AND occurredAt <= :endAt
         """,
     )
-    suspend fun sumAllOutflowBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long
 
     @Query(
         """

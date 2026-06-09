@@ -193,7 +193,7 @@ fun SettingsScreen(
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "首页默认周期",
-                    subtitle = "控制首页净流入和净流出的默认周期",
+                    subtitle = "控制首页统计的默认周期",
                     trailing = settings.homePeriod.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.HomePeriod },
                 )

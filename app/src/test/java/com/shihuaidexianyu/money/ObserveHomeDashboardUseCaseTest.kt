@@ -28,7 +28,7 @@ import org.junit.Test
 
 class ObserveHomeDashboardUseCaseTest {
     @Test
-    fun `home dashboard counts balance update delta into inflow and outflow`() = runBlocking {
+    fun `home dashboard keeps cash flow and reconciliation amounts separate`() = runBlocking {
         val now = System.currentTimeMillis()
         val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
         val accountRepository = InMemoryAccountRepository()
@@ -97,8 +97,10 @@ class ObserveHomeDashboardUseCaseTest {
 
         val snapshot = useCase().first()
 
-        assertEquals(2_300, snapshot.periodNetInflow)
-        assertEquals(1_200, snapshot.periodNetOutflow)
+        assertEquals(2_000L, snapshot.periodBreakdown.cashInflow)
+        assertEquals(500L, snapshot.periodBreakdown.cashOutflow)
+        assertEquals(300L, snapshot.periodBreakdown.reconciliationIncrease)
+        assertEquals(700L, snapshot.periodBreakdown.reconciliationDecrease)
     }
 
     @Test

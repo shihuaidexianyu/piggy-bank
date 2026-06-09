@@ -31,6 +31,8 @@ data class StatsUiState(
     val netCashFlow: Long = 0L,
     val assetChange: Long = 0L,
     val assetAdjustment: Long = 0L,
+    val manualAdjustmentNet: Long = 0L,
+    val reconciliationNet: Long = 0L,
     val openingAssetsText: String = "",
     val closingAssetsText: String = "",
     val totalInflowText: String = "",
@@ -38,12 +40,16 @@ data class StatsUiState(
     val netCashFlowText: String = "",
     val assetChangeText: String = "",
     val assetAdjustmentText: String = "",
+    val manualAdjustmentText: String = "",
+    val reconciliationText: String = "",
     val openingAssetsFlowText: String = "",
     val closingAssetsFlowText: String = "",
     val totalInflowFlowText: String = "",
     val totalOutflowFlowText: String = "",
     val netCashFlowFlowText: String = "",
     val assetAdjustmentFlowText: String = "",
+    val manualAdjustmentFlowText: String = "",
+    val reconciliationFlowText: String = "",
 )
 
 class StatsViewModel(
@@ -117,6 +123,8 @@ class StatsViewModel(
             netCashFlow = netCashFlow,
             assetChange = assetChange,
             assetAdjustment = assetAdjustment,
+            manualAdjustmentNet = manualAdjustmentNet,
+            reconciliationNet = reconciliationNet,
             openingAssetsText = AmountFormatter.format(openingAssets, settings),
             closingAssetsText = AmountFormatter.format(closingAssets, settings),
             totalInflowText = AmountFormatter.format(totalInflow, settings),
@@ -124,12 +132,16 @@ class StatsViewModel(
             netCashFlowText = formatSignedAmount(netCashFlow, settings),
             assetChangeText = formatSignedAmount(assetChange, settings),
             assetAdjustmentText = formatSignedAmount(assetAdjustment, settings),
+            manualAdjustmentText = formatSignedAmount(manualAdjustmentNet, settings),
+            reconciliationText = formatSignedAmount(reconciliationNet, settings),
             openingAssetsFlowText = formatFlowAmount(openingAssets),
             closingAssetsFlowText = formatFlowAmount(closingAssets),
             totalInflowFlowText = formatFlowAmount(totalInflow),
             totalOutflowFlowText = formatFlowAmount(totalOutflow),
             netCashFlowFlowText = formatFlowAmount(netCashFlow),
             assetAdjustmentFlowText = formatFlowAmount(assetAdjustment),
+            manualAdjustmentFlowText = formatFlowAmount(manualAdjustmentNet),
+            reconciliationFlowText = formatFlowAmount(reconciliationNet),
         )
     }
 }

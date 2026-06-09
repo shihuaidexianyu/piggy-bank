@@ -52,6 +52,9 @@ data class StatsDashboardSnapshot(
     val netCashFlow: Long,
     val assetChange: Long,
     val assetAdjustment: Long,
+    val manualAdjustmentNet: Long,
+    val reconciliationNet: Long,
+    val breakdown: PeriodAssetBreakdown,
     val purposeBreakdown: List<StatsPurposeBreakdown>,
     val dailyPoints: List<StatsDailyPoint>,
     val accountBalances: List<StatsAccountBalance>,
@@ -108,6 +111,18 @@ class ObserveStatsDashboardUseCase(
                 zoneOffsetSeconds = zoneOffsetSeconds,
             )
         }
+        val manualAdjustmentIncreaseJob = async {
+            transactionRepository.sumManualAdjustmentIncreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val manualAdjustmentDecreaseJob = async {
+            transactionRepository.sumManualAdjustmentDecreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val reconciliationIncreaseJob = async {
+            transactionRepository.sumBalanceUpdateIncreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val reconciliationDecreaseJob = async {
+            transactionRepository.sumBalanceUpdateDecreaseBetween(range.startAtMillis, range.endAtMillis)
+        }
         val balanceJob = async { calculateAccountBalancesUseCase(accounts, range.endAtMillis) }
         val openingBalanceJobs = accounts
             .filter { it.createdAt <= startBaselineAt }
@@ -132,6 +147,21 @@ class ObserveStatsDashboardUseCase(
         val openingAssets = openingBalanceJobs.sumOf { it.await() }
         val netCashFlow = totalInflow - totalOutflow
         val assetChange = currentAssets - openingAssets
+        val manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await()
+        val manualAdjustmentDecrease = manualAdjustmentDecreaseJob.await()
+        val reconciliationIncrease = reconciliationIncreaseJob.await()
+        val reconciliationDecrease = reconciliationDecreaseJob.await()
+        val breakdown = PeriodAssetBreakdown(
+            openingAssets = openingAssets,
+            closingAssets = currentAssets,
+            assetChange = assetChange,
+            cashInflow = totalInflow,
+            cashOutflow = totalOutflow,
+            manualAdjustmentIncrease = manualAdjustmentIncrease,
+            manualAdjustmentDecrease = manualAdjustmentDecrease,
+            reconciliationIncrease = reconciliationIncrease,
+            reconciliationDecrease = reconciliationDecrease,
+        )
 
         StatsDashboardSnapshot(
             settings = settings,
@@ -143,7 +173,10 @@ class ObserveStatsDashboardUseCase(
             totalOutflow = totalOutflow,
             netCashFlow = netCashFlow,
             assetChange = assetChange,
-            assetAdjustment = assetChange - netCashFlow,
+            assetAdjustment = breakdown.manualAdjustmentNet + breakdown.reconciliationNet,
+            manualAdjustmentNet = breakdown.manualAdjustmentNet,
+            reconciliationNet = breakdown.reconciliationNet,
+            breakdown = breakdown,
             purposeBreakdown = outflowTotals.map {
                 StatsPurposeBreakdown(purpose = it.purpose, amount = it.amount)
             },

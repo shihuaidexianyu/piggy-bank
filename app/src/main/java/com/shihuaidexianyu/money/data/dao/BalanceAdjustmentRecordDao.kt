@@ -62,6 +62,28 @@ interface BalanceAdjustmentRecordDao {
     )
     suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
 
+    @Query(
+        """
+        SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
+        WHERE sourceUpdateRecordId = 0
+            AND delta > 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumPositiveManualAdjustmentBetween(startAt: Long, endAt: Long): Long
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(-delta), 0) FROM balance_adjustment_records
+        WHERE sourceUpdateRecordId = 0
+            AND delta < 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun sumNegativeManualAdjustmentBetween(startAt: Long, endAt: Long): Long
+
     @Query("DELETE FROM balance_adjustment_records")
     suspend fun deleteAll()
 }
