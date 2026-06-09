@@ -20,6 +20,7 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
+import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
@@ -175,11 +176,13 @@ class BackupJsonCodecTest {
         reminderSettingsRepository: InMemoryAccountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
     ): BuildExportJsonUseCase {
         return BuildExportJsonUseCase(
-            accountReminderSettingsRepository = reminderSettingsRepository,
-            accountRepository = accountRepository,
-            recurringReminderRepository = reminderRepository,
-            settingsRepository = settingsRepository,
-            transactionRepository = transactionRepository,
+            buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
+                accountReminderSettingsRepository = reminderSettingsRepository,
+                accountRepository = accountRepository,
+                recurringReminderRepository = reminderRepository,
+                settingsRepository = settingsRepository,
+                transactionRepository = transactionRepository,
+            ),
         )
     }
 }

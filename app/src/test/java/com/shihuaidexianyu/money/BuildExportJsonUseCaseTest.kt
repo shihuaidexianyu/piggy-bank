@@ -1,11 +1,11 @@
 package com.shihuaidexianyu.money
 
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
@@ -13,18 +13,14 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.model.TransferRecord
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
+import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
@@ -129,80 +125,33 @@ class BuildExportJsonUseCaseTest {
         )
 
         val json = BuildExportJsonUseCase(
-            accountReminderSettingsRepository = reminderSettingsRepository,
-            accountRepository = accountRepository,
-            recurringReminderRepository = reminderRepository,
-            settingsRepository = FakeSettingsRepository(AppSettings(currencySymbol = "元")),
-            transactionRepository = transactionRepository,
+            buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
+                accountReminderSettingsRepository = reminderSettingsRepository,
+                accountRepository = accountRepository,
+                recurringReminderRepository = reminderRepository,
+                settingsRepository = TestSettingsRepository(AppSettings(currencySymbol = "元")),
+                transactionRepository = transactionRepository,
+            ),
         )(exportedAt = 42L)
 
-        assertContainsJson(json, "\"metadata\":{\"schemaVersion\":1,\"databaseVersion\":7,\"exportedAt\":42}")
-        assertContainsJson(json, "\"settings\":{\"homePeriod\":\"week\",\"currencySymbol\":\"元\"")
-        assertContainsJson(json, "\"accounts\":[")
-        assertContainsJson(json, "\"name\":\"旧账户\"")
-        assertContainsJson(json, "\"initialBalance\":12345")
-        assertContainsJson(json, "\"cashFlowRecords\":[")
-        assertContainsJson(json, "\"amount\":123")
-        assertContainsJson(json, "\"isDeleted\":true")
-        assertContainsJson(json, "\"transferRecords\":[")
-        assertContainsJson(json, "\"balanceUpdateRecords\":[")
-        assertContainsJson(json, "\"actualBalance\":12000")
-        assertContainsJson(json, "\"balanceAdjustmentRecords\":[")
-        assertContainsJson(json, "\"sourceUpdateRecordId\":99")
-        assertContainsJson(json, "\"recurringReminders\":[")
-        assertContainsJson(json, "\"accountReminderConfigs\":[")
-        assertContainsJson(json, "\"weekday\":\"monday\",\"hour\":8,\"minute\":30")
-    }
-
-    private fun assertContainsJson(json: String, expected: String) {
-        assertTrue(json.contains(expected), "Missing JSON fragment: $expected\n$json")
-    }
-
-    private class FakeSettingsRepository(
-        initial: AppSettings,
-    ) : SettingsRepository {
-        private val state = MutableStateFlow(initial)
-
-        override fun observeSettings(): Flow<AppSettings> = state.asStateFlow()
-
-        override suspend fun updateHomePeriod(period: HomePeriod) {
-            state.value = state.value.copy(homePeriod = period)
-        }
-
-        override suspend fun updateCurrencySymbol(symbol: String) {
-            state.value = state.value.copy(currencySymbol = symbol)
-        }
-
-        override suspend fun updateShowStaleMark(show: Boolean) {
-            state.value = state.value.copy(showStaleMark = show)
-        }
-
-        override suspend fun updateThemeMode(themeMode: ThemeMode) {
-            state.value = state.value.copy(themeMode = themeMode)
-        }
-
-        override suspend fun updateAmountColorMode(amountColorMode: AmountColorMode) {
-            state.value = state.value.copy(amountColorMode = amountColorMode)
-        }
-
-        override suspend fun updateLastHistoryFilters(
-            keyword: String,
-            accountId: Long,
-            dateStartAt: Long,
-            dateEndAt: Long,
-            minAmountText: String,
-            maxAmountText: String,
-            amountDirection: String,
-        ) {
-            state.value = state.value.copy(
-                lastHistoryKeyword = keyword,
-                lastHistoryAccountId = accountId,
-                lastHistoryDateStartAt = dateStartAt,
-                lastHistoryDateEndAt = dateEndAt,
-                lastHistoryMinAmountText = minAmountText,
-                lastHistoryMaxAmountText = maxAmountText,
-                lastHistoryAmountDirection = amountDirection,
-            )
-        }
+        val snapshot = BackupJsonCodec.decode(json)
+        assertEquals(1, snapshot.metadata.schemaVersion)
+        assertEquals(7, snapshot.metadata.databaseVersion)
+        assertEquals(42L, snapshot.metadata.exportedAt)
+        assertEquals("元", snapshot.settings.currencySymbol)
+        assertEquals(listOf(accountId, archivedAccountId), snapshot.accounts.map { it.id })
+        assertTrue(snapshot.accounts.first { it.id == archivedAccountId }.isArchived)
+        assertEquals(12_345L, snapshot.accounts.first { it.id == accountId }.initialBalance)
+        assertEquals(1, snapshot.cashFlowRecords.size)
+        assertEquals(123L, snapshot.cashFlowRecords.single().amount)
+        assertTrue(snapshot.cashFlowRecords.single().isDeleted)
+        assertEquals(1, snapshot.transferRecords.size)
+        assertTrue(snapshot.transferRecords.single().isDeleted)
+        assertEquals(12_000L, snapshot.balanceUpdateRecords.single().actualBalance)
+        assertEquals(setOf(0L, 99L), snapshot.balanceAdjustmentRecords.map { it.sourceUpdateRecordId }.toSet())
+        assertEquals(888L, snapshot.recurringReminders.single().amount)
+        assertEquals("monday", snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.weekday)
+        assertEquals(8, snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.hour)
+        assertEquals(30, snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.minute)
     }
 }

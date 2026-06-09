@@ -18,6 +18,7 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
+import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
@@ -248,12 +249,16 @@ class MoneyAppContainer(context: Context) {
         reminderRepository = recurringReminderRepository,
     )
 
-    val buildExportJsonUseCase = BuildExportJsonUseCase(
+    val buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
         accountReminderSettingsRepository = accountReminderSettingsRepository,
         accountRepository = accountRepository,
         recurringReminderRepository = recurringReminderRepository,
         settingsRepository = settingsRepository,
         transactionRepository = transactionRepository,
+    )
+
+    val buildExportJsonUseCase = BuildExportJsonUseCase(
+        buildExportSnapshotUseCase = buildExportSnapshotUseCase,
     )
 
     val exportJsonFileWriter = ExportJsonFileWriter(appContext)
