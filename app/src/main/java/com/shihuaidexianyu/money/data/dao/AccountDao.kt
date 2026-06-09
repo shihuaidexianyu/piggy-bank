@@ -13,6 +13,9 @@ interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(account: AccountEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(accounts: List<AccountEntity>)
+
     @Update
     suspend fun update(account: AccountEntity)
 
@@ -56,5 +59,8 @@ interface AccountDao {
 
     @Query("SELECT COALESCE(MAX(displayOrder), -1) + 1 FROM accounts WHERE isArchived = 0")
     suspend fun nextDisplayOrder(): Int
+
+    @Query("DELETE FROM accounts")
+    suspend fun deleteAll()
 }
 

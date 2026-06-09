@@ -44,6 +44,23 @@ class SettingsRepositoryImpl(
         context.appSettingsDataStore.edit { it[Keys.AmountColorMode] = amountColorMode.value }
     }
 
+    override suspend fun replaceSettings(settings: AppSettings) {
+        context.appSettingsDataStore.edit {
+            it[Keys.HomePeriod] = settings.homePeriod.value
+            it[Keys.CurrencySymbol] = normalizeCurrencySymbol(settings.currencySymbol)
+            it[Keys.ShowStaleMark] = settings.showStaleMark
+            it[Keys.ThemeMode] = settings.themeMode.value
+            it[Keys.AmountColorMode] = settings.amountColorMode.value
+            it[Keys.LastHistoryKeyword] = settings.lastHistoryKeyword
+            it[Keys.LastHistoryAccountId] = settings.lastHistoryAccountId
+            it[Keys.LastHistoryDateStartAt] = settings.lastHistoryDateStartAt
+            it[Keys.LastHistoryDateEndAt] = settings.lastHistoryDateEndAt
+            it[Keys.LastHistoryMinAmountText] = settings.lastHistoryMinAmountText
+            it[Keys.LastHistoryMaxAmountText] = settings.lastHistoryMaxAmountText
+            it[Keys.LastHistoryAmountDirection] = settings.lastHistoryAmountDirection
+        }
+    }
+
     override suspend fun updateLastHistoryFilters(
         keyword: String,
         accountId: Long,

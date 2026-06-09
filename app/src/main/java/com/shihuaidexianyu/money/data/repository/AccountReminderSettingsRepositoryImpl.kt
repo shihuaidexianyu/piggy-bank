@@ -34,20 +34,18 @@ class AccountReminderSettingsRepositoryImpl(
 
     override suspend fun updateReminderConfig(accountId: Long, config: BalanceUpdateReminderConfig) {
         context.accountReminderSettingsDataStore.edit { preferences ->
-            val weekdayKey = weekdayKeyFor(accountId)
-            val timeKey = timeKeyFor(accountId)
-            if (config.weekday.value == DEFAULT_BALANCE_UPDATE_REMINDER_WEEKDAY) {
-                preferences.remove(weekdayKey)
-            } else {
-                preferences[weekdayKey] = config.weekday.value
-            }
+            writeReminderConfig(preferences, accountId, config)
+        }
+    }
 
-            val defaultTime = defaultTimeValue()
-            val currentTime = config.timeText
-            if (currentTime == defaultTime) {
-                preferences.remove(timeKey)
-            } else {
-                preferences[timeKey] = currentTime
+    override suspend fun replaceReminderConfigs(configs: Map<Long, BalanceUpdateReminderConfig>) {
+        context.accountReminderSettingsDataStore.edit { preferences ->
+            preferences.asMap().keys
+                .filter { it.name.startsWith(WEEKDAY_KEY_PREFIX) || it.name.startsWith(TIME_KEY_PREFIX) }
+                .map { stringPreferencesKey(it.name) }
+                .forEach { preferences.remove(it) }
+            configs.forEach { (accountId, config) ->
+                writeReminderConfig(preferences, accountId, config)
             }
         }
     }
@@ -85,6 +83,28 @@ class AccountReminderSettingsRepositoryImpl(
 
     private fun defaultTimeValue(): String {
         return "${DEFAULT_BALANCE_UPDATE_REMINDER_HOUR.toString().padStart(2, '0')}:${DEFAULT_BALANCE_UPDATE_REMINDER_MINUTE.toString().padStart(2, '0')}"
+    }
+
+    private fun writeReminderConfig(
+        preferences: androidx.datastore.preferences.core.MutablePreferences,
+        accountId: Long,
+        config: BalanceUpdateReminderConfig,
+    ) {
+        val weekdayKey = weekdayKeyFor(accountId)
+        val timeKey = timeKeyFor(accountId)
+        if (config.weekday.value == DEFAULT_BALANCE_UPDATE_REMINDER_WEEKDAY) {
+            preferences.remove(weekdayKey)
+        } else {
+            preferences[weekdayKey] = config.weekday.value
+        }
+
+        val defaultTime = defaultTimeValue()
+        val currentTime = config.timeText
+        if (currentTime == defaultTime) {
+            preferences.remove(timeKey)
+        } else {
+            preferences[timeKey] = currentTime
+        }
     }
 
     private fun weekdayKeyFor(accountId: Long) = stringPreferencesKey("$WEEKDAY_KEY_PREFIX$accountId")

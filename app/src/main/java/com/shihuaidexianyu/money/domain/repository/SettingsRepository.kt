@@ -13,6 +13,23 @@ interface SettingsRepository {
     suspend fun updateShowStaleMark(show: Boolean)
     suspend fun updateThemeMode(themeMode: ThemeMode)
     suspend fun updateAmountColorMode(amountColorMode: AmountColorMode)
+    suspend fun replaceSettings(settings: AppSettings) {
+        updateHomePeriod(settings.homePeriod)
+        updateCurrencySymbol(settings.currencySymbol)
+        updateShowStaleMark(settings.showStaleMark)
+        updateThemeMode(settings.themeMode)
+        updateAmountColorMode(settings.amountColorMode)
+        updateLastHistoryFilters(
+            keyword = settings.lastHistoryKeyword,
+            accountId = settings.lastHistoryAccountId,
+            dateStartAt = settings.lastHistoryDateStartAt,
+            dateEndAt = settings.lastHistoryDateEndAt,
+            minAmountText = settings.lastHistoryMinAmountText,
+            maxAmountText = settings.lastHistoryMaxAmountText,
+            amountDirection = settings.lastHistoryAmountDirection,
+        )
+    }
+
     suspend fun updateLastHistoryFilters(
         keyword: String,
         accountId: Long,

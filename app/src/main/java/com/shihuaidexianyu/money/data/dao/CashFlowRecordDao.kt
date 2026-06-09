@@ -13,6 +13,9 @@ interface CashFlowRecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: CashFlowRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(records: List<CashFlowRecordEntity>)
+
     @Update
     suspend fun update(record: CashFlowRecordEntity)
 
@@ -160,4 +163,7 @@ interface CashFlowRecordDao {
         endAt: Long,
         zoneOffsetSeconds: Int,
     ): List<CashFlowDailyTotalRow>
+
+    @Query("DELETE FROM cash_flow_records")
+    suspend fun deleteAll()
 }

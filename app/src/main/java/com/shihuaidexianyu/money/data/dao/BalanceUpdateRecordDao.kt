@@ -13,6 +13,9 @@ interface BalanceUpdateRecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: BalanceUpdateRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(records: List<BalanceUpdateRecordEntity>)
+
     @Update
     suspend fun update(record: BalanceUpdateRecordEntity)
 
@@ -88,4 +91,7 @@ interface BalanceUpdateRecordDao {
         """,
     )
     suspend fun getLatestForAccount(accountId: Long): BalanceUpdateRecordEntity?
+
+    @Query("DELETE FROM balance_update_records")
+    suspend fun deleteAll()
 }

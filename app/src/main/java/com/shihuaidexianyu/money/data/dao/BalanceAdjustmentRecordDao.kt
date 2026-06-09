@@ -13,6 +13,9 @@ interface BalanceAdjustmentRecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: BalanceAdjustmentRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(records: List<BalanceAdjustmentRecordEntity>)
+
     @Update
     suspend fun update(record: BalanceAdjustmentRecordEntity)
 
@@ -58,4 +61,7 @@ interface BalanceAdjustmentRecordDao {
         """,
     )
     suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
+
+    @Query("DELETE FROM balance_adjustment_records")
+    suspend fun deleteAll()
 }

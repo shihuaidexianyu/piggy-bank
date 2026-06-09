@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
 import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
@@ -13,6 +14,7 @@ import com.shihuaidexianyu.money.data.repository.SettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -30,6 +32,7 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
@@ -44,6 +47,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import kotlinx.coroutines.runBlocking
 
 class MoneyAppContainer(context: Context) {
@@ -86,6 +90,13 @@ class MoneyAppContainer(context: Context) {
 
     val recurringReminderRepository: RecurringReminderRepository =
         RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
+
+    val backupRepository: BackupRepository =
+        BackupRepositoryImpl(
+            database = moneyDatabase,
+            settingsRepository = settingsRepository,
+            accountReminderSettingsRepository = accountReminderSettingsRepository,
+        )
 
     val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
         accountRepository = accountRepository,
@@ -259,6 +270,13 @@ class MoneyAppContainer(context: Context) {
 
     val buildExportJsonUseCase = BuildExportJsonUseCase(
         buildExportSnapshotUseCase = buildExportSnapshotUseCase,
+    )
+
+    val validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase()
+
+    val importBackupUseCase = ImportBackupUseCase(
+        backupRepository = backupRepository,
+        validateBackupSnapshotUseCase = validateBackupSnapshotUseCase,
     )
 
     val exportJsonFileWriter = ExportJsonFileWriter(appContext)

@@ -13,6 +13,9 @@ interface RecurringReminderDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(reminder: RecurringReminderEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(reminders: List<RecurringReminderEntity>)
+
     @Update
     suspend fun update(reminder: RecurringReminderEntity)
 
@@ -45,4 +48,7 @@ interface RecurringReminderDao {
         """,
     )
     suspend fun queryDue(now: Long): List<RecurringReminderEntity>
+
+    @Query("DELETE FROM recurring_reminders")
+    suspend fun deleteAll()
 }

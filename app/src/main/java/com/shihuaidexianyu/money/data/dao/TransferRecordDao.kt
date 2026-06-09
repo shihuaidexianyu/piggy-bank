@@ -13,6 +13,9 @@ interface TransferRecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: TransferRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(records: List<TransferRecordEntity>)
+
     @Update
     suspend fun update(record: TransferRecordEntity)
 
@@ -86,4 +89,7 @@ interface TransferRecordDao {
         """,
     )
     suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
+
+    @Query("DELETE FROM transfer_records")
+    suspend fun deleteAll()
 }

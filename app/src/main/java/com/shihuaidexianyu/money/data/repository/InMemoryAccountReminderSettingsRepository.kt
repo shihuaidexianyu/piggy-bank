@@ -20,5 +20,9 @@ class InMemoryAccountReminderSettingsRepository : AccountReminderSettingsReposit
             reminderConfigs.value + (accountId to config)
         }
     }
+
+    override suspend fun replaceReminderConfigs(configs: Map<Long, BalanceUpdateReminderConfig>) {
+        reminderConfigs.value = configs.filterValues { it != BalanceUpdateReminderConfig() }
+    }
 }
 
