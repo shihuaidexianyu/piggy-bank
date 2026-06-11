@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.domain.repository
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.CashFlowTemplate
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -23,7 +22,6 @@ interface CashFlowTransactionRepository {
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord>
     suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
-    suspend fun queryRecentCashFlowTemplates(direction: String, accountId: Long?, limit: Int): List<CashFlowTemplate>
     suspend fun queryActiveCashFlowRecordsByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecord>
     suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord>
     suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal>
@@ -51,16 +49,14 @@ interface BalanceUpdateTransactionRepository {
     suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
-    suspend fun getLatestBalanceUpdateAtOrBefore(accountId: Long, occurredAt: Long): BalanceUpdateRecord?
 }
 
 interface BalanceAdjustmentTransactionRepository {
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
-    suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long)
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
-    suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord>
+    suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>
 }
 

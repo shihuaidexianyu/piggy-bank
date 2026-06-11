@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.userMessage
+import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,6 +110,14 @@ class RecordTransferViewModel(
 
     fun updateAmount(value: String) {
         _uiState.value = _uiState.value.copy(amountText = value)
+    }
+
+    fun useAllFromAccountBalance() {
+        val state = _uiState.value
+        val balance = state.accounts.firstOrNull { it.id == state.fromAccountId }?.balance ?: return
+        if (balance > 0L) {
+            _uiState.value = state.copy(amountText = AmountFormatter.formatPlain(balance))
+        }
     }
 
     fun updateNote(value: String) {

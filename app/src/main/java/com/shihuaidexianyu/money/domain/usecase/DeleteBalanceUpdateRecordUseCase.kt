@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class DeleteBalanceUpdateRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(recordId: Long) {
@@ -14,9 +13,7 @@ class DeleteBalanceUpdateRecordUseCase(
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireActiveForMutation("删除余额核对")
         transactionRepository.runInTransaction {
-            transactionRepository.deleteBalanceAdjustmentBySourceUpdateRecordId(recordId)
             transactionRepository.deleteBalanceUpdateRecord(recordId)
-            recalculateBalanceUpdateChainUseCase(existing.accountId)
         }
         refreshAccountActivityStateUseCase(existing.accountId)
     }

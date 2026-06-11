@@ -14,7 +14,7 @@ import org.junit.Test
 
 class BalanceUpdateSameTimestampTest {
     @Test
-    fun `same timestamp balance updates are ordered by id and anchor excludes same timestamp records`() = runBlocking {
+    fun `same timestamp balance updates contribute fixed reconciliation deltas`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -69,7 +69,7 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 300,
-                purpose = "锚点后入账",
+                purpose = "后续入账",
                 occurredAt = timestamp + 1,
                 createdAt = timestamp + 1,
                 updatedAt = timestamp + 1,
@@ -80,12 +80,12 @@ class BalanceUpdateSameTimestampTest {
         val batch = CalculateAccountBalancesUseCase(transactionRepository)
         val account = requireNotNull(accountRepository.getAccountById(accountId))
 
-        assertEquals(9_100, single(accountId))
-        assertEquals(mapOf(accountId to 9_100L), batch(listOf(account)))
+        assertEquals(9_600, single(accountId))
+        assertEquals(mapOf(accountId to 9_600L), batch(listOf(account)))
     }
 
     @Test
-    fun `multiple ordinary records at same timestamp are all included without a same timestamp anchor`() = runBlocking {
+    fun `multiple ordinary records at same timestamp are all included`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(

@@ -4,7 +4,6 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
-import com.shihuaidexianyu.money.domain.model.CashFlowTemplate
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
@@ -72,31 +71,6 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sortedWith(compareByDescending<CashFlowRecord> { it.occurredAt }.thenByDescending { it.id })
             .map { it.purpose }
             .distinct()
-            .take(limit)
-            .toList()
-    }
-
-    override suspend fun queryRecentCashFlowTemplates(
-        direction: String,
-        accountId: Long?,
-        limit: Int,
-    ): List<CashFlowTemplate> {
-        return queryAllActiveCashFlowRecords()
-            .asSequence()
-            .filter { it.direction == direction }
-            .filter { accountId == null || it.accountId == accountId }
-            .filter { it.purpose.isNotBlank() }
-            .groupBy { it.purpose to it.amount }
-            .map { (key, records) ->
-                val latest = records.maxWith(compareBy<CashFlowRecord> { it.occurredAt }.thenBy { it.id })
-                Triple(
-                    CashFlowTemplate(purpose = key.first, amount = key.second),
-                    latest.occurredAt,
-                    latest.id,
-                )
-            }
-            .sortedWith(compareByDescending<Triple<CashFlowTemplate, Long, Long>> { it.second }.thenByDescending { it.third })
-            .map { it.first }
             .take(limit)
             .toList()
     }
@@ -206,15 +180,6 @@ class InMemoryTransactionRepository : TransactionRepository {
             .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
     }
 
-    override suspend fun getLatestBalanceUpdateAtOrBefore(
-        accountId: Long,
-        occurredAt: Long,
-    ): BalanceUpdateRecord? {
-        return queryBalanceUpdateRecordsByAccountId(accountId)
-            .filter { it.occurredAt <= occurredAt }
-            .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
-    }
-
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
         val id = nextAdjustmentId++
         adjustments += record.copy(id = id)
@@ -231,24 +196,18 @@ class InMemoryTransactionRepository : TransactionRepository {
         return adjustments.firstOrNull { it.id == id }
     }
 
-    override suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long) {
-        if (adjustments.removeAll { it.sourceUpdateRecordId == sourceUpdateRecordId }) {
-            bumpVersion()
-        }
-    }
-
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> {
         return adjustments.toList()
     }
 
-    override suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
+    override suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
         return adjustments
-            .filter { it.sourceUpdateRecordId == 0L && it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt in startAt..endAt }
             .sortedWith(compareBy<BalanceAdjustmentRecord> { it.occurredAt }.thenBy { it.id })
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> {
-        return adjustments.filter { it.accountId == accountId && it.sourceUpdateRecordId == 0L }
+        return adjustments.filter { it.accountId == accountId }
     }
 
     override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
@@ -305,12 +264,12 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long =
         adjustments
-            .filter { it.sourceUpdateRecordId == 0L && it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { it.delta }
 
     override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
         adjustments
-            .filter { it.sourceUpdateRecordId == 0L && it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { -it.delta }
 
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> {

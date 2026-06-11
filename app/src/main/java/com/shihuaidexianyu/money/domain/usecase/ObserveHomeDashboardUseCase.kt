@@ -87,10 +87,13 @@ class ObserveHomeDashboardUseCase(
         val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
         val balanceJob = async { calculateAccountBalancesUseCase(accounts) }
         val openingBalanceJobs = accounts
-            .filter { it.createdAt <= periodStartBaselineAt }
+            .filter { LedgerBalanceCalculator.isOpenAt(it, periodStartBaselineAt) }
             .map { account ->
                 async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
             }
+        val newAccountOpeningAssets = accounts
+            .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startAtMillis, range.endAtMillis) }
+            .sumOf(Account::initialBalance)
         val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startAtMillis, range.endAtMillis) }
         val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startAtMillis, range.endAtMillis) }
         val reconciliationIncreaseJob = async {
@@ -108,7 +111,7 @@ class ObserveHomeDashboardUseCase(
 
         val balances = balanceJob.await()
         val totalAssets = balances.values.sum()
-        val openingTotalAssets = openingBalanceJobs.sumOf { it.await() }
+        val openingTotalAssets = openingBalanceJobs.sumOf { it.await() } + newAccountOpeningAssets
         val periodBreakdown = PeriodAssetBreakdown(
             openingAssets = openingTotalAssets,
             closingAssets = totalAssets,

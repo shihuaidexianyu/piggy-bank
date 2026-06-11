@@ -30,7 +30,7 @@ fun BalanceUpdateResultScreen(
             MoneyCard {
                 Text(result.accountName, style = MaterialTheme.typography.titleMedium)
                 MoneyInlineLabelValue(
-                    label = "更新前系统余额",
+                    label = "对账前账面余额",
                     value = AmountFormatter.format(result.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyInlineLabelValue(
@@ -45,7 +45,7 @@ fun BalanceUpdateResultScreen(
                     if (result.delta == 0L) {
                         "本次已保存为一条余额核对记录"
                     } else {
-                        "本次已保存为一条余额更新记录"
+                        "本次已保存为一条对账调整记录"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

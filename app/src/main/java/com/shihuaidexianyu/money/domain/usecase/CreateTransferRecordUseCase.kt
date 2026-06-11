@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class CreateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -29,7 +28,7 @@ class CreateTransferRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.runInTransaction {
-            val insertedId = transactionRepository.insertTransferRecord(
+            transactionRepository.insertTransferRecord(
                 TransferRecord(
                     fromAccountId = fromAccountId,
                     toAccountId = toAccountId,
@@ -40,9 +39,6 @@ class CreateTransferRecordUseCase(
                     updatedAt = now,
                 ),
             )
-            recalculateBalanceUpdateChainUseCase(fromAccountId)
-            recalculateBalanceUpdateChainUseCase(toAccountId)
-            insertedId
         }
         refreshAccountActivityStateUseCase(fromAccountId)
         refreshAccountActivityStateUseCase(toAccountId)

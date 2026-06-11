@@ -72,19 +72,6 @@ interface BalanceUpdateRecordDao {
     @Query(
         """
         SELECT * FROM balance_update_records
-        WHERE accountId = :accountId AND occurredAt <= :occurredAt
-        ORDER BY occurredAt DESC, id DESC
-        LIMIT 1
-        """,
-    )
-    suspend fun getLatestForAccountAtOrBefore(
-        accountId: Long,
-        occurredAt: Long,
-    ): BalanceUpdateRecordEntity?
-
-    @Query(
-        """
-        SELECT * FROM balance_update_records
         WHERE accountId = :accountId
         ORDER BY occurredAt DESC, id DESC
         LIMIT 1

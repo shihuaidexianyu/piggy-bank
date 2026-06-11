@@ -74,7 +74,6 @@ class HomeStatsSemanticsTest {
             BalanceAdjustmentRecord(
                 accountId = 1L,
                 delta = 400,
-                sourceUpdateRecordId = 0L,
                 occurredAt = 7_000,
                 createdAt = 7_000,
             ),

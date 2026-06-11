@@ -28,6 +28,7 @@ data class EditTransferUiState(
     val amountText: String = "",
     val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val allFromAccountAmount: Long = 0L,
     val isSaving: Boolean = false,
     val showDeleteConfirm: Boolean = false,
 )
@@ -54,6 +55,9 @@ class EditTransferViewModel(
     private val effects = MutableSharedFlow<EditTransferEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
     private var closed = false
+    private var originalFromAccountId: Long? = null
+    private var originalToAccountId: Long? = null
+    private var originalAmount: Long = 0L
 
     init {
         viewModelScope.launch {
@@ -63,8 +67,11 @@ class EditTransferViewModel(
                     emitDeletedOnce()
                     return@launch
                 }
+                originalFromAccountId = record.fromAccountId
+                originalToAccountId = record.toAccountId
+                originalAmount = record.amount
                 val accounts = accountRepository.queryActiveAccounts()
-                _uiState.value = EditTransferUiState(
+                val nextState = EditTransferUiState(
                     isLoading = false,
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
@@ -77,6 +84,7 @@ class EditTransferViewModel(
                     note = record.note,
                     occurredAtMillis = record.occurredAt,
                 )
+                _uiState.value = nextState.withAllFromAccountAmount()
             } catch (e: Exception) {
                 android.util.Log.e("EditTransferViewModel", "Failed to load record", e)
                 emitDeletedOnce()
@@ -93,6 +101,13 @@ class EditTransferViewModel(
         )
     }
     fun updateAmount(value: String) = updateState { copy(amountText = value) }
+    fun useAllFromAccountBalance() = updateState {
+        if (allFromAccountAmount > 0L) {
+            copy(amountText = AmountFormatter.formatPlain(allFromAccountAmount))
+        } else {
+            this
+        }
+    }
     fun updateNote(value: String) = updateState { copy(note = value) }
     fun updateOccurredAt(value: Long) = updateState {
         copy(
@@ -152,8 +167,19 @@ class EditTransferViewModel(
     }
 
     private fun updateState(transform: EditTransferUiState.() -> EditTransferUiState) {
-        _uiState.value = _uiState.value.transform()
+        _uiState.value = _uiState.value.transform().withAllFromAccountAmount()
     }
+
+    private fun EditTransferUiState.withAllFromAccountAmount(): EditTransferUiState {
+        val currentBalance = accounts.firstOrNull { it.id == fromAccountId }?.balance ?: 0L
+        val balanceBeforeOriginalTransfer = when (fromAccountId) {
+            originalFromAccountId -> currentBalance + originalAmount
+            originalToAccountId -> currentBalance - originalAmount
+            else -> currentBalance
+        }
+        return copy(allFromAccountAmount = balanceBeforeOriginalTransfer.coerceAtLeast(0L))
+    }
+
     private suspend fun emitDeletedOnce() {
         if (closed) return
         closed = true

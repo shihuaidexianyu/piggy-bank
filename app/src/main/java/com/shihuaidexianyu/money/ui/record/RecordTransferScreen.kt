@@ -135,6 +135,19 @@ fun RecordTransferScreen(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
                 )
+                if ((fromAccount?.balance ?: 0L) > 0L) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(min = 36.dp),
+                    ) {
+                        item {
+                            SuggestionChip(
+                                onClick = viewModel::useAllFromAccountBalance,
+                                label = { Text("全部转出") },
+                            )
+                        }
+                    }
+                }
                 MoneySelectionField(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",

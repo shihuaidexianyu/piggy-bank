@@ -22,7 +22,6 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
@@ -70,7 +69,6 @@ class ArchiveAccountUseCaseTest {
         val accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val reminderRepository = InMemoryRecurringReminderRepository(MutableStateFlow(1_000L))
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
         val archivedAccountId = accountRepository.createAccount(
@@ -123,7 +121,6 @@ class ArchiveAccountUseCaseTest {
             CreateCashFlowRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(
                 accountId = archivedAccountId,
@@ -137,7 +134,6 @@ class ArchiveAccountUseCaseTest {
             UpdateCashFlowRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(
                 recordId = cashFlowId,
@@ -152,7 +148,6 @@ class ArchiveAccountUseCaseTest {
             DeleteCashFlowRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(cashFlowId)
         }
@@ -160,7 +155,6 @@ class ArchiveAccountUseCaseTest {
             CreateTransferRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(
                 fromAccountId = archivedAccountId,
@@ -174,7 +168,6 @@ class ArchiveAccountUseCaseTest {
             UpdateTransferRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(
                 recordId = transferId,
@@ -189,7 +182,6 @@ class ArchiveAccountUseCaseTest {
             DeleteTransferRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(transferId)
         }
@@ -198,7 +190,6 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 resolveContext,
-                recalculateChain,
                 refreshActivity,
             )(
                 accountId = archivedAccountId,
@@ -211,7 +202,6 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 resolveContext,
-                recalculateChain,
                 refreshActivity,
             )(
                 recordId = balanceUpdateId,
@@ -223,7 +213,6 @@ class ArchiveAccountUseCaseTest {
             DeleteBalanceUpdateRecordUseCase(
                 accountRepository,
                 transactionRepository,
-                recalculateChain,
                 refreshActivity,
             )(balanceUpdateId)
         }

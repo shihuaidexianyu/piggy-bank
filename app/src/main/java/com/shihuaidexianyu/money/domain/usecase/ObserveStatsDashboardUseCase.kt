@@ -125,10 +125,13 @@ class ObserveStatsDashboardUseCase(
         }
         val balanceJob = async { calculateAccountBalancesUseCase(accounts, range.endAtMillis) }
         val openingBalanceJobs = accounts
-            .filter { it.createdAt <= startBaselineAt }
+            .filter { LedgerBalanceCalculator.isOpenAt(it, startBaselineAt) }
             .map { account ->
                 async { calculateCurrentBalanceUseCase(account.id, startBaselineAt) }
             }
+        val newAccountOpeningAssets = accounts
+            .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startAtMillis, range.endAtMillis) }
+            .sumOf(Account::initialBalance)
 
         val inflowTotals = inflowTotalsJob.await()
         val outflowTotals = purposeBreakdownJob.await()
@@ -144,7 +147,7 @@ class ObserveStatsDashboardUseCase(
             )
         }.sortedByDescending { it.balance }
         val currentAssets = accountBalances.sumOf { it.balance }
-        val openingAssets = openingBalanceJobs.sumOf { it.await() }
+        val openingAssets = openingBalanceJobs.sumOf { it.await() } + newAccountOpeningAssets
         val netCashFlow = totalInflow - totalOutflow
         val assetChange = currentAssets - openingAssets
         val manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await()

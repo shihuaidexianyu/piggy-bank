@@ -173,7 +173,6 @@ class ImportBackupUseCaseTest {
                     id = 1L,
                     accountId = 1L,
                     delta = 20L,
-                    sourceUpdateRecordId = 0L,
                     occurredAt = 5L,
                     createdAt = 5L,
                 ),

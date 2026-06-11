@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
@@ -28,7 +27,6 @@ class UpdateBalanceUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
-            recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
         )
 
@@ -44,7 +42,7 @@ class UpdateBalanceUseCaseTest {
     }
 
     @Test
-    fun `investment update still records delta without settlement data`() = runBlocking {
+    fun `reconciliation records delta without creating adjustment`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -59,7 +57,6 @@ class UpdateBalanceUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
-            recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
         )
 

@@ -59,25 +59,6 @@ interface CashFlowRecordDao {
 
     @Query(
         """
-        SELECT purpose AS purpose, amount AS amount
-        FROM cash_flow_records
-        WHERE direction = :direction
-            AND (:accountId IS NULL OR accountId = :accountId)
-            AND isDeleted = 0
-            AND TRIM(purpose) != ''
-        GROUP BY purpose, amount
-        ORDER BY MAX(occurredAt) DESC, MAX(id) DESC
-        LIMIT :limit
-        """,
-    )
-    suspend fun queryRecentTemplates(
-        direction: String,
-        accountId: Long?,
-        limit: Int,
-    ): List<CashFlowTemplateRow>
-
-    @Query(
-        """
         SELECT * FROM cash_flow_records
         WHERE direction = :direction
             AND isDeleted = 0

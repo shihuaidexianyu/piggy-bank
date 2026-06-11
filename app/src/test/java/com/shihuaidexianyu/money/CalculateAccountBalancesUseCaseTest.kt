@@ -82,18 +82,8 @@ class CalculateAccountBalancesUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = firstAccountId,
                 delta = 700,
-                sourceUpdateRecordId = 0L,
                 occurredAt = 6_000,
                 createdAt = 6_000,
-            ),
-        )
-        transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(
-                accountId = firstAccountId,
-                delta = 9_999,
-                sourceUpdateRecordId = 99L,
-                occurredAt = 6_100,
-                createdAt = 6_100,
             ),
         )
         val deletedCashFlowId = transactionRepository.insertCashFlowRecord(

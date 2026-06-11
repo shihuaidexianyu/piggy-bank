@@ -261,7 +261,7 @@ class HistoryViewModel(
                     id = "balance_update_${record.id}",
                     recordId = record.id,
                     kind = HistoryRecordKind.BALANCE_UPDATE,
-                    title = if (record.delta == 0L) "余额核对" else "更新余额",
+                    title = if (record.delta == 0L) "余额核对" else "对账调整",
                     subtitle = accounts[record.accountId]?.name ?: "未知账户",
                     amount = record.delta,
                     occurredAt = record.occurredAt,
@@ -270,7 +270,6 @@ class HistoryViewModel(
                 )
             }
         val adjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords()
-            .filter { it.sourceUpdateRecordId == 0L }
             .map { record ->
                 HistoryRecordUiModel(
                     id = "balance_adjustment_${record.id}",

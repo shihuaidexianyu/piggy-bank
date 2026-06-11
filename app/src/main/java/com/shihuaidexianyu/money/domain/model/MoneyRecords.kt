@@ -51,7 +51,6 @@ data class BalanceAdjustmentRecord(
     val id: Long = 0,
     val accountId: Long,
     val delta: Long,
-    val sourceUpdateRecordId: Long,
     val occurredAt: Long,
     val createdAt: Long,
 )
@@ -81,10 +80,5 @@ data class PurposeTotal(
 data class CashFlowDailyTotal(
     val epochDay: Long,
     val direction: String,
-    val amount: Long,
-)
-
-data class CashFlowTemplate(
-    val purpose: String,
     val amount: Long,
 )

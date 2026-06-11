@@ -66,7 +66,6 @@ class ObserveStatsDashboardUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -200,
-                sourceUpdateRecordId = 0L,
                 occurredAt = now + 2_000,
                 createdAt = now,
             ),
@@ -163,6 +162,60 @@ class ObserveStatsDashboardUseCaseTest {
         assertEquals(januaryRange, snapshot.range)
         assertEquals(3_000, snapshot.totalInflow)
         assertEquals(13_000, snapshot.closingAssets)
+    }
+
+    @Test
+    fun `stats dashboard treats in-range account initial balance as opening assets`() = runBlocking {
+        val range = TimeRangeUtils.currentMonthRange()
+        val now = range.startAtMillis + 1_000
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "新账户",
+                initialBalance = 10_000,
+                createdAt = now,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 2_000,
+                purpose = "工资",
+                occurredAt = now + 1_000,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+
+        val useCase = ObserveStatsDashboardUseCase(
+            accountRepository = accountRepository,
+            settingsRepository = FakeSettingsRepository(),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+        )
+
+        val snapshot = useCase(
+            MutableStateFlow(
+                StatsRangeSelection(
+                    period = StatsPeriod.MONTH,
+                    anchorMillis = now,
+                ),
+            ),
+        ).first()
+
+        assertEquals(10_000, snapshot.openingAssets)
+        assertEquals(12_000, snapshot.closingAssets)
+        assertEquals(2_000, snapshot.totalInflow)
+        assertEquals(2_000, snapshot.netCashFlow)
+        assertEquals(2_000, snapshot.assetChange)
+        assertEquals(0, snapshot.assetAdjustment)
+        assertEquals(
+            snapshot.closingAssets,
+            snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,
+        )
     }
 
     private class FakeSettingsRepository : SettingsRepository {

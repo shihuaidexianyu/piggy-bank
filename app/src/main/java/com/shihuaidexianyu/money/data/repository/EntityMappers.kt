@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.data.repository
 
 import com.shihuaidexianyu.money.data.dao.CashFlowDailyTotalRow
-import com.shihuaidexianyu.money.data.dao.CashFlowTemplateRow
 import com.shihuaidexianyu.money.data.dao.PurposeTotalRow
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
@@ -14,7 +13,6 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
-import com.shihuaidexianyu.money.domain.model.CashFlowTemplate
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -117,7 +115,6 @@ internal fun BalanceAdjustmentRecordEntity.toDomain(): BalanceAdjustmentRecord =
     id = id,
     accountId = accountId,
     delta = delta,
-    sourceUpdateRecordId = sourceUpdateRecordId,
     occurredAt = occurredAt,
     createdAt = createdAt,
 )
@@ -126,7 +123,6 @@ fun BalanceAdjustmentRecord.toEntity(): BalanceAdjustmentRecordEntity = BalanceA
     id = id,
     accountId = accountId,
     delta = delta,
-    sourceUpdateRecordId = sourceUpdateRecordId,
     occurredAt = occurredAt,
     createdAt = createdAt,
 )
@@ -173,10 +169,5 @@ internal fun PurposeTotalRow.toDomain(): PurposeTotal = PurposeTotal(
 internal fun CashFlowDailyTotalRow.toDomain(): CashFlowDailyTotal = CashFlowDailyTotal(
     epochDay = epochDay,
     direction = direction,
-    amount = amount,
-)
-
-internal fun CashFlowTemplateRow.toDomain(): CashFlowTemplate = CashFlowTemplate(
-    purpose = purpose,
     amount = amount,
 )

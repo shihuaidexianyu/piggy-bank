@@ -10,8 +10,3 @@ data class CashFlowDailyTotalRow(
     val direction: String,
     val amount: Long,
 )
-
-data class CashFlowTemplateRow(
-    val purpose: String,
-    val amount: Long,
-)

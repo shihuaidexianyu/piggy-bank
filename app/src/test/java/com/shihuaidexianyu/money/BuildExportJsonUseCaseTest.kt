@@ -94,7 +94,6 @@ class BuildExportJsonUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = 100,
-                sourceUpdateRecordId = 0L,
                 occurredAt = 7L,
                 createdAt = 7L,
             ),
@@ -103,7 +102,6 @@ class BuildExportJsonUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -50,
-                sourceUpdateRecordId = 99L,
                 occurredAt = 8L,
                 createdAt = 8L,
             ),
@@ -135,8 +133,8 @@ class BuildExportJsonUseCaseTest {
         )(exportedAt = 42L)
 
         val snapshot = BackupJsonCodec.decode(json)
-        assertEquals(1, snapshot.metadata.schemaVersion)
-        assertEquals(8, snapshot.metadata.databaseVersion)
+        assertEquals(2, snapshot.metadata.schemaVersion)
+        assertEquals(9, snapshot.metadata.databaseVersion)
         assertEquals(42L, snapshot.metadata.exportedAt)
         assertEquals("元", snapshot.settings.currencySymbol)
         assertEquals(listOf(accountId, archivedAccountId), snapshot.accounts.map { it.id })
@@ -148,7 +146,7 @@ class BuildExportJsonUseCaseTest {
         assertEquals(1, snapshot.transferRecords.size)
         assertTrue(snapshot.transferRecords.single().isDeleted)
         assertEquals(12_000L, snapshot.balanceUpdateRecords.single().actualBalance)
-        assertEquals(setOf(0L, 99L), snapshot.balanceAdjustmentRecords.map { it.sourceUpdateRecordId }.toSet())
+        assertEquals(listOf(100L, -50L), snapshot.balanceAdjustmentRecords.map { it.delta })
         assertEquals(888L, snapshot.recurringReminders.single().amount)
         assertEquals("monday", snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.weekday)
         assertEquals(8, snapshot.accountReminderConfigs.first { it.accountId == accountId }.config.hour)

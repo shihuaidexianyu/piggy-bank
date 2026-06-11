@@ -62,7 +62,6 @@ class CalculateCurrentBalanceUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = accountId,
                 delta = -100,
-                sourceUpdateRecordId = 0,
                 occurredAt = 5_000,
                 createdAt = 5_000,
             ),
@@ -74,7 +73,7 @@ class CalculateCurrentBalanceUseCaseTest {
     }
 
     @Test
-    fun `balance with latest update uses update as anchor`() = runBlocking {
+    fun `balance with reconciliation update applies fixed delta`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -121,6 +120,24 @@ class CalculateCurrentBalanceUseCaseTest {
         val useCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
 
         assertEquals(115_000, useCase(accountId))
+    }
+
+    @Test
+    fun `balance before account opening event is zero`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "活期",
+                initialBalance = 10_000,
+                createdAt = 120_000,
+            ),
+        )
+
+        val useCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
+
+        assertEquals(0, useCase(accountId, atTimeMillis = 119_999))
+        assertEquals(10_000, useCase(accountId, atTimeMillis = 120_000))
     }
 
     @Test

@@ -20,7 +20,6 @@ import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
@@ -50,11 +49,6 @@ internal class UseCaseGraph(
     )
 
     val refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(
-        accountRepository = data.accountRepository,
-        transactionRepository = data.transactionRepository,
-    )
-
-    val recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
     )
@@ -96,42 +90,36 @@ internal class UseCaseGraph(
     val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val createTransferRecordUseCase = CreateTransferRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateCashFlowRecordUseCase = UpdateCashFlowRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteCashFlowRecordUseCase = DeleteCashFlowRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val updateTransferRecordUseCase = UpdateTransferRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteTransferRecordUseCase = DeleteTransferRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
@@ -139,7 +127,6 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
@@ -147,14 +134,12 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
     val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
@@ -197,7 +182,6 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         reminderRepository = data.recurringReminderRepository,
-        recalculateBalanceUpdateChainUseCase = recalculateBalanceUpdateChainUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 

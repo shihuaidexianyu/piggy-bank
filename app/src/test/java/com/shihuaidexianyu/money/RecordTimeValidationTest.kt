@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
@@ -30,7 +29,6 @@ class RecordTimeValidationTest {
             val useCase = CreateCashFlowRecordUseCase(
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
-                recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
             )
 
@@ -68,7 +66,6 @@ class RecordTimeValidationTest {
             val useCase = CreateTransferRecordUseCase(
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
-                recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
             )
 
@@ -100,7 +97,6 @@ class RecordTimeValidationTest {
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
                 resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
-                recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
             )
 

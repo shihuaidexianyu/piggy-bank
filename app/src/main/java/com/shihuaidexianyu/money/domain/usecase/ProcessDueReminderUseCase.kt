@@ -9,7 +9,6 @@ class ProcessDueReminderUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val reminderRepository: RecurringReminderRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -38,7 +37,6 @@ class ProcessDueReminderUseCase(
                     updatedAt = now,
                 ),
             )
-            recalculateBalanceUpdateChainUseCase(reminder.accountId)
             reminderRepository.updateReminder(
                 reminder.copy(
                     nextDueAt = reminder.nextDueAfter(now),

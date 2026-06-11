@@ -88,11 +88,65 @@ class BackupJsonCodecTest {
     }
 
     @Test
+    fun `backup codec upgrades schema 1 and drops linked adjustment records`() {
+        val raw = """
+            {
+              "metadata":{"schemaVersion":1,"databaseVersion":8,"exportedAt":42},
+              "settings":{
+                "homePeriod":"week",
+                "currencySymbol":"¥",
+                "showStaleMark":true,
+                "themeMode":"system",
+                "amountColorMode":"red_income_green_expense",
+                "lastHistoryKeyword":"",
+                "lastHistoryAccountId":-1,
+                "lastHistoryDateStartAt":-1,
+                "lastHistoryDateEndAt":-1,
+                "lastHistoryMinAmountText":"",
+                "lastHistoryMaxAmountText":"",
+                "lastHistoryAmountDirection":"all"
+              },
+              "accounts":[
+                {
+                  "id":1,
+                  "name":"现金",
+                  "initialBalance":100,
+                  "createdAt":1,
+                  "archivedAt":null,
+                  "isArchived":false,
+                  "lastUsedAt":null,
+                  "lastBalanceUpdateAt":null,
+                  "displayOrder":0,
+                  "colorName":"blue"
+                }
+              ],
+              "cashFlowRecords":[],
+              "transferRecords":[],
+              "balanceUpdateRecords":[],
+              "balanceAdjustmentRecords":[
+                {"id":1,"accountId":1,"delta":10,"sourceUpdateRecordId":5,"occurredAt":2,"createdAt":2},
+                {"id":2,"accountId":1,"delta":20,"sourceUpdateRecordId":0,"occurredAt":3,"createdAt":3}
+              ],
+              "recurringReminders":[],
+              "accountReminderConfigs":[
+                {"accountId":1,"config":{"weekday":"friday","hour":22,"minute":0}}
+              ]
+            }
+        """.trimIndent()
+
+        val decoded = BackupJsonCodec.decode(raw)
+
+        assertEquals(MONEY_BACKUP_SCHEMA_VERSION, decoded.metadata.schemaVersion)
+        assertEquals(listOf(2L), decoded.balanceAdjustmentRecords.map { it.id })
+        assertEquals(20L, decoded.balanceAdjustmentRecords.single().delta)
+    }
+
+    @Test
     fun `export json is parseable with empty collections`() = runBlocking {
         val json = buildUseCase()(exportedAt = 42L)
         val root = JSONObject(json)
 
-        assertEquals(1, root.getJSONObject("metadata").getInt("schemaVersion"))
+        assertEquals(2, root.getJSONObject("metadata").getInt("schemaVersion"))
         assertEquals(42L, root.getJSONObject("metadata").getLong("exportedAt"))
         assertEquals(0, root.getJSONArray("accounts").length())
         assertEquals(0, root.getJSONArray("cashFlowRecords").length())

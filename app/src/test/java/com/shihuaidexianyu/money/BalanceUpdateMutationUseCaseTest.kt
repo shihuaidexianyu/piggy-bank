@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -13,7 +12,6 @@ import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
@@ -27,24 +25,21 @@ import org.junit.Test
 
 class BalanceUpdateMutationUseCaseTest {
     @Test
-    fun `editing balance update recalculates baseline and current balance`() = runBlocking {
+    fun `editing balance update recalculates only its own delta and current balance`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
@@ -87,19 +82,16 @@ class BalanceUpdateMutationUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
@@ -136,19 +128,16 @@ class BalanceUpdateMutationUseCaseTest {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
@@ -184,64 +173,15 @@ class BalanceUpdateMutationUseCaseTest {
     }
 
     @Test
-    fun `deleting balance update also removes legacy linked adjustment`() = runBlocking {
+    fun `inserting earlier balance update keeps later reconciliation delta fixed`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
-            refreshAccountActivityStateUseCase = refreshActivity,
-        )
-        val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
-            accountRepository = accountRepository,
-            transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
-            refreshAccountActivityStateUseCase = refreshActivity,
-        )
-        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
-        val accountId = accountRepository.createAccount(
-            Account(
-                name = "银河",
-                initialBalance = 10_000,
-                createdAt = 1_000,
-            ),
-        )
-
-        updateBalanceUseCase(accountId = accountId, actualBalance = 9_000, occurredAt = 3_000)
-        val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
-        transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(
-                accountId = accountId,
-                delta = -1_000,
-                sourceUpdateRecordId = recordId,
-                occurredAt = 3_000,
-                createdAt = 3_000,
-            ),
-        )
-
-        deleteBalanceUpdateRecordUseCase(recordId)
-
-        assertEquals(emptyList(), transactionRepository.queryAllBalanceAdjustmentRecords())
-        assertEquals(10_000, calculateCurrentBalanceUseCase(accountId))
-    }
-
-    @Test
-    fun `inserting earlier balance update recalculates later snapshots`() = runBlocking {
-        val accountRepository = InMemoryAccountRepository()
-        val transactionRepository = InMemoryTransactionRepository()
-        val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
-        val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
-        val updateBalanceUseCase = UpdateBalanceUseCase(
-            accountRepository = accountRepository,
-            transactionRepository = transactionRepository,
-            resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
@@ -268,29 +208,26 @@ class BalanceUpdateMutationUseCaseTest {
 
         updateBalanceUseCase(accountId = accountId, actualBalance = 9_000, occurredAt = 3_000)
 
-        val laterRecord = transactionRepository.getBalanceUpdateRecordById(laterRecordId) ?: error("missing recalculated record")
-        assertEquals(10_000, laterRecord.systemBalanceBeforeUpdate)
-        assertEquals(3_000, laterRecord.delta)
+        val laterRecord = transactionRepository.getBalanceUpdateRecordById(laterRecordId) ?: error("missing fixed record")
+        assertEquals(11_000, laterRecord.systemBalanceBeforeUpdate)
+        assertEquals(2_000, laterRecord.delta)
     }
 
     @Test
-    fun `deleting earlier balance update recalculates surviving snapshots`() = runBlocking {
+    fun `deleting earlier balance update keeps surviving reconciliation delta fixed`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val accountId = accountRepository.createAccount(
@@ -328,42 +265,38 @@ class BalanceUpdateMutationUseCaseTest {
         deleteBalanceUpdateRecordUseCase(earlierRecordId)
 
         val laterRecord = transactionRepository.getBalanceUpdateRecordById(laterRecordId) ?: error("missing surviving record")
-        assertEquals(11_000, laterRecord.systemBalanceBeforeUpdate)
-        assertEquals(2_000, laterRecord.delta)
+        assertEquals(10_000, laterRecord.systemBalanceBeforeUpdate)
+        assertEquals(3_000, laterRecord.delta)
     }
 
     @Test
-    fun `cash flow mutations before balance update recalculate surviving snapshot`() = runBlocking {
+    fun `cash flow mutations before balance update do not rewrite reconciliation event`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val createCashFlow = CreateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val updateCashFlow = UpdateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val deleteCashFlow = DeleteCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
+        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
             Account(name = "现金", initialBalance = 10_000, createdAt = 1_000),
         )
@@ -377,7 +310,8 @@ class BalanceUpdateMutationUseCaseTest {
             purpose = "工资",
             occurredAt = 3_000,
         )
-        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 12_000, delta = -2_000)
+        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertEquals(12_000, calculateCurrentBalanceUseCase(accountId))
 
         updateCashFlow(
             recordId = cashFlowId,
@@ -387,45 +321,43 @@ class BalanceUpdateMutationUseCaseTest {
             purpose = "午餐",
             occurredAt = 3_000,
         )
-        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 9_500, delta = 500)
+        assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertEquals(9_500, calculateCurrentBalanceUseCase(accountId))
 
         deleteCashFlow(cashFlowId)
 
         assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertEquals(10_000, calculateCurrentBalanceUseCase(accountId))
     }
 
     @Test
-    fun `transfer mutations before balance update recalculate all affected account snapshots`() = runBlocking {
+    fun `transfer mutations before balance update do not rewrite reconciliation events`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
-        val recalculateChain = RecalculateBalanceUpdateChainUseCase(accountRepository, transactionRepository)
         val refreshActivity = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
         val updateBalanceUseCase = UpdateBalanceUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val createTransfer = CreateTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val updateTransfer = UpdateTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
         val deleteTransfer = DeleteTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
-            recalculateBalanceUpdateChainUseCase = recalculateChain,
             refreshAccountActivityStateUseCase = refreshActivity,
         )
+        val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val firstAccountId = accountRepository.createAccount(
             Account(name = "银行卡", initialBalance = 10_000, createdAt = 1_000),
         )
@@ -444,8 +376,10 @@ class BalanceUpdateMutationUseCaseTest {
             note = "调拨",
             occurredAt = 3_000,
         )
-        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 9_000, delta = 1_000)
-        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 6_000, delta = -1_000)
+        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 5_000, delta = 0)
+        assertEquals(9_000, calculateCurrentBalanceUseCase(firstAccountId))
+        assertEquals(6_000, calculateCurrentBalanceUseCase(secondAccountId))
 
         updateTransfer(
             recordId = transferId,
@@ -455,13 +389,17 @@ class BalanceUpdateMutationUseCaseTest {
             note = "调回",
             occurredAt = 3_000,
         )
-        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_500, delta = -500)
-        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 4_500, delta = 500)
+        assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
+        assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 5_000, delta = 0)
+        assertEquals(10_500, calculateCurrentBalanceUseCase(firstAccountId))
+        assertEquals(4_500, calculateCurrentBalanceUseCase(secondAccountId))
 
         deleteTransfer(transferId)
 
         assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
         assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 5_000, delta = 0)
+        assertEquals(10_000, calculateCurrentBalanceUseCase(firstAccountId))
+        assertEquals(5_000, calculateCurrentBalanceUseCase(secondAccountId))
     }
 
     private suspend fun assertBalanceUpdate(

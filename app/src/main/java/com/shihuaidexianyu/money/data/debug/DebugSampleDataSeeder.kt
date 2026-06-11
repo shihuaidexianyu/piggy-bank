@@ -39,7 +39,7 @@ object DebugSampleDataSeeder {
             val paymentCreatedAt = millisAt(zoneId, LocalDate.of(2025, 1, 1), 9, 0)
             val bankCreatedAt = millisAt(zoneId, LocalDate.of(2024, 12, 1), 9, 30)
             val savingsCreatedAt = millisAt(zoneId, LocalDate.of(2024, 12, 15), 10, 0)
-            val investmentCreatedAt = millisAt(zoneId, LocalDate.of(2022, 1, 10), 10, 30)
+            val fundCreatedAt = millisAt(zoneId, LocalDate.of(2022, 1, 10), 10, 30)
 
             val paymentId = accountDao.insert(
                 AccountEntity(
@@ -71,11 +71,11 @@ object DebugSampleDataSeeder {
                     colorName = "teal",
                 ),
             )
-            val investmentId = accountDao.insert(
+            val fundAccountId = accountDao.insert(
                 AccountEntity(
                     name = "指数基金",
                     initialBalance = 1_000_000,
-                    createdAt = investmentCreatedAt,
+                    createdAt = fundCreatedAt,
                     lastUsedAt = millisAt(zoneId, today.minusDays(4), 15, 0),
                     lastBalanceUpdateAt = millisAt(zoneId, today.minusDays(5), 21, 0),
                     displayOrder = 3,
@@ -95,14 +95,14 @@ object DebugSampleDataSeeder {
                 transferDao = transferDao,
                 bankId = bankId,
                 savingsId = savingsId,
-                investmentId = investmentId,
+                fundAccountId = fundAccountId,
                 zoneId = zoneId,
                 today = today,
             )
 
-            seedInvestmentSnapshots(
+            seedFundReconciliations(
                 balanceUpdateDao = balanceUpdateDao,
-                investmentId = investmentId,
+                fundAccountId = fundAccountId,
                 zoneId = zoneId,
             )
 
@@ -197,7 +197,7 @@ object DebugSampleDataSeeder {
         transferDao: com.shihuaidexianyu.money.data.dao.TransferRecordDao,
         bankId: Long,
         savingsId: Long,
-        investmentId: Long,
+        fundAccountId: Long,
         zoneId: ZoneId,
         today: LocalDate,
     ) {
@@ -212,7 +212,7 @@ object DebugSampleDataSeeder {
         insertTransfer(
             dao = transferDao,
             fromAccountId = bankId,
-            toAccountId = investmentId,
+            toAccountId = fundAccountId,
             amount = 1_500_00,
             note = "定投",
             occurredAt = millisAt(zoneId, today.withDayOfMonth(4), 8, 45),
@@ -220,7 +220,7 @@ object DebugSampleDataSeeder {
         insertTransfer(
             dao = transferDao,
             fromAccountId = bankId,
-            toAccountId = investmentId,
+            toAccountId = fundAccountId,
             amount = 50_000_00,
             note = "历史建仓",
             occurredAt = millisAt(zoneId, LocalDate.of(2024, 3, 5), 10, 0),
@@ -228,22 +228,22 @@ object DebugSampleDataSeeder {
         insertTransfer(
             dao = transferDao,
             fromAccountId = bankId,
-            toAccountId = investmentId,
+            toAccountId = fundAccountId,
             amount = 10_000_00,
             note = "追加投入",
             occurredAt = millisAt(zoneId, LocalDate.of(2026, 2, 10), 10, 15),
         )
     }
 
-    private suspend fun seedInvestmentSnapshots(
+    private suspend fun seedFundReconciliations(
         balanceUpdateDao: com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao,
-        investmentId: Long,
+        fundAccountId: Long,
         zoneId: ZoneId,
     ) {
         val firstUpdateAt = millisAt(zoneId, LocalDate.of(2025, 12, 31), 21, 0)
         balanceUpdateDao.insert(
             BalanceUpdateRecordEntity(
-                accountId = investmentId,
+                accountId = fundAccountId,
                 actualBalance = 1_650_000,
                 systemBalanceBeforeUpdate = 1_580_000,
                 delta = 70_000,
@@ -255,7 +255,7 @@ object DebugSampleDataSeeder {
         val secondUpdateAt = millisAt(zoneId, LocalDate.of(2026, 4, 5), 21, 0)
         balanceUpdateDao.insert(
             BalanceUpdateRecordEntity(
-                accountId = investmentId,
+                accountId = fundAccountId,
                 actualBalance = 1_820_000,
                 systemBalanceBeforeUpdate = 1_750_000,
                 delta = 70_000,

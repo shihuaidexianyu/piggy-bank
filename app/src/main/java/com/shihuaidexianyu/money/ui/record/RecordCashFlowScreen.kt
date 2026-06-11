@@ -142,19 +142,6 @@ fun RecordCashFlowScreen(
                     onValueChange = viewModel::updatePurpose,
                     label = "用途",
                 )
-                if (state.templates.isNotEmpty()) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.heightIn(min = 36.dp),
-                    ) {
-                        items(state.templates) { template ->
-                            SuggestionChip(
-                                onClick = { viewModel.applyTemplate(template) },
-                                label = { Text(template.label) },
-                            )
-                        }
-                    }
-                }
                 if (state.purposeSuggestions.isNotEmpty()) {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

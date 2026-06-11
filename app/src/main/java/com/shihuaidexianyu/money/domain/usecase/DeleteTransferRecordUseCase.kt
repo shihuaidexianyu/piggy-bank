@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class DeleteTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(recordId: Long) {
@@ -18,7 +17,6 @@ class DeleteTransferRecordUseCase(
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId)
         transactionRepository.runInTransaction {
             transactionRepository.softDeleteTransferRecord(recordId, System.currentTimeMillis())
-            affectedAccountIds.forEach { recalculateBalanceUpdateChainUseCase(it) }
         }
         affectedAccountIds.forEach {
             refreshAccountActivityStateUseCase(it)

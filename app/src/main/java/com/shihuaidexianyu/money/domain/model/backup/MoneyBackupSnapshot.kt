@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.domain.model.backup
 
 import kotlinx.serialization.Serializable
 
-const val MONEY_BACKUP_SCHEMA_VERSION = 1
+const val MONEY_BACKUP_SCHEMA_VERSION = 2
 
 @Serializable
 data class MoneyBackupSnapshot(
@@ -99,7 +99,6 @@ data class BackupBalanceAdjustmentRecord(
     val id: Long,
     val accountId: Long,
     val delta: Long,
-    val sourceUpdateRecordId: Long,
     val occurredAt: Long,
     val createdAt: Long,
 )

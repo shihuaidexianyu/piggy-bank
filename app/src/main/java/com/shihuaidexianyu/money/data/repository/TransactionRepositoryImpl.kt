@@ -71,16 +71,6 @@ class TransactionRepositoryImpl(
         return cashFlowRecordDao.queryRecentPurposes(direction = direction, accountId = accountId, limit = limit)
     }
 
-    override suspend fun queryRecentCashFlowTemplates(
-        direction: String,
-        accountId: Long?,
-        limit: Int,
-    ) = cashFlowRecordDao.queryRecentTemplates(
-        direction = direction,
-        accountId = accountId,
-        limit = limit,
-    ).map { it.toDomain() }
-
     override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
         direction: String,
         startAt: Long,
@@ -149,10 +139,6 @@ class TransactionRepositoryImpl(
 
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.getLatestForAccount(accountId)?.toDomain()
 
-    override suspend fun getLatestBalanceUpdateAtOrBefore(accountId: Long, occurredAt: Long): BalanceUpdateRecord? {
-        return balanceUpdateRecordDao.getLatestForAccountAtOrBefore(accountId, occurredAt)?.toDomain()
-    }
-
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
         return balanceAdjustmentRecordDao.insert(record.toEntity()).also { bumpVersion() }
     }
@@ -164,15 +150,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? = balanceAdjustmentRecordDao.queryById(id)?.toDomain()
 
-    override suspend fun deleteBalanceAdjustmentBySourceUpdateRecordId(sourceUpdateRecordId: Long) {
-        balanceAdjustmentRecordDao.deleteBySourceUpdateRecordId(sourceUpdateRecordId)
-        bumpVersion()
-    }
-
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAllActive().map { it.toDomain() }
 
-    override suspend fun queryManualBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
-        return balanceAdjustmentRecordDao.queryManualBetween(startAt, endAt).map { it.toDomain() }
+    override suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
+        return balanceAdjustmentRecordDao.queryBetween(startAt, endAt).map { it.toDomain() }
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryByAccountId(accountId).map { it.toDomain() }

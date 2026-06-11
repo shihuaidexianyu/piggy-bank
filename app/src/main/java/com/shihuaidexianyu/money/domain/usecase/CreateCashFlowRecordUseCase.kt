@@ -8,7 +8,6 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 class CreateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -26,7 +25,7 @@ class CreateCashFlowRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.runInTransaction {
-            val insertedId = transactionRepository.insertCashFlowRecord(
+            transactionRepository.insertCashFlowRecord(
                 CashFlowRecord(
                     accountId = accountId,
                     direction = direction.value,
@@ -37,8 +36,6 @@ class CreateCashFlowRecordUseCase(
                     updatedAt = now,
                 ),
             )
-            recalculateBalanceUpdateChainUseCase(accountId)
-            insertedId
         }
         refreshAccountActivityStateUseCase(accountId)
         return recordId

@@ -1,13 +1,10 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 data class BalanceUpdateContext(
     val systemBalanceBeforeUpdate: Long,
-    val previousUpdate: BalanceUpdateRecord?,
 )
 
 class ResolveBalanceUpdateContextUseCase(
@@ -20,23 +17,39 @@ class ResolveBalanceUpdateContextUseCase(
         excludingRecordId: Long? = null,
     ): BalanceUpdateContext {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-        val previousUpdate = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
-            .filter { it.id != excludingRecordId && it.occurredAt <= occurredAt }
-            .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
+        if (!LedgerBalanceCalculator.isOpenAt(account, occurredAt)) {
+            return BalanceUpdateContext(
+                systemBalanceBeforeUpdate = 0L,
+            )
+        }
 
-        val anchorBalance = previousUpdate?.actualBalance ?: account.initialBalance
-        val anchorTime = previousUpdate?.occurredAt
-            ?: DateTimeTextFormatter.floorToMinute(account.createdAt) - 1L
+        val startAt = LedgerBalanceCalculator.startBeforeOpening(account)
 
-        val inflow = transactionRepository.sumInflowBetween(accountId, anchorTime, occurredAt)
-        val outflow = transactionRepository.sumOutflowBetween(accountId, anchorTime, occurredAt)
-        val transferIn = transactionRepository.sumTransferInBetween(accountId, anchorTime, occurredAt)
-        val transferOut = transactionRepository.sumTransferOutBetween(accountId, anchorTime, occurredAt)
-        val adjustment = transactionRepository.sumAdjustmentBetween(accountId, anchorTime, occurredAt)
+        val inflow = transactionRepository.sumInflowBetween(accountId, startAt, occurredAt)
+        val outflow = transactionRepository.sumOutflowBetween(accountId, startAt, occurredAt)
+        val transferIn = transactionRepository.sumTransferInBetween(accountId, startAt, occurredAt)
+        val transferOut = transactionRepository.sumTransferOutBetween(accountId, startAt, occurredAt)
+        val adjustment = transactionRepository.sumAdjustmentBetween(accountId, startAt, occurredAt)
+        val reconciliation = LedgerBalanceCalculator.reconciliationDeltaFromRecords(
+            account = account,
+            balanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId),
+            atTimeMillis = occurredAt,
+            excludingBalanceUpdateId = excludingRecordId,
+        )
 
         return BalanceUpdateContext(
-            systemBalanceBeforeUpdate = anchorBalance + inflow - outflow + transferIn - transferOut + adjustment,
-            previousUpdate = previousUpdate,
+            systemBalanceBeforeUpdate = LedgerBalanceCalculator.balanceAt(
+                account = account,
+                atTimeMillis = occurredAt,
+                deltas = LedgerBalanceDeltas(
+                    inflow = inflow,
+                    outflow = outflow,
+                    transferIn = transferIn,
+                    transferOut = transferOut,
+                    manualAdjustment = adjustment,
+                    reconciliation = reconciliation,
+                ),
+            ),
         )
     }
 }

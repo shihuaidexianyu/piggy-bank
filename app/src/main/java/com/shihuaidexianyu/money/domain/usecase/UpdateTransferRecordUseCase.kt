@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class UpdateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -43,7 +42,6 @@ class UpdateTransferRecordUseCase(
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId, fromAccountId, toAccountId)
         transactionRepository.runInTransaction {
             transactionRepository.updateTransferRecord(updated)
-            affectedAccountIds.forEach { recalculateBalanceUpdateChainUseCase(it) }
         }
         affectedAccountIds.forEach {
             refreshAccountActivityStateUseCase(it)

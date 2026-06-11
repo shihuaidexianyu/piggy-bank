@@ -51,7 +51,7 @@ fun EditBalanceUpdateScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = "撤销余额更新",
+            title = "撤销对账记录",
             message = "撤销后会重新计算该账户当前余额，确认继续？",
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
@@ -100,7 +100,7 @@ fun EditBalanceUpdateScreen(
     }
 
     MoneyFormPage(
-        title = "修改余额更新",
+        title = "修改对账记录",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,

@@ -32,8 +32,6 @@ class MoneyAppContainer(context: Context) {
 
     val refreshAccountActivityStateUseCase get() = useCaseGraph.refreshAccountActivityStateUseCase
 
-    val recalculateBalanceUpdateChainUseCase get() = useCaseGraph.recalculateBalanceUpdateChainUseCase
-
     val observeHomeDashboardUseCase get() = useCaseGraph.observeHomeDashboardUseCase
 
     val observeStatsDashboardUseCase get() = useCaseGraph.observeStatsDashboardUseCase

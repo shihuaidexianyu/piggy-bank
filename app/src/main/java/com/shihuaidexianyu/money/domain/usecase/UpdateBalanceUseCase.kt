@@ -16,7 +16,6 @@ class UpdateBalanceUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -45,7 +44,6 @@ class UpdateBalanceUseCase(
                     createdAt = now,
                 ),
             )
-            recalculateBalanceUpdateChainUseCase(accountId)
         }
 
         refreshAccountActivityStateUseCase(accountId)

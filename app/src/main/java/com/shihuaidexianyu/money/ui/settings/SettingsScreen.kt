@@ -283,7 +283,7 @@ private fun BackupValidationResult.confirmMessage(): String {
 
         导入前会自动生成一份当前数据备份。
 
-        备份内容：账户 ${accountCount} 个，现金流水 ${cashFlowCount} 条，转账 ${transferCount} 条，余额更新 ${balanceUpdateCount} 条，余额调整 ${balanceAdjustmentCount} 条，提醒 ${reminderCount} 条。
+        备份内容：账户 ${accountCount} 个，现金流水 ${cashFlowCount} 条，转账 ${transferCount} 条，对账记录 ${balanceUpdateCount} 条，余额调整 ${balanceAdjustmentCount} 条，提醒 ${reminderCount} 条。
 
         确认继续？
     """.trimIndent()

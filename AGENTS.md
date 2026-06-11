@@ -9,7 +9,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 
 - **Package**: `com.shihuaidexianyu.money`
 - **Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `1.0.77` (versionCode `77`)
+- **Version**: `1.0.79` (versionCode `79`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -115,7 +115,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. Cash flow and transfer records use soft-delete (`isDeleted` field).
    - `repository/`: Concrete implementations plus `InMemory*` variants for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 7, `exportSchema = true`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 9, `exportSchema = true`).
 
 3. **UI** (`ui/`):
    - One package per feature.
@@ -129,8 +129,9 @@ All dependencies are wired manually in `MoneyAppContainer`. ViewModels are creat
 ### Mutation Side-Effect Pattern
 
 After any data mutation, use cases must refresh derived state:
-- Create/Update/Delete cash flow and transfer records run the mutation and affected-account `RecalculateBalanceUpdateChainUseCase` calls in one transaction, then call `RefreshAccountActivityStateUseCase`.
-- Balance updates and adjustments call `RefreshAccountActivityStateUseCase`.
+- Create/Update/Delete cash flow and transfer records run the mutation, then call `RefreshAccountActivityStateUseCase` for affected accounts.
+- Balance updates are ordinary ledger events with a fixed `delta`; changing older records must not rewrite later balance update deltas.
+- Balance updates and manual adjustments call `RefreshAccountActivityStateUseCase`.
 - Archived accounts are read-only. Use mutation use cases rather than repositories directly so `requireActiveForMutation(...)` guards are applied.
 
 ## Code Style Guidelines
@@ -167,15 +168,17 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **7**.
+Room schema is exported to `app/schemas/`. Current database version is **9**.
 
 Existing migrations:
-- `1 → 2`: Re-created index on `balance_adjustment_records.sourceUpdateRecordId`.
+- `1 → 2`: Re-created a historical balance adjustment index.
 - `2 → 3`: Added `recurring_reminders` table.
 - `3 → 4`: Dropped `investment_settlements` table and related indexes.
 - `4 → 5`: Re-created `accounts` without the legacy group field.
 - `5 → 6`: Added legacy visual fields.
 - `6 → 7`: Re-created `accounts` without `iconName`, keeping `colorName`.
+- `7 → 8`: Re-created transaction tables with foreign keys and refreshed indexes.
+- `8 → 9`: Re-created `balance_adjustment_records` without reconciliation source linkage.
 
 When modifying entities:
 1. Bump `@Database(version = ...)`.
@@ -186,12 +189,13 @@ When modifying entities:
 ## Key Domain Concepts
 
 - **Accounts**: Active accounts are user-ordered. Archived accounts are read-only and kept for historical records; there is no restore/unarchive flow.
+- **Account creation**: The account's `initialBalance` is the opening asset event. For period dashboards, accounts opened inside the selected period contribute their initial balance to opening assets, not cash inflow or asset adjustment.
 - **Transaction types**:
   - `CashFlow`: Inflow / outflow with purpose tagging.
   - `Transfer`: Between two accounts.
-  - `BalanceUpdate`: Snapshot of actual balance; stores the delta directly on the record.
-  - `BalanceAdjustment`: Manual correction only; no longer auto-generated from balance updates.
-- **Balance calculation**: Starts from the latest `BalanceUpdate.actualBalance` (or `initialBalance`), then applies all subsequent non-deleted cash flows, transfers, and adjustments.
+  - `BalanceUpdate`: Reconciliation adjustment. It stores `actualBalance` and `systemBalanceBeforeUpdate` as evidence, but only its fixed `delta` affects ledger balance.
+  - `BalanceAdjustment`: Manual correction ledger event.
+- **Balance calculation**: Uses `LedgerBalanceCalculator` semantics: before account opening the balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`.
 - **Reminders**: Recurring reminders with `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods. Stored in `RecurringReminderEntity` and shown in-app when due; there is no WorkManager/notification implementation.
 - **Export**: `BuildExportJsonUseCase` builds a JSON dump containing metadata, settings, accounts, transactions, balance records, recurring reminders, and account reminder configs. `ExportJsonFileWriter` writes it to `cache/exports/` and shares it via `FileProvider`.
 
@@ -208,7 +212,8 @@ When modifying entities:
 - Do **not** use `Float`/`Double` for monetary amounts. Use `Long` (cents).
 - Do **not** add new DI frameworks. Use `MoneyAppContainer`.
 - When deleting cash flow / transfer records, perform soft-delete (`isDeleted = true`) rather than hard-delete.
-- After any mutation use case, ensure affected balance update chains are recalculated when needed and `RefreshAccountActivityStateUseCase` is invoked.
+- Do **not** re-anchor balances on the latest reconciliation or recalculate later reconciliation deltas. Reconciliation deltas are fixed ledger events.
+- After any mutation use case, ensure `RefreshAccountActivityStateUseCase` is invoked for affected accounts.
 - Do not mutate archived accounts through repositories directly; go through use cases so read-only guards and recurring-reminder disabling are preserved.
 - All new UI strings must be in Chinese (Simplified).
 - If changing Room entities, always provide a migration and update the schema export.

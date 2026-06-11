@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 class DeleteCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(recordId: Long) {
@@ -15,7 +14,6 @@ class DeleteCashFlowRecordUseCase(
         account.requireActiveForMutation("删除收支记录")
         transactionRepository.runInTransaction {
             transactionRepository.softDeleteCashFlowRecord(recordId, System.currentTimeMillis())
-            recalculateBalanceUpdateChainUseCase(existing.accountId)
         }
         refreshAccountActivityStateUseCase(existing.accountId)
     }

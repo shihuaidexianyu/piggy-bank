@@ -48,7 +48,7 @@ class BalanceAdjustmentDetailViewModel(
 
     private suspend fun loadRecord() {
         val record = transactionRepository.getBalanceAdjustmentRecordById(recordId)
-        if (record == null || record.sourceUpdateRecordId > 0L) {
+        if (record == null) {
             emitClosedOnce()
             return
         }
@@ -67,4 +67,3 @@ class BalanceAdjustmentDetailViewModel(
         effects.emit(BalanceAdjustmentDetailEffect.Closed)
     }
 }
-

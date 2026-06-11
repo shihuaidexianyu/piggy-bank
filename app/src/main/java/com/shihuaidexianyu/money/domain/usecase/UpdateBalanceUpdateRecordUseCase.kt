@@ -7,7 +7,6 @@ class UpdateBalanceUpdateRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
-    private val recalculateBalanceUpdateChainUseCase: RecalculateBalanceUpdateChainUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
 ) {
     suspend operator fun invoke(
@@ -27,7 +26,6 @@ class UpdateBalanceUpdateRecordUseCase(
             excludingRecordId = recordId,
         )
         transactionRepository.runInTransaction {
-            transactionRepository.deleteBalanceAdjustmentBySourceUpdateRecordId(recordId)
             transactionRepository.updateBalanceUpdateRecord(
                 existing.copy(
                     actualBalance = actualBalance,
@@ -36,7 +34,6 @@ class UpdateBalanceUpdateRecordUseCase(
                     occurredAt = occurredAt,
                 ),
             )
-            recalculateBalanceUpdateChainUseCase(existing.accountId)
         }
         refreshAccountActivityStateUseCase(existing.accountId)
     }

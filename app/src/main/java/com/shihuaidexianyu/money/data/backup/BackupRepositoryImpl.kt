@@ -118,7 +118,6 @@ private fun BackupBalanceAdjustmentRecord.toDomain(): BalanceAdjustmentRecord =
         id = id,
         accountId = accountId,
         delta = delta,
-        sourceUpdateRecordId = sourceUpdateRecordId,
         occurredAt = occurredAt,
         createdAt = createdAt,
     )

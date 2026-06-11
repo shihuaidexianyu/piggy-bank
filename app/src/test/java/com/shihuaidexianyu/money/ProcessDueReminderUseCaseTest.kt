@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.RecalculateBalanceUpdateChainUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -102,10 +101,6 @@ class ProcessDueReminderUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             reminderRepository = reminderRepository,
-            recalculateBalanceUpdateChainUseCase = RecalculateBalanceUpdateChainUseCase(
-                accountRepository = accountRepository,
-                transactionRepository = transactionRepository,
-            ),
             refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,

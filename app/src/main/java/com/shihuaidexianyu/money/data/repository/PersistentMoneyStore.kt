@@ -156,7 +156,6 @@ private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecord> =
             id = item.getLong("id"),
             accountId = item.getLong("accountId"),
             delta = item.getLong("delta"),
-            sourceUpdateRecordId = item.getLong("sourceUpdateRecordId"),
             occurredAt = item.getLong("occurredAt"),
             createdAt = item.getLong("createdAt"),
         )
@@ -226,7 +225,6 @@ private fun BalanceAdjustmentRecord.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("accountId", accountId)
     put("delta", delta)
-    put("sourceUpdateRecordId", sourceUpdateRecordId)
     put("occurredAt", occurredAt)
     put("createdAt", createdAt)
 }

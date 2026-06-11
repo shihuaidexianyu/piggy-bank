@@ -19,7 +19,7 @@ import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 8
+const val MONEY_DATABASE_VERSION = 9
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -180,8 +180,14 @@ private val MIGRATION_7_8 = object : Migration(7, 8) {
         rebuildCashFlowRecords(db)
         rebuildTransferRecords(db)
         rebuildBalanceUpdateRecords(db)
-        rebuildBalanceAdjustmentRecords(db)
+        rebuildBalanceAdjustmentRecordsForVersion8(db)
         rebuildRecurringReminders(db)
+    }
+}
+
+private val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        rebuildBalanceAdjustmentRecordsForVersion9(db)
     }
 }
 
@@ -193,6 +199,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_5_6,
     MIGRATION_6_7,
     MIGRATION_7_8,
+    MIGRATION_8_9,
 )
 
 @Database(
@@ -356,7 +363,7 @@ private fun rebuildBalanceUpdateRecords(db: SupportSQLiteDatabase) {
     )
 }
 
-private fun rebuildBalanceAdjustmentRecords(db: SupportSQLiteDatabase) {
+private fun rebuildBalanceAdjustmentRecordsForVersion8(db: SupportSQLiteDatabase) {
     db.execSQL(
         """
         CREATE TABLE IF NOT EXISTS `balance_adjustment_records_new` (
@@ -392,6 +399,40 @@ private fun rebuildBalanceAdjustmentRecords(db: SupportSQLiteDatabase) {
         CREATE INDEX IF NOT EXISTS `index_balance_adjustment_records_sourceUpdateRecordId`
         ON `balance_adjustment_records` (`sourceUpdateRecordId`)
         """.trimIndent(),
+    )
+}
+
+private fun rebuildBalanceAdjustmentRecordsForVersion9(db: SupportSQLiteDatabase) {
+    db.execSQL("DROP INDEX IF EXISTS `index_balance_adjustment_records_sourceUpdateRecordId`")
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `balance_adjustment_records_new` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `accountId` INTEGER NOT NULL,
+            `delta` INTEGER NOT NULL,
+            `occurredAt` INTEGER NOT NULL,
+            `createdAt` INTEGER NOT NULL,
+            FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+        )
+        """.trimIndent(),
+    )
+    db.execSQL(
+        """
+        INSERT INTO `balance_adjustment_records_new` (
+            `id`, `accountId`, `delta`, `occurredAt`, `createdAt`
+        )
+        SELECT `id`, `accountId`, `delta`, `occurredAt`, `createdAt`
+        FROM `balance_adjustment_records`
+        WHERE `sourceUpdateRecordId` = 0
+        """.trimIndent(),
+    )
+    db.execSQL("DROP TABLE `balance_adjustment_records`")
+    db.execSQL("ALTER TABLE `balance_adjustment_records_new` RENAME TO `balance_adjustment_records`")
+    db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_balance_adjustment_records_accountId` ON `balance_adjustment_records` (`accountId`)",
+    )
+    db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_balance_adjustment_records_occurredAt` ON `balance_adjustment_records` (`occurredAt`)",
     )
 }
 

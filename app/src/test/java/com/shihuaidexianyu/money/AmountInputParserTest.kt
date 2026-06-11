@@ -60,4 +60,24 @@ class AmountInputParserTest {
     fun `grouped amount with commas is accepted`() {
         assertEquals(1234567, AmountInputParser.parseToMinor("12,345.67"))
     }
+
+    @Test
+    fun `addition expression is evaluated`() {
+        assertEquals(8310, AmountInputParser.parseToMinor("27.2+55.9"))
+    }
+
+    @Test
+    fun `subtraction expression is evaluated`() {
+        assertEquals(8765, AmountInputParser.parseToMinor("100-12.35"))
+    }
+
+    @Test
+    fun `incomplete expression is rejected`() {
+        assertNull(AmountInputParser.parseToMinor("12+"))
+    }
+
+    @Test
+    fun `expression with too many effective decimal places is rejected`() {
+        assertNull(AmountInputParser.parseToMinor("1.001+2"))
+    }
 }

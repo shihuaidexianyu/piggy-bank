@@ -34,17 +34,17 @@ This is a single-module Android app (`:app`) using **Clean Architecture** with *
 ### Layers
 
 **Domain** (`domain/`):
-- `model/` — Enums and value objects (`AccountGroupType`, `CashFlowDirection`, `HomePeriod`, `ThemeMode`, etc.)
+- `model/` — Enums and value objects (`CashFlowDirection`, `HomePeriod`, `ThemeMode`, `AppSettings`, etc.)
 - `repository/` — Interfaces: `AccountRepository`, `TransactionRepository`, `SettingsRepository`, `AccountReminderSettingsRepository`
 - `usecase/` — Business logic. Use cases take repository interfaces as constructor params. Key patterns:
   - Mutation use cases (Create/Update/Delete) call `RefreshAccountActivityStateUseCase` after modifying data
-  - Update/Delete use cases call `RecalculateInvestmentSettlementsUseCase` to keep settlements consistent
-  - `CalculateCurrentBalanceUseCase` computes balance from initial balance + records since last balance update
+  - Reconciliation records are fixed ledger events; older record edits do not rewrite later reconciliation deltas
+  - `CalculateCurrentBalanceUseCase` and `CalculateAccountBalancesUseCase` share `LedgerBalanceCalculator` semantics
 
 **Data** (`data/`):
 - `entity/` — Room entities (stored amounts in Long/cents)
-- `dao/` — Room DAOs. Soft-delete pattern on cash flow and transfer records (`deletedAt` field)
-- `db/` — `MoneyDatabase` (Room, version 1), `LegacyMoneyStoreImporter` for migration from prior format
+- `dao/` — Room DAOs. Soft-delete pattern on cash flow and transfer records (`isDeleted` field)
+- `db/` — `MoneyDatabase` (Room, version 9), `LegacyMoneyStoreImporter` for migration from prior format
 - `repository/` — Implementations including `InMemory*` variants used in unit tests
 
 **UI** (`ui/`):
@@ -68,7 +68,8 @@ Unit tests use `InMemoryAccountRepository`, `InMemoryTransactionRepository`, and
 
 ### Key Domain Concepts
 
-- **Account groups**: Payment, Bank, Investment — each with different behavior (investment accounts track settlements)
-- **Transaction types**: CashFlow (inflow/outflow), Transfer (between accounts), BalanceUpdate (periodic balance snapshots), BalanceAdjustment (corrections), InvestmentSettlement (realized gains/losses)
-- **Balance calculation**: Starts from the latest balance update (or initial balance if none), then applies subsequent cash flows, transfers, and adjustments
+- **Accounts**: Active accounts are user-ordered. Archived accounts are read-only and kept for historical records.
+- **Account opening**: `initialBalance` is the opening asset event, and in-period account openings count as opening assets in dashboards.
+- **Transaction types**: CashFlow (inflow/outflow), Transfer (between accounts), BalanceUpdate (reconciliation delta event), BalanceAdjustment (manual correction)
+- **Balance calculation**: Before account opening balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`
 - **Settings**: Stored via DataStore Preferences (`SettingsRepositoryImpl`), not Room

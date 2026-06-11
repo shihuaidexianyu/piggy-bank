@@ -76,7 +76,6 @@ class BalanceCalculationParityTest {
             BalanceAdjustmentRecord(
                 accountId = primaryId,
                 delta = 200,
-                sourceUpdateRecordId = 0L,
                 occurredAt = 5_000,
                 createdAt = 5_000,
             ),
@@ -139,18 +138,8 @@ class BalanceCalculationParityTest {
             BalanceAdjustmentRecord(
                 accountId = primaryId,
                 delta = -25,
-                sourceUpdateRecordId = 0L,
                 occurredAt = 9_000,
                 createdAt = 9_000,
-            ),
-        )
-        transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(
-                accountId = primaryId,
-                delta = 9_999,
-                sourceUpdateRecordId = 99L,
-                occurredAt = 9_500,
-                createdAt = 9_500,
             ),
         )
 
