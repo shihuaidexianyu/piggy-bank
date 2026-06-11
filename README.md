@@ -18,6 +18,37 @@
 - JSON 导出：设置页可导出完整数据，方便迁移与备份。
 - 隐私优先：应用仅本地离线存储，不依赖网络服务。
 
+## 📱 界面截图
+
+以下截图使用调试构建自动生成的随机演示数据。
+
+<table>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/home.png" width="240" alt="首页" /><br />首页</td>
+    <td align="center"><img src="_screenshots/readme/history.png" width="240" alt="历史" /><br />历史</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/stats.png" width="240" alt="统计" /><br />统计</td>
+    <td align="center"><img src="_screenshots/readme/accounts.png" width="240" alt="账户" /><br />账户</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/settings.png" width="240" alt="设置" /><br />设置</td>
+    <td align="center"><img src="_screenshots/readme/reminders.png" width="240" alt="提醒中心" /><br />提醒中心</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/account-detail.png" width="240" alt="账户详情" /><br />账户详情</td>
+    <td align="center"><img src="_screenshots/readme/create-account.png" width="240" alt="新建账户" /><br />新建账户</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/record-cash-flow.png" width="240" alt="记录出账" /><br />记录出账</td>
+    <td align="center"><img src="_screenshots/readme/record-transfer.png" width="240" alt="记录转账" /><br />记录转账</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="_screenshots/readme/update-balance.png" width="240" alt="核对余额" /><br />核对余额</td>
+    <td align="center"><img src="_screenshots/readme/create-reminder.png" width="240" alt="新建提醒" /><br />新建提醒</td>
+  </tr>
+</table>
+
 ## 🧱 技术栈
 
 - **语言**: Kotlin 2.2.20

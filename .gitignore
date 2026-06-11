@@ -27,7 +27,9 @@ local.properties
 signing/
 /.vscode/
 /_preview/
-/_screenshots/
+/_screenshots/*
+!/_screenshots/readme/
+!/_screenshots/readme/*.png
 qa_*.png
 launcher_preview*.png
 icon_preview.png

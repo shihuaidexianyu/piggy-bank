@@ -1,8 +1,14 @@
 package com.shihuaidexianyu.money.data.debug
 
 import androidx.room.withTransaction
+import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
+import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
+import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
+import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
+import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
@@ -14,6 +20,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlin.random.Random
 
 object DebugSampleDataSeeder {
     suspend fun seedIfNeeded(database: MoneyDatabase) {
@@ -21,6 +28,7 @@ object DebugSampleDataSeeder {
         val cashFlowDao = database.cashFlowRecordDao()
         val transferDao = database.transferRecordDao()
         val balanceUpdateDao = database.balanceUpdateRecordDao()
+        val balanceAdjustmentDao = database.balanceAdjustmentRecordDao()
         val reminderDao = database.recurringReminderDao()
 
         val hasData =
@@ -28,95 +36,312 @@ object DebugSampleDataSeeder {
                 cashFlowDao.queryAllActive().isNotEmpty() ||
                 transferDao.queryAllActive().isNotEmpty() ||
                 balanceUpdateDao.queryAllActive().isNotEmpty() ||
+                balanceAdjustmentDao.queryAllActive().isNotEmpty() ||
                 reminderDao.queryAll().isNotEmpty()
         if (hasData) return
 
+        val random = Random(System.currentTimeMillis())
         val zoneId = ZoneId.systemDefault()
         val today = LocalDate.now(zoneId)
         val now = System.currentTimeMillis()
 
         database.withTransaction {
-            val paymentCreatedAt = millisAt(zoneId, LocalDate.of(2025, 1, 1), 9, 0)
-            val bankCreatedAt = millisAt(zoneId, LocalDate.of(2024, 12, 1), 9, 30)
-            val savingsCreatedAt = millisAt(zoneId, LocalDate.of(2024, 12, 15), 10, 0)
-            val fundCreatedAt = millisAt(zoneId, LocalDate.of(2022, 1, 10), 10, 30)
-
-            val paymentId = accountDao.insert(
-                AccountEntity(
-                    name = "微信支付",
-                    initialBalance = 28_500,
-                    createdAt = paymentCreatedAt,
-                    lastUsedAt = millisAt(zoneId, today, 20, 10),
-                    displayOrder = 0,
-                    colorName = "green",
-                ),
-            )
-            val bankId = accountDao.insert(
-                AccountEntity(
-                    name = "招商银行",
-                    initialBalance = 1_250_000,
-                    createdAt = bankCreatedAt,
-                    lastUsedAt = millisAt(zoneId, today.minusDays(1), 18, 10),
-                    displayOrder = 1,
-                    colorName = "blue",
-                ),
-            )
-            val savingsId = accountDao.insert(
-                AccountEntity(
-                    name = "应急储蓄",
-                    initialBalance = 800_000,
-                    createdAt = savingsCreatedAt,
-                    lastUsedAt = millisAt(zoneId, today.minusDays(3), 19, 40),
-                    displayOrder = 2,
-                    colorName = "teal",
-                ),
-            )
-            val fundAccountId = accountDao.insert(
-                AccountEntity(
-                    name = "指数基金",
-                    initialBalance = 1_000_000,
-                    createdAt = fundCreatedAt,
-                    lastUsedAt = millisAt(zoneId, today.minusDays(4), 15, 0),
-                    lastBalanceUpdateAt = millisAt(zoneId, today.minusDays(5), 21, 0),
-                    displayOrder = 3,
-                    colorName = "purple",
-                ),
+            val accounts = createRandomAccounts(
+                accountDao = accountDao,
+                random = random,
+                zoneId = zoneId,
+                today = today,
             )
 
-            seedHistoricalCashFlows(
+            seedRandomCashFlows(
                 cashFlowDao = cashFlowDao,
-                paymentId = paymentId,
-                bankId = bankId,
+                accountIds = accounts.values.toList(),
+                incomeAccountId = accounts.getValue("salary"),
+                random = random,
                 zoneId = zoneId,
                 today = today,
             )
 
-            seedTransfers(
+            seedRandomTransfers(
                 transferDao = transferDao,
-                bankId = bankId,
-                savingsId = savingsId,
-                fundAccountId = fundAccountId,
+                accounts = accounts,
+                random = random,
                 zoneId = zoneId,
                 today = today,
             )
 
-            seedFundReconciliations(
+            seedRandomBalanceEvents(
                 balanceUpdateDao = balanceUpdateDao,
-                fundAccountId = fundAccountId,
+                balanceAdjustmentDao = balanceAdjustmentDao,
+                accounts = accounts,
+                random = random,
                 zoneId = zoneId,
+                today = today,
             )
 
+            seedRandomReminders(
+                reminderDao = reminderDao,
+                accountIds = accounts.values.toList(),
+                random = random,
+                zoneId = zoneId,
+                today = today,
+                now = now,
+            )
+        }
+    }
+
+    private suspend fun createRandomAccounts(
+        accountDao: com.shihuaidexianyu.money.data.dao.AccountDao,
+        random: Random,
+        zoneId: ZoneId,
+        today: LocalDate,
+    ): Map<String, Long> {
+        val names = listOf("微信零钱", "招商银行", "应急储蓄", "指数基金", "旅行预算").shuffled(random)
+        val colors = listOf("green", "blue", "teal", "purple", "orange")
+        val keys = listOf("wallet", "salary", "savings", "investment", "travel")
+        return keys.mapIndexed { index, key ->
+            val createdAt = millisAt(
+                zoneId = zoneId,
+                date = today.minusDays(random.nextLong(190, 780)),
+                hour = random.nextInt(8, 22),
+                minute = random.nextInt(0, 60),
+            )
+            val accountId = accountDao.insert(
+                AccountEntity(
+                    name = names[index],
+                    initialBalance = randomAmount(
+                        random = random,
+                        minYuan = if (key == "investment") 12_000 else 300,
+                        maxYuan = if (key == "investment") 48_000 else 18_000,
+                    ),
+                    createdAt = createdAt,
+                    lastUsedAt = millisAt(
+                        zoneId = zoneId,
+                        date = today.minusDays(random.nextLong(0, 10)),
+                        hour = random.nextInt(8, 22),
+                        minute = random.nextInt(0, 60),
+                    ),
+                    lastBalanceUpdateAt = if (key == "investment" || key == "savings") {
+                        millisAt(
+                            zoneId = zoneId,
+                            date = today.minusDays(random.nextLong(3, 18)),
+                            hour = 21,
+                            minute = random.nextInt(0, 60),
+                        )
+                    } else {
+                        null
+                    },
+                    displayOrder = index,
+                    colorName = colors[index],
+                ),
+            )
+            key to accountId
+        }.toMap()
+    }
+
+    private suspend fun seedRandomCashFlows(
+        cashFlowDao: CashFlowRecordDao,
+        accountIds: List<Long>,
+        incomeAccountId: Long,
+        random: Random,
+        zoneId: ZoneId,
+        today: LocalDate,
+    ) {
+        val incomePurposes = listOf("工资", "奖金", "报销", "副业", "退款", "利息")
+        val outflowPurposes = listOf(
+            "早餐",
+            "午餐",
+            "晚餐",
+            "咖啡",
+            "超市",
+            "通勤",
+            "打车",
+            "电影",
+            "健身",
+            "生活用品",
+            "宠物用品",
+            "房租分摊",
+            "网购",
+            "水电燃气",
+        )
+
+        repeat(5) { monthOffset ->
+            val baseMonth = today.minusMonths(monthOffset.toLong())
+            val payrollDay = baseMonth.withDayOfMonth(minOf(5, baseMonth.lengthOfMonth()))
+            insertCashFlow(
+                dao = cashFlowDao,
+                accountId = incomeAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = randomAmount(random = random, minYuan = 9_500, maxYuan = 18_500),
+                purpose = incomePurposes.random(random),
+                occurredAt = millisAt(zoneId, payrollDay, 10, random.nextInt(0, 45)),
+            )
+
+            repeat(random.nextInt(11, 18)) {
+                val direction = if (random.nextInt(100) < 18) {
+                    CashFlowDirection.INFLOW
+                } else {
+                    CashFlowDirection.OUTFLOW
+                }
+                val day = random.nextInt(1, baseMonth.lengthOfMonth() + 1)
+                val date = baseMonth.withDayOfMonth(day).coerceAtMost(today)
+                val amount = if (direction == CashFlowDirection.INFLOW) {
+                    randomAmount(random = random, minYuan = 40, maxYuan = 1_200)
+                } else {
+                    randomAmount(random = random, minYuan = 12, maxYuan = 680)
+                }
+                insertCashFlow(
+                    dao = cashFlowDao,
+                    accountId = accountIds.random(random),
+                    direction = direction.value,
+                    amount = amount,
+                    purpose = if (direction == CashFlowDirection.INFLOW) {
+                        incomePurposes.random(random)
+                    } else {
+                        outflowPurposes.random(random)
+                    },
+                    occurredAt = millisAt(
+                        zoneId = zoneId,
+                        date = date,
+                        hour = random.nextInt(7, 23),
+                        minute = random.nextInt(0, 60),
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun seedRandomTransfers(
+        transferDao: TransferRecordDao,
+        accounts: Map<String, Long>,
+        random: Random,
+        zoneId: ZoneId,
+        today: LocalDate,
+    ) {
+        val notes = listOf("月度储蓄", "基金定投", "旅行预留", "信用卡还款", "账户归集", "周末预算")
+        val routes = listOf(
+            accounts.getValue("salary") to accounts.getValue("savings"),
+            accounts.getValue("salary") to accounts.getValue("investment"),
+            accounts.getValue("salary") to accounts.getValue("travel"),
+            accounts.getValue("wallet") to accounts.getValue("salary"),
+            accounts.getValue("savings") to accounts.getValue("wallet"),
+        )
+
+        repeat(10) { index ->
+            val (fromAccountId, toAccountId) = routes.random(random)
+            val date = today.minusDays(random.nextLong(1, 135))
+            insertTransfer(
+                dao = transferDao,
+                fromAccountId = fromAccountId,
+                toAccountId = toAccountId,
+                amount = randomAmount(
+                    random = random,
+                    minYuan = if (index < 3) 1_000 else 100,
+                    maxYuan = if (index < 3) 8_000 else 2_500,
+                ),
+                note = notes.random(random),
+                occurredAt = millisAt(
+                    zoneId = zoneId,
+                    date = date,
+                    hour = random.nextInt(8, 21),
+                    minute = random.nextInt(0, 60),
+                ),
+            )
+        }
+    }
+
+    private suspend fun seedRandomBalanceEvents(
+        balanceUpdateDao: BalanceUpdateRecordDao,
+        balanceAdjustmentDao: BalanceAdjustmentRecordDao,
+        accounts: Map<String, Long>,
+        random: Random,
+        zoneId: ZoneId,
+        today: LocalDate,
+    ) {
+        listOf(accounts.getValue("investment"), accounts.getValue("savings")).forEach { accountId ->
+            repeat(2) {
+                val systemBalance = randomAmount(random = random, minYuan = 8_000, maxYuan = 62_000)
+                val delta = randomAmount(random = random, minYuan = -900, maxYuan = 1_400)
+                val occurredAt = millisAt(
+                    zoneId = zoneId,
+                    date = today.minusDays(random.nextLong(5, 160)),
+                    hour = 21,
+                    minute = random.nextInt(0, 60),
+                )
+                balanceUpdateDao.insert(
+                    BalanceUpdateRecordEntity(
+                        accountId = accountId,
+                        actualBalance = systemBalance + delta,
+                        systemBalanceBeforeUpdate = systemBalance,
+                        delta = delta,
+                        occurredAt = occurredAt,
+                        createdAt = occurredAt,
+                    ),
+                )
+            }
+        }
+
+        repeat(5) {
+            val delta = randomAmount(random = random, minYuan = -260, maxYuan = 420)
+            val occurredAt = millisAt(
+                zoneId = zoneId,
+                date = today.minusDays(random.nextLong(1, 90)),
+                hour = random.nextInt(9, 22),
+                minute = random.nextInt(0, 60),
+            )
+            balanceAdjustmentDao.insert(
+                BalanceAdjustmentRecordEntity(
+                    accountId = accounts.values.random(random),
+                    delta = delta,
+                    occurredAt = occurredAt,
+                    createdAt = occurredAt,
+                ),
+            )
+        }
+    }
+
+    private suspend fun seedRandomReminders(
+        reminderDao: RecurringReminderDao,
+        accountIds: List<Long>,
+        random: Random,
+        zoneId: ZoneId,
+        today: LocalDate,
+        now: Long,
+    ) {
+        val reminders = listOf(
+            ReminderSeed("房租", CashFlowDirection.OUTFLOW, 2_800, 4_200, ReminderPeriodType.MONTHLY),
+            ReminderSeed("交通卡", CashFlowDirection.OUTFLOW, 80, 240, ReminderPeriodType.CUSTOM_DAYS),
+            ReminderSeed("会员订阅", CashFlowDirection.OUTFLOW, 18, 98, ReminderPeriodType.MONTHLY),
+            ReminderSeed("保险缴费", CashFlowDirection.OUTFLOW, 1_200, 3_600, ReminderPeriodType.YEARLY),
+            ReminderSeed("兼职收入", CashFlowDirection.INFLOW, 600, 2_000, ReminderPeriodType.CUSTOM_DAYS),
+        ).shuffled(random).take(4)
+
+        reminders.forEach { seed ->
+            val nextDueAt = millisAt(
+                zoneId = zoneId,
+                date = today.plusDays(random.nextLong(-3, 16)),
+                hour = 9,
+                minute = random.nextInt(0, 60),
+            )
             reminderDao.insert(
                 RecurringReminderEntity(
-                    name = "房租",
+                    name = seed.name,
                     type = ReminderType.MANUAL.value,
-                    accountId = bankId,
-                    direction = CashFlowDirection.OUTFLOW.value,
-                    amount = 3_200_00,
-                    periodType = ReminderPeriodType.MONTHLY.value,
-                    periodValue = 1,
-                    periodMonth = null,
-                    nextDueAt = millisAt(zoneId, today.minusDays(1), 9, 0),
+                    accountId = accountIds.random(random),
+                    direction = seed.direction.value,
+                    amount = randomAmount(random, seed.minYuan, seed.maxYuan),
+                    periodType = seed.periodType.value,
+                    periodValue = if (seed.periodType == ReminderPeriodType.CUSTOM_DAYS) {
+                        listOf(14, 30, 45, 90).random(random)
+                    } else {
+                        1
+                    },
+                    periodMonth = if (seed.periodType == ReminderPeriodType.YEARLY) {
+                        random.nextInt(1, 13)
+                    } else {
+                        null
+                    },
+                    nextDueAt = nextDueAt,
                     createdAt = now,
                     updatedAt = now,
                 ),
@@ -124,149 +349,23 @@ object DebugSampleDataSeeder {
         }
     }
 
-    private suspend fun seedHistoricalCashFlows(
-        cashFlowDao: com.shihuaidexianyu.money.data.dao.CashFlowRecordDao,
-        paymentId: Long,
-        bankId: Long,
-        zoneId: ZoneId,
-        today: LocalDate,
-    ) {
-        val payrollDates = listOf(
-            LocalDate.of(2022, 5, 12),
-            LocalDate.of(2024, 9, 18),
-            today.minusMonths(1).withDayOfMonth(5),
-            today.withDayOfMonth(5),
-        )
-        payrollDates.forEachIndexed { index, date ->
-            insertCashFlow(
-                dao = cashFlowDao,
-                accountId = bankId,
-                direction = CashFlowDirection.INFLOW.value,
-                amount = 12_800_00 + index * 350_00L,
-                purpose = "工资",
-                occurredAt = millisAt(zoneId, date, 10, 0),
-            )
-        }
+    private data class ReminderSeed(
+        val name: String,
+        val direction: CashFlowDirection,
+        val minYuan: Int,
+        val maxYuan: Int,
+        val periodType: ReminderPeriodType,
+    )
 
-        val paymentFlows = listOf(
-            Triple(today.withDayOfMonth(1), CashFlowDirection.OUTFLOW.value, 32_00L to "早餐"),
-            Triple(today.withDayOfMonth(2), CashFlowDirection.OUTFLOW.value, 88_00L to "午餐"),
-            Triple(today.withDayOfMonth(3), CashFlowDirection.OUTFLOW.value, 49_00L to "打车"),
-            Triple(today.withDayOfMonth(4), CashFlowDirection.INFLOW.value, 66_00L to "退款"),
-            Triple(today.withDayOfMonth(5), CashFlowDirection.OUTFLOW.value, 158_00L to "聚餐"),
-            Triple(today.withDayOfMonth(6), CashFlowDirection.OUTFLOW.value, 25_00L to "咖啡"),
-            Triple(today.withDayOfMonth(7), CashFlowDirection.OUTFLOW.value, 1_280_00L to "房租分摊"),
-            Triple(today.withDayOfMonth(8), CashFlowDirection.INFLOW.value, 300_00L to "报销"),
-            Triple(today.withDayOfMonth(9), CashFlowDirection.OUTFLOW.value, 56_00L to "晚餐"),
-        ).filter { it.first.month == today.month && it.first.year == today.year }
-
-        paymentFlows.forEach { (date, direction, pair) ->
-            insertCashFlow(
-                dao = cashFlowDao,
-                accountId = paymentId,
-                direction = direction,
-                amount = pair.first,
-                purpose = pair.second,
-                occurredAt = millisAt(zoneId, date, 19, 30),
-            )
-        }
-
-        val lastMonthBase = today.minusMonths(1)
-        val lastMonthFlows = listOf(
-            Triple(lastMonthBase.withDayOfMonth(2), CashFlowDirection.OUTFLOW.value, 42_00L to "早餐"),
-            Triple(lastMonthBase.withDayOfMonth(6), CashFlowDirection.OUTFLOW.value, 216_00L to "超市"),
-            Triple(lastMonthBase.withDayOfMonth(11), CashFlowDirection.OUTFLOW.value, 74_00L to "打车"),
-            Triple(lastMonthBase.withDayOfMonth(16), CashFlowDirection.INFLOW.value, 120_00L to "退款"),
-            Triple(lastMonthBase.withDayOfMonth(23), CashFlowDirection.OUTFLOW.value, 268_00L to "生活用品"),
-            Triple(lastMonthBase.withDayOfMonth(28), CashFlowDirection.OUTFLOW.value, 92_00L to "外卖"),
-        ).filter { it.first.month == lastMonthBase.month && it.first.year == lastMonthBase.year }
-
-        lastMonthFlows.forEach { (date, direction, pair) ->
-            insertCashFlow(
-                dao = cashFlowDao,
-                accountId = paymentId,
-                direction = direction,
-                amount = pair.first,
-                purpose = pair.second,
-                occurredAt = millisAt(zoneId, date, 20, 0),
-            )
-        }
-    }
-
-    private suspend fun seedTransfers(
-        transferDao: com.shihuaidexianyu.money.data.dao.TransferRecordDao,
-        bankId: Long,
-        savingsId: Long,
-        fundAccountId: Long,
-        zoneId: ZoneId,
-        today: LocalDate,
-    ) {
-        insertTransfer(
-            dao = transferDao,
-            fromAccountId = bankId,
-            toAccountId = savingsId,
-            amount = 2_000_00,
-            note = "月度储蓄",
-            occurredAt = millisAt(zoneId, today.withDayOfMonth(3), 8, 30),
-        )
-        insertTransfer(
-            dao = transferDao,
-            fromAccountId = bankId,
-            toAccountId = fundAccountId,
-            amount = 1_500_00,
-            note = "定投",
-            occurredAt = millisAt(zoneId, today.withDayOfMonth(4), 8, 45),
-        )
-        insertTransfer(
-            dao = transferDao,
-            fromAccountId = bankId,
-            toAccountId = fundAccountId,
-            amount = 50_000_00,
-            note = "历史建仓",
-            occurredAt = millisAt(zoneId, LocalDate.of(2024, 3, 5), 10, 0),
-        )
-        insertTransfer(
-            dao = transferDao,
-            fromAccountId = bankId,
-            toAccountId = fundAccountId,
-            amount = 10_000_00,
-            note = "追加投入",
-            occurredAt = millisAt(zoneId, LocalDate.of(2026, 2, 10), 10, 15),
-        )
-    }
-
-    private suspend fun seedFundReconciliations(
-        balanceUpdateDao: com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao,
-        fundAccountId: Long,
-        zoneId: ZoneId,
-    ) {
-        val firstUpdateAt = millisAt(zoneId, LocalDate.of(2025, 12, 31), 21, 0)
-        balanceUpdateDao.insert(
-            BalanceUpdateRecordEntity(
-                accountId = fundAccountId,
-                actualBalance = 1_650_000,
-                systemBalanceBeforeUpdate = 1_580_000,
-                delta = 70_000,
-                occurredAt = firstUpdateAt,
-                createdAt = firstUpdateAt,
-            ),
-        )
-
-        val secondUpdateAt = millisAt(zoneId, LocalDate.of(2026, 4, 5), 21, 0)
-        balanceUpdateDao.insert(
-            BalanceUpdateRecordEntity(
-                accountId = fundAccountId,
-                actualBalance = 1_820_000,
-                systemBalanceBeforeUpdate = 1_750_000,
-                delta = 70_000,
-                occurredAt = secondUpdateAt,
-                createdAt = secondUpdateAt,
-            ),
-        )
+    private fun randomAmount(random: Random, minYuan: Int, maxYuan: Int): Long {
+        val minFen = minYuan * 100L
+        val maxFen = maxYuan * 100L
+        val amount = random.nextLong(minFen, maxFen + 1)
+        return amount / 100L * 100L
     }
 
     private suspend fun insertCashFlow(
-        dao: com.shihuaidexianyu.money.data.dao.CashFlowRecordDao,
+        dao: CashFlowRecordDao,
         accountId: Long,
         direction: String,
         amount: Long,
@@ -287,7 +386,7 @@ object DebugSampleDataSeeder {
     }
 
     private suspend fun insertTransfer(
-        dao: com.shihuaidexianyu.money.data.dao.TransferRecordDao,
+        dao: TransferRecordDao,
         fromAccountId: Long,
         toAccountId: Long,
         amount: Long,
