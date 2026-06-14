@@ -76,6 +76,15 @@ interface BalanceAdjustmentRecordDao {
     )
     suspend fun sumNegativeManualAdjustmentBetween(startAt: Long, endAt: Long): Long
 
+    @Query(
+        """
+        SELECT COUNT(*) FROM balance_adjustment_records
+        WHERE occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun countBetween(startAt: Long, endAt: Long): Int
+
     @Query("DELETE FROM balance_adjustment_records")
     suspend fun deleteAll()
 }

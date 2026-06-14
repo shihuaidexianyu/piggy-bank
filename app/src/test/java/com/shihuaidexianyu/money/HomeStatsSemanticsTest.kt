@@ -85,5 +85,94 @@ class HomeStatsSemanticsTest {
         assertEquals(700L, repository.sumBalanceUpdateDecreaseBetween(startAt, endAt))
         assertEquals(400L, repository.sumManualAdjustmentIncreaseBetween(startAt, endAt))
         assertEquals(0L, repository.sumManualAdjustmentDecreaseBetween(startAt, endAt))
+        assertEquals(2, repository.countActiveCashFlowRecordsBetween(startAt, endAt))
+        assertEquals(1, repository.countActiveTransferRecordsBetween(startAt, endAt))
+        assertEquals(1, repository.countManualAdjustmentRecordsBetween(startAt, endAt))
+    }
+
+    @Test
+    fun `period record counts use open start closed end and ignore deleted records`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        val startAt = 1_000L
+        val endAt = 10_000L
+        repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100,
+                purpose = "边界外",
+                occurredAt = startAt,
+                createdAt = startAt,
+                updatedAt = startAt,
+            ),
+        )
+        repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 200,
+                purpose = "边界内",
+                occurredAt = endAt,
+                createdAt = endAt,
+                updatedAt = endAt,
+            ),
+        )
+        val deletedCashFlowId = repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 300,
+                purpose = "已删除",
+                occurredAt = 5_000,
+                createdAt = 5_000,
+                updatedAt = 5_000,
+            ),
+        )
+        repository.softDeleteCashFlowRecord(deletedCashFlowId, 5_001)
+        repository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = 1L,
+                toAccountId = 2L,
+                amount = 400,
+                note = "转账",
+                occurredAt = endAt,
+                createdAt = endAt,
+                updatedAt = endAt,
+            ),
+        )
+        val deletedTransferId = repository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = 2L,
+                toAccountId = 1L,
+                amount = 500,
+                note = "已删除",
+                occurredAt = 5_000,
+                createdAt = 5_000,
+                updatedAt = 5_000,
+            ),
+        )
+        repository.softDeleteTransferRecord(deletedTransferId, 5_001)
+        repository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = 1L,
+                delta = 600,
+                occurredAt = endAt,
+                createdAt = endAt,
+            ),
+        )
+        repository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = 1L,
+                actualBalance = 700,
+                systemBalanceBeforeUpdate = 100,
+                delta = 600,
+                occurredAt = endAt,
+                createdAt = endAt,
+            ),
+        )
+
+        assertEquals(1, repository.countActiveCashFlowRecordsBetween(startAt, endAt))
+        assertEquals(1, repository.countActiveTransferRecordsBetween(startAt, endAt))
+        assertEquals(1, repository.countManualAdjustmentRecordsBetween(startAt, endAt))
     }
 }

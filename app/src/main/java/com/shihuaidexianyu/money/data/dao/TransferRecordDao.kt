@@ -90,6 +90,16 @@ interface TransferRecordDao {
     )
     suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
 
+    @Query(
+        """
+        SELECT COUNT(*) FROM transfer_records
+        WHERE isDeleted = 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun countActiveBetween(startAt: Long, endAt: Long): Int
+
     @Query("DELETE FROM transfer_records")
     suspend fun deleteAll()
 }

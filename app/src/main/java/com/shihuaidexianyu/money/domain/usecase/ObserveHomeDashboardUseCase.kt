@@ -24,6 +24,7 @@ data class HomeDashboardSnapshot(
     val settings: AppSettings,
     val totalAssets: Long,
     val periodBreakdown: PeriodAssetBreakdown,
+    val periodRecordCount: Int,
     val staleAccountCount: Int,
     val activeAccounts: List<Account>,
     val staleAccounts: List<Account>,
@@ -108,6 +109,15 @@ class ObserveHomeDashboardUseCase(
         val manualAdjustmentDecreaseJob = async {
             transactionRepository.sumManualAdjustmentDecreaseBetween(range.startAtMillis, range.endAtMillis)
         }
+        val cashFlowRecordCountJob = async {
+            transactionRepository.countActiveCashFlowRecordsBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val transferRecordCountJob = async {
+            transactionRepository.countActiveTransferRecordsBetween(range.startAtMillis, range.endAtMillis)
+        }
+        val manualAdjustmentRecordCountJob = async {
+            transactionRepository.countManualAdjustmentRecordsBetween(range.startAtMillis, range.endAtMillis)
+        }
 
         val balances = balanceJob.await()
         val totalAssets = balances.values.sum()
@@ -133,6 +143,9 @@ class ObserveHomeDashboardUseCase(
             settings = settings,
             totalAssets = totalAssets,
             periodBreakdown = periodBreakdown,
+            periodRecordCount = cashFlowRecordCountJob.await() +
+                transferRecordCountJob.await() +
+                manualAdjustmentRecordCountJob.await(),
             staleAccountCount = staleAccounts.size,
             activeAccounts = accounts,
             staleAccounts = staleAccounts,

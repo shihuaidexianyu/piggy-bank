@@ -117,6 +117,16 @@ interface CashFlowRecordDao {
 
     @Query(
         """
+        SELECT COUNT(*) FROM cash_flow_records
+        WHERE isDeleted = 0
+            AND occurredAt > :startAt
+            AND occurredAt <= :endAt
+        """,
+    )
+    suspend fun countActiveBetween(startAt: Long, endAt: Long): Int
+
+    @Query(
+        """
         SELECT * FROM cash_flow_records
         WHERE isDeleted = 0 AND occurredAt >= :startAt AND occurredAt <= :endAt
         ORDER BY occurredAt ASC

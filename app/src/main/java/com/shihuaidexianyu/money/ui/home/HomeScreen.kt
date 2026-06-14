@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
@@ -120,11 +122,12 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                TotalAssetsBlock(
-                    totalAssets = AmountFormatter.format(state.totalAssets, state.settings),
-                    accountCount = state.accountOptions.size,
-                    staleCount = state.staleAccountCount,
-                    showStaleMark = state.settings.showStaleMark,
+                PeriodOverviewBlock(
+                    recordCount = state.periodRecordCount,
+                    periodLabel = state.settings.homePeriod.displayName,
+                    cashInflow = state.periodCashInflow,
+                    cashOutflow = state.periodCashOutflow,
+                    settings = state.settings,
                 )
             }
             item {
@@ -181,23 +184,26 @@ private fun ReminderHeaderButton(
 }
 
 @Composable
-private fun TotalAssetsBlock(
-    totalAssets: String,
-    accountCount: Int,
-    staleCount: Int,
-    showStaleMark: Boolean,
+private fun PeriodOverviewBlock(
+    recordCount: Int,
+    periodLabel: String,
+    cashInflow: Long,
+    cashOutflow: Long,
+    settings: AppSettings,
 ) {
-    val borderColor = if (staleCount > 0 && showStaleMark) {
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f)
+    val moneyColors = LocalMoneyColors.current
+    val cashNet = cashInflow - cashOutflow
+    val netColor = when {
+        cashNet > 0 -> moneyColors.income
+        cashNet < 0 -> moneyColors.expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = borderColor,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
                 shape = RoundedCornerShape(16.dp),
             ),
         color = MaterialTheme.colorScheme.surface,
@@ -207,7 +213,7 @@ private fun TotalAssetsBlock(
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -215,45 +221,74 @@ private fun TotalAssetsBlock(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "总资产",
+                    text = "本周期记录",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                val statusText = if (staleCount > 0 && showStaleMark) {
-                    "$staleCount 个待核对"
-                } else {
-                    "$accountCount 个账户"
-                }
                 MoneyStatusPill(
-                    text = statusText,
-                    accent = if (staleCount > 0 && showStaleMark) {
-                        MaterialTheme.colorScheme.secondary
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
+                    text = periodLabel,
+                    accent = MaterialTheme.colorScheme.primary,
                 )
             }
-            val amountStyle = when {
-                totalAssets.length > 24 -> MaterialTheme.typography.titleLarge
-                totalAssets.length > 18 -> MaterialTheme.typography.headlineSmall
-                totalAssets.length > 14 -> MaterialTheme.typography.displayMedium
+            val recordText = "$recordCount 笔"
+            val recordStyle = when {
+                recordText.length > 12 -> MaterialTheme.typography.headlineSmall
+                recordText.length > 8 -> MaterialTheme.typography.displayMedium
                 else -> MaterialTheme.typography.displayLarge
             }
             Text(
-                text = totalAssets,
-                style = amountStyle,
+                text = recordText,
+                style = recordStyle,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
             )
-            if (staleCount > 0 && showStaleMark) {
-                Text(
-                    text = "有账户余额需要确认，更新后总资产会更准确。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PeriodMetricRow(
+                    label = "入账",
+                    value = AmountFormatter.format(cashInflow, settings),
+                    color = moneyColors.income,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+                PeriodMetricRow(
+                    label = "出账",
+                    value = AmountFormatter.format(cashOutflow, settings),
+                    color = moneyColors.expense,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+                PeriodMetricRow(
+                    label = "收支结余",
+                    value = AmountFormatter.format(cashNet, settings),
+                    color = netColor,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PeriodMetricRow(
+    label: String,
+    value: String,
+    color: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 

@@ -272,6 +272,20 @@ class InMemoryTransactionRepository : TransactionRepository {
             .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
             .sumOf { -it.delta }
 
+    override suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int {
+        return queryAllActiveCashFlowRecords()
+            .count { it.occurredAt > startAt && it.occurredAt <= endAt }
+    }
+
+    override suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int {
+        return queryAllActiveTransferRecords()
+            .count { it.occurredAt > startAt && it.occurredAt <= endAt }
+    }
+
+    override suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int {
+        return adjustments.count { it.occurredAt > startAt && it.occurredAt <= endAt }
+    }
+
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> {
         return queryAllActiveCashFlowRecords()
             .filter { it.occurredAt in startAt..endAt }

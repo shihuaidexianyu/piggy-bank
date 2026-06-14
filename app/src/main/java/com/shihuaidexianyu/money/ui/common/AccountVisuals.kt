@@ -119,7 +119,7 @@ fun AccountIconBadge(
 }
 
 @Composable
-private fun accountVisualColor(name: String): Color {
+internal fun accountVisualColor(name: String): Color {
     return when (normalizeAccountColorName(name)) {
         "green" -> Color(0xFF2E7D32)
         "orange" -> Color(0xFFE87124)

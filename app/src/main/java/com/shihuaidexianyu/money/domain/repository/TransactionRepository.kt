@@ -72,6 +72,9 @@ interface TransactionStatsRepository {
     suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long
     suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long
     suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long
+    suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int
+    suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int
+    suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int
 }
 
 interface TransactionRepository :

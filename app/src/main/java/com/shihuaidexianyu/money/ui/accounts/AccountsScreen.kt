@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,8 +39,10 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
+import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
+import kotlin.math.roundToInt
 
 @Composable
 fun AccountsScreen(
@@ -49,6 +53,9 @@ fun AccountsScreen(
     modifier: Modifier = Modifier,
 ) {
     val hasArchivedAccounts = state.archivedAccounts.isNotEmpty()
+    val positiveAssetsTotal = state.activeAccounts.sumOf { account ->
+        if (account.balance > 0) account.balance else 0L
+    }
 
     Column(modifier = modifier) {
         MoneyPageTitle(
@@ -110,6 +117,7 @@ fun AccountsScreen(
                             AccountCard(
                                 account = account,
                                 currencySettings = state.settings,
+                                positiveAssetsTotal = positiveAssetsTotal,
                                 onClick = { onAccountClick(account.id) },
                             )
                         }
@@ -146,6 +154,7 @@ fun AccountsScreen(
                             AccountCard(
                                 account = account,
                                 currencySettings = state.settings,
+                                positiveAssetsTotal = 0L,
                                 onClick = { onAccountClick(account.id) },
                             )
                         }
@@ -173,7 +182,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "账户总览",
+                    text = "总资产",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -195,52 +204,11 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OverviewMetric(
-                label = "活跃",
-                value = "${state.activeAccounts.size}",
-                modifier = Modifier.weight(1f),
-            )
-            OverviewMetric(
-                label = "归档",
-                value = "${state.archivedAccounts.size}",
-                modifier = Modifier.weight(1f),
-            )
-            OverviewMetric(
-                label = "待核对",
-                value = "$staleCount",
-                accent = if (staleCount > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun OverviewMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accent: Color = MaterialTheme.colorScheme.primary,
-) {
-    Surface(
-        modifier = modifier.heightIn(min = 64.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-        shape = RoundedCornerShape(10.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        if (staleCount > 0) {
             Text(
-                text = label,
+                text = "有账户余额需要确认，更新后总资产会更准确。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                color = accent,
             )
         }
     }
@@ -250,11 +218,29 @@ private fun OverviewMetric(
 private fun AccountCard(
     account: AccountListItemUiModel,
     currencySettings: AppSettings,
+    positiveAssetsTotal: Long,
     onClick: () -> Unit,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
     val balanceText = AmountFormatter.format(account.balance, currencySettings)
+    val showAssetShare = !account.isArchived && account.balance > 0 && positiveAssetsTotal > 0
+    val assetShareFraction = if (showAssetShare) {
+        (account.balance.toFloat() / positiveAssetsTotal.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val assetShareText = if (showAssetShare) {
+        formatAssetShare(account.balance, positiveAssetsTotal)
+    } else {
+        ""
+    }
+    val assetShareColor = accountVisualColor(account.colorName)
+    val statusText = when {
+        account.isArchived -> "已归档"
+        account.isStale -> "余额待核对"
+        else -> "余额正常"
+    }
     val balanceStyle = when {
         balanceText.length > 18 -> MaterialTheme.typography.bodyMedium
         balanceText.length > 14 -> MaterialTheme.typography.titleMedium
@@ -276,57 +262,93 @@ private fun AccountCard(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AccountIconBadge(
-                iconName = account.iconName,
-                colorName = account.colorName,
-                isArchived = account.isArchived,
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = account.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = when {
-                        account.isArchived -> "已归档"
-                        account.isStale -> "余额待核对"
-                        else -> "余额正常"
+                .then(
+                    if (showAssetShare) {
+                        Modifier.drawBehind {
+                            drawRect(
+                                color = assetShareColor.copy(alpha = 0.10f),
+                                size = Size(
+                                    width = size.width * assetShareFraction.coerceIn(0.01f, 1f),
+                                    height = size.height,
+                                ),
+                            )
+                        }
+                    } else {
+                        Modifier
                     },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = balanceText,
-                    style = balanceStyle,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
+                AccountIconBadge(
+                    iconName = account.iconName,
+                    colorName = account.colorName,
+                    isArchived = account.isArchived,
                 )
-                if (account.isStale && !account.isArchived) {
-                    MoneyStatusPill(
-                        text = "待核对",
-                        accent = MaterialTheme.colorScheme.secondary,
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = account.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (showAssetShare) {
+                        Text(
+                            text = assetShareText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                    Text(
+                        text = balanceText,
+                        style = balanceStyle,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                    if (account.isStale && !account.isArchived) {
+                        MoneyStatusPill(
+                            text = "待核对",
+                            accent = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+private fun formatAssetShare(
+    balance: Long,
+    totalPositiveBalance: Long,
+): String {
+    val percentage = balance.toDouble() * 100.0 / totalPositiveBalance.toDouble()
+    return if (percentage < 1.0) {
+        "<1%"
+    } else {
+        "${percentage.roundToInt().coerceIn(1, 100)}%"
     }
 }

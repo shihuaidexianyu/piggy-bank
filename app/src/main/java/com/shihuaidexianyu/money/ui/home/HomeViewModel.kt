@@ -34,7 +34,7 @@ data class StaleAccountUiModel(
 data class HomeUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
-    val totalAssets: Long = 0,
+    val periodRecordCount: Int = 0,
     val periodAssetChange: Long = 0,
     val periodCashInflow: Long = 0,
     val periodCashOutflow: Long = 0,
@@ -60,7 +60,7 @@ class HomeViewModel(
                     _uiState.value = HomeUiState(
                         isLoading = false,
                         settings = snapshot.settings,
-                        totalAssets = snapshot.totalAssets,
+                        periodRecordCount = snapshot.periodRecordCount,
                         periodAssetChange = snapshot.periodBreakdown.assetChange,
                         periodCashInflow = snapshot.periodBreakdown.cashInflow,
                         periodCashOutflow = snapshot.periodBreakdown.cashOutflow,

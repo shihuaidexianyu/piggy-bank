@@ -186,6 +186,15 @@ class TransactionRepositoryImpl(
     override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
         balanceAdjustmentRecordDao.sumNegativeManualAdjustmentBetween(startAt, endAt)
 
+    override suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int =
+        cashFlowRecordDao.countActiveBetween(startAt, endAt)
+
+    override suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int =
+        transferRecordDao.countActiveBetween(startAt, endAt)
+
+    override suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int =
+        balanceAdjustmentRecordDao.countBetween(startAt, endAt)
+
     override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startAt, endAt).map { it.toDomain() }
 
     override suspend fun queryPurposeTotals(
