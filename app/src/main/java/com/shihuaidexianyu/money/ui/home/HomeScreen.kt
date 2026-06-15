@@ -118,8 +118,8 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             PeriodOverviewBlock(
                 recordCount = state.periodRecordCount,
@@ -312,7 +312,10 @@ private fun ActionGrid(
             modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 ActionTile(
                     label = "入账",
                     icon = Icons.Rounded.SouthWest,
@@ -330,7 +333,10 @@ private fun ActionGrid(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 ActionTile(
                     label = "转账",
                     icon = Icons.Rounded.SwapHoriz,
@@ -363,20 +369,20 @@ private fun ActionTile(
 ) {
     Column(
         modifier = modifier
-            .heightIn(min = 94.dp)
+            .heightIn(min = 88.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(
                 color = tint.copy(alpha = if (enabled) 0.07f else 0.04f),
                 shape = RoundedCornerShape(12.dp),
             )
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .background(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = if (enabled) 0.82f else 0.62f),
                     shape = CircleShape,
@@ -387,7 +393,7 @@ private fun ActionTile(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (enabled) tint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
         Text(

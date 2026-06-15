@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,10 +50,14 @@ fun MoneyFormPage(
     snackbarHostState: SnackbarHostState? = null,
     onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    listState: LazyListState? = null,
     contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
     content: LazyListScope.() -> Unit,
 ) {
+    val defaultListState = rememberLazyListState()
+    val resolvedListState = listState ?: defaultListState
+
     Column(modifier = modifier) {
         snackbarHostState?.let { SnackbarHost(hostState = it) }
         MoneyPageTitle(
@@ -61,6 +67,7 @@ fun MoneyFormPage(
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
         )
         LazyColumn(
+            state = resolvedListState,
             contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,
         ) {
@@ -303,7 +310,6 @@ fun MoneySaveButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     label: String = "保存",
-    savingLabel: String = "保存中...",
 ) {
     Button(
         onClick = onClick,
@@ -318,7 +324,7 @@ fun MoneySaveButton(
         ),
     ) {
         Text(
-            text = if (isSaving) savingLabel else label,
+            text = label,
             style = MaterialTheme.typography.titleMedium,
         )
     }

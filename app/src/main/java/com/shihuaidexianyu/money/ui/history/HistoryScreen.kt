@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
@@ -23,11 +24,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +68,8 @@ private enum class HistoryDateField {
     END,
 }
 
+private const val HISTORY_PREFETCH_ITEM_DISTANCE = 8
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -83,6 +87,26 @@ fun HistoryScreen(
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
+    val listState = rememberLazyListState()
+    val canPrefetch = state.hasMoreRecords && !state.isLoading && !state.isLoadingMore
+    val shouldPrefetch by remember(listState, canPrefetch, state.records.size) {
+        derivedStateOf {
+            if (!canPrefetch) {
+                false
+            } else {
+                val layoutInfo = listState.layoutInfo
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                val totalItemsCount = layoutInfo.totalItemsCount
+                totalItemsCount > 0 && lastVisibleIndex >= totalItemsCount - HISTORY_PREFETCH_ITEM_DISTANCE
+            }
+        }
+    }
+
+    LaunchedEffect(shouldPrefetch, state.records.size) {
+        if (shouldPrefetch) {
+            onLoadMore()
+        }
+    }
 
     if (sheet == HistoryFilterSheet.ACCOUNT) {
         AccountPickerDialog(
@@ -168,13 +192,6 @@ fun HistoryScreen(
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.DIRECTION },
                         )
                     }
-                    if (hasActiveFilters(state)) {
-                        Text(
-                            text = "已启用 ${activeFilterCount(state)} 项筛选",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
                 HistoryFilterSheet.DATE -> {
                     FlowRow(
@@ -255,13 +272,7 @@ fun HistoryScreen(
     MoneyFormPage(
         title = "历史",
         modifier = modifier,
-        trailing = {
-            Text(
-                text = historyCountText(state),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
+        listState = listState,
         contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -304,23 +315,9 @@ fun HistoryScreen(
                         )
                     }
                 }
-                activeFilterSummary(state)?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
-        if (state.records.isEmpty() && state.isLoading) {
-            item {
-                MoneyEmptyStateCard(
-                    title = "正在加载",
-                    subtitle = "历史记录加载中。",
-                )
-            }
-        } else if (state.records.isEmpty()) {
+        if (state.records.isEmpty() && !state.isLoading) {
             item {
                 MoneyEmptyStateCard(
                     title = "还没有记录",
@@ -334,25 +331,6 @@ fun HistoryScreen(
                     settings = state.settings,
                     onClick = { onRecordClick(record) },
                 )
-            }
-            if (state.hasMoreRecords || state.isLoadingMore) {
-                item {
-                    if (state.isLoadingMore) {
-                        Text(
-                            text = "正在加载更多...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        OutlinedButton(
-                            onClick = onLoadMore,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("加载更多")
-                        }
-                    }
-                }
             }
         }
     }
@@ -538,23 +516,6 @@ private fun activeFilterCount(state: HistoryUiState): Int {
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
         state.amountDirectionFilter != AmountDirectionFilter.ALL,
     ).count { it }
-}
-
-private fun activeFilterSummary(state: HistoryUiState): String? {
-    val count = activeFilterCount(state)
-    return if (count == 0) {
-        null
-    } else {
-        "当前已启用$count 个筛选条件"
-    }
-}
-
-private fun historyCountText(state: HistoryUiState): String {
-    return when {
-        state.isLoading && state.records.isEmpty() -> "加载中"
-        state.hasMoreRecords || state.isLoadingMore -> "已加载 ${state.records.size}/${state.totalRecordCount} 条"
-        else -> "${state.totalRecordCount} 条"
-    }
 }
 
 private fun historyKindLabel(record: HistoryRecordUiModel): String {
