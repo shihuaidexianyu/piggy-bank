@@ -138,6 +138,7 @@ fun MoneySingleLineField(
     placeholder: String? = null,
     enabled: Boolean = true,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
 ) {
     OutlinedTextField(
         value = value,
@@ -148,6 +149,7 @@ fun MoneySingleLineField(
         enabled = enabled,
         singleLine = true,
         textStyle = textStyle,
+        keyboardOptions = keyboardOptions,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -290,7 +292,7 @@ fun MoneyAmountField(
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = MaterialTheme.typography.displayMedium,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,

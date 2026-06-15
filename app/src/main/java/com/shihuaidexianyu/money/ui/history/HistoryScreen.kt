@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -243,11 +245,13 @@ fun HistoryScreen(
                         value = state.minAmountText,
                         onValueChange = onMinAmountChange,
                         label = "最小金额",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     )
                     MoneySingleLineField(
                         value = state.maxAmountText,
                         onValueChange = onMaxAmountChange,
                         label = "最大金额",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     )
                 }
                 HistoryFilterSheet.DIRECTION -> {
