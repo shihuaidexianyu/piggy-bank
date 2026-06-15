@@ -72,6 +72,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onMinAmountChange = viewModel::updateMinAmount,
             onMaxAmountChange = viewModel::updateMaxAmount,
             onAmountDirectionChange = viewModel::updateAmountDirectionFilter,
+            onLoadMore = viewModel::loadMore,
             onRecordClick = { record ->
                 when (record.kind) {
                     HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))

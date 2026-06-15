@@ -4,6 +4,9 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
+import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
@@ -77,10 +80,21 @@ interface TransactionStatsRepository {
     suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int
 }
 
+interface HistoryTransactionRepository {
+    suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord>
+
+    suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int
+}
+
 interface TransactionRepository :
     TransactionChangeRepository,
     CashFlowTransactionRepository,
     TransferTransactionRepository,
     BalanceUpdateTransactionRepository,
     BalanceAdjustmentTransactionRepository,
-    TransactionStatsRepository
+    TransactionStatsRepository,
+    HistoryTransactionRepository

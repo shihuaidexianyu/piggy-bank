@@ -1,0 +1,147 @@
+package com.shihuaidexianyu.money
+
+import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.TransferRecord
+import kotlin.test.assertEquals
+import kotlinx.coroutines.runBlocking
+import org.junit.Test
+
+class HistoryRepositoryPagingTest {
+    @Test
+    fun `history query pages across record types with stable cursor order`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        val occurredAt = 1_000L
+        repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100,
+                purpose = "工资",
+                occurredAt = occurredAt,
+                createdAt = occurredAt,
+                updatedAt = occurredAt,
+            ),
+        )
+        repository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = 1L,
+                toAccountId = 2L,
+                amount = 200,
+                note = "转账",
+                occurredAt = occurredAt,
+                createdAt = occurredAt,
+                updatedAt = occurredAt,
+            ),
+        )
+        repository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = 1L,
+                actualBalance = 300,
+                systemBalanceBeforeUpdate = 100,
+                delta = 200,
+                occurredAt = occurredAt,
+                createdAt = occurredAt,
+            ),
+        )
+        repository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = 1L,
+                delta = -50,
+                occurredAt = occurredAt,
+                createdAt = occurredAt,
+            ),
+        )
+
+        val firstPage = repository.queryHistoryRecords(
+            filters = HistoryRecordFilters(),
+            cursor = null,
+            limit = 2,
+        )
+        val secondPage = repository.queryHistoryRecords(
+            filters = HistoryRecordFilters(),
+            cursor = firstPage.last().cursor,
+            limit = 2,
+        )
+
+        assertEquals(listOf(HistoryRecordType.CASH_FLOW, HistoryRecordType.TRANSFER), firstPage.map { it.type })
+        assertEquals(
+            listOf(HistoryRecordType.BALANCE_UPDATE, HistoryRecordType.BALANCE_ADJUSTMENT),
+            secondPage.map { it.type },
+        )
+        assertEquals(4, repository.countHistoryRecords(HistoryRecordFilters()))
+    }
+
+    @Test
+    fun `history filters run before paging and exclude deleted records`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        val deletedId = repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100,
+                purpose = "午餐 咖啡",
+                occurredAt = 1_000L,
+                createdAt = 1_000L,
+                updatedAt = 1_000L,
+            ),
+        )
+        repository.softDeleteCashFlowRecord(deletedId, 1_001L)
+        repository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 200,
+                purpose = "午餐 米饭",
+                occurredAt = 2_000L,
+                createdAt = 2_000L,
+                updatedAt = 2_000L,
+            ),
+        )
+        repository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = 2L,
+                toAccountId = 1L,
+                amount = 300,
+                note = "午餐垫付",
+                occurredAt = 3_000L,
+                createdAt = 3_000L,
+                updatedAt = 3_000L,
+            ),
+        )
+        repository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = 1L,
+                delta = 400,
+                occurredAt = 4_000L,
+                createdAt = 4_000L,
+            ),
+        )
+
+        val filters = HistoryRecordFilters(
+            keyword = "午餐",
+            excludeKeyword = "咖啡",
+            accountId = 1L,
+            minAmount = 150L,
+            amountDirection = HistoryAmountDirection.ALL,
+        )
+        val records = repository.queryHistoryRecords(filters = filters, cursor = null, limit = 10)
+
+        assertEquals(listOf(HistoryRecordType.TRANSFER, HistoryRecordType.CASH_FLOW), records.map { it.type })
+        assertEquals(2, repository.countHistoryRecords(filters))
+        assertEquals(
+            listOf(HistoryRecordType.BALANCE_ADJUSTMENT),
+            repository.queryHistoryRecords(
+                filters = HistoryRecordFilters(amountDirection = HistoryAmountDirection.INCREASE),
+                cursor = null,
+                limit = 10,
+            ).map { it.type },
+        )
+    }
+}

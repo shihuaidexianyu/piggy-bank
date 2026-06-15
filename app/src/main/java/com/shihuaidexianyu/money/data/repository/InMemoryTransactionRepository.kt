@@ -6,12 +6,18 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.math.abs
 
 class InMemoryTransactionRepository : TransactionRepository {
     private var nextCashFlowId = 1L
@@ -320,6 +326,113 @@ class InMemoryTransactionRepository : TransactionRepository {
                 )
             }
             .sortedWith(compareBy<CashFlowDailyTotal> { it.epochDay }.thenBy { it.direction })
+    }
+
+    override suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord> {
+        return buildHistoryRecords()
+            .asSequence()
+            .filter { it.matches(filters) }
+            .filter { it.isAfterCursor(cursor) }
+            .take(limit)
+            .toList()
+    }
+
+    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        return buildHistoryRecords().count { it.matches(filters) }
+    }
+
+    private fun buildHistoryRecords(): List<HistoryRecord> {
+        val cashRecords = cashFlowRecords.filterNot(CashFlowRecord::isDeleted).map { record ->
+            HistoryRecord(
+                recordId = record.id,
+                type = HistoryRecordType.CASH_FLOW,
+                sourceOrder = 4,
+                accountId = record.accountId,
+                relatedAccountId = null,
+                title = record.purpose.ifBlank { "未填写用途" },
+                amount = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
+                occurredAt = record.occurredAt,
+                keywordSource = record.purpose,
+            )
+        }
+        val transferHistoryRecords = transferRecords.filterNot(TransferRecord::isDeleted).map { record ->
+            HistoryRecord(
+                recordId = record.id,
+                type = HistoryRecordType.TRANSFER,
+                sourceOrder = 3,
+                accountId = record.fromAccountId,
+                relatedAccountId = record.toAccountId,
+                title = record.note.ifBlank { "账户间转移" },
+                amount = record.amount,
+                occurredAt = record.occurredAt,
+                keywordSource = record.note,
+            )
+        }
+        val updateHistoryRecords = balanceUpdates.map { record ->
+            HistoryRecord(
+                recordId = record.id,
+                type = HistoryRecordType.BALANCE_UPDATE,
+                sourceOrder = 2,
+                accountId = record.accountId,
+                relatedAccountId = null,
+                title = if (record.delta == 0L) "余额核对" else "对账调整",
+                amount = record.delta,
+                occurredAt = record.occurredAt,
+                keywordSource = "",
+            )
+        }
+        val adjustmentHistoryRecords = adjustments.map { record ->
+            HistoryRecord(
+                recordId = record.id,
+                type = HistoryRecordType.BALANCE_ADJUSTMENT,
+                sourceOrder = 1,
+                accountId = record.accountId,
+                relatedAccountId = null,
+                title = "余额矫正",
+                amount = record.delta,
+                occurredAt = record.occurredAt,
+                keywordSource = "",
+            )
+        }
+        return (cashRecords + transferHistoryRecords + updateHistoryRecords + adjustmentHistoryRecords)
+            .sortedWith(
+                compareByDescending<HistoryRecord> { it.occurredAt }
+                    .thenByDescending { it.sourceOrder }
+                    .thenByDescending { it.recordId },
+            )
+    }
+
+    private fun HistoryRecord.matches(filters: HistoryRecordFilters): Boolean {
+        val keyword = filters.keyword.trim().lowercase()
+        val excludeKeyword = filters.excludeKeyword.trim().lowercase()
+        val source = keywordSource.lowercase()
+        val keywordOk = keyword.isBlank() || source.contains(keyword)
+        val excludeOk = excludeKeyword.isBlank() || !source.contains(excludeKeyword)
+        val accountOk = filters.accountId == null ||
+            accountId == filters.accountId ||
+            relatedAccountId == filters.accountId
+        val startOk = filters.dateStartAt == null || occurredAt >= filters.dateStartAt
+        val endOk = filters.dateEndAt == null || occurredAt <= filters.dateEndAt
+        val amountAbs = abs(amount)
+        val minOk = filters.minAmount == null || amountAbs >= filters.minAmount
+        val maxOk = filters.maxAmount == null || amountAbs <= filters.maxAmount
+        val directionOk = when (filters.amountDirection) {
+            HistoryAmountDirection.ALL -> true
+            HistoryAmountDirection.INCREASE -> amount > 0 && type != HistoryRecordType.TRANSFER
+            HistoryAmountDirection.DECREASE -> amount < 0 && type != HistoryRecordType.TRANSFER
+        }
+        return keywordOk && excludeOk && accountOk && startOk && endOk && minOk && maxOk && directionOk
+    }
+
+    private fun HistoryRecord.isAfterCursor(cursor: HistoryPageCursor?): Boolean {
+        return cursor == null ||
+            occurredAt < cursor.occurredAt ||
+            (occurredAt == cursor.occurredAt && sourceOrder < cursor.sourceOrder) ||
+            (occurredAt == cursor.occurredAt && sourceOrder == cursor.sourceOrder && recordId < cursor.recordId)
     }
 
     private fun replaceCashFlowById(id: Long, replacement: CashFlowRecord) {

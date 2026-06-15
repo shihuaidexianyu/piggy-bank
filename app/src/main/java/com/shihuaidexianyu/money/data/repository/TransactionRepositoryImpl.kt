@@ -5,11 +5,15 @@ import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
+import com.shihuaidexianyu.money.data.dao.HistoryRecordDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
+import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +26,7 @@ class TransactionRepositoryImpl(
     private val transferRecordDao: TransferRecordDao,
     private val balanceUpdateRecordDao: BalanceUpdateRecordDao,
     private val balanceAdjustmentRecordDao: BalanceAdjustmentRecordDao,
+    private val historyRecordDao: HistoryRecordDao,
 ) : TransactionRepository {
     private val mutationVersion = MutableStateFlow(0L)
 
@@ -211,6 +216,40 @@ class TransactionRepositoryImpl(
         zoneOffsetSeconds: Int,
     ): List<CashFlowDailyTotal> {
         return cashFlowRecordDao.queryDailyTotals(startAt, endAt, zoneOffsetSeconds).map { it.toDomain() }
+    }
+
+    override suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord> {
+        return historyRecordDao.queryPage(
+            keyword = filters.keyword.trim().lowercase(),
+            excludeKeyword = filters.excludeKeyword.trim().lowercase(),
+            accountId = filters.accountId,
+            dateStartAt = filters.dateStartAt,
+            dateEndAt = filters.dateEndAt,
+            minAmount = filters.minAmount,
+            maxAmount = filters.maxAmount,
+            amountDirection = filters.amountDirection.name,
+            cursorOccurredAt = cursor?.occurredAt,
+            cursorSourceOrder = cursor?.sourceOrder ?: 0,
+            cursorRecordId = cursor?.recordId ?: 0L,
+            limit = limit,
+        ).map { it.toDomain() }
+    }
+
+    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        return historyRecordDao.count(
+            keyword = filters.keyword.trim().lowercase(),
+            excludeKeyword = filters.excludeKeyword.trim().lowercase(),
+            accountId = filters.accountId,
+            dateStartAt = filters.dateStartAt,
+            dateEndAt = filters.dateEndAt,
+            minAmount = filters.minAmount,
+            maxAmount = filters.maxAmount,
+            amountDirection = filters.amountDirection.name,
+        )
     }
 
     private fun bumpVersion() {

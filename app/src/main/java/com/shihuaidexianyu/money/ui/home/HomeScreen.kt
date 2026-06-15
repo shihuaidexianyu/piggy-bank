@@ -6,13 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -117,32 +115,28 @@ fun HomeScreen(
             },
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
-        LazyColumn(
-            contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                PeriodOverviewBlock(
-                    recordCount = state.periodRecordCount,
-                    periodLabel = state.settings.homePeriod.displayName,
-                    cashInflow = state.periodCashInflow,
-                    cashOutflow = state.periodCashOutflow,
-                    settings = state.settings,
-                )
-            }
-            item {
-                MoneySectionHeader(title = "快速记录")
-            }
-            item {
-                ActionGrid(
-                    onInflow = { pickerDirection = CashFlowDirection.INFLOW },
-                    onOutflow = { pickerDirection = CashFlowDirection.OUTFLOW },
-                    onTransfer = onStartTransfer,
-                    onUpdateBalance = { showUpdateBalancePicker = true },
-                    enabled = state.accountOptions.isNotEmpty(),
-                    transferEnabled = state.accountOptions.size >= 2,
-                )
-            }
+            PeriodOverviewBlock(
+                recordCount = state.periodRecordCount,
+                periodLabel = state.settings.homePeriod.displayName,
+                cashInflow = state.periodCashInflow,
+                cashOutflow = state.periodCashOutflow,
+                settings = state.settings,
+            )
+            MoneySectionHeader(title = "快速记录")
+            ActionGrid(
+                onInflow = { pickerDirection = CashFlowDirection.INFLOW },
+                onOutflow = { pickerDirection = CashFlowDirection.OUTFLOW },
+                onTransfer = onStartTransfer,
+                onUpdateBalance = { showUpdateBalancePicker = true },
+                enabled = state.accountOptions.isNotEmpty(),
+                transferEnabled = state.accountOptions.size >= 2,
+            )
         }
     }
 }

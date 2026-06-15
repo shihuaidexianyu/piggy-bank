@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.data.repository
 
 import com.shihuaidexianyu.money.data.dao.CashFlowDailyTotalRow
+import com.shihuaidexianyu.money.data.dao.HistoryRecordRow
 import com.shihuaidexianyu.money.data.dao.PurposeTotalRow
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
@@ -13,6 +14,8 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -172,4 +175,16 @@ internal fun CashFlowDailyTotalRow.toDomain(): CashFlowDailyTotal = CashFlowDail
     epochDay = epochDay,
     direction = direction,
     amount = amount,
+)
+
+internal fun HistoryRecordRow.toDomain(): HistoryRecord = HistoryRecord(
+    recordId = recordId,
+    type = HistoryRecordType.valueOf(type),
+    sourceOrder = sourceOrder,
+    accountId = accountId,
+    relatedAccountId = relatedAccountId,
+    title = title,
+    amount = amount,
+    occurredAt = occurredAt,
+    keywordSource = keywordSource,
 )

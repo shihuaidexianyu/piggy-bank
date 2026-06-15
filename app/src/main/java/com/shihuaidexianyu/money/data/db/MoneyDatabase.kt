@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.data.dao.AccountDao
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
+import com.shihuaidexianyu.money.data.dao.HistoryRecordDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
@@ -227,6 +228,7 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun transferRecordDao(): TransferRecordDao
     abstract fun balanceUpdateRecordDao(): BalanceUpdateRecordDao
     abstract fun balanceAdjustmentRecordDao(): BalanceAdjustmentRecordDao
+    abstract fun historyRecordDao(): HistoryRecordDao
     abstract fun recurringReminderDao(): RecurringReminderDao
 
     companion object {

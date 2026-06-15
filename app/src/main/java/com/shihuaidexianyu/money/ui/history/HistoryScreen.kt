@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -76,6 +77,7 @@ fun HistoryScreen(
     onMinAmountChange: (String) -> Unit,
     onMaxAmountChange: (String) -> Unit,
     onAmountDirectionChange: (AmountDirectionFilter) -> Unit,
+    onLoadMore: () -> Unit,
     onRecordClick: (HistoryRecordUiModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -255,7 +257,7 @@ fun HistoryScreen(
         modifier = modifier,
         trailing = {
             Text(
-                text = "${state.records.size} 条",
+                text = historyCountText(state),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -311,7 +313,14 @@ fun HistoryScreen(
                 }
             }
         }
-        if (state.records.isEmpty()) {
+        if (state.records.isEmpty() && state.isLoading) {
+            item {
+                MoneyEmptyStateCard(
+                    title = "正在加载",
+                    subtitle = "历史记录加载中。",
+                )
+            }
+        } else if (state.records.isEmpty()) {
             item {
                 MoneyEmptyStateCard(
                     title = "还没有记录",
@@ -325,6 +334,25 @@ fun HistoryScreen(
                     settings = state.settings,
                     onClick = { onRecordClick(record) },
                 )
+            }
+            if (state.hasMoreRecords || state.isLoadingMore) {
+                item {
+                    if (state.isLoadingMore) {
+                        Text(
+                            text = "正在加载更多...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        OutlinedButton(
+                            onClick = onLoadMore,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("加载更多")
+                        }
+                    }
+                }
             }
         }
     }
@@ -518,6 +546,14 @@ private fun activeFilterSummary(state: HistoryUiState): String? {
         null
     } else {
         "当前已启用$count 个筛选条件"
+    }
+}
+
+private fun historyCountText(state: HistoryUiState): String {
+    return when {
+        state.isLoading && state.records.isEmpty() -> "加载中"
+        state.hasMoreRecords || state.isLoadingMore -> "已加载 ${state.records.size}/${state.totalRecordCount} 条"
+        else -> "${state.totalRecordCount} 条"
     }
 }
 

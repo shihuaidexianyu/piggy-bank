@@ -46,6 +46,7 @@ internal class DataGraph(context: Context) {
             transferRecordDao = moneyDatabase.transferRecordDao(),
             balanceUpdateRecordDao = moneyDatabase.balanceUpdateRecordDao(),
             balanceAdjustmentRecordDao = moneyDatabase.balanceAdjustmentRecordDao(),
+            historyRecordDao = moneyDatabase.historyRecordDao(),
         )
 
     val settingsRepository: SettingsRepository =
