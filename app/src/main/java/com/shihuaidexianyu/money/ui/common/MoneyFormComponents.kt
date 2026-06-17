@@ -2,6 +2,8 @@ package com.shihuaidexianyu.money.ui.common
 
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -285,14 +287,35 @@ fun MoneyAmountField(
     modifier: Modifier = Modifier,
     label: String = "金额",
 ) {
+    var showKeypad by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) {
+                showKeypad = true
+            }
+        }
+    }
+
+    if (showKeypad) {
+        MoneyAmountKeypadSheet(
+            value = value,
+            label = label,
+            onValueChange = onValueChange,
+            onDismiss = { showKeypad = false },
+        )
+    }
+
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = {},
         label = { Text(label) },
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
+        readOnly = true,
         textStyle = MaterialTheme.typography.displayMedium,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
