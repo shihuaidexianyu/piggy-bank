@@ -39,6 +39,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -407,10 +411,20 @@ private fun HistoryRow(
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> LocalMoneyColors.current.current
     }
+    val amountText = AmountFormatter.format(record.amount, settings)
     MoneyCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(record.title)
+                    append("，${historyKindLabel(record)}")
+                    append("，$amountText")
+                    append("，${DateTimeTextFormatter.format(record.occurredAt)}")
+                }
+                role = Role.Button
+            },
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
@@ -440,7 +454,7 @@ private fun HistoryRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = AmountFormatter.format(record.amount, settings),
+                    text = amountText,
                     style = MaterialTheme.typography.titleLarge,
                     color = when {
                         record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant

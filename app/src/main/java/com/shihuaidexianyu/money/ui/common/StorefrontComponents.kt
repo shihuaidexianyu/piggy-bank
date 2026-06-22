@@ -29,6 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -291,10 +295,21 @@ fun MoneyListRow(
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
 ) {
+    // Build a single spoken description so Talkback reads the row as one item, e.g.
+    // "招商银行 最近核对 2024-01-15 余额 12345 元".
+    val rowDescription = buildString {
+        append(title)
+        subtitle?.let { append("，$it") }
+        trailing?.let { append("，$it") }
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = rowDescription
+                role = Role.Button
+            },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -22,4 +22,6 @@ data class AppSettings(
     val lastHistoryMinAmountText: String = "",
     val lastHistoryMaxAmountText: String = "",
     val lastHistoryAmountDirection: String = "",
+    val biometricLock: Boolean = false,
+    val dynamicColor: Boolean = true,
 )

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="record_outflow"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_record_outflow_short"
+        android:shortcutLongLabel="@string/shortcut_record_outflow_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.shihuaidexianyu.money.MainActivity"
+            android:targetPackage="com.shihuaidexianyu.money">
+            <extra android:name="shortcut_action" android:value="record_outflow" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="record_inflow"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_record_inflow_short"
+        android:shortcutLongLabel="@string/shortcut_record_inflow_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.shihuaidexianyu.money.MainActivity"
+            android:targetPackage="com.shihuaidexianyu.money">
+            <extra android:name="shortcut_action" android:value="record_inflow" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="balance_check"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_balance_check_short"
+        android:shortcutLongLabel="@string/shortcut_balance_check_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.shihuaidexianyu.money.MainActivity"
+            android:targetPackage="com.shihuaidexianyu.money">
+            <extra android:name="shortcut_action" android:value="balance_check" />
+        </intent>
+    </shortcut>
+</shortcuts>

@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- POST_NOTIFICATIONS: required on Android 13+ for due-reminder notifications posted by
+         RecurringReminderWorker. On Android 12 and below this permission is auto-granted. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- SCHEDULE_EXACT_ALARM: required on Android 12+ for exact-reminder alarms via AlarmManager.
+         On Android 13+ the user must grant this in system settings; we fall back to WorkManager
+         if not granted. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
     <application
         android:name=".MoneyApplication"
         android:allowBackup="false"
@@ -11,13 +21,21 @@
         android:theme="@style/Theme.Money">
         <activity
             android:name=".MainActivity"
-            android:enableOnBackInvokedCallback="false"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
-            android:theme="@style/Theme.Money">
+            android:theme="@style/Theme.Money.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -28,6 +46,26 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <receiver
+            android:name=".widget.BalanceOverviewWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_balance_overview_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_balance_overview_info" />
+        </receiver>
+
+        <receiver
+            android:name=".notification.ReminderAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.shihuaidexianyu.money.REMINDER_DUE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

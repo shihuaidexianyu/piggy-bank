@@ -31,6 +31,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
@@ -252,7 +256,15 @@ private fun AccountCard(
                 shape = RoundedCornerShape(12.dp),
             )
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(account.name)
+                    append("，余额 ${balanceText}")
+                    append("，$statusText")
+                }
+                role = Role.Button
+            },
         color = cardColor,
         shape = RoundedCornerShape(12.dp),
         tonalElevation = 0.dp,

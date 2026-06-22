@@ -1,12 +1,16 @@
 package com.shihuaidexianyu.money.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 
@@ -64,6 +68,7 @@ private val DarkColors = darkColorScheme(
 fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
@@ -71,7 +76,16 @@ fun MoneyTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val colorScheme = if (darkTheme) DarkColors else LightColors
+    val context = LocalContext.current
+    // Android 12+ (API 31+) supports dynamic color from the user's wallpaper. When enabled and
+    // available, use the system's color scheme; otherwise fall back to the app's brand palette.
+    val supportsDynamicColor = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val colorScheme = when {
+        supportsDynamicColor && darkTheme -> dynamicDarkColorScheme(context)
+        supportsDynamicColor && !darkTheme -> dynamicLightColorScheme(context)
+        darkTheme -> DarkColors
+        else -> LightColors
+    }
     val moneyColors = moneyColorsFor(
         darkTheme = darkTheme,
         amountColorMode = amountColorMode,

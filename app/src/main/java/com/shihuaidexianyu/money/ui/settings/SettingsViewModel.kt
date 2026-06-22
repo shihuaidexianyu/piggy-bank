@@ -111,6 +111,14 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.updateAmountColorMode(amountColorMode) }
     }
 
+    fun updateBiometricLock(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.updateBiometricLock(enabled) }
+    }
+
+    fun updateDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.updateDynamicColor(enabled) }
+    }
+
     fun exportData() {
         if (isExporting.value) return
         viewModelScope.launch {

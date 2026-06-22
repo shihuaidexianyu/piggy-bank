@@ -136,6 +136,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
+            onBiometricLockChange = viewModel::updateBiometricLock,
+            onDynamicColorChange = viewModel::updateDynamicColor,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,

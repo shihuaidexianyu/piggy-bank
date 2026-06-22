@@ -3,4 +3,13 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!-- Splash screen theme. Uses the system SplashScreen API (Android 12+) with the app icon
+         as the post-launch splash. On Android 12+ the system handles the animation; on older
+         versions the core-splashscreen library emulates it. -->
+    <style name="Theme.Money.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Money</item>
+    </style>
 </resources>

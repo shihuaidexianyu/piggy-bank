@@ -54,6 +54,8 @@ fun SettingsScreen(
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
+    onBiometricLockChange: (Boolean) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
@@ -230,6 +232,30 @@ fun SettingsScreen(
                         Switch(
                             checked = settings.showStaleMark,
                             onCheckedChange = onShowStaleMarkChange,
+                        )
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "生物识别锁定",
+                    subtitle = "启动应用时需指纹或面容解锁",
+                    showChevron = false,
+                    accessory = {
+                        Switch(
+                            checked = settings.biometricLock,
+                            onCheckedChange = onBiometricLockChange,
+                        )
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "动态取色",
+                    subtitle = "Android 12+ 根据壁纸自动调整配色",
+                    showChevron = false,
+                    accessory = {
+                        Switch(
+                            checked = settings.dynamicColor,
+                            onCheckedChange = onDynamicColorChange,
                         )
                     },
                 )

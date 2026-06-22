@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,10 +53,49 @@ private fun topLevelExitTransition(): ExitTransition {
 }
 
 @Composable
-fun MoneyNavGraph(container: MoneyAppContainer) {
+fun MoneyNavGraph(
+    container: MoneyAppContainer,
+    shortcutAction: String? = null,
+    sharedAmount: Long? = null,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // Handle app-shortcut deep links: navigate to the target screen once on first composition.
+    LaunchedEffect(shortcutAction) {
+        when (shortcutAction) {
+            "record_outflow" -> navController.navigate(
+                MoneyDestination.recordCashFlowRoute(
+                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
+                    accountId = 0L,
+                ),
+            )
+            "record_inflow" -> navController.navigate(
+                MoneyDestination.recordCashFlowRoute(
+                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW,
+                    accountId = 0L,
+                ),
+            )
+            "balance_check" -> navController.navigate(MoneyDestination.BatchReconcileRoute)
+        }
+    }
+
+    // Handle shared text with an extracted amount: default to recording an outflow with the
+    // amount pre-filled (most shared texts are payment confirmations / receipts).
+    LaunchedEffect(sharedAmount) {
+        if (sharedAmount != null && sharedAmount > 0) {
+            navController.navigate(
+                MoneyDestination.recordCashFlowRoute(
+                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
+                    accountId = 0L,
+                    amount = sharedAmount,
+                    purpose = null,
+                    reminderId = null,
+                ),
+            )
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,

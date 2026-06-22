@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">小金库</string>
+
+    <!-- App Shortcuts -->
+    <string name="shortcut_record_outflow_short">记支出</string>
+    <string name="shortcut_record_outflow_long">记录一笔支出</string>
+    <string name="shortcut_record_inflow_short">记收入</string>
+    <string name="shortcut_record_inflow_long">记录一笔收入</string>
+    <string name="shortcut_balance_check_short">核对余额</string>
+    <string name="shortcut_balance_check_long">批量核对账户余额</string>
+
+    <!-- Widget -->
+    <string name="widget_balance_overview_title">总资产</string>
+    <string name="widget_balance_overview_description">显示总资产、本月收入和支出</string>
+    <string name="widget_this_month_income">本月收入</string>
+    <string name="widget_this_month_expense">本月支出</string>
 </resources>
