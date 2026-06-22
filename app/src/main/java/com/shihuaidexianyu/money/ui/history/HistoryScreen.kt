@@ -403,15 +403,28 @@ private fun HistoryRow(
     settings: com.shihuaidexianyu.money.domain.model.AppSettings,
     onClick: () -> Unit,
 ) {
+    val moneyColors = LocalMoneyColors.current
     val accent = when (record.kind) {
         HistoryRecordKind.CASH_FLOW ->
-            if (record.amount > 0) LocalMoneyColors.current.income else LocalMoneyColors.current.expense
-        HistoryRecordKind.TRANSFER -> LocalMoneyColors.current.transfer
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        HistoryRecordKind.TRANSFER ->
+            // Transfers have direction: positive = received (income green), negative = sent (expense red).
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
         HistoryRecordKind.BALANCE_UPDATE,
         HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> LocalMoneyColors.current.current
+        -> moneyColors.current
     }
     val amountText = AmountFormatter.format(record.amount, settings)
+    val amountColor = when (record.kind) {
+        HistoryRecordKind.TRANSFER ->
+            // Same direction-aware coloring as cash flow — transfers aren't neutral gray anymore.
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        else -> when {
+            record.amount > 0 -> moneyColors.income
+            record.amount < 0 -> moneyColors.expense
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    }
     MoneyCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -456,12 +469,7 @@ private fun HistoryRow(
                 Text(
                     text = amountText,
                     style = MaterialTheme.typography.titleLarge,
-                    color = when {
-                        record.kind == HistoryRecordKind.TRANSFER -> MaterialTheme.colorScheme.onSurfaceVariant
-                        record.amount > 0 -> LocalMoneyColors.current.income
-                        record.amount < 0 -> LocalMoneyColors.current.expense
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color = amountColor,
                 )
                 Text(
                     text = DateTimeTextFormatter.format(record.occurredAt),

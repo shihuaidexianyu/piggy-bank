@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -120,14 +121,15 @@ fun AccountIconBadge(
 
 @Composable
 internal fun accountVisualColor(name: String): Color {
+    val isDark = isSystemInDarkTheme()
     return when (normalizeAccountColorName(name)) {
-        "green" -> Color(0xFF2E7D32)
-        "orange" -> Color(0xFFE87124)
-        "purple" -> Color(0xFF7E57C2)
-        "red" -> Color(0xFFC62828)
-        "teal" -> Color(0xFF00897B)
+        "green" -> if (isDark) Color(0xFF6EA67A) else Color(0xFF2E7D32)
+        "orange" -> if (isDark) Color(0xFFEC9F5A) else Color(0xFFE87124)
+        "purple" -> if (isDark) Color(0xFFA48BD0) else Color(0xFF7E57C2)
+        "red" -> if (isDark) Color(0xFFD8726A) else Color(0xFFC62828)
+        "teal" -> if (isDark) Color(0xFF4DB0A4) else Color(0xFF00897B)
         "gray" -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> Color(0xFF2563EB)
+        else -> if (isDark) Color(0xFF6691E8) else Color(0xFF2563EB)
     }
 }
 

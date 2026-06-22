@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
@@ -20,7 +22,20 @@ data class AccountDetailSnapshot(
     val reminderConfig: BalanceUpdateReminderConfig,
     val currentBalance: Long,
     val isStale: Boolean,
+    val monthInflow: Long = 0L,
+    val monthOutflow: Long = 0L,
+    val recentRecords: List<AccountDetailRecentRecord> = emptyList(),
 )
+
+data class AccountDetailRecentRecord(
+    val id: Long,
+    val title: String,
+    val amount: Long,
+    val occurredAt: Long,
+    val kind: AccountDetailRecordKind,
+)
+
+enum class AccountDetailRecordKind { CASH_FLOW, TRANSFER, BALANCE_UPDATE, BALANCE_ADJUSTMENT }
 
 class ObserveAccountDetailUseCase(
     private val accountId: Long,
@@ -66,12 +81,27 @@ class ObserveAccountDetailUseCase(
 
         val reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
 
+        // This month's inflow/outflow for the account.
+        val monthRange = TimeRangeCalculator.currentMonthRange()
+        val inflow = transactionRepository.sumInflowBetween(account.id, monthRange.startAtMillis, monthRange.endAtMillis)
+        val outflow = transactionRepository.sumOutflowBetween(account.id, monthRange.startAtMillis, monthRange.endAtMillis)
+
+        // Recent 5 records (cash flow + transfer) for this account, newest first.
+        val recentCashFlows = transactionRepository.queryCashFlowRecordsByAccountId(account.id).take(5)
+        val recentTransfers = transactionRepository.queryTransferRecordsByAccountId(account.id).take(5)
+        val recentRecords = (recentCashFlows.map { it.toRecentRecord() } + recentTransfers.map { it.toRecentRecord() })
+            .sortedByDescending { it.occurredAt }
+            .take(5)
+
         return AccountDetailSnapshot(
             account = account,
             settings = settings,
             reminderConfig = reminderConfig,
             currentBalance = calculateCurrentBalanceUseCase(account.id),
             isStale = AccountStatusCalculator.isStale(account, reminderConfig = reminderConfig),
+            monthInflow = inflow,
+            monthOutflow = outflow,
+            recentRecords = recentRecords,
         )
     }
 }
@@ -82,3 +112,24 @@ private data class Quadruple<A, B, C, D>(
     val third: C,
     val fourth: D,
 )
+
+private fun CashFlowRecord.toRecentRecord(): AccountDetailRecentRecord {
+    val signedAmount = if (direction == com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW.value) amount else -amount
+    return AccountDetailRecentRecord(
+        id = id,
+        title = purpose.ifBlank { "未填写用途" },
+        amount = signedAmount,
+        occurredAt = occurredAt,
+        kind = AccountDetailRecordKind.CASH_FLOW,
+    )
+}
+
+private fun TransferRecord.toRecentRecord(): AccountDetailRecentRecord {
+    return AccountDetailRecentRecord(
+        id = id,
+        title = note.ifBlank { "账户间转移" },
+        amount = amount,
+        occurredAt = occurredAt,
+        kind = AccountDetailRecordKind.TRANSFER,
+    )
+}

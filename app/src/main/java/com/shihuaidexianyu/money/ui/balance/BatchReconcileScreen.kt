@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -99,14 +100,16 @@ fun BatchReconcileScreen(
 
         item {
             MoneyCard(contentPadding = PaddingValues(0.dp)) {
-                state.accounts.forEachIndexed { index, account ->
-                    BatchReconcileAccountRow(
-                        account = account,
-                        state = state,
-                        onToggle = { viewModel.toggleAccount(account.accountId) },
-                    )
-                    if (index != state.accounts.lastIndex) {
-                        MoneySectionDivider()
+                Column {
+                    state.accounts.forEachIndexed { index, account ->
+                        BatchReconcileAccountRow(
+                            account = account,
+                            state = state,
+                            onToggle = { viewModel.toggleAccount(account.accountId) },
+                        )
+                        if (index != state.accounts.lastIndex) {
+                            MoneySectionDivider()
+                        }
                     }
                 }
             }

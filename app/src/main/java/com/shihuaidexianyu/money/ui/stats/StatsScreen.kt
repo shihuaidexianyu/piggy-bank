@@ -284,156 +284,146 @@ private fun AssetFlowDiagram(
     adjustmentAccent: Color,
 ) {
     val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)
+    val lineStrokeWidth = 1.dp
 
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
         val density = LocalDensity.current
-        val layout = remember(maxWidth) {
-            calculateAssetFlowLayout(maxWidth.value)
-        }
-        val middleGap = layout.middleGap.dp
-        val middleNodeWidth = layout.middleNodeWidth.dp
-        val topNodeWidth = layout.topNodeWidth.dp
-        val bottomNodeWidth = layout.bottomNodeWidth.dp
-        val nodeHeight = layout.nodeHeight.dp
-        val middleNodeTop = layout.middleNodeTop.dp
-        val bottomNodeTop = layout.bottomNodeTop.dp
-        val diagramHeight = layout.diagramHeight.dp
+        val layout = remember(maxWidth) { calculateAssetFlowLayout(maxWidth.value) }
+        val middleGap = layout.middleGap
+        val nodeWidth = layout.nodeWidth
+        val bottomNodeWidth = layout.bottomNodeWidth
+        val nodeHeight = layout.nodeHeight
+        val middleRowTop = layout.middleRowTop
+        val bottomRowTop = layout.bottomRowTop
+        val diagramHeight = layout.diagramHeight
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(diagramHeight),
         ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(diagramHeight)) {
-            val topNodeWidthPx = topNodeWidth.toPx()
-            val middleNodeWidthPx = middleNodeWidth.toPx()
-            val topLeftX = topNodeWidthPx / 2f
-            val centerX = size.width / 2f
-            val topRightX = size.width - topNodeWidthPx / 2f
-            val leftMiddleX = middleNodeWidthPx / 2f
-            val rightMiddleX = size.width - middleNodeWidthPx / 2f
-            val topNodeBottom = nodeHeight.toPx()
-            val middleNodeTopPx = middleNodeTop.toPx()
-            val middleNodeBottom = (middleNodeTop + nodeHeight).toPx()
-            val bottomNodeTopPx = bottomNodeTop.toPx()
-            val branch = with(density) { layout.branchY.dp.toPx() }
-            val merge = with(density) { layout.mergeY.dp.toPx() }
+            // === Connector lines ===
+            // The diagram has 3 rows of nodes. Lines connect:
+            //   Row 1 (top, 2 nodes) → Row 2 (middle, 3 nodes): branch from each top node down,
+            //   horizontal merge, then drop to the center middle node.
+            //   Row 2 → Row 3 (bottom, 1 node): from each middle node down, horizontal merge,
+            //   then drop to the bottom node.
+            Canvas(modifier = Modifier.fillMaxWidth().height(diagramHeight)) {
+                val nodeWidthPx = nodeWidth.toPx()
+                val centerX = size.width / 2f
+                val topLeftX = nodeWidthPx / 2f
+                val topRightX = size.width - nodeWidthPx / 2f
+                val leftMiddleX = nodeWidthPx / 2f
+                val rightMiddleX = size.width - nodeWidthPx / 2f
+                val topNodeBottom = nodeHeight.toPx()
+                val middleRowTopPx = middleRowTop.toPx()
+                val middleNodeBottom = (middleRowTop + nodeHeight).toPx()
+                val bottomRowTopPx = bottomRowTop.toPx()
+                val branch = with(density) { layout.branchY.toPx() }
+                val merge = with(density) { layout.mergeY.toPx() }
+                val strokePx = lineStrokeWidth.toPx()
 
-            drawLine(
-                color = lineColor,
-                start = Offset(topLeftX, topNodeBottom),
-                end = Offset(topLeftX, branch),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = lineColor,
-                start = Offset(topRightX, topNodeBottom),
-                end = Offset(topRightX, branch),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = lineColor,
-                start = Offset(topLeftX, branch),
-                end = Offset(topRightX, branch),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = lineColor,
-                start = Offset(centerX, branch),
-                end = Offset(centerX, middleNodeTopPx),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            listOf(leftMiddleX, centerX, rightMiddleX).forEach { x ->
-                drawLine(
-                    color = lineColor,
-                    start = Offset(x, middleNodeBottom),
-                    end = Offset(x, merge),
-                    strokeWidth = 1.dp.toPx(),
-                    cap = StrokeCap.Round,
+                // Row 1 → Row 2: vertical lines from each top node down to branch line.
+                drawConnector(topLeftX, topNodeBottom, topLeftX, branch, lineColor, strokePx)
+                drawConnector(topRightX, topNodeBottom, topRightX, branch, lineColor, strokePx)
+                // Branch horizontal line connecting the two top nodes.
+                drawConnector(topLeftX, branch, topRightX, branch, lineColor, strokePx)
+                // Drop from branch center to middle row center node.
+                drawConnector(centerX, branch, centerX, middleRowTopPx, lineColor, strokePx)
+
+                // Row 2 → Row 3: vertical lines from each middle node down to merge line.
+                listOf(leftMiddleX, centerX, rightMiddleX).forEach { x ->
+                    drawConnector(x, middleNodeBottom, x, merge, lineColor, strokePx)
+                }
+                // Merge horizontal line connecting the three middle nodes.
+                drawConnector(leftMiddleX, merge, rightMiddleX, merge, lineColor, strokePx)
+                // Drop from merge center to bottom row node.
+                drawConnector(centerX, merge, centerX, bottomRowTopPx, lineColor, strokePx)
+            }
+
+            // === Nodes ===
+            // Row 1: cash inflow + cash outflow (space-between).
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                FlowNode(
+                    label = "现金入账",
+                    value = state.totalInflowFlowText,
+                    accent = incomeAccent,
+                    nodeHeight = nodeHeight,
+                    modifier = Modifier.width(nodeWidth),
+                )
+                FlowNode(
+                    label = "现金出账",
+                    value = state.totalOutflowFlowText,
+                    accent = expenseAccent,
+                    nodeHeight = nodeHeight,
+                    modifier = Modifier.width(nodeWidth),
                 )
             }
-            drawLine(
-                color = lineColor,
-                start = Offset(leftMiddleX, merge),
-                end = Offset(rightMiddleX, merge),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = lineColor,
-                start = Offset(centerX, merge),
-                end = Offset(centerX, bottomNodeTopPx),
-                strokeWidth = 1.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 0.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+            // Row 2: opening assets + net cash + adjustments (equal width with gap).
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = middleRowTop),
+                horizontalArrangement = Arrangement.spacedBy(middleGap),
+            ) {
+                FlowNode(
+                    label = "期初资产",
+                    value = state.openingAssetsFlowText,
+                    accent = currentAccent,
+                    nodeHeight = nodeHeight,
+                    modifier = Modifier.width(nodeWidth),
+                )
+                FlowNode(
+                    label = "现金净额",
+                    value = state.netCashFlowFlowText,
+                    accent = netAccent,
+                    nodeHeight = nodeHeight,
+                    modifier = Modifier.width(nodeWidth),
+                )
+                FlowNode(
+                    label = "调账/对账",
+                    value = state.assetAdjustmentFlowText,
+                    accent = adjustmentAccent,
+                    nodeHeight = nodeHeight,
+                    modifier = Modifier.width(nodeWidth),
+                )
+            }
+            // Row 3: closing assets (centered, wider).
             FlowNode(
-                label = "现金入账",
-                value = state.totalInflowFlowText,
-                accent = incomeAccent,
-                nodeHeight = nodeHeight,
-                modifier = Modifier.width(topNodeWidth),
-            )
-            FlowNode(
-                label = "现金出账",
-                value = state.totalOutflowFlowText,
-                accent = expenseAccent,
-                nodeHeight = nodeHeight,
-                modifier = Modifier.width(topNodeWidth),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = middleNodeTop),
-            horizontalArrangement = Arrangement.spacedBy(middleGap),
-        ) {
-            FlowNode(
-                label = "期初资产",
-                value = state.openingAssetsFlowText,
+                label = "期末资产",
+                value = state.closingAssetsFlowText,
                 accent = currentAccent,
                 nodeHeight = nodeHeight,
-                modifier = Modifier.width(middleNodeWidth),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = bottomRowTop)
+                    .width(bottomNodeWidth),
             )
-            FlowNode(
-                label = "现金净额",
-                value = state.netCashFlowFlowText,
-                accent = netAccent,
-                nodeHeight = nodeHeight,
-                modifier = Modifier.width(middleNodeWidth),
-            )
-            FlowNode(
-                label = "调账/对账",
-                value = state.assetAdjustmentFlowText,
-                accent = adjustmentAccent,
-                nodeHeight = nodeHeight,
-                modifier = Modifier.width(middleNodeWidth),
-            )
-        }
-        FlowNode(
-            label = "期末资产",
-            value = state.closingAssetsFlowText,
-            accent = currentAccent,
-            nodeHeight = nodeHeight,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = bottomNodeTop)
-                .width(bottomNodeWidth),
-        )
         }
     }
+}
+
+/** Draws a single connector line between two points. Extracted to reduce drawLine boilerplate. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawConnector(
+    startX: Float,
+    startY: Float,
+    endX: Float,
+    endY: Float,
+    color: Color,
+    strokeWidth: Float,
+) {
+    drawLine(
+        color = color,
+        start = Offset(startX, startY),
+        end = Offset(endX, endY),
+        strokeWidth = strokeWidth,
+        cap = StrokeCap.Round,
+    )
 }
 
 @Composable
