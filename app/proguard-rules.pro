@@ -49,3 +49,10 @@
 -keepclassmembers class kotlinx.coroutines.** {
     volatile <fields>;
 }
+
+# === App Shortcuts ===
+# Keep the BroadcastReceiver for alarm-triggered reminders.
+-keep class com.shihuaidexianyu.money.notification.ReminderAlarmReceiver { *; }
+# Keep widget provider (referenced from manifest).
+-keep class com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider { *; }
+-keep class com.shihuaidexianyu.money.widget.WidgetUpdateWorker { *; }

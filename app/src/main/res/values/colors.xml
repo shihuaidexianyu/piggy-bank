@@ -6,4 +6,5 @@
     <color name="brand_sun">#D7A244</color>
     <color name="brand_surface">#F8F4EB</color>
     <color name="brand_surface_dark">#121917</color>
+    <color name="shortcut_icon_background">#256F70</color>
 </resources>

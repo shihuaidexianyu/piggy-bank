@@ -1,10 +1,5 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp"
-    android:height="48dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="#FFFFFFFF">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M12,8L18,14h-4v6h-4v-6H6z" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/shortcut_icon_background" />
+    <foreground android:drawable="@drawable/shortcut_inflow_foreground" />
+</adaptive-icon>

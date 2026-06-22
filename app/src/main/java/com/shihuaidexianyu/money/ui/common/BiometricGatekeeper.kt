@@ -2,10 +2,11 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -25,44 +26,58 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
 /**
- * Full-screen biometric lock. Shows [content] only after the user authenticates (or if
- * [BiometricManager] reports that biometrics are not available, in which case the lock is
- * bypassed — the user should disable biometric lock in settings to avoid being stuck).
+ * Full-screen biometric lock. Shows [content] only after the user authenticates.
  *
  * Must be hosted in a [FragmentActivity] because [BiometricPrompt] requires a
  * `FragmentActivity`/`Fragment` host.
  *
- * State logic: `unlocked` starts `false` (locked). A [LaunchedEffect] watches [enabled] —
- * when it becomes `false` (or biometrics are unavailable), `unlocked` flips to `true`.
- * When [enabled] is `true` and biometrics are available, the [BiometricPrompt] is shown;
- * on success, `unlocked` flips to `true`.
+ * State machine:
+ * - START: `locked = true`, `settingsReady = false`. Show a blank loading screen (no content, no
+ *   lock UI yet) — we don't know if biometric is enabled until DataStore loads.
+ * - When [enabled] flips to `false`: `locked = false` → show content.
+ * - When [enabled] flips to `true` AND biometrics are available: show BiometricPrompt. On success,
+ *   `locked = false` → show content.
+ * - If biometrics are unavailable while [enabled] is `true`: `locked = false` (bail open to avoid
+ *   locking the user out forever).
+ *
+ * The critical fix: we track `settingsReady` so the initial `enabled = false` (from the
+ * `AppSettings()` default) does NOT prematurely unlock. Only when the real DataStore value
+ * arrives (signaled by [enabled] changing from its initial `false`) do we act.
+ *
+ * However, since we can't distinguish "DataStore loaded and biometricLock is false" from "DataStore
+ * not yet loaded, default is false", we use a different approach: the caller passes the *raw*
+ * settings object so we can detect when it has been loaded by checking if any non-default field
+ * is present. Simpler: the caller sets `enabled` only after settings are loaded.
+ *
+ * Actually the simplest correct fix: don't use `initialValue = AppSettings()` — the caller should
+ * track loading state. But to keep changes minimal, we use a `settingsLoaded` flag that the caller
+ * must set to `true` once the DataStore has emitted at least once.
  */
 @Composable
 fun BiometricGatekeeper(
     enabled: Boolean,
+    settingsLoaded: Boolean,
     onUnlocked: () -> Unit = {},
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    // Always start locked. The LaunchedEffect below will unlock immediately if biometric is
-    // disabled or unavailable. This fixes the bug where `initialValue = AppSettings()` had
-    // `biometricLock = false`, causing `unlocked` to initialize as `true` and never reset
-    // when the real DataStore value (`biometricLock = true`) arrived a moment later.
-    var unlocked by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var promptVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
-    LaunchedEffect(enabled) {
+    LaunchedEffect(settingsLoaded, enabled) {
+        // Don't do anything until settings have been loaded from DataStore.
+        if (!settingsLoaded) return@LaunchedEffect
+
         if (!enabled) {
-            unlocked = true
+            locked = false
             onUnlocked()
             return@LaunchedEffect
         }
         if (activity == null) {
-            // Can't show biometric prompt without FragmentActivity — bail open.
-            unlocked = true
+            locked = false
             onUnlocked()
             return@LaunchedEffect
         }
@@ -71,8 +86,8 @@ fun BiometricGatekeeper(
             BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL,
         )
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
-            // No biometric enrolled or hardware missing — bail open to avoid locking the user out.
-            unlocked = true
+            // No biometric enrolled or hardware missing — bail open.
+            locked = false
             onUnlocked()
             return@LaunchedEffect
         }
@@ -80,18 +95,21 @@ fun BiometricGatekeeper(
         promptVisible = true
     }
 
-    if (unlocked) {
+    if (!locked) {
         content()
         return
     }
 
-    // Show the biometric prompt when requested. Uses a key so that tapping "重试" (which
-    // toggles promptVisible) re-triggers the LaunchedEffect and re-shows the system prompt.
+    // Don't show the lock UI until settings are loaded (avoids flash of lock screen when
+    // biometric is actually disabled).
+    if (!settingsLoaded) return
+
+    // Show the biometric prompt when requested.
     if (promptVisible && activity != null) {
         BiometricPromptContainer(
             activity = activity,
             onSuccess = {
-                unlocked = true
+                locked = false
                 errorMessage = null
                 promptVisible = false
                 onUnlocked()
@@ -109,6 +127,7 @@ fun BiometricGatekeeper(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(32.dp),
         ) {
             Text(
@@ -131,7 +150,6 @@ fun BiometricGatekeeper(
             }
             Spacer(modifier = Modifier.height(24.dp))
             OutlinedButton(onClick = {
-                // Re-trigger the biometric prompt.
                 errorMessage = null
                 promptVisible = true
             }) {
