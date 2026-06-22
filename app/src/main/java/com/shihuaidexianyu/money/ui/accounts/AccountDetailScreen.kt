@@ -1,10 +1,16 @@
 package com.shihuaidexianyu.money.ui.accounts
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +24,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecordKind
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecentRecord
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -170,20 +177,62 @@ private fun RecentRecordRow(
     settings: com.shihuaidexianyu.money.domain.model.AppSettings,
 ) {
     val moneyColors = LocalMoneyColors.current
-    val amountColor = when {
-        record.amount > 0 -> moneyColors.income
-        record.amount < 0 -> moneyColors.expense
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    val accent = when (record.kind) {
+        AccountDetailRecordKind.CASH_FLOW ->
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        AccountDetailRecordKind.TRANSFER -> moneyColors.transfer
+        AccountDetailRecordKind.BALANCE_UPDATE, AccountDetailRecordKind.BALANCE_ADJUSTMENT ->
+            moneyColors.current
     }
     val amountText = AmountFormatter.format(record.amount, settings)
-    MoneyListRow(
-        title = record.title,
-        subtitle = DateTimeTextFormatter.format(record.occurredAt),
-        trailing = amountText,
-        showChevron = false,
-        modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "${record.title}，$amountText，${DateTimeTextFormatter.format(record.occurredAt)}"
-            role = Role.Button
-        },
-    )
+    val kindLabel = when (record.kind) {
+        AccountDetailRecordKind.CASH_FLOW -> "收支"
+        AccountDetailRecordKind.TRANSFER -> "转账"
+        AccountDetailRecordKind.BALANCE_UPDATE -> "对账"
+        AccountDetailRecordKind.BALANCE_ADJUSTMENT -> "调整"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${record.title}，$kindLabel，$amountText，${DateTimeTextFormatter.format(record.occurredAt)}"
+                role = Role.Button
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Left accent bar
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(36.dp)
+                .background(color = accent, shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp)),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        // Title + type label
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = record.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "$kindLabel · ${DateTimeTextFormatter.format(record.occurredAt)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // Amount with direction color
+        Text(
+            text = amountText,
+            style = MaterialTheme.typography.titleMedium,
+            color = accent,
+            maxLines = 1,
+        )
+    }
 }

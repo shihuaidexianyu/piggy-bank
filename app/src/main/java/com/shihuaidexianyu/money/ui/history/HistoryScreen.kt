@@ -407,18 +407,14 @@ private fun HistoryRow(
     val accent = when (record.kind) {
         HistoryRecordKind.CASH_FLOW ->
             if (record.amount > 0) moneyColors.income else moneyColors.expense
-        HistoryRecordKind.TRANSFER ->
-            // Transfers have direction: positive = received (income green), negative = sent (expense red).
-            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        HistoryRecordKind.TRANSFER -> moneyColors.transfer
         HistoryRecordKind.BALANCE_UPDATE,
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> moneyColors.current
     }
     val amountText = AmountFormatter.format(record.amount, settings)
     val amountColor = when (record.kind) {
-        HistoryRecordKind.TRANSFER ->
-            // Same direction-aware coloring as cash flow — transfers aren't neutral gray anymore.
-            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        HistoryRecordKind.TRANSFER -> moneyColors.transfer
         else -> when {
             record.amount > 0 -> moneyColors.income
             record.amount < 0 -> moneyColors.expense
