@@ -31,6 +31,11 @@ import androidx.fragment.app.FragmentActivity
  *
  * Must be hosted in a [FragmentActivity] because [BiometricPrompt] requires a
  * `FragmentActivity`/`Fragment` host.
+ *
+ * State logic: `unlocked` starts `false` (locked). A [LaunchedEffect] watches [enabled] —
+ * when it becomes `false` (or biometrics are unavailable), `unlocked` flips to `true`.
+ * When [enabled] is `true` and biometrics are available, the [BiometricPrompt] is shown;
+ * on success, `unlocked` flips to `true`.
  */
 @Composable
 fun BiometricGatekeeper(
@@ -39,8 +44,13 @@ fun BiometricGatekeeper(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    var unlocked by remember { mutableStateOf(!enabled) }
+    // Always start locked. The LaunchedEffect below will unlock immediately if biometric is
+    // disabled or unavailable. This fixes the bug where `initialValue = AppSettings()` had
+    // `biometricLock = false`, causing `unlocked` to initialize as `true` and never reset
+    // when the real DataStore value (`biometricLock = true`) arrived a moment later.
+    var unlocked by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var promptVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
@@ -66,6 +76,8 @@ fun BiometricGatekeeper(
             onUnlocked()
             return@LaunchedEffect
         }
+        // Biometric is enabled and available — show the prompt.
+        promptVisible = true
     }
 
     if (unlocked) {
@@ -73,16 +85,20 @@ fun BiometricGatekeeper(
         return
     }
 
-    if (activity != null) {
+    // Show the biometric prompt when requested. Uses a key so that tapping "重试" (which
+    // toggles promptVisible) re-triggers the LaunchedEffect and re-shows the system prompt.
+    if (promptVisible && activity != null) {
         BiometricPromptContainer(
             activity = activity,
             onSuccess = {
                 unlocked = true
                 errorMessage = null
+                promptVisible = false
                 onUnlocked()
             },
             onError = { message ->
                 errorMessage = message
+                promptVisible = false
             },
         )
     }
@@ -115,8 +131,9 @@ fun BiometricGatekeeper(
             }
             Spacer(modifier = Modifier.height(24.dp))
             OutlinedButton(onClick = {
-                // Re-trigger the biometric prompt by recomposing.
+                // Re-trigger the biometric prompt.
                 errorMessage = null
+                promptVisible = true
             }) {
                 Text("重试")
             }
