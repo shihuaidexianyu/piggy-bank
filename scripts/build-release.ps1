@@ -12,6 +12,33 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Functions must be defined before they are called. PowerShell parses top-to-bottom.
+function Resolve-ApksignerPath {
+    param([string]$RepoRoot)
+    # Try the local SDK path (set by gradle/local.properties or env).
+    $sdkRoot = $env:ANDROID_SDK_ROOT
+    if (-not $sdkRoot) {
+        $localProps = Join-Path $RepoRoot "local.properties"
+        if (Test-Path $localProps) {
+            $match = Get-Content $localProps | Select-String -Pattern '^sdk\.dir=(.+)$'
+            if ($match) { $sdkRoot = $match.Matches[0].Groups[1].Value.Trim() }
+        }
+    }
+    if (-not $sdkRoot) { return $null }
+    $buildToolsDir = Join-Path $sdkRoot "build-tools"
+    if (-not (Test-Path $buildToolsDir)) { return $null }
+    $latest = Get-ChildItem $buildToolsDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
+    if (-not $latest) { return $null }
+    $candidates = @(
+        (Join-Path $latest.FullName "apksigner.bat"),
+        (Join-Path $latest.FullName "apksigner")
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    return $null
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
@@ -162,30 +189,4 @@ if ($Commit) {
             }
         }
     }
-}
-
-function Resolve-ApksignerPath {
-    param([string]$RepoRoot)
-    # Try the local SDK path (set by gradle/local.properties or env).
-    $sdkRoot = $env:ANDROID_SDK_ROOT
-    if (-not $sdkRoot) {
-        $localProps = Join-Path $RepoRoot "local.properties"
-        if (Test-Path $localProps) {
-            $match = Get-Content $localProps | Select-String -Pattern '^sdk\.dir=(.+)$'
-            if ($match) { $sdkRoot = $match.Matches[0].Groups[1].Value.Trim() }
-        }
-    }
-    if (-not $sdkRoot) { return $null }
-    $buildToolsDir = Join-Path $sdkRoot "build-tools"
-    if (-not (Test-Path $buildToolsDir)) { return $null }
-    $latest = Get-ChildItem $buildToolsDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
-    if (-not $latest) { return $null }
-    $candidates = @(
-        (Join-Path $latest.FullName "apksigner.bat"),
-        (Join-Path $latest.FullName "apksigner")
-    )
-    foreach ($c in $candidates) {
-        if (Test-Path $c) { return $c }
-    }
-    return $null
 }
