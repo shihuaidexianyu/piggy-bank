@@ -1,12 +1,13 @@
 package com.shihuaidexianyu.money.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -38,18 +39,57 @@ private fun isTopLevelTransition(initial: String?, target: String?): Boolean {
     return initial in topLevelRouteSet && target in topLevelRouteSet
 }
 
+// === Top-level tab transitions: soft fade + scale ===
 private fun topLevelEnterTransition(): EnterTransition {
-    return fadeIn(animationSpec = tween(220)) + scaleIn(
-        initialScale = 0.98f,
-        animationSpec = tween(220),
+    return fadeIn(animationSpec = tween(280)) + scaleIn(
+        initialScale = 0.96f,
+        animationSpec = tween(280),
     )
 }
 
 private fun topLevelExitTransition(): ExitTransition {
-    return fadeOut(animationSpec = tween(180)) + scaleOut(
-        targetScale = 1.01f,
-        animationSpec = tween(180),
+    return fadeOut(animationSpec = tween(200)) + scaleOut(
+        targetScale = 1.02f,
+        animationSpec = tween(200),
     )
+}
+
+// === Sub-page enter: slide in from right + fade ===
+private fun subPageEnterTransition(): EnterTransition {
+    return slideInHorizontally(
+        initialOffsetX = { fullWidth -> (fullWidth * 0.25f).toInt() },
+        animationSpec = tween(300),
+    ) + fadeIn(animationSpec = tween(300))
+}
+
+// === Sub-page exit (forward): slide out to left + fade + slight scale ===
+private fun subPageExitTransition(): ExitTransition {
+    return slideOutHorizontally(
+        targetOffsetX = { fullWidth -> -(fullWidth * 0.10f).toInt() },
+        animationSpec = tween(300),
+    ) + fadeOut(animationSpec = tween(200)) + scaleOut(
+        targetScale = 0.98f,
+        animationSpec = tween(300),
+    )
+}
+
+// === Pop enter: slide in from left + fade ===
+private fun popEnterTransition(): EnterTransition {
+    return slideInHorizontally(
+        initialOffsetX = { fullWidth -> -(fullWidth * 0.10f).toInt() },
+        animationSpec = tween(300),
+    ) + fadeIn(animationSpec = tween(300)) + scaleIn(
+        initialScale = 1.02f,
+        animationSpec = tween(300),
+    )
+}
+
+// === Pop exit: slide out to right + fade ===
+private fun popExitTransition(): ExitTransition {
+    return slideOutHorizontally(
+        targetOffsetX = { fullWidth -> (fullWidth * 0.25f).toInt() },
+        animationSpec = tween(300),
+    ) + fadeOut(animationSpec = tween(250))
 }
 
 @Composable
@@ -148,10 +188,7 @@ fun MoneyNavGraph(
                     if (isTopLevelTransition(initial, target)) {
                         topLevelEnterTransition()
                     } else {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(250),
-                        )
+                        subPageEnterTransition()
                     }
                 },
                 exitTransition = {
@@ -160,10 +197,7 @@ fun MoneyNavGraph(
                     if (isTopLevelTransition(initial, target)) {
                         topLevelExitTransition()
                     } else {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(250),
-                        )
+                        subPageExitTransition()
                     }
                 },
                 popEnterTransition = {
@@ -172,7 +206,7 @@ fun MoneyNavGraph(
                     if (isTopLevelTransition(initial, target)) {
                         topLevelEnterTransition()
                     } else {
-                        EnterTransition.None
+                        popEnterTransition()
                     }
                 },
                 popExitTransition = {
@@ -181,10 +215,7 @@ fun MoneyNavGraph(
                     if (isTopLevelTransition(initial, target)) {
                         topLevelExitTransition()
                     } else {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(250),
-                        )
+                        popExitTransition()
                     }
                 },
             ) {

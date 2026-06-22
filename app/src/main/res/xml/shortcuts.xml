@@ -3,7 +3,7 @@
     <shortcut
         android:shortcutId="record_outflow"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_outflow"
         android:shortcutShortLabel="@string/shortcut_record_outflow_short"
         android:shortcutLongLabel="@string/shortcut_record_outflow_long">
         <intent
@@ -16,7 +16,7 @@
     <shortcut
         android:shortcutId="record_inflow"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_inflow"
         android:shortcutShortLabel="@string/shortcut_record_inflow_short"
         android:shortcutLongLabel="@string/shortcut_record_inflow_long">
         <intent
@@ -29,7 +29,7 @@
     <shortcut
         android:shortcutId="balance_check"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/shortcut_balance_check"
         android:shortcutShortLabel="@string/shortcut_balance_check_short"
         android:shortcutLongLabel="@string/shortcut_balance_check_long">
         <intent
