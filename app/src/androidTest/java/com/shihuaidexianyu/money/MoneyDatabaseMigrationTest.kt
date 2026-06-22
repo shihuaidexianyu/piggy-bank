@@ -5,9 +5,11 @@ import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_MIGRATIONS
+import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,14 +23,14 @@ class MoneyDatabaseMigrationTest {
     )
 
     @Test
-    fun migrateAllHistoricalSchemasToVersion8() {
-        (1..7).forEach { version ->
+    fun migrateAllHistoricalSchemasToCurrentVersion() {
+        (1 until MONEY_DATABASE_VERSION).forEach { version ->
             val dbName = "$TEST_DB-v$version"
             helper.createDatabase(dbName, version).close()
 
             helper.runMigrationsAndValidate(
                 name = dbName,
-                version = 8,
+                version = MONEY_DATABASE_VERSION,
                 validateDroppedTables = true,
                 *MONEY_DATABASE_MIGRATIONS,
             ).close()
@@ -71,7 +73,7 @@ class MoneyDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             name = TEST_DB,
-            version = 8,
+            version = MONEY_DATABASE_VERSION,
             validateDroppedTables = true,
             *MONEY_DATABASE_MIGRATIONS,
         )
@@ -83,13 +85,13 @@ class MoneyDatabaseMigrationTest {
                 columns += tableInfoCursor.getString(tableInfoCursor.getColumnIndexOrThrow("name"))
             }
             assertFalse("groupType" in columns)
-            assertFalse("iconName" in columns)
-            assertEquals(true, "colorName" in columns)
+            assertTrue("iconName" in columns)
+            assertTrue("colorName" in columns)
         } finally {
             tableInfoCursor.close()
         }
         val accountCursor = migrated.query(
-            "SELECT name, initialBalance, displayOrder, colorName FROM accounts WHERE id = 1",
+            "SELECT name, initialBalance, displayOrder, colorName, iconName FROM accounts WHERE id = 1",
         )
         try {
             accountCursor.moveToFirst()
@@ -97,6 +99,7 @@ class MoneyDatabaseMigrationTest {
             assertEquals(120000L, accountCursor.getLong(1))
             assertEquals(3, accountCursor.getInt(2))
             assertEquals("blue", accountCursor.getString(3))
+            assertEquals("wallet", accountCursor.getString(4))
         } finally {
             accountCursor.close()
         }
@@ -109,7 +112,7 @@ class MoneyDatabaseMigrationTest {
 
         val migrated = helper.runMigrationsAndValidate(
             name = dbName,
-            version = 8,
+            version = MONEY_DATABASE_VERSION,
             validateDroppedTables = true,
             *MONEY_DATABASE_MIGRATIONS,
         )
@@ -142,6 +145,117 @@ class MoneyDatabaseMigrationTest {
             )
         } finally {
             migrated.close()
+        }
+    }
+
+    @Test
+    fun migrateFromVersion8To9DropsBalanceAdjustmentSourceColumnAndFiltersLinkedRows() {
+        helper.createDatabase("$TEST_DB-v8", 8).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, archivedAt, isArchived,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName
+                ) VALUES (
+                    1, '测试账户', 100000, 1000, NULL, 0,
+                    NULL, NULL, 1, 'blue'
+                )
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_adjustment_records (
+                    id, accountId, delta, sourceUpdateRecordId, occurredAt, createdAt
+                ) VALUES (1, 1, 5000, 0, 2000, 2000)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_adjustment_records (
+                    id, accountId, delta, sourceUpdateRecordId, occurredAt, createdAt
+                ) VALUES (2, 1, -3000, 999, 3000, 3000)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = "$TEST_DB-v8",
+            version = 9,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        val tableInfoCursor = migrated.query("PRAGMA table_info(balance_adjustment_records)")
+        try {
+            val columns = mutableSetOf<String>()
+            while (tableInfoCursor.moveToNext()) {
+                columns += tableInfoCursor.getString(tableInfoCursor.getColumnIndexOrThrow("name"))
+            }
+            assertFalse("sourceUpdateRecordId should be dropped, got columns=$columns" in columns)
+        } finally {
+            tableInfoCursor.close()
+        }
+
+        val countCursor = migrated.query("SELECT COUNT(*) FROM balance_adjustment_records")
+        try {
+            countCursor.moveToFirst()
+            assertEquals(1, countCursor.getInt(0))
+        } finally {
+            countCursor.close()
+        }
+
+        val rowCursor = migrated.query("SELECT id, delta FROM balance_adjustment_records")
+        try {
+            rowCursor.moveToFirst()
+            assertEquals(1L, rowCursor.getLong(0))
+            assertEquals(5000L, rowCursor.getLong(1))
+        } finally {
+            rowCursor.close()
+        }
+    }
+
+    @Test
+    fun migrateFromVersion9To10AddsIconNameColumnWithWalletDefault() {
+        helper.createDatabase("$TEST_DB-v9", 9).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, archivedAt, isArchived,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName
+                ) VALUES (
+                    1, '测试账户', 100000, 1000, NULL, 0,
+                    NULL, NULL, 1, 'blue'
+                )
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = "$TEST_DB-v9",
+            version = 10,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        val tableInfoCursor = migrated.query("PRAGMA table_info(accounts)")
+        try {
+            val columns = mutableSetOf<String>()
+            while (tableInfoCursor.moveToNext()) {
+                columns += tableInfoCursor.getString(tableInfoCursor.getColumnIndexOrThrow("name"))
+            }
+            assertTrue("iconName should exist after 9→10 migration, got columns=$columns", "iconName" in columns)
+        } finally {
+            tableInfoCursor.close()
+        }
+
+        val accountCursor = migrated.query("SELECT iconName FROM accounts WHERE id = 1")
+        try {
+            accountCursor.moveToFirst()
+            assertEquals("wallet", accountCursor.getString(0))
+        } finally {
+            accountCursor.close()
         }
     }
 

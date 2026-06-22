@@ -67,7 +67,6 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
         val settingsViewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_for_balance_update_detail",
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -101,7 +100,6 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
         val settingsViewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_for_edit_balance_update",
         )
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         EditBalanceUpdateScreen(
@@ -124,12 +122,12 @@ internal fun NavGraphBuilder.addBalanceGraph(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
+                    deleteBalanceAdjustmentUseCase = container.deleteBalanceAdjustmentUseCase,
                 )
             },
         )
         val settingsViewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_for_balance_adjustment_detail",
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -185,7 +183,6 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
         val settingsViewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_for_update_balance",
         )
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         UpdateBalanceScreen(
@@ -241,7 +238,6 @@ internal fun NavGraphBuilder.addBalanceGraph(
         )
         val settingsViewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_for_balance_result",
         )
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         val updateState by viewModel.uiState.collectAsStateWithLifecycle()

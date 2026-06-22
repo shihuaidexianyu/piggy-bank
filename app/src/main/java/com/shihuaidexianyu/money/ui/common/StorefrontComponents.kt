@@ -129,7 +129,7 @@ fun MoneyBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(onClick = onClick, modifier = modifier.size(40.dp)) {
+    IconButton(onClick = onClick, modifier = modifier.size(48.dp)) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
             contentDescription = "返回",

@@ -44,9 +44,8 @@ class UpdateBalanceUseCase(
                     createdAt = now,
                 ),
             )
+            refreshAccountActivityStateUseCase(accountId)
         }
-
-        refreshAccountActivityStateUseCase(accountId)
 
         return UpdateBalanceResult(
             accountId = accountId,

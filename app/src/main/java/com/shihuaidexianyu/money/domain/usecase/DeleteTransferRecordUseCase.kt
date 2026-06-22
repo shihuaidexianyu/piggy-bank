@@ -17,9 +17,9 @@ class DeleteTransferRecordUseCase(
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId)
         transactionRepository.runInTransaction {
             transactionRepository.softDeleteTransferRecord(recordId, System.currentTimeMillis())
-        }
-        affectedAccountIds.forEach {
-            refreshAccountActivityStateUseCase(it)
+            affectedAccountIds.forEach {
+                refreshAccountActivityStateUseCase(it)
+            }
         }
     }
 }

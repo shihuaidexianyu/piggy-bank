@@ -53,7 +53,7 @@ fun MoneyFormPage(
     onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     listState: LazyListState? = null,
-    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
+    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
     content: LazyListScope.() -> Unit,
 ) {

@@ -1,4 +1,4 @@
-# Piggy Bank
+# Money
 
 一个离线优先的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。
 
@@ -54,7 +54,7 @@
 - **语言**: Kotlin 2.2.20
 - **UI**: Jetpack Compose BOM 2025.10.01 + Material 3
 - **架构**: Clean Architecture（Domain / Data / UI）+ MVVM
-- **数据库**: Room 2.8.0（SQLite），模式版本 9
+- **数据库**: Room 2.8.0（SQLite），模式版本 10
 - **状态存储**: DataStore Preferences 1.1.7
 - **导航**: Navigation Compose 2.9.5
 - **依赖注入**: 手动注入（`MoneyAppContainer`）

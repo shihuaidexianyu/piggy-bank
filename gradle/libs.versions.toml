@@ -12,6 +12,9 @@ junitVersion = "1.3.0"
 kotlin = "2.2.20"
 ksp = "2.3.2"
 kotlinxSerialization = "1.9.0"
+# Material Components for Android (View-based). Required only for the theme parent
+# `Theme.Material3.DayNight.NoActionBar` referenced from res/values/themes.xml. The actual UI is
+# Compose Material3 — this dependency is here for the XML theme inheritance only.
 material = "1.13.0"
 orgJson = "20240303"
 room = "2.8.0"
@@ -48,6 +51,7 @@ org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+

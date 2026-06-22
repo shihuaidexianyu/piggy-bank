@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.util
 
+import com.shihuaidexianyu.money.domain.model.TimeMath
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -8,7 +9,6 @@ object DateTimeTextFormatter {
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-    private const val MINUTE_MILLIS = 60_000L
 
     fun format(
         timeMillis: Long,
@@ -17,9 +17,11 @@ object DateTimeTextFormatter {
         return Instant.ofEpochMilli(timeMillis).atZone(zoneId).format(formatter)
     }
 
-    fun floorToMinute(timeMillis: Long): Long {
-        return timeMillis - Math.floorMod(timeMillis, MINUTE_MILLIS)
-    }
+    /**
+     * Delegates to [TimeMath.floorToMinute] so domain code can use the domain-owned
+     * helper without importing `util/`. Kept for UI callers.
+     */
+    fun floorToMinute(timeMillis: Long): Long = TimeMath.floorToMinute(timeMillis)
 
     fun formatDateOnly(
         timeMillis: Long,
@@ -75,6 +77,12 @@ object DateTimeTextFormatter {
             .toEpochMilli()
     }
 
+    /**
+     * Returns the last millisecond of the day containing [timeMillis] in [zoneId].
+     *
+     * Implemented as `startOfNextDay - 1L` to keep the inclusive-end convention. Centralized here
+     * so the `… - 1L` idiom isn't duplicated across the codebase.
+     */
     fun endOfDayMillis(
         timeMillis: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
@@ -88,4 +96,5 @@ object DateTimeTextFormatter {
             .toEpochMilli() - 1L
     }
 }
+
 

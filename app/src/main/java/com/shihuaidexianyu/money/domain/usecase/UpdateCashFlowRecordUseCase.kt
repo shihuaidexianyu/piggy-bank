@@ -37,9 +37,9 @@ class UpdateCashFlowRecordUseCase(
         val affectedAccountIds = setOf(existing.accountId, accountId)
         transactionRepository.runInTransaction {
             transactionRepository.updateCashFlowRecord(updated)
-        }
-        affectedAccountIds.forEach {
-            refreshAccountActivityStateUseCase(it)
+            affectedAccountIds.forEach {
+                refreshAccountActivityStateUseCase(it)
+            }
         }
     }
 }

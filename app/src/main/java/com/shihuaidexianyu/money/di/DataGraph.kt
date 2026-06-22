@@ -20,7 +20,10 @@ import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 internal class DataGraph(context: Context) {
     private val appContext = context.applicationContext
@@ -28,11 +31,20 @@ internal class DataGraph(context: Context) {
     val moneyDatabase: MoneyDatabase = MoneyDatabase.getInstance(appContext)
 
     init {
-        runBlocking {
-            LegacyMoneyStoreImporter.importIfNeeded(
-                context = appContext,
-                database = moneyDatabase,
-            )
+        // Import the legacy file-store format on a background dispatcher. Previously this used
+        // `runBlocking` which blocked the constructing thread (typically the main thread) at app
+        // startup. Now we kick it off asynchronously — Room's DB is already initialized above,
+        // and the legacy importer is idempotent (it checks "DB already has data" before doing
+        // anything), so a delayed import just means the legacy data appears a moment later.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching {
+                LegacyMoneyStoreImporter.importIfNeeded(
+                    context = appContext,
+                    database = moneyDatabase,
+                )
+            }.onFailure { e ->
+                android.util.Log.e("DataGraph", "Legacy money store import failed", e)
+            }
         }
     }
 
@@ -74,7 +86,7 @@ internal class DataGraph(context: Context) {
     suspend fun seedDebugSampleDataIfNeeded() {
         val isDebuggableApp = (appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggableApp) {
-            DebugSampleDataSeeder.seedIfNeeded(moneyDatabase)
+            DebugSampleDataSeeder.seedIfNeeded(appContext, moneyDatabase)
         }
     }
 }

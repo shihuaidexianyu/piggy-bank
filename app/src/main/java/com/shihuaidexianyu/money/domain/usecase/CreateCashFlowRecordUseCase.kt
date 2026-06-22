@@ -25,7 +25,7 @@ class CreateCashFlowRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.runInTransaction {
-            transactionRepository.insertCashFlowRecord(
+            val id = transactionRepository.insertCashFlowRecord(
                 CashFlowRecord(
                     accountId = accountId,
                     direction = direction.value,
@@ -36,8 +36,9 @@ class CreateCashFlowRecordUseCase(
                     updatedAt = now,
                 ),
             )
+            refreshAccountActivityStateUseCase(accountId)
+            id
         }
-        refreshAccountActivityStateUseCase(accountId)
         return recordId
     }
 }

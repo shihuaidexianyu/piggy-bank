@@ -14,8 +14,8 @@ class DeleteCashFlowRecordUseCase(
         account.requireActiveForMutation("删除收支记录")
         transactionRepository.runInTransaction {
             transactionRepository.softDeleteCashFlowRecord(recordId, System.currentTimeMillis())
+            refreshAccountActivityStateUseCase(existing.accountId)
         }
-        refreshAccountActivityStateUseCase(existing.accountId)
     }
 }
 

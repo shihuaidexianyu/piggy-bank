@@ -14,7 +14,7 @@ class DeleteBalanceUpdateRecordUseCase(
         account.requireActiveForMutation("删除余额核对")
         transactionRepository.runInTransaction {
             transactionRepository.deleteBalanceUpdateRecord(recordId)
+            refreshAccountActivityStateUseCase(existing.accountId)
         }
-        refreshAccountActivityStateUseCase(existing.accountId)
     }
 }

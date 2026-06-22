@@ -5,21 +5,18 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
-import com.shihuaidexianyu.money.domain.model.ThemeMode
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlin.test.assertEquals
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -83,7 +80,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = FakeSettingsRepository(),
+            settingsRepository = InMemorySettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -144,7 +141,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = FakeSettingsRepository(),
+            settingsRepository = InMemorySettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -191,7 +188,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = FakeSettingsRepository(),
+            settingsRepository = InMemorySettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -216,53 +213,5 @@ class ObserveStatsDashboardUseCaseTest {
             snapshot.closingAssets,
             snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,
         )
-    }
-
-    private class FakeSettingsRepository : SettingsRepository {
-        private val state = MutableStateFlow(AppSettings())
-
-        override fun observeSettings(): Flow<AppSettings> = state.asStateFlow()
-
-        override suspend fun updateHomePeriod(period: HomePeriod) {
-            state.value = state.value.copy(homePeriod = period)
-        }
-
-        override suspend fun updateCurrencySymbol(symbol: String) {
-            state.value = state.value.copy(currencySymbol = symbol)
-        }
-
-        override suspend fun updateShowStaleMark(show: Boolean) {
-            state.value = state.value.copy(showStaleMark = show)
-        }
-
-        override suspend fun updateThemeMode(themeMode: ThemeMode) {
-            state.value = state.value.copy(themeMode = themeMode)
-        }
-
-        override suspend fun updateAmountColorMode(amountColorMode: AmountColorMode) {
-            state.value = state.value.copy(amountColorMode = amountColorMode)
-        }
-
-        override suspend fun updateLastHistoryFilters(
-            keyword: String,
-            excludeKeyword: String,
-            accountId: Long,
-            dateStartAt: Long,
-            dateEndAt: Long,
-            minAmountText: String,
-            maxAmountText: String,
-            amountDirection: String,
-        ) {
-            state.value = state.value.copy(
-                lastHistoryKeyword = keyword,
-                lastHistoryExcludeKeyword = excludeKeyword,
-                lastHistoryAccountId = accountId,
-                lastHistoryDateStartAt = dateStartAt,
-                lastHistoryDateEndAt = dateEndAt,
-                lastHistoryMinAmountText = minAmountText,
-                lastHistoryMaxAmountText = maxAmountText,
-                lastHistoryAmountDirection = amountDirection,
-            )
-        }
     }
 }

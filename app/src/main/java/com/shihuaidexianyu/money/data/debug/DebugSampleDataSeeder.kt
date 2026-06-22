@@ -23,7 +23,23 @@ import java.time.ZoneId
 import kotlin.random.Random
 
 object DebugSampleDataSeeder {
-    suspend fun seedIfNeeded(database: MoneyDatabase) {
+    /**
+     * Seeds sample data only when the DB is empty.
+     *
+     * Self-guarding: refuses to run if the calling app is not debuggable (FLAG_DEBUGGABLE).
+     * This protects against a future caller accidentally invoking [seedIfNeeded] from a release
+     * build — even if [com.shihuaidexianyu.money.di.DataGraph.seedDebugSampleDataIfNeeded] is
+     * bypassed, this assertion still catches it.
+     */
+    suspend fun seedIfNeeded(context: android.content.Context, database: MoneyDatabase) {
+        // Self-guarding: refuses to run if the calling app is not debuggable (FLAG_DEBUGGABLE).
+        // This protects against a future caller accidentally invoking [seedIfNeeded] from a release
+        // build — even if [com.shihuaidexianyu.money.di.DataGraph.seedDebugSampleDataIfNeeded] is
+        // bypassed, this assertion still catches it.
+        val isDebuggable = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        check(isDebuggable) {
+            "DebugSampleDataSeeder.seedIfNeeded must not be called from a non-debuggable build."
+        }
         val accountDao = database.accountDao()
         val cashFlowDao = database.cashFlowRecordDao()
         val transferDao = database.transferRecordDao()

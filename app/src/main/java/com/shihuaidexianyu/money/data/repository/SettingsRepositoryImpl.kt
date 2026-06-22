@@ -46,6 +46,9 @@ class SettingsRepositoryImpl(
 
     override suspend fun replaceSettings(settings: AppSettings) {
         context.appSettingsDataStore.edit {
+            // Clear first so that any keys removed in future versions don't linger as orphans
+            // (DataStore Preferences has no schema migration story).
+            it.clear()
             it[Keys.HomePeriod] = settings.homePeriod.value
             it[Keys.CurrencySymbol] = normalizeCurrencySymbol(settings.currencySymbol)
             it[Keys.ShowStaleMark] = settings.showStaleMark

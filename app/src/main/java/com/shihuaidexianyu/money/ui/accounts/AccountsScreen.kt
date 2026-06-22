@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -42,7 +44,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
-import kotlin.math.roundToInt
 
 @Composable
 fun AccountsScreen(
@@ -73,14 +74,14 @@ fun AccountsScreen(
                     Icon(
                         imageVector = Icons.Rounded.Add,
                         contentDescription = "新建账户",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
             },
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
         LazyColumn(
-            contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 112.dp),
+            contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (state.activeAccounts.isNotEmpty()) {
@@ -111,17 +112,13 @@ fun AccountsScreen(
                         trailing = if (staleCount > 0) "$staleCount 个待核对" else "${state.activeAccounts.size} 个",
                     )
                 }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        state.activeAccounts.forEach { account ->
-                            AccountCard(
-                                account = account,
-                                currencySettings = state.settings,
-                                positiveAssetsTotal = positiveAssetsTotal,
-                                onClick = { onAccountClick(account.id) },
-                            )
-                        }
-                    }
+                itemsIndexed(state.activeAccounts, key = { _, account -> account.id }) { _, account ->
+                    AccountCard(
+                        account = account,
+                        currencySettings = state.settings,
+                        positiveAssetsTotal = positiveAssetsTotal,
+                        onClick = { onAccountClick(account.id) },
+                    )
                 }
             }
             if (hasArchivedAccounts) {
@@ -148,17 +145,13 @@ fun AccountsScreen(
                 item {
                     MoneySectionHeader(title = "已归档")
                 }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        state.archivedAccounts.forEach { account ->
-                            AccountCard(
-                                account = account,
-                                currencySettings = state.settings,
-                                positiveAssetsTotal = 0L,
-                                onClick = { onAccountClick(account.id) },
-                            )
-                        }
-                    }
+                itemsIndexed(state.archivedAccounts, key = { _, account -> account.id }) { _, account ->
+                    AccountCard(
+                        account = account,
+                        currencySettings = state.settings,
+                        positiveAssetsTotal = 0L,
+                        onClick = { onAccountClick(account.id) },
+                    )
                 }
             }
         }
@@ -225,8 +218,11 @@ private fun AccountCard(
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
     val balanceText = AmountFormatter.format(account.balance, currencySettings)
     val showAssetShare = !account.isArchived && account.balance > 0 && positiveAssetsTotal > 0
+    // Fraction is for UI layout only (a horizontal rectangle width). Compose draw APIs take Float,
+    // so we divide as Float *after* the rule-of-money check. The amount itself is never stored as Float.
+    @Suppress("FloatingPointUsageInMoney")
     val assetShareFraction = if (showAssetShare) {
-        (account.balance.toFloat() / positiveAssetsTotal.toFloat()).coerceIn(0f, 1f)
+        account.balance.toFloat() / positiveAssetsTotal.toFloat()
     } else {
         0f
     }
@@ -341,14 +337,12 @@ private fun AccountCard(
     }
 }
 
-private fun formatAssetShare(
-    balance: Long,
-    totalPositiveBalance: Long,
-): String {
-    val percentage = balance.toDouble() * 100.0 / totalPositiveBalance.toDouble()
-    return if (percentage < 1.0) {
+private fun formatAssetShare(balance: Long, totalPositiveBalance: Long): String {
+    // Integer percentage of [0, 100] — uses Long arithmetic to avoid Float/Double for the money math.
+    val percentage = (balance * 100L / totalPositiveBalance).coerceIn(0L, 100L)
+    return if (percentage < 1L) {
         "<1%"
     } else {
-        "${percentage.roundToInt().coerceIn(1, 100)}%"
+        "$percentage%"
     }
 }

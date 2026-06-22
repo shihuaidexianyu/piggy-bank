@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -14,13 +15,18 @@ internal inline fun <reified VM : ViewModel> moneyViewModelFactory(
     initializer { create() }
 }
 
+/**
+ * Returns a single activity-scoped [SettingsViewModel] shared across all destinations.
+ * Previously each balance/record screen created its own instance (6 total), each independently
+ * observing the same DataStore — wasteful and inconsistent. Now all callers share one.
+ */
 @Composable
-internal fun rememberSettingsViewModel(
-    container: MoneyAppContainer,
-    key: String,
-): SettingsViewModel {
+internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsViewModel {
+    val context = LocalContext.current
     return viewModel(
-        key = key,
+        // Scope to the activity so every destination shares the same instance.
+        viewModelStoreOwner = context as? androidx.activity.ComponentActivity
+            ?: error("SettingsViewModel requires a ComponentActivity context"),
         factory = moneyViewModelFactory {
             SettingsViewModel(
                 settingsRepository = container.settingsRepository,
@@ -34,3 +40,4 @@ internal fun rememberSettingsViewModel(
         },
     )
 }
+

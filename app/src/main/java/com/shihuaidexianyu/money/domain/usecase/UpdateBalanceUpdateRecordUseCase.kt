@@ -34,7 +34,7 @@ class UpdateBalanceUpdateRecordUseCase(
                     occurredAt = occurredAt,
                 ),
             )
+            refreshAccountActivityStateUseCase(existing.accountId)
         }
-        refreshAccountActivityStateUseCase(existing.accountId)
     }
 }

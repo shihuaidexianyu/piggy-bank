@@ -51,7 +51,7 @@ class ValidateBackupSnapshotUseCase {
         snapshot.cashFlowRecords.forEach { record ->
             requireReference(record.accountId, accountIdSet, "cashFlowRecords.accountId")
             requireKnown(record.direction, CashFlowDirection.entries.map { it.value }, "cashFlowRecords.direction")
-            requireNonNegative(record.amount, "cashFlowRecords.amount")
+            requirePositive(record.amount, "cashFlowRecords.amount")
             requirePositive(record.occurredAt, "cashFlowRecords.occurredAt")
             requirePositive(record.createdAt, "cashFlowRecords.createdAt")
             requirePositive(record.updatedAt, "cashFlowRecords.updatedAt")
@@ -60,7 +60,7 @@ class ValidateBackupSnapshotUseCase {
         snapshot.transferRecords.forEach { record ->
             requireReference(record.fromAccountId, accountIdSet, "transferRecords.fromAccountId")
             requireReference(record.toAccountId, accountIdSet, "transferRecords.toAccountId")
-            requireNonNegative(record.amount, "transferRecords.amount")
+            requirePositive(record.amount, "transferRecords.amount")
             requirePositive(record.occurredAt, "transferRecords.occurredAt")
             requirePositive(record.createdAt, "transferRecords.createdAt")
             requirePositive(record.updatedAt, "transferRecords.updatedAt")
@@ -74,6 +74,7 @@ class ValidateBackupSnapshotUseCase {
 
         snapshot.balanceAdjustmentRecords.forEach { record ->
             requireReference(record.accountId, accountIdSet, "balanceAdjustmentRecords.accountId")
+            requireNonZero(record.delta, "balanceAdjustmentRecords.delta")
             requirePositive(record.occurredAt, "balanceAdjustmentRecords.occurredAt")
             requirePositive(record.createdAt, "balanceAdjustmentRecords.createdAt")
         }
@@ -83,7 +84,7 @@ class ValidateBackupSnapshotUseCase {
             requireKnown(reminder.type, ReminderType.entries.map { it.value }, "recurringReminders.type")
             requireKnown(reminder.direction, CashFlowDirection.entries.map { it.value }, "recurringReminders.direction")
             requireKnown(reminder.periodType, ReminderPeriodType.entries.map { it.value }, "recurringReminders.periodType")
-            requireNonNegative(reminder.amount, "recurringReminders.amount")
+            requirePositive(reminder.amount, "recurringReminders.amount")
             requirePositive(reminder.nextDueAt, "recurringReminders.nextDueAt")
             requireNullablePositive(reminder.lastConfirmedAt, "recurringReminders.lastConfirmedAt")
             requirePositive(reminder.createdAt, "recurringReminders.createdAt")
@@ -135,6 +136,10 @@ class ValidateBackupSnapshotUseCase {
 
     private fun requireNonNegative(value: Long, fieldName: String) {
         require(value >= 0L) { "$fieldName 不能为负数" }
+    }
+
+    private fun requireNonZero(value: Long, fieldName: String) {
+        require(value != 0L) { "$fieldName 不能为 0" }
     }
 
     private fun requirePositive(value: Long, fieldName: String) {

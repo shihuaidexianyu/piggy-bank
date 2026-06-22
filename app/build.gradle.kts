@@ -39,13 +39,23 @@ android {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
             }
+        } else {
+            // Fail loud: a release build must be signed with the release keystore.
+            // Without this, signingConfigs.findByName("release") silently returns null
+            // and the release variant falls back to the debug signing key.
+            throw GradleException(
+                "Release keystore not found. Expected signing/keystore.properties (local) or " +
+                    "../timeline/keystore.properties (legacy). Refusing to build a release APK " +
+                    "with the debug signing key.",
+            )
         }
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

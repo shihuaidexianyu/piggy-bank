@@ -126,7 +126,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     composable(MoneyDestination.Settings.route) {
         val viewModel = rememberSettingsViewModel(
             container = container,
-            key = "settings_top_level",
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         SettingsScreen(

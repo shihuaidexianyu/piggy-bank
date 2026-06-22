@@ -9,20 +9,17 @@ import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
+import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
-import com.shihuaidexianyu.money.domain.model.ThemeMode
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlin.test.assertEquals
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -92,7 +89,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -219,7 +216,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -285,7 +282,7 @@ class ObserveHomeDashboardUseCaseTest {
             accountReminderSettingsRepository = reminderSettingsRepository,
             accountRepository = accountRepository,
             recurringReminderRepository = recurringReminderRepository,
-            settingsRepository = FakeSettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -297,55 +294,5 @@ class ObserveHomeDashboardUseCaseTest {
         assertEquals(setOf(staleBankId, stalePaymentId), snapshot.staleAccounts.map { it.id }.toSet())
         assertEquals(10_000, snapshot.accountBalances[staleBankId])
         assertEquals(2_000, snapshot.accountBalances[stalePaymentId])
-    }
-
-    private class FakeSettingsRepository(
-        initial: AppSettings,
-    ) : SettingsRepository {
-        private val state = MutableStateFlow(initial)
-
-        override fun observeSettings(): Flow<AppSettings> = state.asStateFlow()
-
-        override suspend fun updateHomePeriod(period: HomePeriod) {
-            state.value = state.value.copy(homePeriod = period)
-        }
-
-        override suspend fun updateCurrencySymbol(symbol: String) {
-            state.value = state.value.copy(currencySymbol = symbol)
-        }
-
-        override suspend fun updateShowStaleMark(show: Boolean) {
-            state.value = state.value.copy(showStaleMark = show)
-        }
-
-        override suspend fun updateThemeMode(themeMode: ThemeMode) {
-            state.value = state.value.copy(themeMode = themeMode)
-        }
-
-        override suspend fun updateAmountColorMode(amountColorMode: AmountColorMode) {
-            state.value = state.value.copy(amountColorMode = amountColorMode)
-        }
-
-        override suspend fun updateLastHistoryFilters(
-            keyword: String,
-            excludeKeyword: String,
-            accountId: Long,
-            dateStartAt: Long,
-            dateEndAt: Long,
-            minAmountText: String,
-            maxAmountText: String,
-            amountDirection: String,
-        ) {
-            state.value = state.value.copy(
-                lastHistoryKeyword = keyword,
-                lastHistoryExcludeKeyword = excludeKeyword,
-                lastHistoryAccountId = accountId,
-                lastHistoryDateStartAt = dateStartAt,
-                lastHistoryDateEndAt = dateEndAt,
-                lastHistoryMinAmountText = minAmountText,
-                lastHistoryMaxAmountText = maxAmountText,
-                lastHistoryAmountDirection = amountDirection,
-            )
-        }
     }
 }

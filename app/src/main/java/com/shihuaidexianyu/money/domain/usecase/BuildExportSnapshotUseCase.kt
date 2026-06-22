@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
@@ -34,6 +33,7 @@ class BuildExportSnapshotUseCase(
     private val recurringReminderRepository: RecurringReminderRepository,
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
+    private val databaseVersion: Int,
 ) {
     suspend operator fun invoke(exportedAt: Long = System.currentTimeMillis()): MoneyBackupSnapshot {
         val accounts = (accountRepository.queryActiveAccounts() + accountRepository.queryArchivedAccounts())
@@ -41,7 +41,7 @@ class BuildExportSnapshotUseCase(
         return MoneyBackupSnapshot(
             metadata = BackupMetadata(
                 schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
-                databaseVersion = MONEY_DATABASE_VERSION,
+                databaseVersion = databaseVersion,
                 exportedAt = exportedAt,
             ),
             settings = settingsRepository.observeSettings().first().toBackup(),

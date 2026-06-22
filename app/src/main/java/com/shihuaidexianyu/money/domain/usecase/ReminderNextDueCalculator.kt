@@ -8,6 +8,13 @@ import java.time.ZoneId
 
 object ReminderNextDueCalculator {
 
+    /**
+     * Default time-of-day applied to every reminder's due date. 09:00 local time is a reasonable
+     * "morning reminder" slot. Made a named constant instead of an inline `LocalTime.of(9, 0)` magic
+     * value so it's easy to find/change.
+     */
+    private val DEFAULT_DUE_TIME_OF_DAY: LocalTime = LocalTime.of(9, 0)
+
     fun calculateFirstDue(
         periodType: ReminderPeriodType,
         periodValue: Int,
@@ -35,7 +42,7 @@ object ReminderNextDueCalculator {
                 today.plusDays(periodValue.toLong().coerceAtLeast(1))
             }
         }
-        return candidate.atTime(LocalTime.of(9, 0))
+        return candidate.atTime(DEFAULT_DUE_TIME_OF_DAY)
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
@@ -65,9 +72,10 @@ object ReminderNextDueCalculator {
                 currentDate.plusDays(periodValue.toLong().coerceAtLeast(1))
             }
         }
-        return nextDate.atTime(LocalTime.of(9, 0))
+        return nextDate.atTime(DEFAULT_DUE_TIME_OF_DAY)
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
     }
 }
+

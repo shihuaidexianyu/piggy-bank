@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -277,7 +278,7 @@ fun HistoryScreen(
         title = "历史",
         modifier = modifier,
         listState = listState,
-        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {

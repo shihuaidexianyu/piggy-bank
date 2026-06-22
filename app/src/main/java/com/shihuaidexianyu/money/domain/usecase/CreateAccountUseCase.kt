@@ -9,7 +9,7 @@ import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.domain.model.TimeMath
 
 class CreateAccountUseCase(
     private val accountRepository: AccountRepository,
@@ -21,7 +21,7 @@ class CreateAccountUseCase(
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
         colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
         iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
-        createdAt: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+        createdAt: Long = TimeMath.floorToMinute(System.currentTimeMillis()),
     ): Long {
         val normalizedName = name.trim()
         require(normalizedName.isNotEmpty()) { "账户名称不能为空" }

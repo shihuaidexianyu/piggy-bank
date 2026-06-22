@@ -6,13 +6,18 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 
+/**
+ * Read-only loader for the legacy `money_store.json` file format. The write path was removed when
+ * the app migrated to Room — this class exists only to support [com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter].
+ *
+ * If the legacy file is corrupt, [loadSnapshot] returns an empty [MoneySnapshot] (the legacy data
+ * is effectively unrecoverable; the user must restore from a manual backup). We log nothing here
+ * to avoid noise on a path that should rarely fire.
+ */
 data class MoneySnapshot(
     val nextAccountId: Long = 1,
     val nextCashFlowId: Long = 1,
@@ -30,48 +35,14 @@ data class MoneySnapshot(
 class PersistentMoneyStore(
     private val storageFile: File,
 ) {
-    private val snapshotState = MutableStateFlow(loadSnapshot())
-
-    val snapshot: StateFlow<MoneySnapshot> = snapshotState.asStateFlow()
-
     constructor(context: Context) : this(File(context.filesDir, "money_store.json"))
 
-    fun update(transform: (MoneySnapshot) -> MoneySnapshot): MoneySnapshot {
-        synchronized(this) {
-            val updated = transform(snapshotState.value)
-            persist(updated)
-            snapshotState.value = updated
-            return updated
-        }
-    }
-
-    private fun loadSnapshot(): MoneySnapshot {
+    fun loadSnapshot(): MoneySnapshot {
         if (!storageFile.exists()) return MoneySnapshot()
         return runCatching {
             val text = storageFile.readText(Charsets.UTF_8)
             if (text.isBlank()) MoneySnapshot() else parseSnapshot(JSONObject(text))
         }.getOrElse { MoneySnapshot() }
-    }
-
-    private fun persist(snapshot: MoneySnapshot) {
-        storageFile.parentFile?.mkdirs()
-        storageFile.writeText(serializeSnapshot(snapshot).toString(), Charsets.UTF_8)
-    }
-
-    private fun serializeSnapshot(snapshot: MoneySnapshot): JSONObject {
-        return JSONObject().apply {
-            put("nextAccountId", snapshot.nextAccountId)
-            put("nextCashFlowId", snapshot.nextCashFlowId)
-            put("nextTransferId", snapshot.nextTransferId)
-            put("nextBalanceUpdateId", snapshot.nextBalanceUpdateId)
-            put("nextAdjustmentId", snapshot.nextAdjustmentId)
-            put("changeVersion", snapshot.changeVersion)
-            put("accounts", JSONArray().apply { snapshot.accounts.forEach { put(it.toJson()) } })
-            put("cashFlowRecords", JSONArray().apply { snapshot.cashFlowRecords.forEach { put(it.toJson()) } })
-            put("transferRecords", JSONArray().apply { snapshot.transferRecords.forEach { put(it.toJson()) } })
-            put("balanceUpdates", JSONArray().apply { snapshot.balanceUpdates.forEach { put(it.toJson()) } })
-            put("adjustments", JSONArray().apply { snapshot.adjustments.forEach { put(it.toJson()) } })
-        }
     }
 
     private fun parseSnapshot(json: JSONObject): MoneySnapshot {
@@ -173,60 +144,4 @@ private inline fun <T> JSONArray?.toObjectList(mapper: (JSONObject) -> T): List<
 
 private fun JSONObject.optNullableLong(key: String): Long? {
     return if (has(key) && !isNull(key)) getLong(key) else null
-}
-
-private fun Account.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("name", name)
-    put("initialBalance", initialBalance)
-    put("createdAt", createdAt)
-    put("archivedAt", archivedAt ?: JSONObject.NULL)
-    put("isArchived", isArchived)
-    put("lastUsedAt", lastUsedAt ?: JSONObject.NULL)
-    put("lastBalanceUpdateAt", lastBalanceUpdateAt ?: JSONObject.NULL)
-    put("displayOrder", displayOrder)
-    put("colorName", colorName)
-    put("iconName", iconName)
-}
-
-private fun CashFlowRecord.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("accountId", accountId)
-    put("direction", direction)
-    put("amount", amount)
-    put("purpose", purpose)
-    put("occurredAt", occurredAt)
-    put("createdAt", createdAt)
-    put("updatedAt", updatedAt)
-    put("isDeleted", isDeleted)
-}
-
-private fun TransferRecord.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("fromAccountId", fromAccountId)
-    put("toAccountId", toAccountId)
-    put("amount", amount)
-    put("note", note)
-    put("occurredAt", occurredAt)
-    put("createdAt", createdAt)
-    put("updatedAt", updatedAt)
-    put("isDeleted", isDeleted)
-}
-
-private fun BalanceUpdateRecord.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("accountId", accountId)
-    put("actualBalance", actualBalance)
-    put("systemBalanceBeforeUpdate", systemBalanceBeforeUpdate)
-    put("delta", delta)
-    put("occurredAt", occurredAt)
-    put("createdAt", createdAt)
-}
-
-private fun BalanceAdjustmentRecord.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("accountId", accountId)
-    put("delta", delta)
-    put("occurredAt", occurredAt)
-    put("createdAt", createdAt)
 }

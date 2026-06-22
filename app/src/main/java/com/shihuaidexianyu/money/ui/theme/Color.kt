@@ -36,23 +36,10 @@ val Night800 = Color(0xFF201C18)
 val Night700 = Color(0xFF2B2621)
 val Night600 = Color(0xFF3B342D)
 
-// ===== Legacy aliases for backward compatibility (to be removed later) =====
-val Teal700 = Color(0xFF1E5D5E)
-val Teal600 = Color(0xFF256F70)
-val Teal100 = Color(0xFFDCEEEF)
-val Ink900 = CharcoalWarm
-val Ink700 = WarmGray
-val BackgroundWarm = BackgroundCream
-val SurfaceSoft = InputBg
-val BorderSoft = WarmBorder
-val SuccessTeal = SageGreen
-val WarningMuted = Amber600
-val BorderDark = Color(0xFF3A3834)
-val Night650 = Color(0xFF3A3834)
-val Teal300 = Color(0xFF72CCCB)
-val Teal200 = Color(0xFFAEE5E4)
-val Amber300 = Color(0xFFE7C98A)
-val Amber400Legacy = Color(0xFFD3A95C)
+// ===== Brand colors (primary teal) =====
+val BrandTealPrimary = Color(0xFF256F70)
+val BrandTealPrimaryContainer = Color(0xFFDCEEEF)
+val BrandTealPrimaryDark = Color(0xFF72CCCB)
 
 data class MoneyColors(
     val income: Color,
@@ -99,6 +86,3 @@ fun moneyColorsFor(
 }
 
 val LocalMoneyColors = staticCompositionLocalOf { LightMoneyColors }
-
-internal val LightMoneyColorsInstance = LightMoneyColors
-internal val DarkMoneyColorsInstance = DarkMoneyColors

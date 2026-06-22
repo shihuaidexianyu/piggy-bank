@@ -1,13 +1,20 @@
 package com.shihuaidexianyu.money.ui.balance
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
+import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -22,29 +29,42 @@ fun BalanceAdjustmentDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LaunchedEffect(viewModel) {
-        viewModel.effectFlow.collect { effect ->
-            when (effect) {
-                BalanceAdjustmentDetailEffect.Closed -> onClosed()
-            }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
+        when (effect) {
+            BalanceAdjustmentDetailEffect.Closed -> onClosed()
+            BalanceAdjustmentDetailEffect.Deleted -> onClosed()
+            else -> {}
         }
+    }
+
+    if (showDeleteConfirm) {
+        MoneyConfirmDialog(
+            title = "删除余额矫正",
+            message = "删除后会重新计算该账户当前余额，确认继续？",
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.delete()
+            },
+            onDismiss = { showDeleteConfirm = false },
+            confirmLabel = "确认删除",
+            dismissLabel = "取消",
+        )
     }
 
     MoneyFormPage(
         title = "余额矫正详情",
         modifier = modifier,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
-        if (state.isLoading) {
-            item {
-                MoneyEmptyStateCard(
-                    title = "加载中",
-                    subtitle = "正在读取这条余额矫正记录。",
-                )
-            }
-        } else {
-            item {
-                MoneyCard {
+        item {
+            MoneyCard {
+                if (state.isLoading) {
+                    Text("加载中...", style = MaterialTheme.typography.bodyMedium)
+                } else {
                     Text(state.accountName, style = MaterialTheme.typography.titleMedium)
                     MoneyInlineLabelValue(
                         label = "时间",
@@ -57,5 +77,19 @@ fun BalanceAdjustmentDetailScreen(
                 }
             }
         }
+        if (!state.isLoading) {
+            item {
+                MoneyCard {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !state.isDeleting,
+                    ) {
+                        Text(if (state.isDeleting) "删除中..." else "删除这次记录")
+                    }
+                }
+            }
+        }
     }
 }
+

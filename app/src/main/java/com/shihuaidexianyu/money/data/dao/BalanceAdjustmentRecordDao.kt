@@ -81,9 +81,12 @@ interface BalanceAdjustmentRecordDao {
         SELECT COUNT(*) FROM balance_adjustment_records
         WHERE occurredAt > :startAt
             AND occurredAt <= :endAt
-        """,
+        """
     )
     suspend fun countBetween(startAt: Long, endAt: Long): Int
+
+    @Query("DELETE FROM balance_adjustment_records WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("DELETE FROM balance_adjustment_records")
     suspend fun deleteAll()

@@ -9,7 +9,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 
 - **Package**: `com.shihuaidexianyu.money`
 - **Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `1.0.79` (versionCode `79`)
+- **Version**: `1.0.87` (versionCode `87`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -67,7 +67,7 @@ The script:
 - Checks that the git working tree is clean before modifying release files unless `-AllowDirty` is passed.
 - Sets isolated `GRADLE_USER_HOME` and `ANDROID_USER_HOME` for reproducible release builds.
 - Expects `JAVA_HOME` at `C:\Program Files\Android\Android Studio\jbr`.
-- Signs release builds using `../timeline/keystore.properties` and the keystore referenced there.
+- Signs release builds using `signing/keystore.properties` (local, gitignored) if present, otherwise falls back to `../timeline/keystore.properties`. The keystore file itself is referenced by the `storeFile` property there.
 
 ## Project Structure
 
@@ -115,7 +115,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. Cash flow and transfer records use soft-delete (`isDeleted` field).
    - `repository/`: Concrete implementations plus `InMemory*` variants for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 9, `exportSchema = true`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 10, `exportSchema = true`).
 
 3. **UI** (`ui/`):
    - One package per feature.
@@ -168,17 +168,18 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **9**.
+Room schema is exported to `app/schemas/`. Current database version is **10**.
 
 Existing migrations:
 - `1 → 2`: Re-created a historical balance adjustment index.
 - `2 → 3`: Added `recurring_reminders` table.
 - `3 → 4`: Dropped `investment_settlements` table and related indexes.
 - `4 → 5`: Re-created `accounts` without the legacy group field.
-- `5 → 6`: Added legacy visual fields.
+- `5 → 6`: Added legacy visual fields (`iconName`, `colorName`).
 - `6 → 7`: Re-created `accounts` without `iconName`, keeping `colorName`.
 - `7 → 8`: Re-created transaction tables with foreign keys and refreshed indexes.
-- `8 → 9`: Re-created `balance_adjustment_records` without reconciliation source linkage.
+- `8 → 9`: Re-created `balance_adjustment_records` without `sourceUpdateRecordId`; rows with `sourceUpdateRecordId != 0` are dropped (data-losing by design).
+- `9 → 10`: Re-added `iconName` column to `accounts` (TEXT NOT NULL DEFAULT 'wallet').
 
 When modifying entities:
 1. Bump `@Database(version = ...)`.

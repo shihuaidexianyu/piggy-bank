@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -72,7 +71,7 @@ class ObserveAccountDetailUseCase(
             settings = settings,
             reminderConfig = reminderConfig,
             currentBalance = calculateCurrentBalanceUseCase(account.id),
-            isStale = AccountStatusUtils.isStale(account, reminderConfig = reminderConfig),
+            isStale = AccountStatusCalculator.isStale(account, reminderConfig = reminderConfig),
         )
     }
 }

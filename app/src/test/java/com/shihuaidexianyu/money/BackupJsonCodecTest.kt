@@ -242,7 +242,9 @@ class BackupJsonCodecTest {
                 recurringReminderRepository = reminderRepository,
                 settingsRepository = settingsRepository,
                 transactionRepository = transactionRepository,
+                databaseVersion = 10,
             ),
+            backupJsonEncoder = com.shihuaidexianyu.money.data.backup.BackupJsonCodec,
         )
     }
 }

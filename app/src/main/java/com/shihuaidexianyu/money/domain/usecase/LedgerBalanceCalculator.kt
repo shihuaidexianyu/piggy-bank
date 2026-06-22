@@ -5,8 +5,8 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.TimeMath
 import com.shihuaidexianyu.money.domain.model.TransferRecord
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 internal data class LedgerBalanceDeltas(
     val inflow: Long = 0L,
@@ -22,7 +22,7 @@ internal data class LedgerBalanceDeltas(
 
 internal object LedgerBalanceCalculator {
     fun openingAt(account: Account): Long {
-        return DateTimeTextFormatter.floorToMinute(account.createdAt)
+        return TimeMath.floorToMinute(account.createdAt)
     }
 
     fun startBeforeOpening(account: Account): Long {

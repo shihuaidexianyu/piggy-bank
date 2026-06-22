@@ -44,9 +44,9 @@ class ProcessDueReminderUseCase(
                     updatedAt = now,
                 ),
             )
+            refreshAccountActivityStateUseCase(reminder.accountId)
             insertedId
         }
-        refreshAccountActivityStateUseCase(reminder.accountId)
         return recordId
     }
 }

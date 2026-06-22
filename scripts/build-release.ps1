@@ -6,6 +6,7 @@ param(
     [switch]$RunTests,
     [switch]$Commit,
     [switch]$Push,
+    [switch]$Tag,
     [switch]$AllowDirty
 )
 
@@ -101,6 +102,21 @@ if (-not (Test-Path $apkPath)) {
 
 Write-Host "Release APK: $apkPath"
 
+# Verify the APK is actually signed with the release key (not the debug fallback).
+# `apksigner verify` exits 0 only when the APK's signature is valid; combined with
+# `--print-certs` we can spot-check that it's our release cert, not the debug one.
+$apksigner = Resolve-ApksignerPath -RepoRoot $repoRoot
+if ($apksigner) {
+    Write-Host "Verifying APK signature with $apksigner ..."
+    & $apksigner verify --verbose --print-certs $apkPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "APK signature verification failed. The APK may be signed with the debug key — check that signing/keystore.properties exists."
+    }
+    Write-Host "APK signature OK."
+} else {
+    Write-Warning "apksigner not found in SDK build-tools; skipping signature verification. Manually run: apksigner verify $apkPath"
+}
+
 if ($Commit) {
     if (-not $CommitMessage) {
         $CommitMessage = "chore: release $VersionName"
@@ -131,4 +147,45 @@ if ($Commit) {
             throw "Git push failed with exit code $LASTEXITCODE."
         }
     }
+
+    if ($Tag) {
+        $tagName = "v$VersionName"
+        git tag -a $tagName -m "Release $VersionName (versionCode $VersionCode)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Git tag creation failed for $tagName"
+        }
+        Write-Host "Created tag $tagName"
+        if ($Push) {
+            git push origin $tagName
+            if ($LASTEXITCODE -ne 0) {
+                throw "Git push tag failed for $tagName"
+            }
+        }
+    }
+}
+
+function Resolve-ApksignerPath {
+    param([string]$RepoRoot)
+    # Try the local SDK path (set by gradle/local.properties or env).
+    $sdkRoot = $env:ANDROID_SDK_ROOT
+    if (-not $sdkRoot) {
+        $localProps = Join-Path $RepoRoot "local.properties"
+        if (Test-Path $localProps) {
+            $match = Get-Content $localProps | Select-String -Pattern '^sdk\.dir=(.+)$'
+            if ($match) { $sdkRoot = $match.Matches[0].Groups[1].Value.Trim() }
+        }
+    }
+    if (-not $sdkRoot) { return $null }
+    $buildToolsDir = Join-Path $sdkRoot "build-tools"
+    if (-not (Test-Path $buildToolsDir)) { return $null }
+    $latest = Get-ChildItem $buildToolsDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
+    if (-not $latest) { return $null }
+    $candidates = @(
+        (Join-Path $latest.FullName "apksigner.bat"),
+        (Join-Path $latest.FullName "apksigner")
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    return $null
 }

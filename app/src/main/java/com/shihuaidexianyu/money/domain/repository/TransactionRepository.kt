@@ -11,12 +11,21 @@ import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
 
-interface TransactionChangeRepository {
+/**
+ * Composite repository for all transaction-ledger tables.
+ *
+ * Previously split into 7 sub-interfaces (CashFlow/Transfer/BalanceUpdate/BalanceAdjustment/Stats/History/Change).
+ * The split was removed because every consumer was injected with the full composite anyway, so the
+ * sub-interfaces were dead documentation. If you want to narrow a use case's dependency, prefer
+ * extracting a focused port interface in `domain/repository/` and implementing it against the same
+ * DAO layer, rather than reviving the sub-interface hierarchy.
+ */
+interface TransactionRepository {
+    // === Change observation / transactions ===
     fun observeChangeVersion(): Flow<Long>
     suspend fun <T> runInTransaction(block: suspend () -> T): T
-}
 
-interface CashFlowTransactionRepository {
+    // === Cash flow records ===
     suspend fun insertCashFlowRecord(record: CashFlowRecord): Long
     suspend fun updateCashFlowRecord(record: CashFlowRecord)
     suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long)
@@ -29,9 +38,8 @@ interface CashFlowTransactionRepository {
     suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord>
     suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal>
     suspend fun queryDailyCashFlowTotals(startAt: Long, endAt: Long, zoneOffsetSeconds: Int): List<CashFlowDailyTotal>
-}
 
-interface TransferTransactionRepository {
+    // === Transfer records ===
     suspend fun insertTransferRecord(record: TransferRecord): Long
     suspend fun updateTransferRecord(record: TransferRecord)
     suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long)
@@ -41,9 +49,8 @@ interface TransferTransactionRepository {
     suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecord>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord>
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
-}
 
-interface BalanceUpdateTransactionRepository {
+    // === Balance update records ===
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord)
     suspend fun deleteBalanceUpdateRecord(id: Long)
@@ -52,18 +59,17 @@ interface BalanceUpdateTransactionRepository {
     suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
-}
 
-interface BalanceAdjustmentTransactionRepository {
+    // === Balance adjustment records ===
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord)
+    suspend fun deleteBalanceAdjustmentRecord(id: Long)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>
-}
 
-interface TransactionStatsRepository {
+    // === Aggregated stats ===
     suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
     suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long
@@ -78,9 +84,8 @@ interface TransactionStatsRepository {
     suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int
     suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int
     suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int
-}
 
-interface HistoryTransactionRepository {
+    // === Unified history ===
     suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,
@@ -89,12 +94,3 @@ interface HistoryTransactionRepository {
 
     suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int
 }
-
-interface TransactionRepository :
-    TransactionChangeRepository,
-    CashFlowTransactionRepository,
-    TransferTransactionRepository,
-    BalanceUpdateTransactionRepository,
-    BalanceAdjustmentTransactionRepository,
-    TransactionStatsRepository,
-    HistoryTransactionRepository

@@ -1,5 +1,7 @@
 package com.shihuaidexianyu.money.di
 
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
+import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
@@ -7,9 +9,11 @@ import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
@@ -24,6 +28,7 @@ import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCa
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
@@ -143,6 +148,24 @@ internal class UseCaseGraph(
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
     )
 
+    val createBalanceAdjustmentUseCase = CreateBalanceAdjustmentUseCase(
+        accountRepository = data.accountRepository,
+        transactionRepository = data.transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+    )
+
+    val updateBalanceAdjustmentUseCase = UpdateBalanceAdjustmentUseCase(
+        accountRepository = data.accountRepository,
+        transactionRepository = data.transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+    )
+
+    val deleteBalanceAdjustmentUseCase = DeleteBalanceAdjustmentUseCase(
+        accountRepository = data.accountRepository,
+        transactionRepository = data.transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+    )
+
     val updateAccountUseCase = UpdateAccountUseCase(
         accountRepository = data.accountRepository,
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
@@ -195,10 +218,12 @@ internal class UseCaseGraph(
         recurringReminderRepository = data.recurringReminderRepository,
         settingsRepository = data.settingsRepository,
         transactionRepository = data.transactionRepository,
+        databaseVersion = MONEY_DATABASE_VERSION,
     )
 
     val buildExportJsonUseCase = BuildExportJsonUseCase(
         buildExportSnapshotUseCase = buildExportSnapshotUseCase,
+        backupJsonEncoder = BackupJsonCodec,
     )
 
     val validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase()

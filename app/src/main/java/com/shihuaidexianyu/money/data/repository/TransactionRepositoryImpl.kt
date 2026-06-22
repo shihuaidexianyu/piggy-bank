@@ -153,6 +153,11 @@ class TransactionRepositoryImpl(
         bumpVersion()
     }
 
+    override suspend fun deleteBalanceAdjustmentRecord(id: Long) {
+        balanceAdjustmentRecordDao.deleteById(id)
+        bumpVersion()
+    }
+
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? = balanceAdjustmentRecordDao.queryById(id)?.toDomain()
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAllActive().map { it.toDomain() }
@@ -224,8 +229,8 @@ class TransactionRepositoryImpl(
         limit: Int,
     ): List<HistoryRecord> {
         return historyRecordDao.queryPage(
-            keyword = filters.keyword.trim().lowercase(),
-            excludeKeyword = filters.excludeKeyword.trim().lowercase(),
+            keyword = escapeLikeLiteral(filters.keyword.trim().lowercase()),
+            excludeKeyword = escapeLikeLiteral(filters.excludeKeyword.trim().lowercase()),
             accountId = filters.accountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
@@ -241,8 +246,8 @@ class TransactionRepositoryImpl(
 
     override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
         return historyRecordDao.count(
-            keyword = filters.keyword.trim().lowercase(),
-            excludeKeyword = filters.excludeKeyword.trim().lowercase(),
+            keyword = escapeLikeLiteral(filters.keyword.trim().lowercase()),
+            excludeKeyword = escapeLikeLiteral(filters.excludeKeyword.trim().lowercase()),
             accountId = filters.accountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
@@ -250,6 +255,18 @@ class TransactionRepositoryImpl(
             maxAmount = filters.maxAmount,
             amountDirection = filters.amountDirection.name,
         )
+    }
+
+    private fun escapeLikeLiteral(input: String): String {
+        if (input.isEmpty()) return input
+        val builder = StringBuilder(input.length + 4)
+        for (ch in input) {
+            when (ch) {
+                '\\', '%', '_' -> builder.append('\\').append(ch)
+                else -> builder.append(ch)
+            }
+        }
+        return builder.toString()
     }
 
     private fun bumpVersion() {

@@ -32,6 +32,7 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyBackButton
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
+import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -82,7 +83,7 @@ fun ReminderListScreen(
                 modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
             )
             LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 112.dp),
+                contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!state.isLoading && state.balanceReminders.isEmpty() && state.reminders.isEmpty()) {

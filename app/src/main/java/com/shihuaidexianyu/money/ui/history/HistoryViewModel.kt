@@ -372,6 +372,15 @@ private fun HistoryFilterState.toHistoryRecordFilters(): HistoryRecordFilters {
     )
 }
 
+/**
+ * Pure filter function kept for direct unit testing of history-filter semantics.
+ *
+ * Production history filtering goes through [com.shihuaidexianyu.money.domain.repository.TransactionRepository.queryHistoryRecords]
+ * (which delegates to a SQL `UNION ALL` query). This Kotlin implementation is exercised by
+ * `HistoryFilterLogicTest` as a parallel specification — if the two diverge, the test will not
+ * catch it (see `TransactionRepositoryContractTest` for that), but keeping the function around
+ * documents the intended semantics and gives fast unit-test feedback on filter logic changes.
+ */
 internal fun filterHistoryRecords(
     source: List<HistoryRecordUiModel>,
     filters: HistoryFilterState,

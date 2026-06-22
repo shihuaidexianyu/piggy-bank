@@ -42,9 +42,9 @@ class UpdateTransferRecordUseCase(
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId, fromAccountId, toAccountId)
         transactionRepository.runInTransaction {
             transactionRepository.updateTransferRecord(updated)
-        }
-        affectedAccountIds.forEach {
-            refreshAccountActivityStateUseCase(it)
+            affectedAccountIds.forEach {
+                refreshAccountActivityStateUseCase(it)
+            }
         }
     }
 }

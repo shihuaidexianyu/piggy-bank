@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -42,7 +43,7 @@ fun ReorderAccountsScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
-        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 112.dp),
+        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         if (state.accounts.isEmpty()) {

@@ -178,7 +178,9 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord> {
-        return balanceUpdates.filter { it.accountId == accountId }
+        return balanceUpdates
+            .filter { it.accountId == accountId }
+            .sortedWith(compareByDescending<BalanceUpdateRecord> { it.occurredAt }.thenByDescending { it.id })
     }
 
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? {
@@ -198,6 +200,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         bumpVersion()
     }
 
+    override suspend fun deleteBalanceAdjustmentRecord(id: Long) {
+        if (adjustments.removeAll { it.id == id }) {
+            bumpVersion()
+        }
+    }
+
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? {
         return adjustments.firstOrNull { it.id == id }
     }
@@ -213,7 +221,9 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> {
-        return adjustments.filter { it.accountId == accountId }
+        return adjustments
+            .filter { it.accountId == accountId }
+            .sortedWith(compareByDescending<BalanceAdjustmentRecord> { it.occurredAt }.thenByDescending { it.id })
     }
 
     override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {

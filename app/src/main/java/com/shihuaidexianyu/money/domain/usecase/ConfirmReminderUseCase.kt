@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import java.util.concurrent.TimeUnit
 
 class ConfirmReminderUseCase(
     private val accountRepository: AccountRepository,
@@ -37,9 +38,13 @@ internal fun RecurringReminder.nextDueAfter(now: Long): Long {
         )
         if (nextDueAt <= previousDueAt) {
             // 计算异常时，使用一天后的时间作为安全降级，避免崩溃或死循环
-            nextDueAt = previousDueAt + 24L * 60L * 60L * 1000L
+            nextDueAt = previousDueAt + FALLBACK_FORWARD_MILLIS
             break
         }
     } while (nextDueAt <= now)
     return nextDueAt
 }
+
+/** One-day forward nudge used as a safety fallback when the next-due calculator regresses. */
+private val FALLBACK_FORWARD_MILLIS: Long = TimeUnit.DAYS.toMillis(1)
+

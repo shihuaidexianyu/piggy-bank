@@ -15,7 +15,7 @@ object LegacyMoneyStoreImporter {
         if (hasDatabaseData) return
 
         val legacyStore = PersistentMoneyStore(context)
-        val snapshot = legacyStore.snapshot.value
+        val snapshot = legacyStore.loadSnapshot()
         val hasLegacyData = snapshot.accounts.isNotEmpty() ||
             snapshot.cashFlowRecords.isNotEmpty() ||
             snapshot.transferRecords.isNotEmpty() ||

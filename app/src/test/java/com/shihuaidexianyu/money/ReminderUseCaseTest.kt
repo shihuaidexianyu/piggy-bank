@@ -46,7 +46,7 @@ class ReminderUseCaseTest {
             )
         }
 
-        assertTrue(error.message?.contains("1 到 29") == true)
+        assertTrue(error.message?.contains("1 到 28") == true)
     }
 
     @Test

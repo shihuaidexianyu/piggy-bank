@@ -28,7 +28,7 @@ class CreateTransferRecordUseCase(
 
         val now = System.currentTimeMillis()
         val recordId = transactionRepository.runInTransaction {
-            transactionRepository.insertTransferRecord(
+            val id = transactionRepository.insertTransferRecord(
                 TransferRecord(
                     fromAccountId = fromAccountId,
                     toAccountId = toAccountId,
@@ -39,9 +39,10 @@ class CreateTransferRecordUseCase(
                     updatedAt = now,
                 ),
             )
+            refreshAccountActivityStateUseCase(fromAccountId)
+            refreshAccountActivityStateUseCase(toAccountId)
+            id
         }
-        refreshAccountActivityStateUseCase(fromAccountId)
-        refreshAccountActivityStateUseCase(toAccountId)
         return recordId
     }
 }

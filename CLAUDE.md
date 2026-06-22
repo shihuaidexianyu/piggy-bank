@@ -44,7 +44,7 @@ This is a single-module Android app (`:app`) using **Clean Architecture** with *
 **Data** (`data/`):
 - `entity/` — Room entities (stored amounts in Long/cents)
 - `dao/` — Room DAOs. Soft-delete pattern on cash flow and transfer records (`isDeleted` field)
-- `db/` — `MoneyDatabase` (Room, version 9), `LegacyMoneyStoreImporter` for migration from prior format
+- `db/` — `MoneyDatabase` (Room, version 10), `LegacyMoneyStoreImporter` for migration from prior format
 - `repository/` — Implementations including `InMemory*` variants used in unit tests
 
 **UI** (`ui/`):

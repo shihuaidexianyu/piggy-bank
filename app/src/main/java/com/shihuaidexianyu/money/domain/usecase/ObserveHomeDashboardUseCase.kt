@@ -9,8 +9,6 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.util.AccountStatusUtils
-import com.shihuaidexianyu.money.util.TimeRangeUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -84,13 +82,13 @@ class ObserveHomeDashboardUseCase(
         settings: AppSettings,
         dueReminders: List<RecurringReminder>,
     ): HomeDashboardSnapshot = coroutineScope {
-        val range = TimeRangeUtils.currentRange(settings.homePeriod)
+        val range = TimeRangeCalculator.currentRange(settings.homePeriod)
         val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
         val balanceJob = async { calculateAccountBalancesUseCase(accounts) }
         val openingBalanceJobs = accounts
             .filter { LedgerBalanceCalculator.isOpenAt(it, periodStartBaselineAt) }
             .map { account ->
-                async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
+                account.id to async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
             }
         val newAccountOpeningAssets = accounts
             .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startAtMillis, range.endAtMillis) }
@@ -120,37 +118,25 @@ class ObserveHomeDashboardUseCase(
         }
 
         val balances = balanceJob.await()
-        val totalAssets = balances.values.sum()
-        val openingTotalAssets = openingBalanceJobs.sumOf { it.await() } + newAccountOpeningAssets
-        val periodBreakdown = PeriodAssetBreakdown(
-            openingAssets = openingTotalAssets,
-            closingAssets = totalAssets,
-            assetChange = totalAssets - openingTotalAssets,
+        val openingBalanceByAccount = openingBalanceJobs.toMap().mapValues { it.value.await() }
+
+        HomeProjector.project(
+            accounts = accounts,
+            reminderConfigs = reminderConfigs,
+            settings = settings,
+            dueReminders = dueReminders,
+            balances = balances,
+            openingBalanceByAccount = openingBalanceByAccount,
+            newAccountOpeningAssets = newAccountOpeningAssets,
             cashInflow = cashInflowJob.await(),
             cashOutflow = cashOutflowJob.await(),
-            manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await(),
-            manualAdjustmentDecrease = manualAdjustmentDecreaseJob.await(),
             reconciliationIncrease = reconciliationIncreaseJob.await(),
             reconciliationDecrease = reconciliationDecreaseJob.await(),
-        )
-        val staleAccounts = accounts.filter { account ->
-            AccountStatusUtils.isStale(
-                account,
-                reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
-            )
-        }
-        HomeDashboardSnapshot(
-            settings = settings,
-            totalAssets = totalAssets,
-            periodBreakdown = periodBreakdown,
-            periodRecordCount = cashFlowRecordCountJob.await() +
-                transferRecordCountJob.await() +
-                manualAdjustmentRecordCountJob.await(),
-            staleAccountCount = staleAccounts.size,
-            activeAccounts = accounts,
-            staleAccounts = staleAccounts,
-            accountBalances = balances,
-            dueReminders = dueReminders,
+            manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await(),
+            manualAdjustmentDecrease = manualAdjustmentDecreaseJob.await(),
+            cashFlowRecordCount = cashFlowRecordCountJob.await(),
+            transferRecordCount = transferRecordCountJob.await(),
+            manualAdjustmentRecordCount = manualAdjustmentRecordCountJob.await(),
         )
     }
 }

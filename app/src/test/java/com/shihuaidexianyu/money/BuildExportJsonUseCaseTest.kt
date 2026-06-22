@@ -133,7 +133,9 @@ class BuildExportJsonUseCaseTest {
                 recurringReminderRepository = reminderRepository,
                 settingsRepository = TestSettingsRepository(AppSettings(currencySymbol = "元")),
                 transactionRepository = transactionRepository,
+                databaseVersion = 10,
             ),
+            backupJsonEncoder = BackupJsonCodec,
         )(exportedAt = 42L)
 
         val snapshot = BackupJsonCodec.decode(json)
