@@ -268,7 +268,7 @@ private fun AssetFlowCard(state: StatsUiState) {
             adjustmentAccent = adjustmentAccent,
         )
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            MoneyInlineLabelValue(label = "手动调整", value = state.manualAdjustmentText)
+            MoneyInlineLabelValue(label = "其他变动", value = state.manualAdjustmentText)
             MoneyInlineLabelValue(label = "对账差额", value = state.reconciliationText)
         }
     }

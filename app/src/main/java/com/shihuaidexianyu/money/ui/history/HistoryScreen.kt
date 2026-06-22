@@ -546,7 +546,7 @@ private fun historyKindLabel(record: HistoryRecordUiModel): String {
         HistoryRecordKind.CASH_FLOW -> if (record.amount > 0) "入账" else "出账"
         HistoryRecordKind.TRANSFER -> "转账"
         HistoryRecordKind.BALANCE_UPDATE -> if (record.amount == 0L) "余额核对" else "对账调整"
-        HistoryRecordKind.BALANCE_ADJUSTMENT -> "手动调整"
+        HistoryRecordKind.BALANCE_ADJUSTMENT -> "其他变动"
     }
 }
 
