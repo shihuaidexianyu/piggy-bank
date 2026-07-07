@@ -144,8 +144,6 @@ data class BackupBalanceUpdateReminderConfig(
 @Serializable
 data class BackupSavingsGoal(
     val id: Long,
-    val name: String,
     val targetAmount: Long,
     val createdAt: Long,
-    val accountIds: List<Long> = emptyList(),
 )

@@ -19,11 +19,10 @@ import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
-import com.shihuaidexianyu.money.data.entity.SavingsGoalAccountLinkEntity
 import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 12
+const val MONEY_DATABASE_VERSION = 13
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -254,6 +253,29 @@ private val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+private val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `savings_goal_account_links`")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `savings_goals_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `targetAmount` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO `savings_goals_new` (`id`, `targetAmount`, `createdAt`)
+            SELECT `id`, `targetAmount`, `createdAt` FROM `savings_goals`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `savings_goals`")
+        db.execSQL("ALTER TABLE `savings_goals_new` RENAME TO `savings_goals`")
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -266,6 +288,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_9_10,
     MIGRATION_10_11,
     MIGRATION_11_12,
+    MIGRATION_12_13,
 )
 
 @Database(
@@ -277,7 +300,6 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
         SavingsGoalEntity::class,
-        SavingsGoalAccountLinkEntity::class,
     ],
     version = MONEY_DATABASE_VERSION,
     exportSchema = true,

@@ -7,7 +7,7 @@ interface SavingsGoalRepository {
     fun observeAll(): Flow<List<SavingsGoal>>
     suspend fun queryAll(): List<SavingsGoal>
     suspend fun getGoalById(id: Long): SavingsGoal?
-    suspend fun createGoal(name: String, targetAmount: Long, accountIds: List<Long>, createdAt: Long): Long
+    suspend fun createGoal(targetAmount: Long, createdAt: Long): Long
     suspend fun updateGoal(goal: SavingsGoal)
     suspend fun deleteGoal(id: Long)
 }

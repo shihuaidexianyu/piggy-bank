@@ -16,6 +16,8 @@ import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
+import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
+import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.stats.StatsScreen
 import com.shihuaidexianyu.money.ui.stats.StatsViewModel
 
@@ -121,7 +123,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
             onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
             onToggleArchiveVisibility = viewModel::toggleArchiveVisibility,
-            onSavingsGoalClick = { navController.navigate(MoneyDestination.editSavingsGoalRoute(it)) },
         )
     }
 
@@ -140,10 +141,27 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onBiometricLockChange = viewModel::updateBiometricLock,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
-            onCreateSavingsGoal = { navController.navigate(MoneyDestination.CreateSavingsGoalRoute) },
+            onCreateSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
+        )
+    }
+
+    composable(MoneyDestination.SavingsGoalRoute) {
+        val viewModel = viewModel<SavingsGoalViewModel>(
+            factory = moneyViewModelFactory {
+                SavingsGoalViewModel(
+                    savingsGoalRepository = container.savingsGoalRepository,
+                    createSavingsGoalUseCase = container.createSavingsGoalUseCase,
+                    updateSavingsGoalUseCase = container.updateSavingsGoalUseCase,
+                    deleteSavingsGoalUseCase = container.deleteSavingsGoalUseCase,
+                )
+            },
+        )
+        SavingsGoalScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
         )
     }
 }

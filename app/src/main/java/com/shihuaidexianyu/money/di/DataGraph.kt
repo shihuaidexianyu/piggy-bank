@@ -74,7 +74,6 @@ internal class DataGraph(context: Context) {
 
     val savingsGoalRepository: SavingsGoalRepository =
         SavingsGoalRepositoryImpl(
-            database = moneyDatabase,
             savingsGoalDao = moneyDatabase.savingsGoalDao(),
         )
 

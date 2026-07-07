@@ -115,9 +115,6 @@ class ValidateBackupSnapshotUseCase {
             requirePositive(goal.id, "savingsGoals.id")
             requirePositive(goal.targetAmount, "savingsGoals.targetAmount")
             requirePositive(goal.createdAt, "savingsGoals.createdAt")
-            goal.accountIds.forEach { accountId ->
-                requireReference(accountId, accountIdSet, "savingsGoals.accountIds")
-            }
         }
 
         return BackupValidationResult(

@@ -16,19 +16,12 @@ class InMemorySavingsGoalRepository : SavingsGoalRepository {
 
     override suspend fun getGoalById(id: Long): SavingsGoal? = goals.value[id]
 
-    override suspend fun createGoal(
-        name: String,
-        targetAmount: Long,
-        accountIds: List<Long>,
-        createdAt: Long,
-    ): Long {
+    override suspend fun createGoal(targetAmount: Long, createdAt: Long): Long {
         val id = nextId++
         goals.value = goals.value + (id to SavingsGoal(
             id = id,
-            name = name,
             targetAmount = targetAmount,
             createdAt = createdAt,
-            accountIds = accountIds,
         ))
         return id
     }

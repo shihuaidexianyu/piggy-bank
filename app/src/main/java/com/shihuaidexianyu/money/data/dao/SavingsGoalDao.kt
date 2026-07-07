@@ -5,7 +5,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.shihuaidexianyu.money.data.entity.SavingsGoalAccountLinkEntity
 import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -15,7 +14,7 @@ interface SavingsGoalDao {
     suspend fun insert(goal: SavingsGoalEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllGoals(goals: List<SavingsGoalEntity>)
+    suspend fun insertAll(goals: List<SavingsGoalEntity>)
 
     @Update
     suspend fun update(goal: SavingsGoalEntity)
@@ -33,23 +32,5 @@ interface SavingsGoalDao {
     suspend fun queryById(id: Long): SavingsGoalEntity?
 
     @Query("DELETE FROM savings_goals")
-    suspend fun deleteAllGoals()
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertLinks(links: List<SavingsGoalAccountLinkEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllLinks(links: List<SavingsGoalAccountLinkEntity>)
-
-    @Query("DELETE FROM savings_goal_account_links WHERE goalId = :goalId")
-    suspend fun deleteLinksForGoal(goalId: Long)
-
-    @Query("SELECT * FROM savings_goal_account_links")
-    suspend fun queryAllLinks(): List<SavingsGoalAccountLinkEntity>
-
-    @Query("SELECT * FROM savings_goal_account_links")
-    fun observeAllLinks(): Flow<List<SavingsGoalAccountLinkEntity>>
-
-    @Query("DELETE FROM savings_goal_account_links")
-    suspend fun deleteAllLinks()
+    suspend fun deleteAll()
 }

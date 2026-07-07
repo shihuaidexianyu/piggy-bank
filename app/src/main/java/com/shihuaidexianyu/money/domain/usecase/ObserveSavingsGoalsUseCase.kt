@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.domain.model.SavingsGoalWithProgress
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -22,16 +23,13 @@ class ObserveSavingsGoalsUseCase(
             emptyList()
         } else {
             val balances = calculateAccountBalancesUseCase(accounts)
+            val totalAssets = balances.values.sum()
             goals.map { goal ->
-                val current = goal.accountIds.sumOf { balances[it] ?: 0L }
                 SavingsGoalWithProgress(
                     id = goal.id,
-                    name = goal.name,
                     targetAmount = goal.targetAmount,
-                    createdAt = goal.createdAt,
-                    accountIds = goal.accountIds,
-                    currentAmount = current,
-                    isAchieved = current >= goal.targetAmount,
+                    currentAmount = totalAssets,
+                    isAchieved = totalAssets >= goal.targetAmount,
                 )
             }
         }

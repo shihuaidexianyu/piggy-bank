@@ -13,12 +13,8 @@ import com.shihuaidexianyu.money.ui.accounts.AccountDetailScreen
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailViewModel
 import com.shihuaidexianyu.money.ui.accounts.CreateAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.CreateAccountViewModel
-import com.shihuaidexianyu.money.ui.accounts.CreateSavingsGoalScreen
-import com.shihuaidexianyu.money.ui.accounts.CreateSavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.accounts.EditAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
-import com.shihuaidexianyu.money.ui.accounts.EditSavingsGoalScreen
-import com.shihuaidexianyu.money.ui.accounts.EditSavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
 
@@ -110,44 +106,6 @@ internal fun NavGraphBuilder.addAccountsGraph(
             viewModel = viewModel,
             onBack = { navController.popBackStack() },
             onClosed = closeAccountsFlow,
-        )
-    }
-
-    composable(MoneyDestination.CreateSavingsGoalRoute) {
-        val viewModel = viewModel<CreateSavingsGoalViewModel>(
-            factory = moneyViewModelFactory {
-                CreateSavingsGoalViewModel(
-                    accountRepository = container.accountRepository,
-                    createSavingsGoalUseCase = container.createSavingsGoalUseCase,
-                )
-            },
-        )
-        CreateSavingsGoalScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
-        )
-    }
-
-    composable(
-        route = MoneyDestination.EditSavingsGoalRoute,
-        arguments = listOf(navArgument("goalId") { type = NavType.LongType }),
-    ) { entry ->
-        val goalId = entry.arguments?.getLong("goalId") ?: return@composable
-        val viewModel = viewModel<EditSavingsGoalViewModel>(
-            key = "edit_savings_goal_$goalId",
-            factory = moneyViewModelFactory {
-                EditSavingsGoalViewModel(
-                    goalId = goalId,
-                    accountRepository = container.accountRepository,
-                    savingsGoalRepository = container.savingsGoalRepository,
-                    updateSavingsGoalUseCase = container.updateSavingsGoalUseCase,
-                    deleteSavingsGoalUseCase = container.deleteSavingsGoalUseCase,
-                )
-            },
-        )
-        EditSavingsGoalScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
         )
     }
 }

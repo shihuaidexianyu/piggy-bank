@@ -2,8 +2,6 @@ package com.shihuaidexianyu.money.data.backup
 
 import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
-import com.shihuaidexianyu.money.data.entity.SavingsGoalAccountLinkEntity
-import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -42,8 +40,7 @@ class BackupRepositoryImpl(
 ) : BackupRepository {
     override suspend fun replaceAll(snapshot: MoneyBackupSnapshot) {
         database.withTransaction {
-            database.savingsGoalDao().deleteAllLinks()
-            database.savingsGoalDao().deleteAllGoals()
+            database.savingsGoalDao().deleteAll()
             database.recurringReminderDao().deleteAll()
             database.balanceAdjustmentRecordDao().deleteAll()
             database.balanceUpdateRecordDao().deleteAll()
@@ -60,14 +57,9 @@ class BackupRepositoryImpl(
             )
             database.recurringReminderDao().insertAll(snapshot.recurringReminders.map { it.toDomain().toEntity() })
 
-            val validAccountIds = snapshot.accounts.map { it.id }.toSet()
             snapshot.savingsGoals.forEach { backupGoal ->
-                val goal = backupGoal.toDomain(validAccountIds)
-                val goalId = database.savingsGoalDao().insert(goal.toEntity())
-                val links = goal.accountIds.map { SavingsGoalAccountLinkEntity(goalId = goalId, accountId = it) }
-                if (links.isNotEmpty()) {
-                    database.savingsGoalDao().insertLinks(links)
-                }
+                val goal = backupGoal.toDomain()
+                database.savingsGoalDao().insert(goal.toEntity())
             }
         }
 
@@ -185,11 +177,9 @@ private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderC
         minute = minute,
     )
 
-private fun BackupSavingsGoal.toDomain(validAccountIds: Set<Long>): SavingsGoal =
+private fun BackupSavingsGoal.toDomain(): SavingsGoal =
     SavingsGoal(
         id = id,
-        name = name,
         targetAmount = targetAmount,
         createdAt = createdAt,
-        accountIds = accountIds.filter { it in validAccountIds },
     )

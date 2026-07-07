@@ -39,7 +39,7 @@ sealed class MoneyDestination(
         const val CreateReminderRoute = "reminders/create"
         const val EditReminderRoute = "reminders/{reminderId}/edit"
         const val CreateSavingsGoalRoute = "savings-goals/create"
-        const val EditSavingsGoalRoute = "savings-goals/{goalId}/edit"
+        const val SavingsGoalRoute = "savings-goals"
 
         fun accountDetailRoute(accountId: Long): String = "accounts/$accountId"
         fun editAccountRoute(accountId: Long): String = "accounts/$accountId/edit"
@@ -75,6 +75,5 @@ sealed class MoneyDestination(
         fun balanceUpdateResultRoute(accountId: Long): String = "balance/update/$accountId/result"
 
         fun editReminderRoute(reminderId: Long): String = "reminders/$reminderId/edit"
-        fun editSavingsGoalRoute(goalId: Long): String = "savings-goals/$goalId/edit"
     }
 }

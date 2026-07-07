@@ -186,8 +186,6 @@ private fun BalanceUpdateReminderConfig.toBackup(): BackupBalanceUpdateReminderC
 private fun SavingsGoal.toBackup(): BackupSavingsGoal =
     BackupSavingsGoal(
         id = id,
-        name = name,
         targetAmount = targetAmount,
         createdAt = createdAt,
-        accountIds = accountIds,
     )

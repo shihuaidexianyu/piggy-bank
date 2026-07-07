@@ -35,8 +35,6 @@ data class AccountListItemUiModel(
 )
 
 data class SavingsGoalUiModel(
-    val id: Long,
-    val name: String,
     val targetAmount: Long,
     val currentAmount: Long,
     val isAchieved: Boolean,
@@ -48,14 +46,14 @@ data class AccountsUiState(
     val showArchived: Boolean = false,
     val activeAccounts: List<AccountListItemUiModel> = emptyList(),
     val archivedAccounts: List<AccountListItemUiModel> = emptyList(),
-    val savingsGoals: List<SavingsGoalUiModel> = emptyList(),
+    val savingsGoal: SavingsGoalUiModel? = null,
 )
 
 private data class AccountsSnapshot(
     val settings: AppSettings,
     val activeAccounts: List<AccountListItemUiModel>,
     val archivedAccounts: List<AccountListItemUiModel>,
-    val savingsGoals: List<SavingsGoalUiModel>,
+    val savingsGoal: SavingsGoalUiModel?,
 )
 
 class AccountsViewModel(
@@ -84,14 +82,14 @@ class AccountsViewModel(
                         settings = settings,
                         activeAccounts = buildItems(active, reminderConfigs),
                         archivedAccounts = buildItems(archived, reminderConfigs),
-                        savingsGoals = emptyList(),
+                        savingsGoal = null,
                     )
                 }
                 val goalsFlow = observeSavingsGoalsUseCase().map { goals ->
-                    goals.map { it.toUiModel() }
+                    goals.firstOrNull()?.toUiModel()
                 }
-                combine(snapshotFlow, goalsFlow) { snapshot, goals ->
-                    snapshot.copy(savingsGoals = goals)
+                combine(snapshotFlow, goalsFlow) { snapshot, goal ->
+                    snapshot.copy(savingsGoal = goal)
                 }.combine(showArchivedFlow) { snapshot, showArchived ->
                     AccountsUiState(
                         isLoading = false,
@@ -99,7 +97,7 @@ class AccountsViewModel(
                         showArchived = showArchived,
                         activeAccounts = snapshot.activeAccounts,
                         archivedAccounts = snapshot.archivedAccounts,
-                        savingsGoals = snapshot.savingsGoals,
+                        savingsGoal = snapshot.savingsGoal,
                     )
                 }.collect { state ->
                     _uiState.value = state
@@ -145,8 +143,6 @@ class AccountsViewModel(
 
     private fun SavingsGoalWithProgress.toUiModel(): SavingsGoalUiModel =
         SavingsGoalUiModel(
-            id = id,
-            name = name,
             targetAmount = targetAmount,
             currentAmount = currentAmount,
             isAchieved = isAchieved,
