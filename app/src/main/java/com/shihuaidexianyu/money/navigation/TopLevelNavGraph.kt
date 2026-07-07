@@ -121,7 +121,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
             onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
             onToggleArchiveVisibility = viewModel::toggleArchiveVisibility,
-            onCreateSavingsGoal = { navController.navigate(MoneyDestination.CreateSavingsGoalRoute) },
             onSavingsGoalClick = { navController.navigate(MoneyDestination.editSavingsGoalRoute(it)) },
         )
     }
@@ -140,8 +139,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onBiometricLockChange = viewModel::updateBiometricLock,
-            onDynamicColorChange = viewModel::updateDynamicColor,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
+            onCreateSavingsGoal = { navController.navigate(MoneyDestination.CreateSavingsGoalRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,

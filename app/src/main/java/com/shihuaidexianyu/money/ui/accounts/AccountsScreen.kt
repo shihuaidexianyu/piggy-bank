@@ -61,7 +61,6 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleArchiveVisibility: () -> Unit,
-    onCreateSavingsGoal: () -> Unit,
     onSavingsGoalClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -96,12 +95,11 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.savingsGoals.isNotEmpty() || state.activeAccounts.isNotEmpty()) {
+            if (state.savingsGoals.isNotEmpty()) {
                 item {
                     SavingsGoalsRow(
                         goals = state.savingsGoals,
                         settings = state.settings,
-                        onCreateGoal = onCreateSavingsGoal,
                         onGoalClick = onSavingsGoalClick,
                     )
                 }
@@ -381,7 +379,6 @@ private fun formatAssetShare(balance: Long, totalPositiveBalance: Long): String 
 private fun SavingsGoalsRow(
     goals: List<SavingsGoalUiModel>,
     settings: AppSettings,
-    onCreateGoal: () -> Unit,
     onGoalClick: (Long) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -395,9 +392,6 @@ private fun SavingsGoalsRow(
                     settings = settings,
                     onClick = { onGoalClick(goal.id) },
                 )
-            }
-            item {
-                AddSavingsGoalCard(onClick = onCreateGoal)
             }
         }
     }
@@ -524,46 +518,3 @@ private fun SavingsGoalCard(
     }
 }
 
-@Composable
-private fun AddSavingsGoalCard(onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .width(140.dp)
-            .height(140.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f),
-        ),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = "添加目标",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-    }
-}

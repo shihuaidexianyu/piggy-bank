@@ -14,7 +14,6 @@ interface SettingsRepository {
     suspend fun updateThemeMode(themeMode: ThemeMode)
     suspend fun updateAmountColorMode(amountColorMode: AmountColorMode)
     suspend fun updateBiometricLock(enabled: Boolean)
-    suspend fun updateDynamicColor(enabled: Boolean)
     suspend fun replaceSettings(settings: AppSettings) {
         updateHomePeriod(settings.homePeriod)
         updateCurrencySymbol(settings.currencySymbol)
@@ -22,7 +21,6 @@ interface SettingsRepository {
         updateThemeMode(settings.themeMode)
         updateAmountColorMode(settings.amountColorMode)
         updateBiometricLock(settings.biometricLock)
-        updateDynamicColor(settings.dynamicColor)
         updateLastHistoryFilters(
             keyword = settings.lastHistoryKeyword,
             excludeKeyword = settings.lastHistoryExcludeKeyword,

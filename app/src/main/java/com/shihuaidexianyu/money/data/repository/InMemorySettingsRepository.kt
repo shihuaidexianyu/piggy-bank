@@ -44,10 +44,6 @@ class InMemorySettingsRepository(
         state.value = state.value.copy(biometricLock = enabled)
     }
 
-    override suspend fun updateDynamicColor(enabled: Boolean) {
-        state.value = state.value.copy(dynamicColor = enabled)
-    }
-
     override suspend fun replaceSettings(settings: AppSettings) {
         state.value = settings
     }

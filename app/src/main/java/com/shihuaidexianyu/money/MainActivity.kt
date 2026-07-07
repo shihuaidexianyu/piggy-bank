@@ -45,7 +45,6 @@ class MainActivity : FragmentActivity() {
             MoneyTheme(
                 themeMode = settings.themeMode,
                 amountColorMode = settings.amountColorMode,
-                dynamicColor = settings.dynamicColor,
             ) {
                 BiometricGatekeeper(
                     enabled = settings.biometricLock,

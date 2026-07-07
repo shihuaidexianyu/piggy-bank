@@ -1,8 +1,10 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material3.SnackbarHostState
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
@@ -12,7 +14,7 @@ fun CreateSavingsGoalScreen(
     viewModel: CreateSavingsGoalViewModel,
     onBack: () -> Unit,
 ) {
-    val state = viewModel.uiState.value
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     CollectUiEffects(

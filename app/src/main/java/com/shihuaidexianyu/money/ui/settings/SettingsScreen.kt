@@ -55,8 +55,8 @@ fun SettingsScreen(
     onCurrencySymbolChange: (String) -> Unit,
     onShowStaleMarkChange: (Boolean) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
+    onCreateSavingsGoal: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
     onConfirmImport: (Uri) -> Unit,
@@ -247,18 +247,6 @@ fun SettingsScreen(
                         )
                     },
                 )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = "动态取色",
-                    subtitle = "Android 12+ 根据壁纸自动调整配色",
-                    showChevron = false,
-                    accessory = {
-                        Switch(
-                            checked = settings.dynamicColor,
-                            onCheckedChange = onDynamicColorChange,
-                        )
-                    },
-                )
             }
         }
 
@@ -297,6 +285,13 @@ fun SettingsScreen(
                     subtitle = "调整账户页和选择器里的展示顺序",
                     trailing = "自定义",
                     modifier = Modifier.clickable(onClick = onManageAccountOrder),
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "储蓄目标",
+                    subtitle = "添加或管理储蓄目标",
+                    trailing = "添加",
+                    modifier = Modifier.clickable(onClick = onCreateSavingsGoal),
                 )
             }
         }

@@ -48,10 +48,6 @@ class SettingsRepositoryImpl(
         context.appSettingsDataStore.edit { it[Keys.BiometricLock] = enabled }
     }
 
-    override suspend fun updateDynamicColor(enabled: Boolean) {
-        context.appSettingsDataStore.edit { it[Keys.DynamicColor] = enabled }
-    }
-
     override suspend fun replaceSettings(settings: AppSettings) {
         context.appSettingsDataStore.edit {
             // Clear first so that any keys removed in future versions don't linger as orphans
@@ -63,7 +59,6 @@ class SettingsRepositoryImpl(
             it[Keys.ThemeMode] = settings.themeMode.value
             it[Keys.AmountColorMode] = settings.amountColorMode.value
             it[Keys.BiometricLock] = settings.biometricLock
-            it[Keys.DynamicColor] = settings.dynamicColor
             it[Keys.LastHistoryKeyword] = settings.lastHistoryKeyword
             it[Keys.LastHistoryExcludeKeyword] = settings.lastHistoryExcludeKeyword
             it[Keys.LastHistoryAccountId] = settings.lastHistoryAccountId
@@ -105,7 +100,6 @@ class SettingsRepositoryImpl(
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             amountColorMode = AmountColorMode.fromValue(preferences[Keys.AmountColorMode]),
             biometricLock = preferences[Keys.BiometricLock] ?: false,
-            dynamicColor = preferences[Keys.DynamicColor] ?: true,
             lastHistoryKeyword = preferences[Keys.LastHistoryKeyword] ?: "",
             lastHistoryExcludeKeyword = preferences[Keys.LastHistoryExcludeKeyword] ?: "",
             lastHistoryAccountId = preferences[Keys.LastHistoryAccountId] ?: -1L,
@@ -124,7 +118,6 @@ class SettingsRepositoryImpl(
         val ThemeMode = stringPreferencesKey("theme_mode")
         val AmountColorMode = stringPreferencesKey("amount_color_mode")
         val BiometricLock = booleanPreferencesKey("biometric_lock")
-        val DynamicColor = booleanPreferencesKey("dynamic_color")
         val LastHistoryKeyword = stringPreferencesKey("last_history_keyword")
         val LastHistoryExcludeKeyword = stringPreferencesKey("last_history_exclude_keyword")
         val LastHistoryAccountId = longPreferencesKey("last_history_account_id")
