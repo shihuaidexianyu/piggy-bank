@@ -111,6 +111,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     settingsRepository = container.settingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
+                    observeSavingsGoalsUseCase = container.observeSavingsGoalsUseCase,
                 )
             },
         )
@@ -120,6 +121,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
             onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
             onToggleArchiveVisibility = viewModel::toggleArchiveVisibility,
+            onCreateSavingsGoal = { navController.navigate(MoneyDestination.CreateSavingsGoalRoute) },
+            onSavingsGoalClick = { navController.navigate(MoneyDestination.editSavingsGoalRoute(it)) },
         )
     }
 

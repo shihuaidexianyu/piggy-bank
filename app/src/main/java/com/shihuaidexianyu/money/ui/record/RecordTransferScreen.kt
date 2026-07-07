@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
-import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -68,11 +67,6 @@ fun RecordTransferScreen(
             disabledAccountIds = setOfNotNull(
                 if (target == TransferPickerTarget.FROM) state.toAccountId else state.fromAccountId,
             ),
-            sortMode = if (target == TransferPickerTarget.FROM) {
-                AccountPickerSortMode.HIGHEST_BALANCE
-            } else {
-                AccountPickerSortMode.MOST_USED
-            },
             onDismiss = { pickerTarget = null },
             onPick = {
                 if (target == TransferPickerTarget.FROM) {

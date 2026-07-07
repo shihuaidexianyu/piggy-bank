@@ -20,13 +20,6 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.util.AmountFormatter
 
-enum class AccountPickerSortMode {
-    DEFAULT,
-    MOST_USED,
-    HIGHEST_BALANCE,
-    STALE_FIRST,
-}
-
 data class AccountOptionUiModel(
     val id: Long,
     val name: String,
@@ -44,19 +37,16 @@ fun AccountPickerDialog(
     accounts: List<AccountOptionUiModel>,
     selectedAccountId: Long? = null,
     disabledAccountIds: Set<Long> = emptySet(),
-    sortMode: AccountPickerSortMode = AccountPickerSortMode.DEFAULT,
     settings: AppSettings = AppSettings(),
     noSelectionLabel: String? = null,
     onDismiss: () -> Unit,
     onPick: (Long) -> Unit,
     onClearSelection: (() -> Unit)? = null,
 ) {
-    val sortedAccounts = accounts.sortedForPicker(sortMode)
-
     ModalBottomSheet(onDismissRequest = onDismiss) {
         AccountPickerList(
             title = title,
-            accounts = sortedAccounts,
+            accounts = accounts,
             selectedAccountId = selectedAccountId,
             disabledAccountIds = disabledAccountIds,
             settings = settings,
@@ -157,28 +147,6 @@ private fun AccountPickerList(
                 }
             }
         }
-    }
-}
-
-private fun List<AccountOptionUiModel>.sortedForPicker(
-    sortMode: AccountPickerSortMode,
-): List<AccountOptionUiModel> {
-    return when (sortMode) {
-        AccountPickerSortMode.DEFAULT -> this
-        AccountPickerSortMode.MOST_USED -> sortedWith(
-            compareByDescending<AccountOptionUiModel> { it.lastUsedAt ?: Long.MIN_VALUE }
-                .thenBy { it.name },
-        )
-        AccountPickerSortMode.HIGHEST_BALANCE -> sortedWith(
-            compareByDescending<AccountOptionUiModel> { it.balance ?: Long.MIN_VALUE }
-                .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
-                .thenBy { it.name },
-        )
-        AccountPickerSortMode.STALE_FIRST -> sortedWith(
-            compareByDescending<AccountOptionUiModel> { it.isStale }
-                .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
-                .thenBy { it.name },
-        )
     }
 }
 

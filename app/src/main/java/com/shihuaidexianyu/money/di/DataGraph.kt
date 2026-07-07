@@ -12,12 +12,14 @@ import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.SettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +71,12 @@ internal class DataGraph(context: Context) {
 
     val recurringReminderRepository: RecurringReminderRepository =
         RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
+
+    val savingsGoalRepository: SavingsGoalRepository =
+        SavingsGoalRepositoryImpl(
+            database = moneyDatabase,
+            savingsGoalDao = moneyDatabase.savingsGoalDao(),
+        )
 
     val backupRepository: BackupRepository =
         BackupRepositoryImpl(

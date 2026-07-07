@@ -19,7 +19,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
-import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -60,7 +59,6 @@ fun UpdateBalanceScreen(
             title = "选择账户",
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
-            sortMode = AccountPickerSortMode.STALE_FIRST,
             onDismiss = { showAccountPicker = false },
             onPick = {
                 viewModel.updateAccount(it)

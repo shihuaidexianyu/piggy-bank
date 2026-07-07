@@ -12,15 +12,18 @@ import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
 import com.shihuaidexianyu.money.data.dao.HistoryRecordDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
+import com.shihuaidexianyu.money.data.dao.SavingsGoalDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.data.entity.SavingsGoalAccountLinkEntity
+import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 10
+const val MONEY_DATABASE_VERSION = 12
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -198,6 +201,59 @@ private val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+private val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `savings_goals` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `targetAmount` INTEGER NOT NULL,
+                `colorName` TEXT NOT NULL DEFAULT 'blue',
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `savings_goal_account_links` (
+                `goalId` INTEGER NOT NULL,
+                `accountId` INTEGER NOT NULL,
+                PRIMARY KEY(`goalId`, `accountId`),
+                FOREIGN KEY(`goalId`) REFERENCES `savings_goals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_savings_goal_account_links_goalId` ON `savings_goal_account_links` (`goalId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_savings_goal_account_links_accountId` ON `savings_goal_account_links` (`accountId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_savings_goal_account_links_goalId_accountId` ON `savings_goal_account_links` (`goalId`, `accountId`)")
+    }
+}
+
+private val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `savings_goals_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `targetAmount` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO `savings_goals_new` (`id`, `name`, `targetAmount`, `createdAt`)
+            SELECT `id`, `name`, `targetAmount`, `createdAt` FROM `savings_goals`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `savings_goals`")
+        db.execSQL("ALTER TABLE `savings_goals_new` RENAME TO `savings_goals`")
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -208,6 +264,8 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_7_8,
     MIGRATION_8_9,
     MIGRATION_9_10,
+    MIGRATION_10_11,
+    MIGRATION_11_12,
 )
 
 @Database(
@@ -218,6 +276,8 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         BalanceUpdateRecordEntity::class,
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
+        SavingsGoalEntity::class,
+        SavingsGoalAccountLinkEntity::class,
     ],
     version = MONEY_DATABASE_VERSION,
     exportSchema = true,
@@ -230,6 +290,7 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun balanceAdjustmentRecordDao(): BalanceAdjustmentRecordDao
     abstract fun historyRecordDao(): HistoryRecordDao
     abstract fun recurringReminderDao(): RecurringReminderDao
+    abstract fun savingsGoalDao(): SavingsGoalDao
 
     companion object {
         @Volatile

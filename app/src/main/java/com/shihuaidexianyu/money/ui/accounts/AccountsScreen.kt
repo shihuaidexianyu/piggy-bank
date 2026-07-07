@@ -9,16 +9,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -55,6 +61,8 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleArchiveVisibility: () -> Unit,
+    onCreateSavingsGoal: () -> Unit,
+    onSavingsGoalClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hasArchivedAccounts = state.archivedAccounts.isNotEmpty()
@@ -88,6 +96,16 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (state.savingsGoals.isNotEmpty() || state.activeAccounts.isNotEmpty()) {
+                item {
+                    SavingsGoalsRow(
+                        goals = state.savingsGoals,
+                        settings = state.settings,
+                        onCreateGoal = onCreateSavingsGoal,
+                        onGoalClick = onSavingsGoalClick,
+                    )
+                }
+            }
             if (state.activeAccounts.isNotEmpty()) {
                 item {
                     AccountOverviewCard(state = state)
@@ -356,5 +374,196 @@ private fun formatAssetShare(balance: Long, totalPositiveBalance: Long): String 
         "<1%"
     } else {
         "$percentage%"
+    }
+}
+
+@Composable
+private fun SavingsGoalsRow(
+    goals: List<SavingsGoalUiModel>,
+    settings: AppSettings,
+    onCreateGoal: () -> Unit,
+    onGoalClick: (Long) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        MoneySectionHeader(title = "储蓄目标")
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(goals, key = { it.id }) { goal ->
+                SavingsGoalCard(
+                    goal = goal,
+                    settings = settings,
+                    onClick = { onGoalClick(goal.id) },
+                )
+            }
+            item {
+                AddSavingsGoalCard(onClick = onCreateGoal)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavingsGoalCard(
+    goal: SavingsGoalUiModel,
+    settings: AppSettings,
+    onClick: () -> Unit,
+) {
+    val accentColor = MaterialTheme.colorScheme.primary
+    val currentText = AmountFormatter.format(goal.currentAmount, settings)
+    val targetText = AmountFormatter.format(goal.targetAmount, settings)
+    val percentage = if (goal.targetAmount > 0L) {
+        ((goal.currentAmount * 100L) / goal.targetAmount).coerceIn(0L, 100L)
+    } else {
+        0L
+    }
+    val percentageText = if (percentage < 1L && goal.currentAmount > 0L) "<1%" else "$percentage%"
+    @Suppress("FloatingPointUsageInMoney")
+    val progressFraction = (percentage / 100f).coerceIn(0f, 1f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
+    val balanceStyle = when {
+        currentText.length > 18 -> MaterialTheme.typography.bodyMedium
+        currentText.length > 14 -> MaterialTheme.typography.titleMedium
+        else -> MaterialTheme.typography.titleLarge
+    }
+    val statusText = if (goal.isAchieved) "已达成" else "进度 $percentageText"
+
+    Surface(
+        modifier = Modifier
+            .width(200.dp)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "储蓄目标 ${goal.name}，已存 $currentText，目标 $targetText，进度 $percentageText"
+                role = Role.Button
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        color = accentColor.copy(alpha = 0.10f),
+                        size = Size(
+                            width = size.width * progressFraction.coerceIn(0.01f, 1f),
+                            height = size.height,
+                        ),
+                    )
+                },
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Flag,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = goal.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = percentageText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (goal.isAchieved) MaterialTheme.colorScheme.tertiary else accentColor,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = currentText,
+                        style = balanceStyle,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                    Text(
+                        text = targetText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddSavingsGoalCard(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .width(140.dp)
+            .height(140.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f),
+        ),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Text(
+                text = "添加目标",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
     }
 }

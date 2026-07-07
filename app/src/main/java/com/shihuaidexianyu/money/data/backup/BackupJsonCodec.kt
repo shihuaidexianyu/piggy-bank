@@ -65,6 +65,21 @@ object BackupJsonCodec : BackupJsonEncoder {
                 return JsonObject(updatedFields)
             }
         },
+        object : BackupMigration {
+            override val from = 2
+            override val to = 3
+            override fun transform(root: JsonObject): JsonObject {
+                val updatedFields = root.toMutableMap()
+                val metadata = root["metadata"]?.jsonObject.orEmpty()
+                updatedFields["metadata"] = JsonObject(
+                    metadata + ("schemaVersion" to JsonPrimitive(3)),
+                )
+                if ("savingsGoals" !in updatedFields) {
+                    updatedFields["savingsGoals"] = JsonArray(emptyList())
+                }
+                return JsonObject(updatedFields)
+            }
+        },
     )
 
     private fun migrateLegacyBackupJson(raw: String): String {

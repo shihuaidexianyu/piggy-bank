@@ -9,13 +9,16 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.SavingsGoalWithProgress
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalsUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,18 +34,28 @@ data class AccountListItemUiModel(
     val displayOrder: Int,
 )
 
+data class SavingsGoalUiModel(
+    val id: Long,
+    val name: String,
+    val targetAmount: Long,
+    val currentAmount: Long,
+    val isAchieved: Boolean,
+)
+
 data class AccountsUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
     val showArchived: Boolean = false,
     val activeAccounts: List<AccountListItemUiModel> = emptyList(),
     val archivedAccounts: List<AccountListItemUiModel> = emptyList(),
+    val savingsGoals: List<SavingsGoalUiModel> = emptyList(),
 )
 
 private data class AccountsSnapshot(
     val settings: AppSettings,
     val activeAccounts: List<AccountListItemUiModel>,
     val archivedAccounts: List<AccountListItemUiModel>,
+    val savingsGoals: List<SavingsGoalUiModel>,
 )
 
 class AccountsViewModel(
@@ -51,6 +64,7 @@ class AccountsViewModel(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
+    private val observeSavingsGoalsUseCase: ObserveSavingsGoalsUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
@@ -70,15 +84,22 @@ class AccountsViewModel(
                         settings = settings,
                         activeAccounts = buildItems(active, reminderConfigs),
                         archivedAccounts = buildItems(archived, reminderConfigs),
+                        savingsGoals = emptyList(),
                     )
                 }
-                combine(snapshotFlow, showArchivedFlow) { snapshot, showArchived ->
+                val goalsFlow = observeSavingsGoalsUseCase().map { goals ->
+                    goals.map { it.toUiModel() }
+                }
+                combine(snapshotFlow, goalsFlow) { snapshot, goals ->
+                    snapshot.copy(savingsGoals = goals)
+                }.combine(showArchivedFlow) { snapshot, showArchived ->
                     AccountsUiState(
                         isLoading = false,
                         settings = snapshot.settings,
                         showArchived = showArchived,
                         activeAccounts = snapshot.activeAccounts,
                         archivedAccounts = snapshot.archivedAccounts,
+                        savingsGoals = snapshot.savingsGoals,
                     )
                 }.collect { state ->
                     _uiState.value = state
@@ -121,4 +142,13 @@ class AccountsViewModel(
             displayOrder = account.displayOrder,
         )
     }
+
+    private fun SavingsGoalWithProgress.toUiModel(): SavingsGoalUiModel =
+        SavingsGoalUiModel(
+            id = id,
+            name = name,
+            targetAmount = targetAmount,
+            currentAmount = currentAmount,
+            isAchieved = isAchieved,
+        )
 }

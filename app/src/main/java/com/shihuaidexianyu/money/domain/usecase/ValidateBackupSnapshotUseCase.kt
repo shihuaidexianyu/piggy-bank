@@ -19,6 +19,7 @@ data class BackupValidationResult(
     val balanceUpdateCount: Int,
     val balanceAdjustmentCount: Int,
     val reminderCount: Int,
+    val savingsGoalCount: Int,
     val exportedAt: Long,
 )
 
@@ -110,6 +111,15 @@ class ValidateBackupSnapshotUseCase {
         }
         requireNoDuplicates(configAccountIds, "accountReminderConfigs.accountId")
 
+        snapshot.savingsGoals.forEach { goal ->
+            requirePositive(goal.id, "savingsGoals.id")
+            requirePositive(goal.targetAmount, "savingsGoals.targetAmount")
+            requirePositive(goal.createdAt, "savingsGoals.createdAt")
+            goal.accountIds.forEach { accountId ->
+                requireReference(accountId, accountIdSet, "savingsGoals.accountIds")
+            }
+        }
+
         return BackupValidationResult(
             accountCount = snapshot.accounts.size,
             cashFlowCount = snapshot.cashFlowRecords.size,
@@ -117,6 +127,7 @@ class ValidateBackupSnapshotUseCase {
             balanceUpdateCount = snapshot.balanceUpdateRecords.size,
             balanceAdjustmentCount = snapshot.balanceAdjustmentRecords.size,
             reminderCount = snapshot.recurringReminders.size,
+            savingsGoalCount = snapshot.savingsGoals.size,
             exportedAt = snapshot.metadata.exportedAt,
         )
     }

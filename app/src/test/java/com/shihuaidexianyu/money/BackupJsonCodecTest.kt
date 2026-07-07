@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
+import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.Account
@@ -152,7 +153,7 @@ class BackupJsonCodecTest {
         val json = buildUseCase()(exportedAt = 42L)
         val root = JSONObject(json)
 
-        assertEquals(2, root.getJSONObject("metadata").getInt("schemaVersion"))
+        assertEquals(3, root.getJSONObject("metadata").getInt("schemaVersion"))
         assertEquals(42L, root.getJSONObject("metadata").getLong("exportedAt"))
         assertEquals(0, root.getJSONArray("accounts").length())
         assertEquals(0, root.getJSONArray("cashFlowRecords").length())
@@ -161,6 +162,7 @@ class BackupJsonCodecTest {
         assertEquals(0, root.getJSONArray("balanceAdjustmentRecords").length())
         assertEquals(0, root.getJSONArray("recurringReminders").length())
         assertEquals(0, root.getJSONArray("accountReminderConfigs").length())
+        assertEquals(0, root.getJSONArray("savingsGoals").length())
     }
 
     @Test
@@ -234,12 +236,14 @@ class BackupJsonCodecTest {
         reminderRepository: InMemoryRecurringReminderRepository = InMemoryRecurringReminderRepository(),
         settingsRepository: TestSettingsRepository = TestSettingsRepository(),
         reminderSettingsRepository: InMemoryAccountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+        savingsGoalRepository: InMemorySavingsGoalRepository = InMemorySavingsGoalRepository(),
     ): BuildExportJsonUseCase {
         return BuildExportJsonUseCase(
             buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
                 accountReminderSettingsRepository = reminderSettingsRepository,
                 accountRepository = accountRepository,
                 recurringReminderRepository = reminderRepository,
+                savingsGoalRepository = savingsGoalRepository,
                 settingsRepository = settingsRepository,
                 transactionRepository = transactionRepository,
                 databaseVersion = 10,

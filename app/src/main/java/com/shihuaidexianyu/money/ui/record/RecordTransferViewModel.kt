@@ -54,23 +54,13 @@ class RecordTransferViewModel(
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryActiveAccounts()
-                val accountIds = accounts.map { it.id }.toSet()
-                val fromAccountId = _uiState.value.fromAccountId
-                    ?.takeIf { it in accountIds }
-                    ?: accounts.firstOrNull()?.id
-                val toAccountId = _uiState.value.toAccountId
-                    ?.takeIf { it in accountIds && it != fromAccountId }
-                    ?: accounts.firstOrNull { it.id != fromAccountId }?.id
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
                             balance = calculateCurrentBalanceUseCase(account.id),
                         )
                     },
-                    fromAccountId = fromAccountId,
-                    toAccountId = toAccountId,
                 )
-                refreshNoteSuggestions()
             } catch (e: Exception) {
                 android.util.Log.e("RecordTransferViewModel", "Failed to load accounts", e)
             }
@@ -78,24 +68,12 @@ class RecordTransferViewModel(
     }
 
     fun updateFromAccount(accountId: Long) {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            fromAccountId = accountId,
-            toAccountId = state.toAccountId
-                ?.takeIf { it != accountId }
-                ?: state.accounts.firstOrNull { it.id != accountId }?.id,
-        )
+        _uiState.value = _uiState.value.copy(fromAccountId = accountId)
         refreshNoteSuggestions()
     }
 
     fun updateToAccount(accountId: Long) {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            fromAccountId = state.fromAccountId
-                ?.takeIf { it != accountId }
-                ?: state.accounts.firstOrNull { it.id != accountId }?.id,
-            toAccountId = accountId,
-        )
+        _uiState.value = _uiState.value.copy(toAccountId = accountId)
         refreshNoteSuggestions()
     }
 

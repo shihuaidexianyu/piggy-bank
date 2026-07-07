@@ -5,7 +5,7 @@ import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_PE
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import kotlinx.serialization.Serializable
 
-const val MONEY_BACKUP_SCHEMA_VERSION = 2
+const val MONEY_BACKUP_SCHEMA_VERSION = 3
 
 @Serializable
 data class MoneyBackupSnapshot(
@@ -18,6 +18,7 @@ data class MoneyBackupSnapshot(
     val balanceAdjustmentRecords: List<BackupBalanceAdjustmentRecord>,
     val recurringReminders: List<BackupRecurringReminder>,
     val accountReminderConfigs: List<BackupAccountReminderConfig>,
+    val savingsGoals: List<BackupSavingsGoal> = emptyList(),
 )
 
 @Serializable
@@ -138,4 +139,13 @@ data class BackupBalanceUpdateReminderConfig(
     val monthDay: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY,
     val hour: Int,
     val minute: Int,
+)
+
+@Serializable
+data class BackupSavingsGoal(
+    val id: Long,
+    val name: String,
+    val targetAmount: Long,
+    val createdAt: Long,
+    val accountIds: List<Long> = emptyList(),
 )

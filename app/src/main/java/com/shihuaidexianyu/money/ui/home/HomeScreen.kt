@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
-import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
@@ -78,10 +77,6 @@ fun HomeScreen(
         AccountPickerDialog(
             title = "选择${direction.displayName}账户",
             accounts = state.accountOptions,
-            sortMode = when (direction) {
-                CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
-                CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
-            },
             settings = state.settings,
             onDismiss = { pickerDirection = null },
             onPick = { accountId ->
@@ -95,7 +90,6 @@ fun HomeScreen(
         AccountPickerDialog(
             title = "选择核对余额账户",
             accounts = state.accountOptions,
-            sortMode = AccountPickerSortMode.STALE_FIRST,
             onDismiss = { showUpdateBalancePicker = false },
             onPick = { accountId ->
                 showUpdateBalancePicker = false

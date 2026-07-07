@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
-import com.shihuaidexianyu.money.ui.common.AccountPickerSortMode
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -67,10 +66,6 @@ fun EditCashFlowScreen(
             title = "选择账户",
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
-            sortMode = when (state.direction) {
-                CashFlowDirection.OUTFLOW -> AccountPickerSortMode.HIGHEST_BALANCE
-                CashFlowDirection.INFLOW -> AccountPickerSortMode.MOST_USED
-            },
             onDismiss = { showAccountPicker = false },
             onPick = {
                 viewModel.updateAccount(it)

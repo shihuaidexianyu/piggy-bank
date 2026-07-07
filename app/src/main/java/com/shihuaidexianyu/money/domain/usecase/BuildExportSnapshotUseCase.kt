@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
+import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
@@ -16,6 +17,7 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminder
 import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
 import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
+import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
 import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
@@ -23,6 +25,7 @@ import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.first
@@ -31,6 +34,7 @@ class BuildExportSnapshotUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
     private val recurringReminderRepository: RecurringReminderRepository,
+    private val savingsGoalRepository: SavingsGoalRepository,
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val databaseVersion: Int,
@@ -67,6 +71,9 @@ class BuildExportSnapshotUseCase(
                     config = accountReminderSettingsRepository.getReminderConfig(account.id).toBackup(),
                 )
             },
+            savingsGoals = savingsGoalRepository.queryAll()
+                .sortedBy { it.id }
+                .map(SavingsGoal::toBackup),
         )
     }
 }
@@ -174,4 +181,13 @@ private fun BalanceUpdateReminderConfig.toBackup(): BackupBalanceUpdateReminderC
         monthDay = monthDay,
         hour = hour,
         minute = minute,
+    )
+
+private fun SavingsGoal.toBackup(): BackupSavingsGoal =
+    BackupSavingsGoal(
+        id = id,
+        name = name,
+        targetAmount = targetAmount,
+        createdAt = createdAt,
+        accountIds = accountIds,
     )

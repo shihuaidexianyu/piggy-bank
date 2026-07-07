@@ -12,16 +12,19 @@ import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.CreateSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.DeleteSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalsUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
@@ -33,6 +36,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpdateSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 
@@ -212,10 +216,30 @@ internal class UseCaseGraph(
         reminderRepository = data.recurringReminderRepository,
     )
 
+    val observeSavingsGoalsUseCase = ObserveSavingsGoalsUseCase(
+        accountRepository = data.accountRepository,
+        savingsGoalRepository = data.savingsGoalRepository,
+        transactionRepository = data.transactionRepository,
+        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
+    )
+
+    val createSavingsGoalUseCase = CreateSavingsGoalUseCase(
+        savingsGoalRepository = data.savingsGoalRepository,
+    )
+
+    val updateSavingsGoalUseCase = UpdateSavingsGoalUseCase(
+        savingsGoalRepository = data.savingsGoalRepository,
+    )
+
+    val deleteSavingsGoalUseCase = DeleteSavingsGoalUseCase(
+        savingsGoalRepository = data.savingsGoalRepository,
+    )
+
     val buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
         accountRepository = data.accountRepository,
         recurringReminderRepository = data.recurringReminderRepository,
+        savingsGoalRepository = data.savingsGoalRepository,
         settingsRepository = data.settingsRepository,
         transactionRepository = data.transactionRepository,
         databaseVersion = MONEY_DATABASE_VERSION,

@@ -2,6 +2,8 @@ package com.shihuaidexianyu.money.data.backup
 
 import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
+import com.shihuaidexianyu.money.data.entity.SavingsGoalAccountLinkEntity
+import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
@@ -13,6 +15,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
+import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
@@ -23,6 +26,7 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
+import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
 import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
@@ -38,6 +42,8 @@ class BackupRepositoryImpl(
 ) : BackupRepository {
     override suspend fun replaceAll(snapshot: MoneyBackupSnapshot) {
         database.withTransaction {
+            database.savingsGoalDao().deleteAllLinks()
+            database.savingsGoalDao().deleteAllGoals()
             database.recurringReminderDao().deleteAll()
             database.balanceAdjustmentRecordDao().deleteAll()
             database.balanceUpdateRecordDao().deleteAll()
@@ -53,6 +59,16 @@ class BackupRepositoryImpl(
                 snapshot.balanceAdjustmentRecords.map { it.toDomain().toEntity() },
             )
             database.recurringReminderDao().insertAll(snapshot.recurringReminders.map { it.toDomain().toEntity() })
+
+            val validAccountIds = snapshot.accounts.map { it.id }.toSet()
+            snapshot.savingsGoals.forEach { backupGoal ->
+                val goal = backupGoal.toDomain(validAccountIds)
+                val goalId = database.savingsGoalDao().insert(goal.toEntity())
+                val links = goal.accountIds.map { SavingsGoalAccountLinkEntity(goalId = goalId, accountId = it) }
+                if (links.isNotEmpty()) {
+                    database.savingsGoalDao().insertLinks(links)
+                }
+            }
         }
 
         settingsRepository.replaceSettings(snapshot.settings.toDomain())
@@ -167,4 +183,13 @@ private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderC
         monthDay = monthDay,
         hour = hour,
         minute = minute,
+    )
+
+private fun BackupSavingsGoal.toDomain(validAccountIds: Set<Long>): SavingsGoal =
+    SavingsGoal(
+        id = id,
+        name = name,
+        targetAmount = targetAmount,
+        createdAt = createdAt,
+        accountIds = accountIds.filter { it in validAccountIds },
     )
