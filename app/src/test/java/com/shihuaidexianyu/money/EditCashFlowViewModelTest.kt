@@ -155,7 +155,7 @@ class EditCashFlowViewModelTest {
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
     ): EditCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
-        val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
+        val calculateUseCase = CalculateAccountBalancesUseCase(txnRepo)
         val updateUseCase = UpdateCashFlowRecordUseCase(
             accountRepo,
             txnRepo,
@@ -167,7 +167,7 @@ class EditCashFlowViewModelTest {
             recordId = recordId,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,
-            calculateCurrentBalanceUseCase = calculateUseCase,
+            calculateAccountBalancesUseCase = calculateUseCase,
             updateCashFlowRecordUseCase = updateUseCase,
             deleteCashFlowRecordUseCase = deleteUseCase,
         )

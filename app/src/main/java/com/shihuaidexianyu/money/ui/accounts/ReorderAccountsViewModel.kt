@@ -3,7 +3,7 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,7 +36,7 @@ sealed interface ReorderAccountsEffect {
 
 class ReorderAccountsViewModel(
     private val accountRepository: AccountRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val updateAccountDisplayOrderUseCase: UpdateAccountDisplayOrderUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReorderAccountsUiState())
@@ -48,21 +48,21 @@ class ReorderAccountsViewModel(
     init {
         viewModelScope.launch {
             try {
-                val accounts = accountRepository.queryOpenAccounts()
-                    .sortedBy { it.displayOrder }
-                    .map {
+                val accounts = accountRepository.queryOpenAccounts().sortedBy { it.displayOrder }
+                val balances = calculateAccountBalancesUseCase(accounts)
+                val items = accounts.map {
                         ReorderAccountItemUiModel(
                             id = it.id,
                             name = it.name,
                             colorName = it.colorName,
                             iconName = it.iconName,
-                            balance = calculateCurrentBalanceUseCase(it.id),
+                            balance = balances.getValue(it.id),
                             lastUsedAt = it.lastUsedAt,
                         )
                     }
                 _uiState.value = ReorderAccountsUiState(
                     isLoading = false,
-                    accounts = accounts,
+                    accounts = items,
                 )
             } catch (e: Exception) {
                 android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e)

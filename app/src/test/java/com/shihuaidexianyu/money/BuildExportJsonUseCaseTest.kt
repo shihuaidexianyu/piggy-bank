@@ -28,6 +28,29 @@ import org.junit.Test
 
 class BuildExportJsonUseCaseTest {
     @Test
+    fun `legacy v3 export emits zero or one singleton savings goal`() = runBlocking {
+        val goals = InMemorySavingsGoalRepository()
+        val useCase = BuildExportSnapshotUseCase(
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            accountRepository = InMemoryAccountRepository(),
+            recurringReminderRepository = InMemoryRecurringReminderRepository(),
+            savingsGoalRepository = goals,
+            settingsRepository = TestSettingsRepository(),
+            transactionRepository = InMemoryTransactionRepository(),
+            databaseVersion = 14,
+        )
+
+        assertTrue(useCase(1L).savingsGoals.isEmpty())
+        goals.upsert(10_000L, 2L)
+        goals.upsert(20_000L, 3L)
+        val exported = useCase(4L).savingsGoals
+
+        assertEquals(1, exported.size)
+        assertEquals(1L, exported.single().id)
+        assertEquals(20_000L, exported.single().targetAmount)
+    }
+
+    @Test
     fun `export json includes metadata settings records reminders and deletion markers`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderSettingsRepository = InMemoryAccountReminderSettingsRepository()

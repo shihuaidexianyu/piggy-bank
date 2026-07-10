@@ -4,6 +4,9 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
+import com.shihuaidexianyu.money.domain.model.ledgerAddExact
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import java.time.ZoneId
 
 /**
@@ -32,12 +35,15 @@ internal object HomeProjector {
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
     ): HomeDashboardSnapshot {
-        val totalAssets = balances.values.sum()
-        val openingTotalAssets = openingBalanceByAccount.values.sum() + newAccountOpeningAssets
+        val totalAssets = balances.values.ledgerSumExact()
+        val openingTotalAssets = ledgerAddExact(
+            openingBalanceByAccount.values.ledgerSumExact(),
+            newAccountOpeningAssets,
+        )
         val periodBreakdown = PeriodAssetBreakdown(
             openingAssets = openingTotalAssets,
             closingAssets = totalAssets,
-            assetChange = totalAssets - openingTotalAssets,
+            assetChange = ledgerSubtractExact(totalAssets, openingTotalAssets),
             cashInflow = cashInflow,
             cashOutflow = cashOutflow,
             manualAdjustmentIncrease = manualAdjustmentIncrease,

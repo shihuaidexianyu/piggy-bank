@@ -1,12 +1,12 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 
 class CalculateCurrentBalanceUseCase(
     private val accountRepository: AccountRepository,
-    private val transactionRepository: TransactionRepository,
+    private val ledgerAggregateRepository: LedgerAggregateRepository,
     private val clockProvider: ClockProvider,
 ) {
     suspend operator fun invoke(
@@ -19,43 +19,14 @@ class CalculateCurrentBalanceUseCase(
 
     private suspend fun at(accountId: Long, atTimeMillis: Long): Long {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-        return LedgerBalanceCalculator.balanceAt(
-            account = account,
-            atTimeMillis = atTimeMillis,
-            deltas = LedgerBalanceCalculator.deltasFromRecords(
-                account = account,
-                cashFlows = transactionRepository.queryAllActiveCashFlowRecords(),
-                transfers = transactionRepository.queryAllActiveTransferRecords(),
-                balanceUpdates = transactionRepository.queryAllBalanceUpdateRecords(),
-                adjustments = transactionRepository.queryAllBalanceAdjustmentRecords(),
-                atTimeMillis = atTimeMillis,
-            ),
-        )
+        val aggregate = ledgerAggregateRepository.queryAt(listOf(account), atTimeMillis).getValue(accountId)
+        return LedgerBalanceCalculator.balanceAt(account, atTimeMillis, aggregate)
     }
 
     suspend fun before(accountId: Long, endExclusive: Long): Long {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-        val startInclusive = LedgerBalanceCalculator.openingAt(account)
-        if (endExclusive <= startInclusive) return 0L
-
-        val inflow = transactionRepository.sumInflowBetween(accountId, startInclusive, endExclusive)
-        val outflow = transactionRepository.sumOutflowBetween(accountId, startInclusive, endExclusive)
-        val transferIn = transactionRepository.sumTransferInBetween(accountId, startInclusive, endExclusive)
-        val transferOut = transactionRepository.sumTransferOutBetween(accountId, startInclusive, endExclusive)
-        val adjustment = transactionRepository.sumAdjustmentBetween(accountId, startInclusive, endExclusive)
-        val reconciliation = transactionRepository
-            .queryBalanceUpdateRecordsBetween(startInclusive, endExclusive)
-            .asSequence()
-            .filter { it.accountId == accountId }
-            .sumOf { it.delta }
-
-        return account.initialBalance + LedgerBalanceDeltas(
-            inflow = inflow,
-            outflow = outflow,
-            transferIn = transferIn,
-            transferOut = transferOut,
-            manualAdjustment = adjustment,
-            reconciliation = reconciliation,
-        ).net
+        if (LedgerBalanceCalculator.openingAt(account) >= endExclusive) return 0L
+        val aggregate = ledgerAggregateRepository.queryBefore(listOf(account), endExclusive).getValue(accountId)
+        return LedgerBalanceCalculator.balanceBefore(account, endExclusive, aggregate)
     }
 }

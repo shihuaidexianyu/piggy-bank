@@ -25,6 +25,42 @@ import org.junit.Test
 
 class ObserveStatsDashboardUseCaseTest {
     @Test
+    fun `stats closing and opening account lists each use one aggregate read`() = runBlocking {
+        val range = TimeRangeUtils.currentMonthRange()
+        val now = range.startInclusive + 1_000L
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        repeat(2) { index ->
+            accounts.createAccount(
+                Account(name = "账户$index", initialBalance = 100L, createdAt = range.startInclusive - 60_000L),
+            )
+        }
+        val aggregate = CountingLedgerAggregateRepository(ledger)
+        val useCase = ObserveStatsDashboardUseCase(
+            accountRepository = accounts,
+            settingsRepository = InMemorySettingsRepository(),
+            transactionRepository = ledger,
+            calculateCurrentBalanceUseCase =
+                com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase(
+                    accounts,
+                    aggregate,
+                    testClockProvider(now),
+                ),
+            calculateAccountBalancesUseCase =
+                com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase(
+                    aggregate,
+                    testClockProvider(now),
+                ),
+            zoneIdProvider = testZoneIdProvider(),
+        )
+
+        useCase(MutableStateFlow(StatsRangeSelection(StatsPeriod.MONTH, now))).first()
+
+        assertEquals(2, aggregate.beforeCalls)
+        assertEquals(0, aggregate.atCalls)
+    }
+
+    @Test
     fun `stats dashboard exposes asset flow reconciliation`() = runBlocking {
         val range = TimeRangeUtils.currentMonthRange()
         val now = range.startInclusive + 1_000

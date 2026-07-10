@@ -113,7 +113,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     settingsRepository = container.settingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    observeSavingsGoalsUseCase = container.observeSavingsGoalsUseCase,
+                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
                 )
             },
         )
@@ -153,9 +153,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneyViewModelFactory {
                 SavingsGoalViewModel(
                     savingsGoalRepository = container.savingsGoalRepository,
-                    createSavingsGoalUseCase = container.createSavingsGoalUseCase,
-                    updateSavingsGoalUseCase = container.updateSavingsGoalUseCase,
-                    deleteSavingsGoalUseCase = container.deleteSavingsGoalUseCase,
+                    upsertSavingsGoalUseCase = container.upsertSavingsGoalUseCase,
+                    clearSavingsGoalUseCase = container.clearSavingsGoalUseCase,
                 )
             },
         )

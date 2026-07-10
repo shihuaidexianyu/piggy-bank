@@ -64,6 +64,7 @@ class TransactionRepositoryContractTest {
             balanceUpdateRecordDao = db.balanceUpdateRecordDao(),
             balanceAdjustmentRecordDao = db.balanceAdjustmentRecordDao(),
             historyRecordDao = db.historyRecordDao(),
+            ledgerAggregateDao = db.ledgerAggregateDao(),
         )
         memoryRepo = InMemoryTransactionRepository()
     }

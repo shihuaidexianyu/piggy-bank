@@ -10,15 +10,16 @@ import kotlinx.coroutines.flow.map
 class ObserveAccountClosureIssuesUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
 ) {
     operator fun invoke(): Flow<List<AccountClosureIssue>> = combine(
         accountRepository.observeClosedAccounts(),
         transactionRepository.observeChangeVersion(),
     ) { accounts, _ -> accounts }
         .map { accounts ->
+            val balances = calculateAccountBalancesUseCase(accounts)
             accounts.mapNotNull { account ->
-                val balance = calculateCurrentBalanceUseCase(account.id)
+                val balance = balances.getValue(account.id)
                 if (balance == 0L) {
                     null
                 } else {

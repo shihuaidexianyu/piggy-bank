@@ -7,10 +7,12 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
-import com.shihuaidexianyu.money.domain.usecase.nextLedgerMutationTimestamp
+import com.shihuaidexianyu.money.domain.time.MutationTimestampOverflowException
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
@@ -81,11 +83,11 @@ class LedgerActiveUpdateCasTest {
 
     @Test
     fun `mutation timestamp is strictly increasing and detects overflow`() {
-        assertEquals(101, nextLedgerMutationTimestamp(now = 100, storedUpdatedAt = 100))
-        assertEquals(101, nextLedgerMutationTimestamp(now = 99, storedUpdatedAt = 100))
-        assertEquals(200, nextLedgerMutationTimestamp(now = 200, storedUpdatedAt = 100))
-        assertFailsWith<IllegalStateException> {
-            nextLedgerMutationTimestamp(now = Long.MAX_VALUE, storedUpdatedAt = Long.MAX_VALUE)
+        assertEquals(101, nextMutationTimestamp(now = 100, previous = 100))
+        assertEquals(101, nextMutationTimestamp(now = 99, previous = 100))
+        assertEquals(200, nextMutationTimestamp(now = 200, previous = 100))
+        assertFailsWith<MutationTimestampOverflowException> {
+            nextMutationTimestamp(now = Long.MAX_VALUE, previous = Long.MAX_VALUE)
         }
     }
 
@@ -153,8 +155,8 @@ class LedgerActiveUpdateCasTest {
     }
 
     private class RejectingUpdateRepository(
-        delegate: TransactionRepository,
-    ) : TransactionRepository by delegate {
+        delegate: InMemoryTransactionRepository,
+    ) : TransactionRepository by delegate, LedgerAggregateRepository by delegate {
         override suspend fun updateCashFlowRecord(record: CashFlowRecord, expectedUpdatedAt: Long): Boolean = false
         override suspend fun updateTransferRecord(record: TransferRecord, expectedUpdatedAt: Long): Boolean = false
         override suspend fun updateBalanceUpdateRecord(

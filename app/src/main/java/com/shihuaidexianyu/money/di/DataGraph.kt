@@ -18,6 +18,7 @@ import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
+import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
@@ -53,15 +54,19 @@ internal class DataGraph(context: Context) {
     val accountRepository: AccountRepository =
         AccountRepositoryImpl(moneyDatabase.accountDao())
 
-    val transactionRepository: TransactionRepository =
-        TransactionRepositoryImpl(
-            database = moneyDatabase,
-            cashFlowRecordDao = moneyDatabase.cashFlowRecordDao(),
-            transferRecordDao = moneyDatabase.transferRecordDao(),
-            balanceUpdateRecordDao = moneyDatabase.balanceUpdateRecordDao(),
-            balanceAdjustmentRecordDao = moneyDatabase.balanceAdjustmentRecordDao(),
-            historyRecordDao = moneyDatabase.historyRecordDao(),
-        )
+    private val transactionRepositoryImpl = TransactionRepositoryImpl(
+        database = moneyDatabase,
+        cashFlowRecordDao = moneyDatabase.cashFlowRecordDao(),
+        transferRecordDao = moneyDatabase.transferRecordDao(),
+        balanceUpdateRecordDao = moneyDatabase.balanceUpdateRecordDao(),
+        balanceAdjustmentRecordDao = moneyDatabase.balanceAdjustmentRecordDao(),
+        historyRecordDao = moneyDatabase.historyRecordDao(),
+        ledgerAggregateDao = moneyDatabase.ledgerAggregateDao(),
+    )
+
+    val transactionRepository: TransactionRepository = transactionRepositoryImpl
+
+    val ledgerAggregateRepository: LedgerAggregateRepository = transactionRepositoryImpl
 
     val settingsRepository: SettingsRepository =
         SettingsRepositoryImpl(appContext)

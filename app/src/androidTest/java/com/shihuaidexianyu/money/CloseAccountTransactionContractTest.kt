@@ -52,6 +52,7 @@ class CloseAccountTransactionContractTest {
             balanceUpdateRecordDao = database.balanceUpdateRecordDao(),
             balanceAdjustmentRecordDao = database.balanceAdjustmentRecordDao(),
             historyRecordDao = database.historyRecordDao(),
+            ledgerAggregateDao = database.ledgerAggregateDao(),
         )
     }
 
@@ -93,7 +94,7 @@ class CloseAccountTransactionContractTest {
             reminderRepository = reminderRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
                 accountRepository = failingAccountRepository,
-                transactionRepository = transactionRepository,
+                ledgerAggregateRepository = transactionRepository,
                 clockProvider = clock,
             ),
             transactionRunner = transactionRepository,

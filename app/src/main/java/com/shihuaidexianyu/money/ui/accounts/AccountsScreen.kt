@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
@@ -67,9 +68,9 @@ fun AccountsScreen(
     modifier: Modifier = Modifier,
 ) {
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
-    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts).sumOf { account ->
-        if (account.balance > 0) account.balance else 0L
-    }
+    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
+        .mapNotNull { account -> account.balance.takeIf { it > 0L } }
+        .ledgerSumExact()
 
     Column(modifier = modifier) {
         MoneyPageTitle(
@@ -173,7 +174,9 @@ fun AccountsScreen(
 
 @Composable
 private fun AccountOverviewCard(state: AccountsUiState) {
-    val totalAssets = (state.openAccounts + state.closedAccounts).sumOf { it.balance }
+    val totalAssets = (state.openAccounts + state.closedAccounts)
+        .map(AccountListItemUiModel::balance)
+        .ledgerSumExact()
     val staleCount = state.openAccounts.count { it.isStale }
     val current = LocalMoneyColors.current.current
     val goal = state.savingsGoal

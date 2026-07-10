@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -45,7 +45,7 @@ class EditTransferViewModel(
     private val recordId: Long,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val updateTransferRecordUseCase: UpdateTransferRecordUseCase,
     private val deleteTransferRecordUseCase: DeleteTransferRecordUseCase,
 ) : ViewModel() {
@@ -71,11 +71,12 @@ class EditTransferViewModel(
                 originalToAccountId = record.toAccountId
                 originalAmount = record.amount
                 val accounts = accountRepository.queryOpenAccounts()
+                val balances = calculateAccountBalancesUseCase(accounts)
                 val nextState = EditTransferUiState(
                     isLoading = false,
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
-                            balance = calculateCurrentBalanceUseCase(account.id),
+                            balance = balances.getValue(account.id),
                         )
                     },
                     fromAccountId = record.fromAccountId,

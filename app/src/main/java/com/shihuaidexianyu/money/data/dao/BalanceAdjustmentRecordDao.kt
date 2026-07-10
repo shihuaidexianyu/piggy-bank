@@ -103,7 +103,7 @@ interface BalanceAdjustmentRecordDao {
 
     @Query(
         """
-        SELECT COALESCE(SUM(-delta), 0) FROM balance_adjustment_records
+        SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
         WHERE deletedAt IS NULL
             AND delta < 0
             AND occurredAt >= :startInclusive

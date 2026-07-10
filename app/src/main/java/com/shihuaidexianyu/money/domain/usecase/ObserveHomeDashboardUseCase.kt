@@ -4,6 +4,8 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
@@ -44,13 +46,13 @@ data class PeriodAssetBreakdown(
     val reconciliationDecrease: Long,
 ) {
     val cashNet: Long
-        get() = cashInflow - cashOutflow
+        get() = ledgerSubtractExact(cashInflow, cashOutflow)
 
     val manualAdjustmentNet: Long
-        get() = manualAdjustmentIncrease - manualAdjustmentDecrease
+        get() = ledgerSubtractExact(manualAdjustmentIncrease, manualAdjustmentDecrease)
 
     val reconciliationNet: Long
-        get() = reconciliationIncrease - reconciliationDecrease
+        get() = ledgerSubtractExact(reconciliationIncrease, reconciliationDecrease)
 }
 
 class ObserveHomeDashboardUseCase(
@@ -99,14 +101,16 @@ class ObserveHomeDashboardUseCase(
             nowMillis = snapshotTimeMillis,
         )
         val balanceJob = async { calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis) }
-        val openingBalanceJobs = allAccounts
-            .filter { LedgerBalanceCalculator.openingAt(it) < range.startInclusive }
-            .map { account ->
-                account.id to async { calculateCurrentBalanceUseCase.before(account.id, range.startInclusive) }
-            }
+        val openingAccounts = allAccounts.filter {
+            LedgerBalanceCalculator.openingAt(it) < range.startInclusive
+        }
+        val openingBalanceJob = async {
+            calculateAccountBalancesUseCase.before(openingAccounts, range.startInclusive)
+        }
         val newAccountOpeningAssets = allAccounts
             .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startInclusive, range.endExclusive) }
-            .sumOf(Account::initialBalance)
+            .map(Account::initialBalance)
+            .ledgerSumExact()
         val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive) }
         val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive) }
         val reconciliationIncreaseJob = async {
@@ -132,7 +136,7 @@ class ObserveHomeDashboardUseCase(
         }
 
         val balances = balanceJob.await()
-        val openingBalanceByAccount = openingBalanceJobs.toMap().mapValues { it.value.await() }
+        val openingBalanceByAccount = openingBalanceJob.await()
 
         HomeProjector.project(
             accounts = allAccounts,

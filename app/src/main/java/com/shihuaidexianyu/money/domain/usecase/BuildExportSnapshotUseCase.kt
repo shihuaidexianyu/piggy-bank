@@ -72,9 +72,7 @@ class BuildExportSnapshotUseCase(
                     config = accountReminderSettingsRepository.getReminderConfig(account.id).toBackup(),
                 )
             },
-            savingsGoals = savingsGoalRepository.queryAll()
-                .sortedBy { it.id }
-                .map(SavingsGoal::toBackup),
+            savingsGoals = listOfNotNull(savingsGoalRepository.query()?.toBackup()),
         )
     }
 }

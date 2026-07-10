@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TimeRange
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -123,17 +124,19 @@ class ObserveStatsDashboardUseCase(
             transactionRepository.sumBalanceUpdateDecreaseBetween(range.startInclusive, range.endExclusive)
         }
         val balanceJob = async { calculateAccountBalancesUseCase.before(accounts, range.endExclusive) }
-        val openingBalanceJobs = accounts
-            .filter { LedgerBalanceCalculator.openingAt(it) < range.startInclusive }
-            .map { account ->
-                account.id to async { calculateCurrentBalanceUseCase.before(account.id, range.startInclusive) }
-            }
+        val openingAccounts = accounts.filter {
+            LedgerBalanceCalculator.openingAt(it) < range.startInclusive
+        }
+        val openingBalanceJob = async {
+            calculateAccountBalancesUseCase.before(openingAccounts, range.startInclusive)
+        }
         val newAccountOpeningAssets = accounts
             .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startInclusive, range.endExclusive) }
-            .sumOf(Account::initialBalance)
+            .map(Account::initialBalance)
+            .ledgerSumExact()
 
         val balances = balanceJob.await()
-        val openingBalanceByAccount = openingBalanceJobs.toMap().mapValues { it.value.await() }
+        val openingBalanceByAccount = openingBalanceJob.await()
 
         StatsProjector.project(
             accounts = accounts,

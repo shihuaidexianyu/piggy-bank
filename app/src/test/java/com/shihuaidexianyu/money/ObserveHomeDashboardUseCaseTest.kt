@@ -30,6 +30,47 @@ import java.time.ZoneOffset
 
 class ObserveHomeDashboardUseCaseTest {
     @Test
+    fun `home current and opening account lists each use one aggregate read`() = runBlocking {
+        val now = Instant.parse("2026-04-10T14:30:00Z").toEpochMilli()
+        val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        repeat(2) { index ->
+            accounts.createAccount(
+                Account(name = "账户$index", initialBalance = 100L, createdAt = range.startInclusive - 60_000L),
+            )
+        }
+        val aggregate = CountingLedgerAggregateRepository(ledger)
+        val current = com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase(
+            accounts,
+            aggregate,
+            testClockProvider(now),
+        )
+        val batch = com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase(
+            aggregate,
+            testClockProvider(now),
+        )
+        val useCase = ObserveHomeDashboardUseCase(
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            accountRepository = accounts,
+            recurringReminderRepository = InMemoryRecurringReminderRepository(
+                tickerFlow = MutableStateFlow(now).asStateFlow(),
+            ),
+            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            transactionRepository = ledger,
+            calculateCurrentBalanceUseCase = current,
+            calculateAccountBalancesUseCase = batch,
+            clockProvider = testClockProvider(now),
+            zoneIdProvider = testZoneIdProvider(),
+        )
+
+        useCase().first()
+
+        assertEquals(0, aggregate.atCalls)
+        assertEquals(2, aggregate.beforeCalls)
+    }
+
+    @Test
     fun `home stale status uses injected clock and zone`() = runBlocking {
         val now = Instant.parse("2026-04-10T14:30:00Z").toEpochMilli()
         val lastUpdatedAt = Instant.parse("2026-04-06T10:00:00Z").toEpochMilli()

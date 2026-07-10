@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
@@ -51,7 +51,7 @@ class RecordCashFlowViewModel(
     private val expectedDueAt: Long? = null,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
     private val processDueReminderUseCase: ProcessDueReminderUseCase? = null,
     private val savedStateHandle: SavedStateHandle,
@@ -83,10 +83,11 @@ class RecordCashFlowViewModel(
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
+                val balances = calculateAccountBalancesUseCase(accounts)
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
-                            balance = calculateCurrentBalanceUseCase(account.id),
+                            balance = balances.getValue(account.id),
                         )
                     },
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,

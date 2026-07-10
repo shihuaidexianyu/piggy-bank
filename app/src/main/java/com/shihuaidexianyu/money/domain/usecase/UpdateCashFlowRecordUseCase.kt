@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -39,7 +40,7 @@ class UpdateCashFlowRecordUseCase(
                 amount = amount,
                 note = note.trim(),
                 occurredAt = occurredAt,
-                updatedAt = nextLedgerMutationTimestamp(now, existing.updatedAt),
+                updatedAt = nextMutationTimestamp(now, existing.updatedAt),
             )
             if (!transactionRepository.updateCashFlowRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)

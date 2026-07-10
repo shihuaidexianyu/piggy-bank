@@ -2,11 +2,9 @@ package com.shihuaidexianyu.money.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
-import com.shihuaidexianyu.money.domain.usecase.CreateSavingsGoalUseCase
-import com.shihuaidexianyu.money.domain.usecase.DeleteSavingsGoalUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpdateSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -20,7 +18,7 @@ import kotlinx.coroutines.launch
 
 data class SavingsGoalUiState(
     val isLoading: Boolean = true,
-    val existingGoalId: Long? = null,
+    val hasGoal: Boolean = false,
     val amountText: String = "",
     val isSaving: Boolean = false,
     val showDeleteConfirm: Boolean = false,
@@ -28,15 +26,14 @@ data class SavingsGoalUiState(
 
 sealed interface SavingsGoalEffect : UiEffect {
     data object Saved : SavingsGoalEffect
-    data object Deleted : SavingsGoalEffect
+    data object Cleared : SavingsGoalEffect
     data class ShowMessage(override val message: String) : SavingsGoalEffect, UiEffect.HasMessage
 }
 
 class SavingsGoalViewModel(
-    private val savingsGoalRepository: SavingsGoalRepository,
-    private val createSavingsGoalUseCase: CreateSavingsGoalUseCase,
-    private val updateSavingsGoalUseCase: UpdateSavingsGoalUseCase,
-    private val deleteSavingsGoalUseCase: DeleteSavingsGoalUseCase,
+    savingsGoalRepository: SavingsGoalRepository,
+    private val upsertSavingsGoalUseCase: UpsertSavingsGoalUseCase,
+    private val clearSavingsGoalUseCase: ClearSavingsGoalUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SavingsGoalUiState())
     val uiState: StateFlow<SavingsGoalUiState> = _uiState.asStateFlow()
@@ -44,27 +41,16 @@ class SavingsGoalViewModel(
     private val _effectFlow = MutableSharedFlow<SavingsGoalEffect>(extraBufferCapacity = 1)
     val effectFlow: SharedFlow<SavingsGoalEffect> = _effectFlow.asSharedFlow()
 
-    private var existingGoal: SavingsGoal? = null
-
     init {
         viewModelScope.launch {
-            try {
-                val goals = savingsGoalRepository.queryAll()
-                val goal = goals.firstOrNull()
-                if (goal != null) {
-                    existingGoal = goal
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            existingGoalId = goal.id,
-                            amountText = formatAmountText(goal.targetAmount),
-                        )
-                    }
-                } else {
-                    _uiState.update { it.copy(isLoading = false) }
+            savingsGoalRepository.observe().collect { goal ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        hasGoal = goal != null,
+                        amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
+                    )
                 }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -84,7 +70,6 @@ class SavingsGoalViewModel(
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
-
         val amount = AmountInputParser.parseUnsignedToMinor(state.amountText)
         if (amount == null || amount <= 0L) {
             viewModelScope.launch { _effectFlow.emit(SavingsGoalEffect.ShowMessage("请输入有效的目标金额")) }
@@ -93,43 +78,31 @@ class SavingsGoalViewModel(
 
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            try {
-                val goal = existingGoal
-                if (goal != null) {
-                    updateSavingsGoalUseCase(goal.copy(targetAmount = amount))
-                } else {
-                    createSavingsGoalUseCase(targetAmount = amount)
+            runCatching { upsertSavingsGoalUseCase(amount) }
+                .onSuccess { _effectFlow.emit(SavingsGoalEffect.Saved) }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isSaving = false) }
+                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "保存失败"))
                 }
-                _effectFlow.emit(SavingsGoalEffect.Saved)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isSaving = false) }
-                _effectFlow.emit(SavingsGoalEffect.ShowMessage(e.message ?: "保存失败"))
-            }
         }
     }
 
-    fun delete() {
-        val goal = existingGoal ?: return
+    fun clear() {
+        if (!_uiState.value.hasGoal) return
         _uiState.update { it.copy(showDeleteConfirm = false, isSaving = true) }
         viewModelScope.launch {
-            try {
-                deleteSavingsGoalUseCase(goal.id)
-                _effectFlow.emit(SavingsGoalEffect.Deleted)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isSaving = false) }
-                _effectFlow.emit(SavingsGoalEffect.ShowMessage(e.message ?: "删除失败"))
-            }
+            runCatching { clearSavingsGoalUseCase() }
+                .onSuccess { _effectFlow.emit(SavingsGoalEffect.Cleared) }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isSaving = false) }
+                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "删除失败"))
+                }
         }
     }
 
     private fun formatAmountText(amountInMinor: Long): String {
-        val absAmount = kotlin.math.abs(amountInMinor)
-        val yuan = absAmount / 100L
-        val fen = absAmount % 100L
-        return if (fen == 0L) {
-            yuan.toString()
-        } else {
-            "$yuan.${fen.toString().padStart(2, '0')}"
-        }
+        val yuan = amountInMinor / 100L
+        val fen = amountInMinor % 100L
+        return if (fen == 0L) yuan.toString() else "$yuan.${fen.toString().padStart(2, '0')}"
     }
 }

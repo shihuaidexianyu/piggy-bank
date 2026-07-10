@@ -117,7 +117,7 @@ interface BalanceUpdateRecordDao {
 
     @Query(
         """
-        SELECT COALESCE(SUM(-delta), 0) FROM balance_update_records
+        SELECT COALESCE(SUM(delta), 0) FROM balance_update_records
         WHERE deletedAt IS NULL
             AND delta < 0
             AND occurredAt >= :startInclusive

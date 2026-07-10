@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
@@ -19,7 +20,7 @@ class DeleteBalanceUpdateRecordUseCase(
         if (existing.deletedAt != null) return@runInTransaction null
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("删除余额核对")
-        val deletedAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.softDeleteBalanceUpdateRecord(
                 id = recordId,
                 operationId = existing.operationId,

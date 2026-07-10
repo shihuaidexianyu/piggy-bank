@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
@@ -31,7 +32,7 @@ class RestoreLedgerRecordUseCase(
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("恢复收支记录")
-        val restoredAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreCashFlowRecord(
                 token.recordId,
                 token.operationId,
@@ -51,7 +52,7 @@ class RestoreLedgerRecordUseCase(
         val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户不存在" }
         fromAccount.requireOpenForMutation("恢复转账记录")
         toAccount.requireOpenForMutation("恢复转账记录")
-        val restoredAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreTransferRecord(
                 token.recordId,
                 token.operationId,
@@ -71,7 +72,7 @@ class RestoreLedgerRecordUseCase(
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("恢复余额核对")
-        val restoredAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreBalanceUpdateRecord(
                 token.recordId,
                 token.operationId,
@@ -89,7 +90,7 @@ class RestoreLedgerRecordUseCase(
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("恢复余额调整")
-        val restoredAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreBalanceAdjustmentRecord(
                 token.recordId,
                 token.operationId,

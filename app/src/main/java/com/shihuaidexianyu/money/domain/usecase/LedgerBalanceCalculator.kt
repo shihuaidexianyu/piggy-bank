@@ -1,12 +1,16 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountLedgerAggregate
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TimeMath
 import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.model.ledgerAddExact
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 
 internal data class LedgerBalanceDeltas(
     val inflow: Long = 0L,
@@ -17,7 +21,13 @@ internal data class LedgerBalanceDeltas(
     val reconciliation: Long = 0L,
 ) {
     val net: Long
-        get() = inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliation
+        get() {
+            var value = ledgerSubtractExact(inflow, outflow)
+            value = ledgerAddExact(value, transferIn)
+            value = ledgerSubtractExact(value, transferOut)
+            value = ledgerAddExact(value, manualAdjustment)
+            return ledgerAddExact(value, reconciliation)
+        }
 }
 
 internal object LedgerBalanceCalculator {
@@ -43,8 +53,14 @@ internal object LedgerBalanceCalculator {
         deltas: LedgerBalanceDeltas,
     ): Long {
         if (!isOpenAt(account, atTimeMillis)) return 0L
-        return account.initialBalance + deltas.net
+        return ledgerAddExact(account.initialBalance, deltas.net)
     }
+
+    fun balanceAt(
+        account: Account,
+        atTimeMillis: Long,
+        aggregate: AccountLedgerAggregate,
+    ): Long = balanceAt(account, atTimeMillis, aggregate.toDeltas())
 
     fun balanceBefore(
         account: Account,
@@ -52,8 +68,14 @@ internal object LedgerBalanceCalculator {
         deltas: LedgerBalanceDeltas,
     ): Long {
         if (openingAt(account) >= endExclusive) return 0L
-        return account.initialBalance + deltas.net
+        return ledgerAddExact(account.initialBalance, deltas.net)
     }
+
+    fun balanceBefore(
+        account: Account,
+        endExclusive: Long,
+        aggregate: AccountLedgerAggregate,
+    ): Long = balanceBefore(account, endExclusive, aggregate.toDeltas())
 
     fun deltasFromRecordsBefore(
         account: Account,
@@ -96,7 +118,8 @@ internal object LedgerBalanceCalculator {
                         it.direction == CashFlowDirection.INFLOW.value &&
                         isWithinWindow(it.occurredAt)
                 }
-                .sumOf(CashFlowRecord::amount),
+                .map(CashFlowRecord::amount)
+                .ledgerSumExact(),
             outflow = cashFlows
                 .filter {
                     it.deletedAt == null &&
@@ -104,28 +127,32 @@ internal object LedgerBalanceCalculator {
                         it.direction == CashFlowDirection.OUTFLOW.value &&
                         isWithinWindow(it.occurredAt)
                 }
-                .sumOf(CashFlowRecord::amount),
+                .map(CashFlowRecord::amount)
+                .ledgerSumExact(),
             transferIn = transfers
                 .filter {
                     it.deletedAt == null &&
                         it.toAccountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
-                .sumOf(TransferRecord::amount),
+                .map(TransferRecord::amount)
+                .ledgerSumExact(),
             transferOut = transfers
                 .filter {
                     it.deletedAt == null &&
                         it.fromAccountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
-                .sumOf(TransferRecord::amount),
+                .map(TransferRecord::amount)
+                .ledgerSumExact(),
             manualAdjustment = adjustments
                 .filter {
                     it.deletedAt == null &&
                         it.accountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
-                .sumOf(BalanceAdjustmentRecord::delta),
+                .map(BalanceAdjustmentRecord::delta)
+                .ledgerSumExact(),
             reconciliation = reconciliationDeltaFromRecordsWhere(
                 account = account,
                 balanceUpdates = balanceUpdates,
@@ -166,7 +193,8 @@ internal object LedgerBalanceCalculator {
                     it.id != excludingBalanceUpdateId &&
                     isWithinWindow(it.occurredAt)
             }
-            .sumOf(BalanceUpdateRecord::delta)
+            .map(BalanceUpdateRecord::delta)
+            .ledgerSumExact()
     }
 
     fun deltasFromRecords(
@@ -210,4 +238,15 @@ internal object LedgerBalanceCalculator {
             },
         )
     }
+}
+
+private fun AccountLedgerAggregate.toDeltas(): LedgerBalanceDeltas {
+    return LedgerBalanceDeltas(
+        inflow = inflow,
+        outflow = outflow,
+        transferIn = transferIn,
+        transferOut = transferOut,
+        manualAdjustment = manualAdjustment,
+        reconciliation = reconciliation,
+    )
 }

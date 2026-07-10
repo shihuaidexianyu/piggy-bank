@@ -135,6 +135,38 @@ class RecordCashFlowViewModelTest {
     }
 
     @Test
+    fun `account picker loads all open balances with one aggregate read`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        repeat(2) { accounts.createAccount(Account(name = "账户$it", initialBalance = 100L, createdAt = 0L)) }
+        val ledger = InMemoryTransactionRepository()
+        val aggregate = CountingLedgerAggregateRepository(ledger)
+        val refresh = RefreshAccountActivityStateUseCase(accounts, ledger)
+        RecordCashFlowViewModel(
+            direction = CashFlowDirection.INFLOW,
+            initialAccountId = null,
+            accountRepository = accounts,
+            transactionRepository = ledger,
+            calculateAccountBalancesUseCase =
+                com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase(
+                    aggregate,
+                    testClockProvider(1L),
+                ),
+            createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
+                accounts,
+                ledger,
+                refresh,
+                testClockProvider(1L),
+            ),
+            savedStateHandle = SavedStateHandle(),
+            operationIdFactory = LedgerOperationIdFactory { testOperationId() },
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(1, aggregate.beforeCalls)
+    }
+
+    @Test
     fun `current mutation picker includes hidden open accounts and excludes closed accounts`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val hiddenId = accountRepo.createAccount(
@@ -191,7 +223,7 @@ class RecordCashFlowViewModelTest {
             expectedDueAt = dueAt,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(txnRepo),
             createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
                 accountRepo,
                 txnRepo,
@@ -231,7 +263,7 @@ class RecordCashFlowViewModelTest {
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
     ): RecordCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
-        val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
+        val calculateUseCase = CalculateAccountBalancesUseCase(txnRepo)
         val createUseCase = CreateCashFlowRecordUseCase(
             accountRepo,
             txnRepo,
@@ -246,7 +278,7 @@ class RecordCashFlowViewModelTest {
             reminderId = null,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,
-            calculateCurrentBalanceUseCase = calculateUseCase,
+            calculateAccountBalancesUseCase = calculateUseCase,
             createCashFlowRecordUseCase = createUseCase,
             processDueReminderUseCase = null,
             savedStateHandle = SavedStateHandle(),

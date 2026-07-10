@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.savedOperationId
@@ -44,7 +44,7 @@ class RecordTransferViewModel(
     initialFromAccountId: Long?,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val createTransferRecordUseCase: CreateTransferRecordUseCase,
     private val savedStateHandle: SavedStateHandle,
     operationIdFactory: LedgerOperationIdFactory,
@@ -64,10 +64,11 @@ class RecordTransferViewModel(
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
+                val balances = calculateAccountBalancesUseCase(accounts)
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
-                            balance = calculateCurrentBalanceUseCase(account.id),
+                            balance = balances.getValue(account.id),
                         )
                     },
                 )

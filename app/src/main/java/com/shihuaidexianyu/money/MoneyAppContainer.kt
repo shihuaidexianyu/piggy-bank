@@ -93,13 +93,11 @@ class MoneyAppContainer(context: Context) {
 
     val observeDueRemindersUseCase get() = useCaseGraph.observeDueRemindersUseCase
 
-    val observeSavingsGoalsUseCase get() = useCaseGraph.observeSavingsGoalsUseCase
+    val observeSavingsGoalUseCase get() = useCaseGraph.observeSavingsGoalUseCase
 
-    val createSavingsGoalUseCase get() = useCaseGraph.createSavingsGoalUseCase
+    val upsertSavingsGoalUseCase get() = useCaseGraph.upsertSavingsGoalUseCase
 
-    val updateSavingsGoalUseCase get() = useCaseGraph.updateSavingsGoalUseCase
-
-    val deleteSavingsGoalUseCase get() = useCaseGraph.deleteSavingsGoalUseCase
+    val clearSavingsGoalUseCase get() = useCaseGraph.clearSavingsGoalUseCase
 
     val buildExportSnapshotUseCase get() = useCaseGraph.buildExportSnapshotUseCase
 

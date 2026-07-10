@@ -9,19 +9,17 @@ import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.model.SavingsGoalWithProgress
+import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalsUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class AccountListItemUiModel(
     val id: Long,
@@ -62,7 +60,7 @@ class AccountsViewModel(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
-    private val observeSavingsGoalsUseCase: ObserveSavingsGoalsUseCase,
+    private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
@@ -78,16 +76,15 @@ class AccountsViewModel(
                     settingsRepository.observeSettings(),
                     transactionRepository.observeChangeVersion(),
                 ) { open, closed, reminderConfigs, settings, _ ->
+                    val balances = calculateAccountBalancesUseCase(open + closed)
                     AccountsSnapshot(
                         settings = settings,
-                        openAccounts = buildItems(open, reminderConfigs),
-                        closedAccounts = buildItems(closed, reminderConfigs),
+                        openAccounts = buildItems(open, reminderConfigs, balances),
+                        closedAccounts = buildItems(closed, reminderConfigs, balances),
                         savingsGoal = null,
                     )
                 }
-                val goalsFlow = observeSavingsGoalsUseCase().map { goals ->
-                    goals.firstOrNull()?.toUiModel()
-                }
+                val goalsFlow = observeSavingsGoalUseCase().map { goal -> goal?.toUiModel() }
                 combine(snapshotFlow, goalsFlow) { snapshot, goal ->
                     snapshot.copy(savingsGoal = goal)
                 }.combine(showClosedFlow) { snapshot, showClosed ->
@@ -112,16 +109,15 @@ class AccountsViewModel(
         showClosedFlow.update { !it }
     }
 
-    private suspend fun buildItems(
+    private fun buildItems(
         accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-    ): List<AccountListItemUiModel> = withContext(Dispatchers.Default) {
-        val balances = calculateAccountBalancesUseCase(accounts)
-        val items = accounts.map { mapItem(it, reminderConfigs[it.id], balances[it.id] ?: it.initialBalance) }
-        items.sortedBy { it.displayOrder }
-    }
+        balances: Map<Long, Long>,
+    ): List<AccountListItemUiModel> = accounts
+        .map { mapItem(it, reminderConfigs[it.id], balances.getValue(it.id)) }
+        .sortedBy { it.displayOrder }
 
-    private suspend fun mapItem(
+    private fun mapItem(
         account: Account,
         reminderConfig: BalanceUpdateReminderConfig?,
         balance: Long,
@@ -141,7 +137,7 @@ class AccountsViewModel(
         )
     }
 
-    private fun SavingsGoalWithProgress.toUiModel(): SavingsGoalUiModel =
+    private fun SavingsGoalProgress.toUiModel(): SavingsGoalUiModel =
         SavingsGoalUiModel(
             targetAmount = targetAmount,
             currentAmount = currentAmount,

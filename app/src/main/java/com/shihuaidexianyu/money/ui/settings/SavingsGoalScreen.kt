@@ -33,7 +33,7 @@ fun SavingsGoalScreen(
         snackbarHostState = snackbarHostState,
         handler = { effect ->
             when (effect) {
-                SavingsGoalEffect.Saved, SavingsGoalEffect.Deleted -> onBack()
+                SavingsGoalEffect.Saved, SavingsGoalEffect.Cleared -> onBack()
                 else -> {}
             }
         },
@@ -43,14 +43,14 @@ fun SavingsGoalScreen(
         MoneyConfirmDialog(
             title = "删除储蓄目标",
             message = "确定要删除储蓄目标吗？此操作不可撤销。",
-            onConfirm = viewModel::delete,
+            onConfirm = viewModel::clear,
             onDismiss = viewModel::dismissDeleteConfirm,
             confirmLabel = "删除",
         )
     }
 
     MoneyFormPage(
-        title = if (state.existingGoalId != null) "编辑储蓄目标" else "设置储蓄目标",
+        title = if (state.hasGoal) "编辑储蓄目标" else "设置储蓄目标",
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
@@ -78,10 +78,10 @@ fun SavingsGoalScreen(
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
-                    label = if (state.existingGoalId != null) "保存修改" else "设置目标",
+                    label = if (state.hasGoal) "保存修改" else "设置目标",
                 )
             }
-            if (state.existingGoalId != null) {
+            if (state.hasGoal) {
                 item {
                     OutlinedButton(
                         onClick = viewModel::showDeleteConfirm,

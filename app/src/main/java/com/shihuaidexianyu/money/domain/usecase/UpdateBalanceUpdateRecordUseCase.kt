@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
@@ -38,7 +39,7 @@ class UpdateBalanceUpdateRecordUseCase(
                 systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
                 delta = actualBalance - context.systemBalanceBeforeUpdate,
                 occurredAt = occurredAt,
-                updatedAt = nextLedgerMutationTimestamp(now, existing.updatedAt),
+                updatedAt = nextMutationTimestamp(now, existing.updatedAt),
             )
             if (!transactionRepository.updateBalanceUpdateRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)

@@ -7,6 +7,9 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TimeRange
+import com.shihuaidexianyu.money.domain.model.ledgerAddExact
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -33,20 +36,23 @@ internal object StatsProjector {
         reconciliationDecrease: Long,
         zoneId: ZoneId,
     ): StatsDashboardSnapshot {
-        val totalInflow = inflowTotals.sumOf { it.amount }
-        val totalOutflow = outflowTotals.sumOf { it.amount }
+        val totalInflow = inflowTotals.map { it.amount }.ledgerSumExact()
+        val totalOutflow = outflowTotals.map { it.amount }.ledgerSumExact()
         val accountBalances = accounts.map { account ->
             StatsAccountBalance(
                 accountId = account.id,
                 name = account.name,
                 colorName = account.colorName,
-                balance = balances[account.id] ?: account.initialBalance,
+                balance = balances.getValue(account.id),
             )
         }.sortedByDescending { it.balance }
-        val currentAssets = accountBalances.sumOf { it.balance }
-        val openingAssets = openingBalanceByAccount.values.sum() + newAccountOpeningAssets
-        val netCashFlow = totalInflow - totalOutflow
-        val assetChange = currentAssets - openingAssets
+        val currentAssets = accountBalances.map { it.balance }.ledgerSumExact()
+        val openingAssets = ledgerAddExact(
+            openingBalanceByAccount.values.ledgerSumExact(),
+            newAccountOpeningAssets,
+        )
+        val netCashFlow = ledgerSubtractExact(totalInflow, totalOutflow)
+        val assetChange = ledgerSubtractExact(currentAssets, openingAssets)
         val breakdown = PeriodAssetBreakdown(
             openingAssets = openingAssets,
             closingAssets = currentAssets,
@@ -68,7 +74,7 @@ internal object StatsProjector {
             totalOutflow = totalOutflow,
             netCashFlow = netCashFlow,
             assetChange = assetChange,
-            assetAdjustment = breakdown.manualAdjustmentNet + breakdown.reconciliationNet,
+            assetAdjustment = ledgerAddExact(breakdown.manualAdjustmentNet, breakdown.reconciliationNet),
             manualAdjustmentNet = breakdown.manualAdjustmentNet,
             reconciliationNet = breakdown.reconciliationNet,
             breakdown = breakdown,

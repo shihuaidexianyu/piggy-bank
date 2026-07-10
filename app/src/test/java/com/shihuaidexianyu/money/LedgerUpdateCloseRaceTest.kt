@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceAdjustmentUseCase
@@ -151,7 +152,9 @@ class LedgerUpdateCloseRaceTest {
             Account(name = name, initialBalance = 0, createdAt = 1, lastUsedAt = 1),
         )
 
-        fun closingRepository(accountId: Long): TransactionRepository = object : TransactionRepository by delegate {
+        fun closingRepository(accountId: Long): TransactionRepository = object :
+            TransactionRepository by delegate,
+            LedgerAggregateRepository by delegate {
             override suspend fun <T> runInTransaction(block: suspend () -> T): T = delegate.runInTransaction {
                 accounts.closeAccount(accountId, closedAt = 50)
                 block()

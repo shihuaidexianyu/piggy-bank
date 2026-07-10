@@ -7,8 +7,14 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.util.AmountFormatter
 import java.time.ZoneId
+
+internal suspend fun calculateBalanceCheckBalances(
+    accounts: List<Account>,
+    calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
+): Map<Long, Long> = calculateAccountBalancesUseCase(accounts)
 
 /**
  * Periodic [CoroutineWorker] that checks all open accounts for stale balance-update status.
@@ -35,10 +41,8 @@ class BalanceCheckWorker(
 
         val now = System.currentTimeMillis()
         val settings = AppSettings()
-        var staleCount = 0
-
-        for (account in accounts) {
-            if (account.isClosed) continue
+        val staleAccounts = accounts.mapNotNull { account ->
+            if (account.isClosed) return@mapNotNull null
             val config = runCatching {
                 reminderSettingsRepo.getReminderConfig(account.id)
             }.getOrNull() ?: BalanceUpdateReminderConfig()
@@ -49,12 +53,18 @@ class BalanceCheckWorker(
                 nowMillis = now,
                 zoneId = ZoneId.systemDefault(),
             )
-            if (!isStale) continue
+            if (isStale) account to config else null
+        }
+        if (staleAccounts.isEmpty()) return Result.success()
+        val balances = runCatching {
+            calculateBalanceCheckBalances(
+                staleAccounts.map { it.first },
+                container.calculateAccountBalancesUseCase,
+            )
+        }.getOrDefault(emptyMap())
 
-            staleCount++
-            val balance = runCatching {
-                container.calculateCurrentBalanceUseCase(account.id)
-            }.getOrDefault(0L)
+        for ((account, config) in staleAccounts) {
+            val balance = balances[account.id] ?: 0L
             val balanceText = AmountFormatter.format(balance, settings)
             val configText = config.displayText
 

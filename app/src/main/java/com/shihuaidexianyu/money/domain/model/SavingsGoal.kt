@@ -9,8 +9,7 @@ data class SavingsGoal(
     val updatedAt: Long,
 )
 
-data class SavingsGoalWithProgress(
-    val id: Long,
+data class SavingsGoalProgress(
     val targetAmount: Long,
     val currentAmount: Long,
     val isAchieved: Boolean,

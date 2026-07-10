@@ -22,6 +22,7 @@ import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCa
 import com.shihuaidexianyu.money.domain.usecase.ReopenAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.SetAccountHiddenUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -31,6 +32,25 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AccountLifecycleUseCaseTest {
+    @Test
+    fun closureIssuesBatchClosedAccountsIntoOneAggregateRead() = runBlocking {
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        repeat(2) { index ->
+            val id = accounts.createAccount(Account(name = "关闭$index", initialBalance = 100L, createdAt = 0L))
+            accounts.closeAccount(id, 1L)
+        }
+        val aggregate = CountingLedgerAggregateRepository(ledger)
+        val calculateBalances = com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase(
+            aggregate,
+            testClockProvider(2L),
+        )
+        val observe = ObserveAccountClosureIssuesUseCase(accounts, ledger, calculateBalances)
+
+        assertEquals(2, observe().first().size)
+        assertEquals(1, aggregate.beforeCalls)
+    }
+
     @Test
     fun closeSamplesCutoffInsideTransactionAndRejectsLedgerWriteCommittedBeforeCloseBlock() = runBlocking {
         val accounts = InMemoryAccountRepository()
@@ -182,7 +202,7 @@ class AccountLifecycleUseCaseTest {
         val observe = ObserveAccountClosureIssuesUseCase(
             fixture.accounts,
             fixture.transactions,
-            fixture.calculateBalance,
+            fixture.calculateBalances,
         )
 
         observe().test {
@@ -213,6 +233,7 @@ class AccountLifecycleUseCaseTest {
         val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(now))
         val clock = CountingClock(now)
         val calculateBalance = CalculateCurrentBalanceUseCase(accounts, transactions, clock)
+        val calculateBalances = CalculateAccountBalancesUseCase(transactions, clock)
         private val close = CloseAccountUseCase(
             accounts,
             reminders,

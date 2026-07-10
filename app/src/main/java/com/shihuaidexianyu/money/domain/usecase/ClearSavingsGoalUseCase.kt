@@ -2,10 +2,10 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 
-class DeleteSavingsGoalUseCase(
+class ClearSavingsGoalUseCase(
     private val savingsGoalRepository: SavingsGoalRepository,
 ) {
-    suspend operator fun invoke(id: Long) {
-        savingsGoalRepository.deleteGoal(id)
+    suspend operator fun invoke() {
+        savingsGoalRepository.clear()
     }
 }

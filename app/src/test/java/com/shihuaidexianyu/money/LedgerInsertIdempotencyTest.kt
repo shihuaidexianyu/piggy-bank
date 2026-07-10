@@ -289,6 +289,7 @@ class LedgerInsertIdempotencyTest {
             balanceUpdateRecordDao = untouchedDao(),
             balanceAdjustmentRecordDao = untouchedDao(),
             historyRecordDao = untouchedDao(),
+            ledgerAggregateDao = untouchedDao(),
         )
     }
 

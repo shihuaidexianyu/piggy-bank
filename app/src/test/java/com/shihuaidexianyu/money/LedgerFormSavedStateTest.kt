@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -252,7 +253,7 @@ class LedgerFormSavedStateTest {
             initialAccountId = 1,
             accountRepository = accounts,
             transactionRepository = transactions,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accounts, transactions, testClockProvider()),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions, testClockProvider()),
             createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
                 accounts,
                 transactions,
@@ -283,7 +284,7 @@ class LedgerFormSavedStateTest {
             initialFromAccountId = fromId,
             accountRepository = accounts,
             transactionRepository = transactions,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accounts, transactions, testClockProvider()),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions, testClockProvider()),
             createTransferRecordUseCase = CreateTransferRecordUseCase(
                 accounts,
                 transactions,
@@ -376,7 +377,7 @@ class LedgerFormSavedStateTest {
 
     private class RecordingTransactionRepository(
         private val delegate: InMemoryTransactionRepository,
-    ) : TransactionRepository by delegate {
+    ) : TransactionRepository by delegate, LedgerAggregateRepository by delegate {
         val cashCalls = mutableListOf<CashFlowRecord>()
         val transferCalls = mutableListOf<TransferRecord>()
         val balanceCalls = mutableListOf<BalanceUpdateRecord>()

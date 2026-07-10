@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
 import com.shihuaidexianyu.money.data.dao.HistoryRecordDao
 import com.shihuaidexianyu.money.data.dao.LocalMigrationStateDao
+import com.shihuaidexianyu.money.data.dao.LedgerAggregateDao
 import com.shihuaidexianyu.money.data.dao.PortableSettingsDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.SavingsGoalDao
@@ -338,6 +339,7 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun portableSettingsDao(): PortableSettingsDao
     abstract fun accountReminderConfigDao(): AccountReminderConfigDao
     abstract fun localMigrationStateDao(): LocalMigrationStateDao
+    abstract fun ledgerAggregateDao(): LedgerAggregateDao
 
     companion object {
         @Volatile

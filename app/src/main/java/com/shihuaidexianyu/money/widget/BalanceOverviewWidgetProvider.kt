@@ -16,6 +16,7 @@ import com.shihuaidexianyu.money.MoneyApplication
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.di.SystemClockProvider
@@ -62,7 +63,7 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                     runCatching {
                         val accounts = container.accountRepository.queryAllAccounts()
                         val balances = container.calculateAccountBalancesUseCase(accounts)
-                        val totalAssets = balances.values.sum()
+                        val totalAssets = balances.values.ledgerSumExact()
 
                         val range = TimeRangeCalculator.currentMonthRange(
                             zoneId = SystemZoneIdProvider.zoneId(),
