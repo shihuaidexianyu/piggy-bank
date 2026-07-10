@@ -42,7 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -117,7 +117,7 @@ fun HomeScreen(
         ) {
             PeriodOverviewBlock(
                 recordCount = state.periodRecordCount,
-                periodLabel = state.settings.homePeriod.displayName,
+                periodLabel = "本月",
                 cashInflow = state.periodCashInflow,
                 cashOutflow = state.periodCashOutflow,
                 settings = state.settings,
@@ -177,7 +177,7 @@ private fun PeriodOverviewBlock(
     periodLabel: String,
     cashInflow: Long,
     cashOutflow: Long,
-    settings: AppSettings,
+    settings: PortableSettings,
 ) {
     val moneyColors = LocalMoneyColors.current
     val cashNet = cashInflow - cashOutflow

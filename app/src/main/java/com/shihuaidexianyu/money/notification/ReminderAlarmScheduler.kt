@@ -81,15 +81,20 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         if (reminderId < 0) return
 
         val container = (context.applicationContext as? MoneyAppContainerProvider)?.moneyAppContainer
-        val accountName = if (accountId > 0 && container != null) {
-            kotlinx.coroutines.runBlocking {
+            ?: return
+        if (container.startupMigrationCoordinator.withReadyLedgerAccess { true } == null) return
+        val (accountName, settings) = kotlinx.coroutines.runBlocking {
+            val accountName = if (accountId > 0) {
                 runCatching { container.accountRepository.getAccountById(accountId)?.name }.getOrNull()
+            } else {
+                null
             }
-        } else null
+            accountName to container.portableSettingsRepository.query()
+        }
 
         val amountText = com.shihuaidexianyu.money.util.AmountFormatter.format(
             amount,
-            com.shihuaidexianyu.money.domain.model.AppSettings(),
+            settings,
         )
         ReminderNotifications.postReminder(
             context = context,

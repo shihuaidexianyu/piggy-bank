@@ -5,9 +5,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
@@ -32,6 +34,7 @@ class CloseAccountTransactionContractTest {
     private lateinit var database: MoneyDatabase
     private lateinit var accountRepository: AccountRepositoryImpl
     private lateinit var reminderRepository: RecurringReminderRepositoryImpl
+    private lateinit var accountReminderRepository: AccountReminderSettingsRepositoryImpl
     private lateinit var transactionRepository: TransactionRepositoryImpl
 
     @Before
@@ -44,6 +47,10 @@ class CloseAccountTransactionContractTest {
         reminderRepository = RecurringReminderRepositoryImpl(
             dao = database.recurringReminderDao(),
             tickerFlow = flowOf(NOW),
+        )
+        accountReminderRepository = AccountReminderSettingsRepositoryImpl(
+            database,
+            database.accountReminderConfigDao(),
         )
         transactionRepository = TransactionRepositoryImpl(
             database = database,
@@ -82,6 +89,7 @@ class CloseAccountTransactionContractTest {
                 updatedAt = 2L,
             ),
         )
+        accountReminderRepository.updateReminderConfig(accountId, BalanceUpdateReminderConfig())
         val failingAccountRepository = object : AccountRepository by accountRepository {
             override suspend fun closeAccount(accountId: Long, closedAt: Long) {
                 accountRepository.closeAccount(accountId, closedAt)
@@ -100,6 +108,7 @@ class CloseAccountTransactionContractTest {
             transactionRunner = transactionRepository,
             clockProvider = clock,
             accountLifecycleCoordinator = AccountLifecycleCoordinator(),
+            accountReminderSettingsRepository = accountReminderRepository,
         )
 
         var failure: Throwable? = null
@@ -114,6 +123,7 @@ class CloseAccountTransactionContractTest {
         val reminder = requireNotNull(reminderRepository.getReminderById(reminderId))
         assertTrue(reminder.isEnabled)
         assertEquals(2L, reminder.updatedAt)
+        assertTrue(accountReminderRepository.getReminderConfig(accountId).isEnabled)
     }
 
     private companion object {

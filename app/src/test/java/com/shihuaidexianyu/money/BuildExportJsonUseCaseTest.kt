@@ -7,7 +7,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderReposi
 import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -35,7 +35,7 @@ class BuildExportJsonUseCaseTest {
             accountRepository = InMemoryAccountRepository(),
             recurringReminderRepository = InMemoryRecurringReminderRepository(),
             savingsGoalRepository = goals,
-            settingsRepository = TestSettingsRepository(),
+            portableSettingsRepository = TestSettingsRepository(),
             transactionRepository = InMemoryTransactionRepository(),
             databaseVersion = 14,
         )
@@ -165,7 +165,7 @@ class BuildExportJsonUseCaseTest {
                 accountRepository = accountRepository,
                 recurringReminderRepository = reminderRepository,
                 savingsGoalRepository = InMemorySavingsGoalRepository(),
-                settingsRepository = TestSettingsRepository(AppSettings(currencySymbol = "元")),
+                portableSettingsRepository = TestSettingsRepository(PortableSettings(currencySymbol = "元")),
                 transactionRepository = transactionRepository,
                 databaseVersion = 10,
             ),

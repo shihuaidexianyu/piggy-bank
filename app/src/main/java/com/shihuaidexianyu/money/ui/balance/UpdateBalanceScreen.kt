@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
@@ -38,7 +38,7 @@ import kotlin.math.abs
 @Composable
 fun UpdateBalanceScreen(
     viewModel: UpdateBalanceViewModel,
-    settings: AppSettings,
+    settings: PortableSettings,
     onShowResult: () -> Unit,
     onStartCashFlow: (CashFlowDirection, Long, Long) -> Unit,
     onBack: () -> Unit,

@@ -60,7 +60,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 HistoryViewModel(
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
-                    settingsRepository = container.settingsRepository,
+                    portableSettingsRepository = container.portableSettingsRepository,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )
@@ -110,7 +111,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 AccountsViewModel(
                     accountReminderSettingsRepository = container.accountReminderSettingsRepository,
                     accountRepository = container.accountRepository,
-                    settingsRepository = container.settingsRepository,
+                    portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
@@ -134,11 +135,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         SettingsScreen(
             state = state,
             effectFlow = viewModel.effectFlow,
-            onHomePeriodChange = viewModel::updateHomePeriod,
             onThemeModeChange = viewModel::updateThemeMode,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
-            onShowStaleMarkChange = viewModel::updateShowStaleMark,
             onBiometricLockChange = viewModel::updateBiometricLock,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onCreateSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },

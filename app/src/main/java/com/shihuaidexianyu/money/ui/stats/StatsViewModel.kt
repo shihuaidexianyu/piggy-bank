@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 data class StatsUiState(
     val isLoading: Boolean = true,
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val selectedPeriod: StatsPeriod = StatsPeriod.MONTH,
     val isCurrentRange: Boolean = true,
     val rangeText: String = "",
@@ -153,7 +153,7 @@ private fun isCurrentRange(snapshot: StatsDashboardSnapshot): Boolean {
     return !now.isBefore(start) && now.isBefore(end)
 }
 
-private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
+private fun formatSignedAmount(amount: Long, settings: PortableSettings): String {
     return when {
         amount > 0L -> "+${AmountFormatter.format(amount, settings)}"
         else -> AmountFormatter.format(amount, settings)

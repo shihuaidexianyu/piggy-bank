@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -24,7 +24,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 fun BalanceAdjustmentDetailScreen(
     viewModel: BalanceAdjustmentDetailViewModel,
     state: BalanceAdjustmentDetailUiState,
-    settings: AppSettings,
+    settings: PortableSettings,
     onClosed: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,

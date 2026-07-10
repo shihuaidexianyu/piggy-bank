@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
@@ -55,7 +55,7 @@ class StatsProjectorTest {
         val selection = StatsRangeSelection(period = StatsPeriod.MONTH, anchorMillis = 500L)
         val snapshot = StatsProjector.project(
             accounts = accounts,
-            settings = AppSettings(),
+            settings = PortableSettings(),
             selection = selection,
             range = range,
             balances = mapOf(1L to 100L, 2L to 9_000L, 3L to 1_500L),
@@ -86,7 +86,7 @@ class StatsProjectorTest {
         val range = TimeRange(0L, 1_000L)
         val snapshot = StatsProjector.project(
             accounts = listOf(newAccount),
-            settings = AppSettings(),
+            settings = PortableSettings(),
             selection = StatsRangeSelection(StatsPeriod.MONTH, 500L),
             range = range,
             balances = mapOf(9L to 5_000L),

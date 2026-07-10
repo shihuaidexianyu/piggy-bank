@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
@@ -21,7 +21,7 @@ import java.time.ZoneId
 internal object StatsProjector {
     fun project(
         accounts: List<Account>,
-        settings: AppSettings,
+        settings: PortableSettings,
         selection: StatsRangeSelection,
         range: TimeRange,
         balances: Map<Long, Long>,

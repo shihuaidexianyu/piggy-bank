@@ -75,7 +75,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         BalanceUpdateDetailScreen(
             viewModel = viewModel,
             state = state,
-            settings = settingsState.settings,
+            settings = settingsState.portableSettings,
             onEdit = { navController.navigate(MoneyDestination.editBalanceUpdateRoute(recordId)) },
             onDeleted = closeBalanceUpdateFlow,
             onBack = { navController.popBackStack() },
@@ -106,7 +106,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         EditBalanceUpdateScreen(
             viewModel = viewModel,
-            settings = settingsState.settings,
+            settings = settingsState.portableSettings,
             onBack = { navController.popBackStack() },
             onDeleted = closeBalanceUpdateFlow,
         )
@@ -136,7 +136,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         BalanceAdjustmentDetailScreen(
             viewModel = viewModel,
             state = state,
-            settings = settingsState.settings,
+            settings = settingsState.portableSettings,
             onClosed = closeBalanceUpdateFlow,
             onBack = { navController.popBackStack() },
         )
@@ -148,7 +148,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                 BatchReconcileViewModel(
                     accountReminderSettingsRepository = container.accountReminderSettingsRepository,
                     accountRepository = container.accountRepository,
-                    settingsRepository = container.settingsRepository,
+                    portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     updateBalanceUseCase = container.updateBalanceUseCase,
@@ -194,7 +194,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
         UpdateBalanceScreen(
             viewModel = viewModel,
-            settings = settingsState.settings,
+            settings = settingsState.portableSettings,
             onShowResult = { navController.navigate(MoneyDestination.balanceUpdateResultRoute(accountId)) },
             onStartCashFlow = { direction, targetAccountId, amount ->
                 navController.navigate(
@@ -268,7 +268,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         }
         BalanceUpdateResultScreen(
             result = result,
-            settings = settingsState.settings,
+            settings = settingsState.portableSettings,
             onDone = { closeBalanceUpdateResult(accountId) },
             onOpenAccount = { targetAccountId ->
                 closeBalanceUpdateResult(accountId)

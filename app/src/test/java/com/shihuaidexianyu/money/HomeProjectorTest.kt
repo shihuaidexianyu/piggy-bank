@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -23,7 +23,7 @@ class HomeProjectorTest {
         val snapshot = HomeProjector.project(
             accounts = accounts,
             reminderConfigs = emptyMap(),
-            settings = AppSettings(homePeriod = HomePeriod.MONTH),
+            settings = PortableSettings(),
             dueReminders = emptyList(),
             balances = mapOf(1L to 1_500L, 2L to 2_500L),
             openingBalanceByAccount = mapOf(1L to 1_200L, 2L to 2_400L),
@@ -84,7 +84,7 @@ class HomeProjectorTest {
         val snapshot = HomeProjector.project(
             accounts = accounts,
             reminderConfigs = mapOf(1L to reminderConfig, 2L to reminderConfig),
-            settings = AppSettings(),
+            settings = PortableSettings(),
             dueReminders = emptyList(),
             balances = emptyMap(),
             openingBalanceByAccount = emptyMap(),
@@ -127,7 +127,7 @@ class HomeProjectorTest {
         val snapshot = HomeProjector.project(
             accounts = emptyList(),
             reminderConfigs = emptyMap(),
-            settings = AppSettings(),
+            settings = PortableSettings(),
             dueReminders = listOf(reminder),
             balances = emptyMap(),
             openingBalanceByAccount = emptyMap(),

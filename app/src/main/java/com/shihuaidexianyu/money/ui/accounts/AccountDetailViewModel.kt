@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecentRecord
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
@@ -23,7 +23,7 @@ data class AccountDetailUiState(
     val lastBalanceUpdateAt: Long? = null,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isStale: Boolean = false,
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val monthInflow: Long = 0L,
     val monthOutflow: Long = 0L,
     val recentRecords: List<AccountDetailRecentRecord> = emptyList(),

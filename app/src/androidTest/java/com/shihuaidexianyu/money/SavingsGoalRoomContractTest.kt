@@ -6,7 +6,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
+import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
 import com.shihuaidexianyu.money.domain.model.SAVINGS_GOAL_ID
 import com.shihuaidexianyu.money.domain.time.MutationTimestampOverflowException
@@ -92,7 +96,7 @@ class SavingsGoalRoomContractTest {
     fun legacyV3Import_keepsSmallestGoalIdAndPersistsSingletonId() = runBlocking {
         val backupRepository = BackupRepositoryImpl(
             database = database,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
         )
         backupRepository.replaceAll(
@@ -108,6 +112,27 @@ class SavingsGoalRoomContractTest {
         assertEquals(SAVINGS_GOAL_ID, goal.id)
         assertEquals(200L, goal.targetAmount)
         assertEquals(2L, goal.createdAt)
+    }
+
+    @Test
+    fun importReplacement_neverClearsDevicePreferencesOrLocalMigrationState() = runBlocking {
+        database.localMigrationStateDao().upsert(
+            LocalMigrationStateEntity("startup", "complete", 1L, "kept"),
+        )
+        val devicePreferences = InMemoryDevicePreferencesRepository(
+            DevicePreferences(themeMode = ThemeMode.DARK, biometricLock = true),
+        )
+        val backupRepository = BackupRepositoryImpl(
+            database = database,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+        )
+
+        backupRepository.replaceAll(emptySnapshot())
+
+        assertEquals(ThemeMode.DARK, devicePreferences.query().themeMode)
+        assertTrue(devicePreferences.query().biometricLock)
+        assertEquals("complete", database.localMigrationStateDao().queryByKey("startup")?.state)
     }
 
     private fun emptySnapshot(): MoneyBackupSnapshot = MoneyBackupSnapshot(

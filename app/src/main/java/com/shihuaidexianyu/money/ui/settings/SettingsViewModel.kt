@@ -6,10 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.backup.BackupFileReader
 import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
@@ -27,7 +28,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
-    val settings: AppSettings = AppSettings(),
+    val portableSettings: PortableSettings = PortableSettings(),
+    val devicePreferences: DevicePreferences = DevicePreferences(),
     val isExporting: Boolean = false,
     val isImporting: Boolean = false,
 )
@@ -60,7 +62,8 @@ sealed interface SettingsEffect {
 }
 
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
+    private val devicePreferencesRepository: DevicePreferencesRepository,
     private val buildExportJsonUseCase: BuildExportJsonUseCase,
     private val exportJsonFileWriter: ExportJsonFileWriter,
     private val backupFileReader: BackupFileReader,
@@ -75,12 +78,14 @@ class SettingsViewModel(
 
     val uiState: StateFlow<SettingsUiState> =
         combine(
-            settingsRepository.observeSettings(),
+            portableSettingsRepository.observe(),
+            devicePreferencesRepository.observe(),
             isExporting,
             isImporting,
-        ) { settings, exporting, importing ->
+        ) { portable, device, exporting, importing ->
             SettingsUiState(
-                settings = settings,
+                portableSettings = portable,
+                devicePreferences = device,
                 isExporting = exporting,
                 isImporting = importing,
             )
@@ -91,28 +96,20 @@ class SettingsViewModel(
                 initialValue = SettingsUiState(),
             )
 
-    fun updateHomePeriod(period: HomePeriod) {
-        viewModelScope.launch { settingsRepository.updateHomePeriod(period) }
-    }
-
     fun updateCurrencySymbol(symbol: String) {
-        viewModelScope.launch { settingsRepository.updateCurrencySymbol(symbol) }
-    }
-
-    fun updateShowStaleMark(show: Boolean) {
-        viewModelScope.launch { settingsRepository.updateShowStaleMark(show) }
+        viewModelScope.launch { portableSettingsRepository.updateCurrencySymbol(symbol) }
     }
 
     fun updateThemeMode(themeMode: ThemeMode) {
-        viewModelScope.launch { settingsRepository.updateThemeMode(themeMode) }
+        viewModelScope.launch { devicePreferencesRepository.updateThemeMode(themeMode) }
     }
 
     fun updateAmountColorMode(amountColorMode: AmountColorMode) {
-        viewModelScope.launch { settingsRepository.updateAmountColorMode(amountColorMode) }
+        viewModelScope.launch { portableSettingsRepository.updateAmountColorMode(amountColorMode) }
     }
 
     fun updateBiometricLock(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.updateBiometricLock(enabled) }
+        viewModelScope.launch { devicePreferencesRepository.updateBiometricLock(enabled) }
     }
 
     fun exportData() {

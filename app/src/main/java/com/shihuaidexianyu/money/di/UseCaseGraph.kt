@@ -74,7 +74,7 @@ internal class UseCaseGraph(
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
         accountRepository = data.accountRepository,
         recurringReminderRepository = data.recurringReminderRepository,
-        settingsRepository = data.settingsRepository,
+        portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
@@ -84,7 +84,7 @@ internal class UseCaseGraph(
 
     val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
         accountRepository = data.accountRepository,
-        settingsRepository = data.settingsRepository,
+        portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
@@ -96,7 +96,7 @@ internal class UseCaseGraph(
             accountId = accountId,
             accountReminderSettingsRepository = data.accountReminderSettingsRepository,
             accountRepository = data.accountRepository,
-            settingsRepository = data.settingsRepository,
+            portableSettingsRepository = data.portableSettingsRepository,
             transactionRepository = data.transactionRepository,
             calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
             clockProvider = SystemClockProvider,
@@ -217,6 +217,7 @@ internal class UseCaseGraph(
         transactionRunner = data.transactionRepository,
         clockProvider = SystemClockProvider,
         accountLifecycleCoordinator = accountLifecycleCoordinator,
+        accountReminderSettingsRepository = data.accountReminderSettingsRepository,
     )
 
     val setAccountHiddenUseCase = SetAccountHiddenUseCase(
@@ -293,7 +294,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         recurringReminderRepository = data.recurringReminderRepository,
         savingsGoalRepository = data.savingsGoalRepository,
-        settingsRepository = data.settingsRepository,
+        portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
         databaseVersion = MONEY_DATABASE_VERSION,
     )

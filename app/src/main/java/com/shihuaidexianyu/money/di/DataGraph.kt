@@ -6,14 +6,14 @@ import com.shihuaidexianyu.money.data.backup.BackupFileReader
 import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
 import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
 import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
-import com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.SettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
@@ -21,35 +21,14 @@ import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import com.shihuaidexianyu.money.data.migration.RoomStartupMigrationBackend
+import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
 
 internal class DataGraph(context: Context) {
     private val appContext = context.applicationContext
 
     val moneyDatabase: MoneyDatabase = MoneyDatabase.getInstance(appContext)
-
-    init {
-        // Import the legacy file-store format on a background dispatcher. Previously this used
-        // `runBlocking` which blocked the constructing thread (typically the main thread) at app
-        // startup. Now we kick it off asynchronously — Room's DB is already initialized above,
-        // and the legacy importer is idempotent (it checks "DB already has data" before doing
-        // anything), so a delayed import just means the legacy data appears a moment later.
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            runCatching {
-                LegacyMoneyStoreImporter.importIfNeeded(
-                    context = appContext,
-                    database = moneyDatabase,
-                )
-            }.onFailure { e ->
-                android.util.Log.e("DataGraph", "Legacy money store import failed", e)
-            }
-        }
-    }
 
     val accountRepository: AccountRepository =
         AccountRepositoryImpl(moneyDatabase.accountDao())
@@ -68,11 +47,27 @@ internal class DataGraph(context: Context) {
 
     val ledgerAggregateRepository: LedgerAggregateRepository = transactionRepositoryImpl
 
-    val settingsRepository: SettingsRepository =
-        SettingsRepositoryImpl(appContext)
+    val portableSettingsRepository = PortableSettingsRepositoryImpl(
+        database = moneyDatabase,
+        dao = moneyDatabase.portableSettingsDao(),
+    )
+
+    val devicePreferencesRepository = DevicePreferencesRepositoryImpl(appContext)
 
     val accountReminderSettingsRepository: AccountReminderSettingsRepository =
-        AccountReminderSettingsRepositoryImpl(appContext)
+        AccountReminderSettingsRepositoryImpl(
+            database = moneyDatabase,
+            dao = moneyDatabase.accountReminderConfigDao(),
+        )
+
+    val startupMigrationCoordinator = StartupMigrationCoordinator(
+        RoomStartupMigrationBackend(
+            context = appContext,
+            database = moneyDatabase,
+            devicePreferencesRepository = devicePreferencesRepository,
+            clockProvider = SystemClockProvider,
+        ),
+    )
 
     val recurringReminderRepository: RecurringReminderRepository =
         RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
@@ -85,7 +80,7 @@ internal class DataGraph(context: Context) {
     val backupRepository: BackupRepository =
         BackupRepositoryImpl(
             database = moneyDatabase,
-            settingsRepository = settingsRepository,
+            portableSettingsRepository = portableSettingsRepository,
             accountReminderSettingsRepository = accountReminderSettingsRepository,
         )
 
@@ -96,6 +91,7 @@ internal class DataGraph(context: Context) {
     val preImportBackupWriter = PreImportBackupWriter(appContext)
 
     suspend fun seedDebugSampleDataIfNeeded() {
+        startupMigrationCoordinator.withReadyLedgerAccess { true } ?: return
         val isDebuggableApp = (appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebuggableApp) {
             DebugSampleDataSeeder.seedIfNeeded(appContext, moneyDatabase)

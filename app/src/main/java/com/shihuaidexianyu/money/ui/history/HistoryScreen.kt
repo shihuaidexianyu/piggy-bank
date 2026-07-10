@@ -402,7 +402,7 @@ private fun HistoryFilterSheetContent(
 @Composable
 private fun HistoryRow(
     record: HistoryRecordUiModel,
-    settings: com.shihuaidexianyu.money.domain.model.AppSettings,
+    settings: com.shihuaidexianyu.money.domain.model.PortableSettings,
     onClick: () -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current

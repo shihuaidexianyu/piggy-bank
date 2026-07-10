@@ -2,10 +2,10 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
@@ -46,7 +46,7 @@ class ObserveAccountDetailUseCaseTest {
             accountId = accountId,
             accountReminderSettingsRepository = reminderSettingsRepository,
             accountRepository = accountRepository,
-            settingsRepository = InMemorySettingsRepository(AppSettings()),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
                 accountRepository,

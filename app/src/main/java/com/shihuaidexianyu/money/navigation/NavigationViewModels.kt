@@ -37,7 +37,8 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
             ?: error("SettingsViewModel requires a ComponentActivity context"),
         factory = moneyViewModelFactory {
             SettingsViewModel(
-                settingsRepository = container.settingsRepository,
+                portableSettingsRepository = container.portableSettingsRepository,
+                devicePreferencesRepository = container.devicePreferencesRepository,
                 buildExportJsonUseCase = container.buildExportJsonUseCase,
                 exportJsonFileWriter = container.exportJsonFileWriter,
                 backupFileReader = container.backupFileReader,

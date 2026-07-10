@@ -42,7 +42,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -267,7 +267,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
 @Composable
 private fun AccountCard(
     account: AccountListItemUiModel,
-    currencySettings: AppSettings,
+    currencySettings: PortableSettings,
     positiveAssetsTotal: Long,
     onClick: () -> Unit,
 ) {

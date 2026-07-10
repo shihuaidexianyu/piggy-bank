@@ -22,6 +22,7 @@ object AccountStatusCalculator {
         nowMillis: Long,
         zoneId: ZoneId,
     ): Boolean {
+        if (!reminderConfig.isEnabled) return false
         val anchor = account.lastBalanceUpdateAt ?: account.createdAt
         val latestReminderAt = latestReminderAt(nowMillis, reminderConfig, zoneId)
         return anchor < latestReminderAt

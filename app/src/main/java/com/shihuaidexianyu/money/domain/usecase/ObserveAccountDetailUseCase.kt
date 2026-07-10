@@ -1,13 +1,13 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.mapLatest
 
 data class AccountDetailSnapshot(
     val account: Account?,
-    val settings: AppSettings,
+    val settings: PortableSettings,
     val reminderConfig: BalanceUpdateReminderConfig,
     val currentBalance: Long,
     val isStale: Boolean,
@@ -43,7 +43,7 @@ class ObserveAccountDetailUseCase(
     private val accountId: Long,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val clockProvider: ClockProvider,
@@ -54,7 +54,7 @@ class ObserveAccountDetailUseCase(
         return combine(
             accountRepository.observeAllAccounts(),
             accountReminderSettingsRepository.observeReminderConfigs(),
-            settingsRepository.observeSettings(),
+            portableSettingsRepository.observe(),
             transactionRepository.observeChangeVersion(),
         ) { accounts, reminderConfigs, settings, _ ->
             Triple(accounts, reminderConfigs, settings)
@@ -69,7 +69,7 @@ class ObserveAccountDetailUseCase(
 
     private suspend fun buildSnapshot(
         account: Account?,
-        settings: AppSettings,
+        settings: PortableSettings,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): AccountDetailSnapshot {
         if (account == null) {

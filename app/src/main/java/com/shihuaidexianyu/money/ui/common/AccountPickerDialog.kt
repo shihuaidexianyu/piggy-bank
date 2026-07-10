@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.util.AmountFormatter
 
 data class AccountOptionUiModel(
@@ -37,7 +37,7 @@ fun AccountPickerDialog(
     accounts: List<AccountOptionUiModel>,
     selectedAccountId: Long? = null,
     disabledAccountIds: Set<Long> = emptySet(),
-    settings: AppSettings = AppSettings(),
+    settings: PortableSettings = PortableSettings(),
     noSelectionLabel: String? = null,
     onDismiss: () -> Unit,
     onPick: (Long) -> Unit,
@@ -65,7 +65,7 @@ private fun AccountPickerList(
     accounts: List<AccountOptionUiModel>,
     selectedAccountId: Long?,
     disabledAccountIds: Set<Long>,
-    settings: AppSettings,
+    settings: PortableSettings,
     noSelectionLabel: String?,
     onClearSelection: (() -> Unit)?,
     onPick: (Long) -> Unit,
@@ -151,7 +151,7 @@ private fun AccountPickerList(
 }
 
 private fun AccountOptionUiModel.pickerSubtitle(
-    settings: AppSettings,
+    settings: PortableSettings,
 ): String? {
     return balance?.let { "余额 ${AmountFormatter.format(it, settings)}" }
 }

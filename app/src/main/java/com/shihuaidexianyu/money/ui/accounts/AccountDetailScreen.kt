@@ -174,7 +174,7 @@ fun AccountDetailScreen(
 @Composable
 private fun RecentRecordRow(
     record: AccountDetailRecentRecord,
-    settings: com.shihuaidexianyu.money.domain.model.AppSettings,
+    settings: com.shihuaidexianyu.money.domain.model.PortableSettings,
 ) {
     val moneyColors = LocalMoneyColors.current
     val accent = when (record.kind) {

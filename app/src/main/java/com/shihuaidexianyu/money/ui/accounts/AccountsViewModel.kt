@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -40,7 +40,7 @@ data class SavingsGoalUiModel(
 
 data class AccountsUiState(
     val isLoading: Boolean = true,
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val showClosed: Boolean = false,
     val openAccounts: List<AccountListItemUiModel> = emptyList(),
     val closedAccounts: List<AccountListItemUiModel> = emptyList(),
@@ -48,7 +48,7 @@ data class AccountsUiState(
 )
 
 private data class AccountsSnapshot(
-    val settings: AppSettings,
+    val settings: PortableSettings,
     val openAccounts: List<AccountListItemUiModel>,
     val closedAccounts: List<AccountListItemUiModel>,
     val savingsGoal: SavingsGoalUiModel?,
@@ -57,7 +57,7 @@ private data class AccountsSnapshot(
 class AccountsViewModel(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
@@ -73,7 +73,7 @@ class AccountsViewModel(
                     accountRepository.observeOpenAccounts(),
                     accountRepository.observeClosedAccounts(),
                     accountReminderSettingsRepository.observeReminderConfigs(),
-                    settingsRepository.observeSettings(),
+                    portableSettingsRepository.observe(),
                     transactionRepository.observeChangeVersion(),
                 ) { open, closed, reminderConfigs, settings, _ ->
                     val balances = calculateAccountBalancesUseCase(open + closed)

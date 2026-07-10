@@ -7,7 +7,7 @@ import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
@@ -213,18 +213,17 @@ class BackupJsonCodecTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             reminderRepository = reminderRepository,
-            settingsRepository = TestSettingsRepository(
-                AppSettings(
+            portableSettingsRepository = TestSettingsRepository(
+                PortableSettings(
                     currencySymbol = "￥\"\\\n",
-                    lastHistoryKeyword = "咖啡\n引号\"",
                 ),
             ),
         )(exportedAt = Long.MAX_VALUE)
         val root = JSONObject(json)
 
         assertEquals(Long.MAX_VALUE, root.getJSONObject("metadata").getLong("exportedAt"))
-        assertEquals("￥\"\\\n", root.getJSONObject("settings").getString("currencySymbol"))
-        assertEquals("咖啡\n引号\"", root.getJSONObject("settings").getString("lastHistoryKeyword"))
+        assertEquals("￥\"\\", root.getJSONObject("settings").getString("currencySymbol"))
+        assertEquals("", root.getJSONObject("settings").getString("lastHistoryKeyword"))
         assertEquals(accountName, root.getJSONArray("accounts").getJSONObject(0).getString("name"))
         assertEquals(Long.MAX_VALUE, root.getJSONArray("accounts").getJSONObject(0).getLong("initialBalance"))
         assertEquals(purpose, root.getJSONArray("cashFlowRecords").getJSONObject(0).getString("purpose"))
@@ -236,7 +235,7 @@ class BackupJsonCodecTest {
         accountRepository: InMemoryAccountRepository = InMemoryAccountRepository(),
         transactionRepository: InMemoryTransactionRepository = InMemoryTransactionRepository(),
         reminderRepository: InMemoryRecurringReminderRepository = InMemoryRecurringReminderRepository(),
-        settingsRepository: TestSettingsRepository = TestSettingsRepository(),
+        portableSettingsRepository: TestSettingsRepository = TestSettingsRepository(),
         reminderSettingsRepository: InMemoryAccountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
         savingsGoalRepository: InMemorySavingsGoalRepository = InMemorySavingsGoalRepository(),
     ): BuildExportJsonUseCase {
@@ -246,7 +245,7 @@ class BackupJsonCodecTest {
                 accountRepository = accountRepository,
                 recurringReminderRepository = reminderRepository,
                 savingsGoalRepository = savingsGoalRepository,
-                settingsRepository = settingsRepository,
+                portableSettingsRepository = portableSettingsRepository,
                 transactionRepository = transactionRepository,
                 databaseVersion = 10,
             ),

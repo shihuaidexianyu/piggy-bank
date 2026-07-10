@@ -3,13 +3,15 @@ package com.shihuaidexianyu.money.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.HistoryFilters
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
@@ -63,7 +65,7 @@ data class HistoryRecordUiModel(
 )
 
 data class HistoryUiState(
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val accountOptions: List<AccountOptionUiModel> = emptyList(),
     val keyword: String = "",
     val excludeKeyword: String = "",
@@ -95,7 +97,8 @@ internal data class HistoryFilterState(
 class HistoryViewModel(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
+    private val devicePreferencesRepository: DevicePreferencesRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -172,15 +175,15 @@ class HistoryViewModel(
     }
 
     private suspend fun initialize() {
-        val initialSettings = settingsRepository.observeSettings().first()
-        val initialFilters = initialSettings.toHistoryFilterState()
+        val initialSettings = portableSettingsRepository.query()
+        val initialFilters = devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
         filterState.value = initialFilters
         applySettings(initialSettings)
         applyFiltersToState(initialFilters)
         applyAccounts(observeAccounts().first())
 
         viewModelScope.launch {
-            settingsRepository.observeSettings()
+            portableSettingsRepository.observe()
                 .drop(1)
                 .collect(::applySettings)
         }
@@ -201,7 +204,7 @@ class HistoryViewModel(
 
     private fun observeAccounts() = accountRepository.observeAllAccounts()
 
-    private fun applySettings(settings: AppSettings) {
+    private fun applySettings(settings: PortableSettings) {
         _uiState.update { it.copy(settings = settings) }
     }
 
@@ -249,16 +252,7 @@ class HistoryViewModel(
         saveFiltersJob?.cancel()
         saveFiltersJob = viewModelScope.launch {
             delay(500)
-            settingsRepository.updateLastHistoryFilters(
-                keyword = filters.keyword,
-                excludeKeyword = filters.excludeKeyword,
-                accountId = filters.selectedAccountId ?: -1L,
-                dateStartAt = filters.dateStartAt ?: -1L,
-                dateEndAt = filters.dateEndAt ?: -1L,
-                minAmountText = filters.minAmountText,
-                maxAmountText = filters.maxAmountText,
-                amountDirection = filters.amountDirectionFilter.value,
-            )
+            devicePreferencesRepository.updateHistoryFilters(filters.toDeviceHistoryFilters())
         }
     }
 
@@ -336,18 +330,29 @@ class HistoryViewModel(
     }
 }
 
-private fun AppSettings.toHistoryFilterState(): HistoryFilterState {
+private fun HistoryFilters.toHistoryFilterState(): HistoryFilterState {
     return HistoryFilterState(
-        keyword = lastHistoryKeyword,
-        excludeKeyword = lastHistoryExcludeKeyword,
-        selectedAccountId = lastHistoryAccountId.takeIf { it >= 0 },
-        dateStartAt = lastHistoryDateStartAt.takeIf { it >= 0 },
-        dateEndAt = lastHistoryDateEndAt.takeIf { it >= 0 },
-        minAmountText = lastHistoryMinAmountText,
-        maxAmountText = lastHistoryMaxAmountText,
-        amountDirectionFilter = AmountDirectionFilter.fromValue(lastHistoryAmountDirection.takeIf { it.isNotBlank() }),
+        keyword = keyword,
+        excludeKeyword = excludeKeyword,
+        selectedAccountId = accountId,
+        dateStartAt = dateStartAt,
+        dateEndAt = dateEndAt,
+        minAmountText = minAmountText,
+        maxAmountText = maxAmountText,
+        amountDirectionFilter = AmountDirectionFilter.fromValue(amountDirection.takeIf { it.isNotBlank() }),
     )
 }
+
+private fun HistoryFilterState.toDeviceHistoryFilters(): HistoryFilters = HistoryFilters(
+    keyword = keyword,
+    excludeKeyword = excludeKeyword,
+    accountId = selectedAccountId,
+    dateStartAt = dateStartAt,
+    dateEndAt = dateEndAt,
+    minAmountText = minAmountText,
+    maxAmountText = maxAmountText,
+    amountDirection = amountDirectionFilter.value,
+)
 
 private fun HistoryFilterState.toHistoryRecordFilters(): HistoryRecordFilters {
     return HistoryRecordFilters(

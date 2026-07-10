@@ -16,7 +16,11 @@ class MoneyAppContainer(context: Context) {
 
     val transactionRepository get() = dataGraph.transactionRepository
 
-    val settingsRepository get() = dataGraph.settingsRepository
+    val portableSettingsRepository get() = dataGraph.portableSettingsRepository
+
+    val devicePreferencesRepository get() = dataGraph.devicePreferencesRepository
+
+    val startupMigrationCoordinator get() = dataGraph.startupMigrationCoordinator
 
     val accountReminderSettingsRepository get() = dataGraph.accountReminderSettingsRepository
 

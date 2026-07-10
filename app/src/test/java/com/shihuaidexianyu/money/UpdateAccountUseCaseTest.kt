@@ -29,7 +29,7 @@ class UpdateAccountUseCaseTest {
     private val accountLifecycleCoordinator = AccountLifecycleCoordinator()
 
     @Test
-    fun `reminder config write runs after the Room transaction completes`() = runBlocking {
+    fun `reminder config write shares the account Room transaction`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderDelegate = InMemoryAccountReminderSettingsRepository()
         val accountId = accountRepository.createAccount(
@@ -48,7 +48,7 @@ class UpdateAccountUseCaseTest {
         }
         val assertingReminderRepository = object : AccountReminderSettingsRepository by reminderDelegate {
             override suspend fun updateReminderConfig(accountId: Long, config: BalanceUpdateReminderConfig) {
-                assertFalse(inRoomTransaction, "Preferences DataStore must not be awaited inside a Room transaction")
+                assertTrue(inRoomTransaction, "Room reminder config must share the account transaction")
                 reminderDelegate.updateReminderConfig(accountId, config)
             }
         }

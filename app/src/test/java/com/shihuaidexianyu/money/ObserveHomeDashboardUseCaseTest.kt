@@ -9,9 +9,9 @@ import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
@@ -32,7 +32,7 @@ class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home current and opening account lists each use one aggregate read`() = runBlocking {
         val now = Instant.parse("2026-04-10T14:30:00Z").toEpochMilli()
-        val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
+        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
         repeat(2) { index ->
@@ -56,7 +56,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = ledger,
             calculateCurrentBalanceUseCase = current,
             calculateAccountBalancesUseCase = batch,
@@ -102,7 +102,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = single,
             calculateAccountBalancesUseCase = batch,
@@ -119,7 +119,7 @@ class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home dashboard keeps cash flow and reconciliation amounts separate`() = runBlocking {
         val now = System.currentTimeMillis()
-        val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
+        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -184,7 +184,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -203,7 +203,7 @@ class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home dashboard includes start excludes end and ignores reconciliation and deleted records`() = runBlocking {
         val now = System.currentTimeMillis()
-        val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
+        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val fromAccountId = accountRepository.createAccount(
@@ -323,7 +323,7 @@ class ObserveHomeDashboardUseCaseTest {
             recurringReminderRepository = InMemoryRecurringReminderRepository(
                 tickerFlow = MutableStateFlow(now).asStateFlow(),
             ),
-            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -395,7 +395,7 @@ class ObserveHomeDashboardUseCaseTest {
             accountReminderSettingsRepository = reminderSettingsRepository,
             accountRepository = accountRepository,
             recurringReminderRepository = recurringReminderRepository,
-            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),

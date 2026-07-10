@@ -13,6 +13,19 @@ import org.junit.Test
 
 class AccountStatusUtilsTest {
     @Test
+    fun `disabled account reminder never marks account stale`() {
+        val account = Account(name = "现金", initialBalance = 0L, createdAt = 1L)
+
+        assertFalse(
+            AccountStatusUtils.isStale(
+                account = account,
+                reminderConfig = BalanceUpdateReminderConfig(isEnabled = false),
+                nowMillis = Long.MAX_VALUE,
+            ),
+        )
+    }
+
+    @Test
     fun `account becomes stale after configured weekday time passes`() {
         val zoneId = ZoneId.systemDefault()
         val updatedAt = LocalDateTime.of(2026, 4, 6, 10, 0)

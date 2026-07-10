@@ -70,6 +70,8 @@ data class BalanceUpdateReminderConfig(
     val monthDay: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY,
     val hour: Int = DEFAULT_BALANCE_UPDATE_REMINDER_HOUR,
     val minute: Int = DEFAULT_BALANCE_UPDATE_REMINDER_MINUTE,
+    val isEnabled: Boolean = true,
+    val lastNotifiedBoundaryAt: Long? = null,
 ) {
     init {
         require(monthDay in 1..31) { "monthDay out of range" }

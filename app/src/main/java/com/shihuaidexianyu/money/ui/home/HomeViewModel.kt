@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -33,7 +33,7 @@ data class StaleAccountUiModel(
 
 data class HomeUiState(
     val isLoading: Boolean = true,
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val periodRecordCount: Int = 0,
     val periodAssetChange: Long = 0,
     val periodCashInflow: Long = 0,

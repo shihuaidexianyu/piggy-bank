@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -101,7 +101,7 @@ class ReminderListViewModel(
 
 private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
 
-internal fun RecurringReminder.toUiModel(settings: AppSettings): ReminderUiModel {
+internal fun RecurringReminder.toUiModel(settings: PortableSettings): ReminderUiModel {
     val periodType = ReminderPeriodType.fromValue(this.periodType)
     val periodDesc = when (periodType) {
         ReminderPeriodType.MONTHLY -> "每月${periodValue}日"

@@ -14,8 +14,7 @@ import com.shihuaidexianyu.money.MainActivity
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.MoneyApplication
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.domain.model.AppSettings
-import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
@@ -59,6 +58,10 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_month_expense, "—")
 
             if (container != null) {
+                if (container.startupMigrationCoordinator.withReadyLedgerAccess { true } == null) {
+                    manager.updateAppWidget(widgetId, views)
+                    return
+                }
                 kotlinx.coroutines.runBlocking {
                     runCatching {
                         val accounts = container.accountRepository.queryAllAccounts()
@@ -72,7 +75,7 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                         val inflow = container.transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive)
                         val outflow = container.transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive)
 
-                        val settings = AppSettings()
+                        val settings = container.portableSettingsRepository.query()
                         views.setTextViewText(R.id.widget_total_assets, AmountFormatter.format(totalAssets, settings))
                         views.setTextViewText(R.id.widget_month_income, AmountFormatter.format(inflow, settings))
                         views.setTextViewText(R.id.widget_month_expense, AmountFormatter.format(outflow, settings))

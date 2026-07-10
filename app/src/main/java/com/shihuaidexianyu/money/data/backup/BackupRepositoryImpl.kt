@@ -4,19 +4,17 @@ import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
@@ -31,11 +29,11 @@ import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 
 class BackupRepositoryImpl(
     private val database: MoneyDatabase,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
 ) : BackupRepository {
     override suspend fun replaceAll(snapshot: MoneyBackupSnapshot) {
@@ -61,14 +59,17 @@ class BackupRepositoryImpl(
                 val goal = backupGoal.toDomain()
                 database.savingsGoalDao().insert(goal.toEntity())
             }
+            portableSettingsRepository.replace(snapshot.settings.toPortableSettings())
+            val closedAccountIds = snapshot.accounts.filter { it.isArchived }.map { it.id }.toSet()
+            accountReminderSettingsRepository.replaceReminderConfigs(
+                snapshot.accountReminderConfigs.associate { config ->
+                    config.accountId to config.config.toDomain().copy(
+                        isEnabled = config.accountId !in closedAccountIds,
+                        lastNotifiedBoundaryAt = null,
+                    )
+                },
+            )
         }
-
-        settingsRepository.replaceSettings(snapshot.settings.toDomain())
-        accountReminderSettingsRepository.replaceReminderConfigs(
-            snapshot.accountReminderConfigs.associate { config ->
-                config.accountId to config.config.toDomain()
-            },
-        )
     }
 }
 
@@ -157,21 +158,10 @@ private fun BackupRecurringReminder.toDomain(): RecurringReminder =
         updatedAt = updatedAt,
     )
 
-private fun BackupSettings.toDomain(): AppSettings =
-    AppSettings(
-        homePeriod = HomePeriod.fromValue(homePeriod),
+private fun BackupSettings.toPortableSettings(): PortableSettings =
+    PortableSettings(
         currencySymbol = normalizeCurrencySymbol(currencySymbol),
-        showStaleMark = showStaleMark,
-        themeMode = ThemeMode.fromValue(themeMode),
         amountColorMode = AmountColorMode.fromValue(amountColorMode),
-        lastHistoryKeyword = lastHistoryKeyword,
-        lastHistoryExcludeKeyword = lastHistoryExcludeKeyword,
-        lastHistoryAccountId = lastHistoryAccountId,
-        lastHistoryDateStartAt = lastHistoryDateStartAt,
-        lastHistoryDateEndAt = lastHistoryDateEndAt,
-        lastHistoryMinAmountText = lastHistoryMinAmountText,
-        lastHistoryMaxAmountText = lastHistoryMaxAmountText,
-        lastHistoryAmountDirection = lastHistoryAmountDirection,
     )
 
 private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderConfig =
@@ -181,6 +171,8 @@ private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderC
         monthDay = monthDay,
         hour = hour,
         minute = minute,
+        isEnabled = true,
+        lastNotifiedBoundaryAt = null,
     )
 
 private fun BackupSavingsGoal.toDomain(): SavingsGoal =

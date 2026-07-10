@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
@@ -35,7 +34,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 import kotlinx.coroutines.flow.SharedFlow
 
 private sealed interface SettingsDialog {
-    data object HomePeriod : SettingsDialog
     data object ThemeMode : SettingsDialog
     data object AmountColorMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
@@ -49,11 +47,9 @@ private sealed interface SettingsDialog {
 fun SettingsScreen(
     state: SettingsUiState,
     effectFlow: SharedFlow<SettingsEffect>,
-    onHomePeriodChange: (HomePeriod) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
-    onShowStaleMarkChange: (Boolean) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
     onCreateSavingsGoal: () -> Unit,
@@ -62,7 +58,8 @@ fun SettingsScreen(
     onConfirmImport: (Uri) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val settings = state.settings
+    val settings = state.portableSettings
+    val devicePreferences = state.devicePreferences
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
@@ -113,25 +110,11 @@ fun SettingsScreen(
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
-            SettingsDialog.HomePeriod -> {
-                MoneyChoiceDialog(
-                    title = "首页默认周期",
-                    options = HomePeriod.entries,
-                    selected = settings.homePeriod,
-                    label = { it.displayName },
-                    onSelect = {
-                        onHomePeriodChange(it)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
             SettingsDialog.ThemeMode -> {
                 MoneyChoiceDialog(
                     title = "主题模式",
                     options = ThemeMode.entries,
-                    selected = settings.themeMode,
+                    selected = devicePreferences.themeMode,
                     label = { it.displayName },
                     onSelect = {
                         onThemeModeChange(it)
@@ -194,16 +177,9 @@ fun SettingsScreen(
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
-                    title = "首页默认周期",
-                    subtitle = "控制首页统计的默认周期",
-                    trailing = settings.homePeriod.displayName,
-                    modifier = Modifier.clickable { dialog = SettingsDialog.HomePeriod },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
                     title = "主题模式",
                     subtitle = "跟随系统，或固定为浅色 / 深色",
-                    trailing = settings.themeMode.displayName,
+                    trailing = devicePreferences.themeMode.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
                 )
                 MoneySectionDivider()
@@ -225,24 +201,12 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 MoneyListRow(
-                    title = "显示过期账户标记",
-                    subtitle = "在首页和账户页提醒哪些余额需要更新",
-                    showChevron = false,
-                    accessory = {
-                        Switch(
-                            checked = settings.showStaleMark,
-                            onCheckedChange = onShowStaleMarkChange,
-                        )
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
                     title = "生物识别锁定",
                     subtitle = "启动应用时需指纹或面容解锁",
                     showChevron = false,
                     accessory = {
                         Switch(
-                            checked = settings.biometricLock,
+                            checked = devicePreferences.biometricLock,
                             onCheckedChange = onBiometricLockChange,
                         )
                     },

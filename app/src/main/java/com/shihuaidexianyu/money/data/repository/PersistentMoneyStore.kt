@@ -11,12 +11,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Read-only loader for the legacy `money_store.json` file format. The write path was removed when
- * the app migrated to Room — this class exists only to support [com.shihuaidexianyu.money.data.db.LegacyMoneyStoreImporter].
- *
- * If the legacy file is corrupt, [loadSnapshot] returns an empty [MoneySnapshot] (the legacy data
- * is effectively unrecoverable; the user must restore from a manual backup). We log nothing here
- * to avoid noise on a path that should rarely fire.
+ * Strict read-only loader for the legacy `money_store.json` format. Corruption is represented
+ * explicitly so startup can stop on a recoverable error instead of silently treating data as empty.
  */
 data class MoneySnapshot(
     val nextAccountId: Long = 1,
@@ -30,19 +26,44 @@ data class MoneySnapshot(
     val transferRecords: List<TransferRecord> = emptyList(),
     val balanceUpdates: List<BalanceUpdateRecord> = emptyList(),
     val adjustments: List<BalanceAdjustmentRecord> = emptyList(),
-)
+) {
+    val hasLedgerData: Boolean
+        get() = accounts.isNotEmpty() ||
+            cashFlowRecords.isNotEmpty() ||
+            transferRecords.isNotEmpty() ||
+            balanceUpdates.isNotEmpty() ||
+            adjustments.isNotEmpty()
+}
+
+sealed interface LegacyMoneyStoreReadResult {
+    data object Missing : LegacyMoneyStoreReadResult
+    data object Empty : LegacyMoneyStoreReadResult
+    data class Data(val snapshot: MoneySnapshot) : LegacyMoneyStoreReadResult
+    data class Corrupt(val diagnostic: String) : LegacyMoneyStoreReadResult
+}
 
 class PersistentMoneyStore(
     private val storageFile: File,
 ) {
     constructor(context: Context) : this(File(context.filesDir, "money_store.json"))
 
-    fun loadSnapshot(): MoneySnapshot {
-        if (!storageFile.exists()) return MoneySnapshot()
-        return runCatching {
-            val text = storageFile.readText(Charsets.UTF_8)
-            if (text.isBlank()) MoneySnapshot() else parseSnapshot(JSONObject(text))
-        }.getOrElse { MoneySnapshot() }
+    fun readStrict(): LegacyMoneyStoreReadResult {
+        if (!storageFile.exists()) return LegacyMoneyStoreReadResult.Missing
+        val text = runCatching { storageFile.readText(Charsets.UTF_8) }
+            .getOrElse { error ->
+                return LegacyMoneyStoreReadResult.Corrupt(error.message ?: "无法读取旧账本文件")
+            }
+        if (text.isBlank()) return LegacyMoneyStoreReadResult.Empty
+        return try {
+            val snapshot = parseSnapshot(JSONObject(text))
+            if (snapshot.hasLedgerData) {
+                LegacyMoneyStoreReadResult.Data(snapshot)
+            } else {
+                LegacyMoneyStoreReadResult.Empty
+            }
+        } catch (error: Throwable) {
+            LegacyMoneyStoreReadResult.Corrupt(error.message ?: "旧账本 JSON 已损坏")
+        }
     }
 
     private fun parseSnapshot(json: JSONObject): MoneySnapshot {

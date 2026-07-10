@@ -39,11 +39,8 @@ class UpdateAccountUseCase(
                         iconName = normalizeAccountIconName(iconName),
                     ),
                 )
+                accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)
             }
-            // This DataStore write is intentionally outside the Room transaction. The shared
-            // lifecycle lock prevents an in-process close from entering between the two writes,
-            // but Room + DataStore cannot be crash-atomic until Task 4 moves configs into Room.
-            accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)
         }
     }
 }

@@ -2,10 +2,12 @@ package com.shihuaidexianyu.money
 
 import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
@@ -97,6 +99,8 @@ class AccountLifecycleUseCaseTest {
         val enabledId = fixture.reminders.insertReminder(reminder(closingId, enabled = true, updatedAt = 10))
         val disabledId = fixture.reminders.insertReminder(reminder(closingId, enabled = false, updatedAt = 11))
         val otherReminderId = fixture.reminders.insertReminder(reminder(otherId, enabled = true, updatedAt = 12))
+        fixture.accountReminderConfigs.updateReminderConfig(closingId, BalanceUpdateReminderConfig())
+        fixture.accountReminderConfigs.updateReminderConfig(otherId, BalanceUpdateReminderConfig())
 
         fixture.closeAccount(closingId)
 
@@ -108,6 +112,8 @@ class AccountLifecycleUseCaseTest {
         assertEquals(11, fixture.reminders.getReminderById(disabledId)?.updatedAt)
         assertTrue(requireNotNull(fixture.reminders.getReminderById(otherReminderId)).isEnabled)
         assertEquals(12, fixture.reminders.getReminderById(otherReminderId)?.updatedAt)
+        assertFalse(fixture.accountReminderConfigs.getReminderConfig(closingId).isEnabled)
+        assertTrue(fixture.accountReminderConfigs.getReminderConfig(otherId).isEnabled)
     }
 
     @Test
@@ -170,6 +176,8 @@ class AccountLifecycleUseCaseTest {
             ),
         )
         val reminderId = fixture.reminders.insertReminder(reminder(accountId, enabled = false, updatedAt = 5_000))
+        fixture.accountReminderConfigs.updateReminderConfig(accountId, BalanceUpdateReminderConfig())
+        fixture.accountReminderConfigs.setEnabled(accountId, false)
 
         ReopenAccountUseCase(fixture.accounts, fixture.transactions)(accountId)
         CreateBalanceAdjustmentUseCase(
@@ -189,6 +197,7 @@ class AccountLifecycleUseCaseTest {
         assertTrue(reopened.isHidden)
         assertEquals(7, reopened.displayOrder)
         assertFalse(requireNotNull(fixture.reminders.getReminderById(reminderId)).isEnabled)
+        assertFalse(fixture.accountReminderConfigs.getReminderConfig(accountId).isEnabled)
         assertEquals(0, fixture.balance(accountId))
     }
 
@@ -231,6 +240,7 @@ class AccountLifecycleUseCaseTest {
         val accounts = InMemoryAccountRepository()
         val transactions = InMemoryTransactionRepository()
         val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(now))
+        val accountReminderConfigs = InMemoryAccountReminderSettingsRepository()
         val clock = CountingClock(now)
         val calculateBalance = CalculateCurrentBalanceUseCase(accounts, transactions, clock)
         val calculateBalances = CalculateAccountBalancesUseCase(transactions, clock)
@@ -241,6 +251,7 @@ class AccountLifecycleUseCaseTest {
             transactions,
             clock,
             AccountLifecycleCoordinator(),
+            accountReminderConfigs,
         )
 
         suspend fun createAccount(name: String, initialBalance: Long): Long = accounts.createAccount(

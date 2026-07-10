@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -33,6 +33,9 @@ class BalanceCheckWorker(
         val appContext = applicationContext
         val container = (appContext.applicationContext as? MoneyAppContainerProvider)?.moneyAppContainer
             ?: return Result.success()
+        if (container.startupMigrationCoordinator.withReadyLedgerAccess { true } == null) {
+            return Result.retry()
+        }
         val accountRepo = container.accountRepository
         val reminderSettingsRepo = container.accountReminderSettingsRepository
 
@@ -40,13 +43,14 @@ class BalanceCheckWorker(
         if (accounts.isEmpty()) return Result.success()
 
         val now = System.currentTimeMillis()
-        val settings = AppSettings()
+        val settings = container.portableSettingsRepository.query()
         val staleAccounts = accounts.mapNotNull { account ->
             if (account.isClosed) return@mapNotNull null
             val config = runCatching {
                 reminderSettingsRepo.getReminderConfig(account.id)
             }.getOrNull() ?: BalanceUpdateReminderConfig()
 
+            if (!config.isEnabled) return@mapNotNull null
             val isStale = AccountStatusCalculator.isStale(
                 account = account,
                 reminderConfig = config,

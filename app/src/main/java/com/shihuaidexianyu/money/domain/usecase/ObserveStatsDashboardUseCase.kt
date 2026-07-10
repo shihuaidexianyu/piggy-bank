@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
@@ -9,7 +9,7 @@ import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TimeRange
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import java.time.Instant
@@ -42,7 +42,7 @@ data class StatsAccountBalance(
 )
 
 data class StatsDashboardSnapshot(
-    val settings: AppSettings,
+    val settings: PortableSettings,
     val period: StatsPeriod,
     val range: TimeRange,
     val openingAssets: Long,
@@ -62,7 +62,7 @@ data class StatsDashboardSnapshot(
 
 class ObserveStatsDashboardUseCase(
     private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
@@ -72,7 +72,7 @@ class ObserveStatsDashboardUseCase(
     operator fun invoke(selectionFlow: Flow<StatsRangeSelection>): Flow<StatsDashboardSnapshot> {
         return combine(
             accountRepository.observeAllAccounts(),
-            settingsRepository.observeSettings(),
+            portableSettingsRepository.observe(),
             transactionRepository.observeChangeVersion(),
             selectionFlow,
         ) { accounts, settings, _, selection ->
@@ -84,7 +84,7 @@ class ObserveStatsDashboardUseCase(
 
     private suspend fun buildSnapshot(
         accounts: List<Account>,
-        settings: AppSettings,
+        settings: PortableSettings,
         selection: StatsRangeSelection,
     ): StatsDashboardSnapshot = coroutineScope {
         val zoneId = zoneIdProvider.zoneId()
@@ -160,6 +160,6 @@ class ObserveStatsDashboardUseCase(
 
 private data class StatsSource(
     val accounts: List<Account>,
-    val settings: AppSettings,
+    val settings: PortableSettings,
     val selection: StatsRangeSelection,
 )

@@ -2,14 +2,14 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 
 data class HomeDashboardSnapshot(
-    val settings: AppSettings,
+    val settings: PortableSettings,
     val totalAssets: Long,
     val periodBreakdown: PeriodAssetBreakdown,
     val periodRecordCount: Int,
@@ -59,7 +59,7 @@ class ObserveHomeDashboardUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
     private val recurringReminderRepository: RecurringReminderRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
@@ -75,7 +75,7 @@ class ObserveHomeDashboardUseCase(
         return combine(
             accountSources,
             accountReminderSettingsRepository.observeReminderConfigs(),
-            settingsRepository.observeSettings(),
+            portableSettingsRepository.observe(),
             transactionRepository.observeChangeVersion(),
             recurringReminderRepository.observeDueReminders(),
         ) { accounts, reminderConfigs, settings, _, dueReminders ->
@@ -90,16 +90,12 @@ class ObserveHomeDashboardUseCase(
         allAccounts: List<Account>,
         openAccounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-        settings: AppSettings,
+        settings: PortableSettings,
         dueReminders: List<RecurringReminder>,
     ): HomeDashboardSnapshot = coroutineScope {
         val snapshotTimeMillis = clockProvider.nowMillis()
         val zoneId = zoneIdProvider.zoneId()
-        val range = TimeRangeCalculator.currentRange(
-            period = settings.homePeriod,
-            zoneId = zoneId,
-            nowMillis = snapshotTimeMillis,
-        )
+        val range = TimeRangeCalculator.currentMonthRange(zoneId, snapshotTimeMillis)
         val balanceJob = async { calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis) }
         val openingAccounts = allAccounts.filter {
             LedgerBalanceCalculator.openingAt(it) < range.startInclusive

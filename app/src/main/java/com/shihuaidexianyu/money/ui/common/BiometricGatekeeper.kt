@@ -41,7 +41,7 @@ import androidx.fragment.app.FragmentActivity
  *   locking the user out forever).
  *
  * The critical fix: we track `settingsReady` so the initial `enabled = false` (from the
- * `AppSettings()` default) does NOT prematurely unlock. Only when the real DataStore value
+ * `DevicePreferences()` default) does NOT prematurely unlock. Only when the real DataStore value
  * arrives (signaled by [enabled] changing from its initial `false`) do we act.
  *
  * However, since we can't distinguish "DataStore loaded and biometricLock is false" from "DataStore
@@ -49,7 +49,7 @@ import androidx.fragment.app.FragmentActivity
  * settings object so we can detect when it has been loaded by checking if any non-default field
  * is present. Simpler: the caller sets `enabled` only after settings are loaded.
  *
- * Actually the simplest correct fix: don't use `initialValue = AppSettings()` — the caller should
+ * Actually the simplest correct fix: don't use `initialValue = DevicePreferences()` — the caller should
  * track loading state. But to keep changes minimal, we use a `settingsLoaded` flag that the caller
  * must set to `true` once the DataStore has emitted at least once.
  */

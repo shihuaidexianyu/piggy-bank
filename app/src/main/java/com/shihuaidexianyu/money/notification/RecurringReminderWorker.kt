@@ -6,7 +6,7 @@ import androidx.work.WorkerParameters
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 
 /**
  * Periodic [CoroutineWorker] that checks for due recurring reminders and posts a notification
@@ -27,6 +27,9 @@ class RecurringReminderWorker(
         val appContext = applicationContext
         val container = (appContext.applicationContext as? MoneyAppContainerProvider)?.moneyAppContainer
             ?: return Result.success()
+        if (container.startupMigrationCoordinator.withReadyLedgerAccess { true } == null) {
+            return Result.retry()
+        }
         val reminderRepo = container.recurringReminderRepository
         val accountRepo = container.accountRepository
 
@@ -34,7 +37,7 @@ class RecurringReminderWorker(
         if (dueReminders.isEmpty()) return Result.success()
 
         ReminderNotifications.ensureChannel(appContext)
-        val settings = AppSettings()
+        val settings = container.portableSettingsRepository.query()
         for (reminder in dueReminders) {
             if (!reminder.isEnabled) continue
             val account = runCatching { accountRepo.getAccountById(reminder.accountId) }.getOrNull()

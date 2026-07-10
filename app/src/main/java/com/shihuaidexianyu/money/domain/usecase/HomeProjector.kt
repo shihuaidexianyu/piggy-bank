@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ledgerAddExact
@@ -18,7 +18,7 @@ internal object HomeProjector {
         accounts: List<Account>,
         openAccounts: List<Account> = accounts,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-        settings: AppSettings,
+        settings: PortableSettings,
         dueReminders: List<RecurringReminder>,
         balances: Map<Long, Long>,
         openingBalanceByAccount: Map<Long, Long>,
@@ -52,9 +52,11 @@ internal object HomeProjector {
             reconciliationDecrease = reconciliationDecrease,
         )
         val staleAccounts = openAccounts.filter { account ->
+            val reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
+            if (!reminderConfig.isEnabled) return@filter false
             AccountStatusCalculator.isStale(
                 account,
-                reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
+                reminderConfig = reminderConfig,
                 nowMillis = snapshotTimeMillis,
                 zoneId = zoneId,
             )

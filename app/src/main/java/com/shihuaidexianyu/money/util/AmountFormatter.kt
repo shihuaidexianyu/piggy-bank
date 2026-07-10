@@ -1,11 +1,11 @@
 package com.shihuaidexianyu.money.util
 
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 object AmountFormatter {
-    fun format(amountInMinor: Long, settings: AppSettings): String {
+    fun format(amountInMinor: Long, settings: PortableSettings): String {
         val absolute = BigDecimal.valueOf(amountInMinor)
             .movePointLeft(2)
             .abs()

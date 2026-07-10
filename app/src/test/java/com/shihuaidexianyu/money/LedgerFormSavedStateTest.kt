@@ -5,7 +5,7 @@ import androidx.arch.core.executor.TaskExecutor
 import androidx.lifecycle.SavedStateHandle
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
@@ -337,7 +337,7 @@ class LedgerFormSavedStateTest {
         return BatchReconcileViewModel(
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
             accountRepository = accounts,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = transactions,
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions, clock),
             updateBalanceUseCase = updateBalanceUseCase(accounts, transactions, clock),

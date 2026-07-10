@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
@@ -32,7 +32,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 @Composable
 fun EditBalanceUpdateScreen(
     viewModel: EditBalanceUpdateViewModel,
-    settings: AppSettings,
+    settings: PortableSettings,
     onBack: () -> Unit,
     onDeleted: () -> Unit,
     modifier: Modifier = Modifier,

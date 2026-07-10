@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -26,7 +26,7 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.first
 
@@ -35,7 +35,7 @@ class BuildExportSnapshotUseCase(
     private val accountRepository: AccountRepository,
     private val recurringReminderRepository: RecurringReminderRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val databaseVersion: Int,
 ) {
@@ -47,7 +47,7 @@ class BuildExportSnapshotUseCase(
                 databaseVersion = databaseVersion,
                 exportedAt = exportedAt,
             ),
-            settings = settingsRepository.observeSettings().first().toBackup(),
+            settings = portableSettingsRepository.query().toBackup(),
             accounts = accounts.map(Account::toBackup),
             cashFlowRecords = transactionRepository.queryAllCashFlowRecords()
                 .sortedBy { it.id }
@@ -156,21 +156,21 @@ private fun RecurringReminder.toBackup(): BackupRecurringReminder =
         updatedAt = updatedAt,
     )
 
-private fun AppSettings.toBackup(): BackupSettings =
+private fun PortableSettings.toBackup(): BackupSettings =
     BackupSettings(
-        homePeriod = homePeriod.value,
+        homePeriod = "month",
         currencySymbol = currencySymbol,
-        showStaleMark = showStaleMark,
-        themeMode = themeMode.value,
+        showStaleMark = true,
+        themeMode = "system",
         amountColorMode = amountColorMode.value,
-        lastHistoryKeyword = lastHistoryKeyword,
-        lastHistoryExcludeKeyword = lastHistoryExcludeKeyword,
-        lastHistoryAccountId = lastHistoryAccountId,
-        lastHistoryDateStartAt = lastHistoryDateStartAt,
-        lastHistoryDateEndAt = lastHistoryDateEndAt,
-        lastHistoryMinAmountText = lastHistoryMinAmountText,
-        lastHistoryMaxAmountText = lastHistoryMaxAmountText,
-        lastHistoryAmountDirection = lastHistoryAmountDirection,
+        lastHistoryKeyword = "",
+        lastHistoryExcludeKeyword = "",
+        lastHistoryAccountId = -1L,
+        lastHistoryDateStartAt = -1L,
+        lastHistoryDateEndAt = -1L,
+        lastHistoryMinAmountText = "",
+        lastHistoryMaxAmountText = "",
+        lastHistoryAmountDirection = "",
     )
 
 private fun BalanceUpdateReminderConfig.toBackup(): BackupBalanceUpdateReminderConfig =

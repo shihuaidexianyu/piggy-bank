@@ -5,9 +5,9 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
@@ -38,7 +38,7 @@ class ObserveStatsDashboardUseCaseTest {
         val aggregate = CountingLedgerAggregateRepository(ledger)
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accounts,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = ledger,
             calculateCurrentBalanceUseCase =
                 com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase(
@@ -122,7 +122,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -185,7 +185,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
@@ -243,7 +243,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accountRepository,
-            settingsRepository = InMemorySettingsRepository(),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),

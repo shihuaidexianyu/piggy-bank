@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import com.shihuaidexianyu.money.data.migration.StartupMigrationState
+import kotlinx.coroutines.flow.first
 
 class MoneyApplication : Application(), MoneyAppContainerProvider {
     lateinit var container: MoneyAppContainer
@@ -20,14 +22,11 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
     override fun onCreate() {
         super.onCreate()
         container = MoneyAppContainer(this)
-        // Schedule the recurring-reminder worker so the user gets OS notifications even when the
-        // app is not in the foreground. Uses KEEP policy so re-launching the app doesn't duplicate.
-        ReminderNotificationScheduler.schedule(this)
-        // Schedule periodic widget refresh (every 30 min, the system minimum for updatePeriodMillis).
-        BalanceOverviewWidgetProvider.scheduleUpdate(this)
-        // Register exact-alarm reminders for all existing recurring reminders. The periodic
-        // WorkManager check is the coarse fallback; alarms fire at the precise due time.
         appScope.launch {
+            container.startupMigrationCoordinator.runMigration()
+            container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
+            ReminderNotificationScheduler.schedule(this@MoneyApplication)
+            BalanceOverviewWidgetProvider.scheduleUpdate(this@MoneyApplication)
             runCatching {
                 val reminders = container.recurringReminderRepository.queryAll()
                 reminders.forEach { reminder ->
@@ -36,8 +35,6 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
                     }
                 }
             }
-        }
-        appScope.launch {
             container.seedDebugSampleDataIfNeeded()
         }
     }

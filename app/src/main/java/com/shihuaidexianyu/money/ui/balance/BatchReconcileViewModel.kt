@@ -4,11 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.AppSettings
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SettingsRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
@@ -38,7 +38,7 @@ data class BatchReconcileAccountUiModel(
 
 data class BatchReconcileUiState(
     val isLoading: Boolean = true,
-    val settings: AppSettings = AppSettings(),
+    val settings: PortableSettings = PortableSettings(),
     val accounts: List<BatchReconcileAccountUiModel> = emptyList(),
     val isSaving: Boolean = false,
 ) {
@@ -56,7 +56,7 @@ sealed interface BatchReconcileEffect {
 class BatchReconcileViewModel(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
-    private val settingsRepository: SettingsRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val updateBalanceUseCase: UpdateBalanceUseCase,
@@ -77,7 +77,7 @@ class BatchReconcileViewModel(
                 combine(
                     accountRepository.observeOpenAccounts(),
                     accountReminderSettingsRepository.observeReminderConfigs(),
-                    settingsRepository.observeSettings(),
+                    portableSettingsRepository.observe(),
                     transactionRepository.observeChangeVersion(),
                 ) { accounts, reminderConfigs, settings, _ ->
                     Triple(accounts, reminderConfigs, settings)

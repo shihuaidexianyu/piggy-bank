@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.entity.AccountEntity
+import com.shihuaidexianyu.money.data.entity.AccountReminderConfigEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
@@ -47,6 +48,7 @@ object DebugSampleDataSeeder {
         val balanceUpdateDao = database.balanceUpdateRecordDao()
         val balanceAdjustmentDao = database.balanceAdjustmentRecordDao()
         val reminderDao = database.recurringReminderDao()
+        val accountReminderConfigDao = database.accountReminderConfigDao()
 
         val hasData =
             accountDao.queryAllAccounts().isNotEmpty() ||
@@ -68,6 +70,20 @@ object DebugSampleDataSeeder {
                 random = random,
                 zoneId = zoneId,
                 today = today,
+            )
+            accountReminderConfigDao.upsertAll(
+                accounts.values.map { accountId ->
+                    AccountReminderConfigEntity(
+                        accountId = accountId,
+                        period = "weekly",
+                        weekday = "friday",
+                        monthDay = 1,
+                        hour = 22,
+                        minute = 0,
+                        isEnabled = true,
+                        lastNotifiedBoundaryAt = null,
+                    )
+                },
             )
 
             seedRandomCashFlows(
