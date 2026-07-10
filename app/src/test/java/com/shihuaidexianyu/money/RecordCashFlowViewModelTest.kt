@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money
 
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.TaskExecutor
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
@@ -10,6 +11,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowEffect
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
@@ -144,7 +146,12 @@ class RecordCashFlowViewModelTest {
     ): RecordCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
-        val createUseCase = CreateCashFlowRecordUseCase(accountRepo, txnRepo, refreshUseCase)
+        val createUseCase = CreateCashFlowRecordUseCase(
+            accountRepo,
+            txnRepo,
+            refreshUseCase,
+            testClockProvider,
+        )
         return RecordCashFlowViewModel(
             direction = CashFlowDirection.INFLOW,
             initialAccountId = null,
@@ -156,6 +163,8 @@ class RecordCashFlowViewModelTest {
             calculateCurrentBalanceUseCase = calculateUseCase,
             createCashFlowRecordUseCase = createUseCase,
             processDueReminderUseCase = null,
+            savedStateHandle = SavedStateHandle(),
+            operationIdFactory = LedgerOperationIdFactory { testOperationId() },
         )
     }
 }

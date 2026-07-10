@@ -39,7 +39,7 @@ class TransactionRepositoryNoteSuggestionTest {
         repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "早餐", amount = 1_300, occurredAt = 3_000))
         val deletedId = repository.insertCashFlowRecord(
             cashFlow(accountId = 1, note = "咖啡", amount = 1_800, occurredAt = 4_000),
-        )
+        ).recordId
         repository.softDeleteCashFlowRecord(deletedId, updatedAt = 4_100)
         repository.insertCashFlowRecord(cashFlow(accountId = 2, note = "咖啡", amount = 2_000, occurredAt = 5_000))
 

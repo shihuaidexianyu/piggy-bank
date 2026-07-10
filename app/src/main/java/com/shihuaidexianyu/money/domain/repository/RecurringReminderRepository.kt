@@ -11,5 +11,12 @@ interface RecurringReminderRepository {
     suspend fun queryDue(): List<RecurringReminder>
     suspend fun insertReminder(reminder: RecurringReminder): Long
     suspend fun updateReminder(reminder: RecurringReminder)
+    suspend fun advanceOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        nextDueAt: Long,
+        confirmedAt: Long,
+        updatedAt: Long,
+    ): Boolean
     suspend fun deleteReminder(id: Long)
 }

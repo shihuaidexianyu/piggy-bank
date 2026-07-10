@@ -4,20 +4,43 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BalanceUpdateRecordDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(record: BalanceUpdateRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<BalanceUpdateRecordEntity>)
 
-    @Update
-    suspend fun update(record: BalanceUpdateRecordEntity)
+    @Query(
+        """
+        UPDATE balance_update_records
+        SET accountId = :accountId,
+            actualBalance = :actualBalance,
+            systemBalanceBeforeUpdate = :systemBalanceBeforeUpdate,
+            delta = :delta,
+            occurredAt = :occurredAt,
+            updatedAt = :updatedAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND deletedAt IS NULL
+            AND updatedAt = :expectedUpdatedAt
+        """,
+    )
+    suspend fun updateActive(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        accountId: Long,
+        actualBalance: Long,
+        systemBalanceBeforeUpdate: Long,
+        delta: Long,
+        occurredAt: Long,
+        updatedAt: Long,
+    ): Int
 
     @Query(
         """
@@ -30,6 +53,9 @@ interface BalanceUpdateRecordDao {
 
     @Query("SELECT * FROM balance_update_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): BalanceUpdateRecordEntity?
+
+    @Query("SELECT * FROM balance_update_records WHERE operationId = :operationId LIMIT 1")
+    suspend fun queryByOperationId(operationId: String): BalanceUpdateRecordEntity?
 
     @Query("SELECT * FROM balance_update_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<BalanceUpdateRecordEntity>

@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money
 
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.TaskExecutor
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
@@ -10,6 +11,7 @@ import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceEffect
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
 import kotlin.test.assertEquals
@@ -100,12 +102,20 @@ class UpdateBalanceViewModelTest {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
         val resolveUseCase = ResolveBalanceUpdateContextUseCase(accountRepo, txnRepo)
-        val updateBalanceUseCase = UpdateBalanceUseCase(accountRepo, txnRepo, resolveUseCase, refreshUseCase)
+        val updateBalanceUseCase = UpdateBalanceUseCase(
+            accountRepo,
+            txnRepo,
+            resolveUseCase,
+            refreshUseCase,
+            testClockProvider,
+        )
         return UpdateBalanceViewModel(
             initialAccountId = null,
             accountRepository = accountRepo,
             calculateCurrentBalanceUseCase = calculateUseCase,
             updateBalanceUseCase = updateBalanceUseCase,
+            savedStateHandle = SavedStateHandle(),
+            operationIdFactory = LedgerOperationIdFactory { testOperationId() },
         )
     }
 }

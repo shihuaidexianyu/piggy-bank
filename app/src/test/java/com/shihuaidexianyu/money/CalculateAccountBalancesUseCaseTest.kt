@@ -176,7 +176,7 @@ class CalculateAccountBalancesUseCaseTest {
                 updatedAt = 6_500,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 6_600)
         val deletedTransferId = transactionRepository.insertTransferRecord(
             TransferRecord(
@@ -189,7 +189,7 @@ class CalculateAccountBalancesUseCaseTest {
                 updatedAt = 6_700,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteTransferRecord(deletedTransferId, 6_800)
 
         val accounts = listOf(

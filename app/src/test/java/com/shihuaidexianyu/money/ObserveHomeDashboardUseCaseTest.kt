@@ -226,7 +226,7 @@ class ObserveHomeDashboardUseCaseTest {
                 updatedAt = now,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, now)
         transactionRepository.insertTransferRecord(
             TransferRecord(
@@ -251,7 +251,7 @@ class ObserveHomeDashboardUseCaseTest {
                 updatedAt = now,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteTransferRecord(deletedTransferId, now)
         transactionRepository.insertBalanceAdjustmentRecord(
             BalanceAdjustmentRecord(

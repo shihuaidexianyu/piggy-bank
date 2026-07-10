@@ -27,6 +27,7 @@ class DeleteCashFlowBalanceTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         createCashFlow(
             accountId = accountId,
@@ -34,6 +35,7 @@ class DeleteCashFlowBalanceTest {
             amount = 2_000,
             note = "红包",
             occurredAt = 2_000,
+            operationId = testOperationId(),
         )
         val outflowId = createCashFlow(
             accountId = accountId,
@@ -41,7 +43,8 @@ class DeleteCashFlowBalanceTest {
             amount = 500,
             note = "午饭",
             occurredAt = 3_000,
-        )
+            operationId = testOperationId(),
+        ).recordId
 
         val calculate = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         assertEquals(11_500, calculate(accountId))

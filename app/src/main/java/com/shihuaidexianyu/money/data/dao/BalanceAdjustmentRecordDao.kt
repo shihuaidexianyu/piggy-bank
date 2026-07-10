@@ -4,23 +4,45 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BalanceAdjustmentRecordDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(record: BalanceAdjustmentRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<BalanceAdjustmentRecordEntity>)
 
-    @Update
-    suspend fun update(record: BalanceAdjustmentRecordEntity)
+    @Query(
+        """
+        UPDATE balance_adjustment_records
+        SET accountId = :accountId,
+            delta = :delta,
+            occurredAt = :occurredAt,
+            updatedAt = :updatedAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND deletedAt IS NULL
+            AND updatedAt = :expectedUpdatedAt
+        """,
+    )
+    suspend fun updateActive(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        accountId: Long,
+        delta: Long,
+        occurredAt: Long,
+        updatedAt: Long,
+    ): Int
 
     @Query("SELECT * FROM balance_adjustment_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): BalanceAdjustmentRecordEntity?
+
+    @Query("SELECT * FROM balance_adjustment_records WHERE operationId = :operationId LIMIT 1")
+    suspend fun queryByOperationId(operationId: String): BalanceAdjustmentRecordEntity?
 
     @Query("SELECT * FROM balance_adjustment_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<BalanceAdjustmentRecordEntity>

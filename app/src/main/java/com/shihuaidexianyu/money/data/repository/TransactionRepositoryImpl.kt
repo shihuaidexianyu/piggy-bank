@@ -14,10 +14,13 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
+import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
 class TransactionRepositoryImpl(
@@ -28,21 +31,19 @@ class TransactionRepositoryImpl(
     private val balanceAdjustmentRecordDao: BalanceAdjustmentRecordDao,
     private val historyRecordDao: HistoryRecordDao,
 ) : TransactionRepository {
-    private val mutationVersion = MutableStateFlow(0L)
-
     override fun observeChangeVersion(): Flow<Long> {
+        // Room invalidation flows publish only after a transaction commits and re-run even when an
+        // UPDATE leaves the count unchanged. Avoid a separate eager counter that cannot roll back.
         return combine(
             cashFlowRecordDao.observeActiveCount(),
             transferRecordDao.observeActiveCount(),
             balanceUpdateRecordDao.observeCount(),
             balanceAdjustmentRecordDao.observeCount(),
-            mutationVersion,
-        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount, version ->
+        ) { cashFlowCount, transferCount, balanceUpdateCount, adjustmentCount ->
             cashFlowCount.toLong() +
                 transferCount.toLong() +
                 balanceUpdateCount.toLong() +
-                adjustmentCount.toLong() +
-                version
+                adjustmentCount.toLong()
         }
     }
 
@@ -50,22 +51,46 @@ class TransactionRepositoryImpl(
         return database.withTransaction { block() }
     }
 
-    override suspend fun insertCashFlowRecord(record: CashFlowRecord): Long {
+    override suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult {
         requireOperationId(record.operationId)
-        return cashFlowRecordDao.insert(record.toEntity()).also { bumpVersion() }
+        val normalized = record.copy(note = record.note.trim())
+        return database.withTransaction {
+            cashFlowRecordDao.queryByOperationId(normalized.operationId)?.toDomain()?.let { existing ->
+                return@withTransaction cashFlowReplayResult(existing, normalized)
+            }
+            val insertedId = cashFlowRecordDao.insert(normalized.toEntity())
+            if (insertedId != INSERT_IGNORED) {
+                return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
+            }
+            val existing = cashFlowRecordDao.queryByOperationId(normalized.operationId)?.toDomain()
+                ?: throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, normalized.id)
+            cashFlowReplayResult(existing, normalized)
+        }
     }
 
-    override suspend fun updateCashFlowRecord(record: CashFlowRecord) {
-        cashFlowRecordDao.update(record.toEntity())
-        bumpVersion()
+    override suspend fun updateCashFlowRecord(record: CashFlowRecord, expectedUpdatedAt: Long): Boolean {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        return cashFlowRecordDao.updateActive(
+            id = record.id,
+            operationId = record.operationId,
+            expectedUpdatedAt = expectedUpdatedAt,
+            accountId = record.accountId,
+            direction = record.direction,
+            amount = record.amount,
+            note = record.note.trim(),
+            occurredAt = record.occurredAt,
+            updatedAt = record.updatedAt,
+        ).changed()
     }
 
     override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
         cashFlowRecordDao.softDelete(id, updatedAt)
-        bumpVersion()
     }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord? = cashFlowRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord? =
+        cashFlowRecordDao.queryByOperationId(operationId)?.toDomain()
 
     override suspend fun queryAllCashFlowRecords(): List<CashFlowRecord> = cashFlowRecordDao.queryAll().map { it.toDomain() }
 
@@ -85,22 +110,46 @@ class TransactionRepositoryImpl(
         return cashFlowRecordDao.queryActiveByDirectionBetween(direction, startInclusive, endExclusive).map { it.toDomain() }
     }
 
-    override suspend fun insertTransferRecord(record: TransferRecord): Long {
+    override suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult {
         requireOperationId(record.operationId)
-        return transferRecordDao.insert(record.toEntity()).also { bumpVersion() }
+        val normalized = record.copy(note = record.note.trim())
+        return database.withTransaction {
+            transferRecordDao.queryByOperationId(normalized.operationId)?.toDomain()?.let { existing ->
+                return@withTransaction transferReplayResult(existing, normalized)
+            }
+            val insertedId = transferRecordDao.insert(normalized.toEntity())
+            if (insertedId != INSERT_IGNORED) {
+                return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
+            }
+            val existing = transferRecordDao.queryByOperationId(normalized.operationId)?.toDomain()
+                ?: throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, normalized.id)
+            transferReplayResult(existing, normalized)
+        }
     }
 
-    override suspend fun updateTransferRecord(record: TransferRecord) {
-        transferRecordDao.update(record.toEntity())
-        bumpVersion()
+    override suspend fun updateTransferRecord(record: TransferRecord, expectedUpdatedAt: Long): Boolean {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        return transferRecordDao.updateActive(
+            id = record.id,
+            operationId = record.operationId,
+            expectedUpdatedAt = expectedUpdatedAt,
+            fromAccountId = record.fromAccountId,
+            toAccountId = record.toAccountId,
+            amount = record.amount,
+            note = record.note.trim(),
+            occurredAt = record.occurredAt,
+            updatedAt = record.updatedAt,
+        ).changed()
     }
 
     override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
         transferRecordDao.softDelete(id, updatedAt)
-        bumpVersion()
     }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecord? = transferRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord? =
+        transferRecordDao.queryByOperationId(operationId)?.toDomain()
 
     override suspend fun queryAllTransferRecords(): List<TransferRecord> = transferRecordDao.queryAll().map { it.toDomain() }
 
@@ -123,22 +172,45 @@ class TransactionRepositoryImpl(
         )
     }
 
-    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long {
+    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult {
         requireOperationId(record.operationId)
-        return balanceUpdateRecordDao.insert(record.toEntity()).also { bumpVersion() }
+        return database.withTransaction {
+            balanceUpdateRecordDao.queryByOperationId(record.operationId)?.toDomain()?.let { existing ->
+                return@withTransaction balanceUpdateReplayResult(existing, record)
+            }
+            val insertedId = balanceUpdateRecordDao.insert(record.toEntity())
+            if (insertedId != INSERT_IGNORED) {
+                return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
+            }
+            val existing = balanceUpdateRecordDao.queryByOperationId(record.operationId)?.toDomain()
+                ?: throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, record.id)
+            balanceUpdateReplayResult(existing, record)
+        }
     }
 
-    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord) {
-        balanceUpdateRecordDao.update(record.toEntity())
-        bumpVersion()
+    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord, expectedUpdatedAt: Long): Boolean {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        return balanceUpdateRecordDao.updateActive(
+            id = record.id,
+            operationId = record.operationId,
+            expectedUpdatedAt = expectedUpdatedAt,
+            accountId = record.accountId,
+            actualBalance = record.actualBalance,
+            systemBalanceBeforeUpdate = record.systemBalanceBeforeUpdate,
+            delta = record.delta,
+            occurredAt = record.occurredAt,
+            updatedAt = record.updatedAt,
+        ).changed()
     }
 
     override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
         balanceUpdateRecordDao.softDelete(id, deletedAt)
-        bumpVersion()
     }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord? =
+        balanceUpdateRecordDao.queryByOperationId(operationId)?.toDomain()
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryAll().map { it.toDomain() }
 
@@ -153,22 +225,46 @@ class TransactionRepositoryImpl(
 
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.getLatestForAccount(accountId)?.toDomain()
 
-    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
+    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult {
         requireOperationId(record.operationId)
-        return balanceAdjustmentRecordDao.insert(record.toEntity()).also { bumpVersion() }
+        return database.withTransaction {
+            balanceAdjustmentRecordDao.queryByOperationId(record.operationId)?.toDomain()?.let { existing ->
+                return@withTransaction balanceAdjustmentReplayResult(existing, record)
+            }
+            val insertedId = balanceAdjustmentRecordDao.insert(record.toEntity())
+            if (insertedId != INSERT_IGNORED) {
+                return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
+            }
+            val existing = balanceAdjustmentRecordDao.queryByOperationId(record.operationId)?.toDomain()
+                ?: throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_ADJUSTMENT, record.id)
+            balanceAdjustmentReplayResult(existing, record)
+        }
     }
 
-    override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord) {
-        balanceAdjustmentRecordDao.update(record.toEntity())
-        bumpVersion()
+    override suspend fun updateBalanceAdjustmentRecord(
+        record: BalanceAdjustmentRecord,
+        expectedUpdatedAt: Long,
+    ): Boolean {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        return balanceAdjustmentRecordDao.updateActive(
+            id = record.id,
+            operationId = record.operationId,
+            expectedUpdatedAt = expectedUpdatedAt,
+            accountId = record.accountId,
+            delta = record.delta,
+            occurredAt = record.occurredAt,
+            updatedAt = record.updatedAt,
+        ).changed()
     }
 
     override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
         balanceAdjustmentRecordDao.softDelete(id, deletedAt)
-        bumpVersion()
     }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? = balanceAdjustmentRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord? =
+        balanceAdjustmentRecordDao.queryByOperationId(operationId)?.toDomain()
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAll().map { it.toDomain() }
 
@@ -290,11 +386,89 @@ class TransactionRepositoryImpl(
         return builder.toString()
     }
 
-    private fun bumpVersion() {
-        mutationVersion.value = mutationVersion.value + 1
+    private fun Int.changed(): Boolean {
+        return this == 1
+    }
+
+    private fun cashFlowReplayResult(existing: CashFlowRecord, requested: CashFlowRecord): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.direction == requested.direction &&
+            existing.amount == requested.amount &&
+            existing.note.trim() == requested.note.trim() &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(
+            samePayload = samePayload,
+            kind = LedgerRecordKind.CASH_FLOW,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+        )
+    }
+
+    private fun transferReplayResult(existing: TransferRecord, requested: TransferRecord): LedgerInsertResult {
+        val samePayload = existing.fromAccountId == requested.fromAccountId &&
+            existing.toAccountId == requested.toAccountId &&
+            existing.amount == requested.amount &&
+            existing.note.trim() == requested.note.trim() &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(
+            samePayload = samePayload,
+            kind = LedgerRecordKind.TRANSFER,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+        )
+    }
+
+    private fun balanceUpdateReplayResult(
+        existing: BalanceUpdateRecord,
+        requested: BalanceUpdateRecord,
+    ): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.actualBalance == requested.actualBalance &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(
+            samePayload = samePayload,
+            kind = LedgerRecordKind.BALANCE_UPDATE,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+        )
+    }
+
+    private fun balanceAdjustmentReplayResult(
+        existing: BalanceAdjustmentRecord,
+        requested: BalanceAdjustmentRecord,
+    ): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.delta == requested.delta &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(
+            samePayload = samePayload,
+            kind = LedgerRecordKind.BALANCE_ADJUSTMENT,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+        )
+    }
+
+    private fun replayResult(
+        samePayload: Boolean,
+        kind: LedgerRecordKind,
+        operationId: String,
+        existingRecordId: Long,
+    ): LedgerInsertResult {
+        if (!samePayload) {
+            throw LedgerOperationConflictException(kind, operationId, existingRecordId)
+        }
+        return LedgerInsertResult(recordId = existingRecordId, inserted = false)
     }
 
     private fun requireOperationId(operationId: String) {
         require(operationId.isNotBlank()) { "operationId must not be blank" }
+    }
+
+    private fun requireNewerTimestamp(updatedAt: Long, expectedUpdatedAt: Long) {
+        require(updatedAt > expectedUpdatedAt) { "新的更新时间必须晚于原记录" }
+    }
+
+    private companion object {
+        const val INSERT_IGNORED = -1L
     }
 }

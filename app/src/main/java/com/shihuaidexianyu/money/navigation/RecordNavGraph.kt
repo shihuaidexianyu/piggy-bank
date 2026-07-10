@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.record.EditCashFlowScreen
 import com.shihuaidexianyu.money.ui.record.EditCashFlowViewModel
 import com.shihuaidexianyu.money.ui.record.EditTransferScreen
@@ -34,13 +35,15 @@ internal fun NavGraphBuilder.addRecordGraph(
     }
 
     composable(
-        route = MoneyDestination.RecordCashFlowRoute + "?amount={amount}&purpose={purpose}&reminderId={reminderId}",
+        route = MoneyDestination.RecordCashFlowRoute +
+            "?amount={amount}&purpose={purpose}&reminderId={reminderId}&expectedDueAt={expectedDueAt}",
         arguments = listOf(
             navArgument("direction") { type = NavType.StringType },
             navArgument("accountId") { type = NavType.LongType },
             navArgument("amount") { type = NavType.LongType; defaultValue = 0L },
             navArgument("purpose") { type = NavType.StringType; defaultValue = "" },
             navArgument("reminderId") { type = NavType.LongType; defaultValue = 0L },
+            navArgument("expectedDueAt") { type = NavType.LongType; defaultValue = 0L },
         ),
     ) { entry ->
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
@@ -48,20 +51,24 @@ internal fun NavGraphBuilder.addRecordGraph(
         val prefillAmount = entry.arguments?.getLong("amount") ?: 0L
         val prefillNote = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
+        val expectedDueAt = entry.arguments?.getLong("expectedDueAt") ?: 0L
         val viewModel = viewModel<RecordCashFlowViewModel>(
-            key = "cash_flow_${direction.value}_${accountId}_$reminderId",
-            factory = moneyViewModelFactory {
+            key = "cash_flow_${direction.value}_${accountId}_${reminderId}_$expectedDueAt",
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 RecordCashFlowViewModel(
                     direction = direction,
                     initialAccountId = accountId.takeIf { it > 0 },
                     prefillAmount = prefillAmount.takeIf { it > 0 },
                     prefillNote = prefillNote.takeIf { it.isNotEmpty() },
                     reminderId = reminderId.takeIf { it > 0 },
+                    expectedDueAt = expectedDueAt.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createCashFlowRecordUseCase = container.createCashFlowRecordUseCase,
                     processDueReminderUseCase = container.processDueReminderUseCase,
+                    savedStateHandle = savedStateHandle,
+                    operationIdFactory = UuidLedgerOperationIdFactory,
                 )
             },
         )
@@ -78,13 +85,15 @@ internal fun NavGraphBuilder.addRecordGraph(
         val fromAccountId = entry.arguments?.getLong("fromAccountId") ?: 0L
         val viewModel = viewModel<RecordTransferViewModel>(
             key = "transfer_$fromAccountId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 RecordTransferViewModel(
                     initialFromAccountId = fromAccountId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     createTransferRecordUseCase = container.createTransferRecordUseCase,
+                    savedStateHandle = savedStateHandle,
+                    operationIdFactory = UuidLedgerOperationIdFactory,
                 )
             },
         )

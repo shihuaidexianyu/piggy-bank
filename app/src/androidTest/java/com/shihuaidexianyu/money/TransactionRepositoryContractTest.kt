@@ -13,10 +13,23 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
+import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
+import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -58,6 +71,298 @@ class TransactionRepositoryContractTest {
     @After
     fun tearDown() {
         db.close()
+    }
+
+    @Test
+    fun idempotentInsertResultsAndConflicts_areEquivalentAcrossImplementations() = runBlocking {
+        seedAccount()
+        db.accountDao().insert(
+            com.shihuaidexianyu.money.data.entity.AccountEntity(
+                id = 2,
+                name = "第二账户",
+                initialBalance = 0,
+                createdAt = 1_000,
+                displayOrder = 2,
+            ),
+        )
+
+        val cash = CashFlowRecord(
+            accountId = 1,
+            direction = CashFlowDirection.INFLOW.value,
+            amount = 100,
+            note = "  工资  ",
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "parity-cash",
+        )
+        assertEquals(roomRepo.insertCashFlowRecord(cash), memoryRepo.insertCashFlowRecord(cash))
+        assertEquals(
+            roomRepo.insertCashFlowRecord(cash.copy(note = "工资", createdAt = 9_000, updatedAt = 9_000)),
+            memoryRepo.insertCashFlowRecord(cash.copy(note = "工资", createdAt = 9_000, updatedAt = 9_000)),
+        )
+        assertConflictParity(LedgerRecordKind.CASH_FLOW) { repository ->
+            repository.insertCashFlowRecord(cash.copy(amount = 101))
+        }
+        assertTrue(
+            runCatching {
+                roomRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "room-pk-conflict"))
+            }.exceptionOrNull() is LedgerRecordChangedException,
+        )
+        assertTrue(
+            runCatching {
+                memoryRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "memory-pk-conflict"))
+            }.exceptionOrNull() is LedgerRecordChangedException,
+        )
+
+        val transfer = TransferRecord(
+            fromAccountId = 1,
+            toAccountId = 2,
+            amount = 200,
+            note = "  调拨  ",
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "parity-transfer",
+        )
+        assertEquals(roomRepo.insertTransferRecord(transfer), memoryRepo.insertTransferRecord(transfer))
+        assertEquals(
+            roomRepo.insertTransferRecord(transfer.copy(note = "调拨", createdAt = 9_000)),
+            memoryRepo.insertTransferRecord(transfer.copy(note = "调拨", createdAt = 9_000)),
+        )
+        assertConflictParity(LedgerRecordKind.TRANSFER) { repository ->
+            repository.insertTransferRecord(transfer.copy(amount = 201))
+        }
+
+        val update = BalanceUpdateRecord(
+            accountId = 1,
+            actualBalance = 300,
+            systemBalanceBeforeUpdate = 100,
+            delta = 200,
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "parity-update",
+        )
+        assertEquals(roomRepo.insertBalanceUpdateRecord(update), memoryRepo.insertBalanceUpdateRecord(update))
+        assertEquals(
+            roomRepo.insertBalanceUpdateRecord(update.copy(systemBalanceBeforeUpdate = -1, delta = 301)),
+            memoryRepo.insertBalanceUpdateRecord(update.copy(systemBalanceBeforeUpdate = -1, delta = 301)),
+        )
+        assertConflictParity(LedgerRecordKind.BALANCE_UPDATE) { repository ->
+            repository.insertBalanceUpdateRecord(update.copy(actualBalance = 301))
+        }
+
+        val adjustment = BalanceAdjustmentRecord(
+            accountId = 1,
+            delta = -50,
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "parity-adjustment",
+        )
+        assertEquals(roomRepo.insertBalanceAdjustmentRecord(adjustment), memoryRepo.insertBalanceAdjustmentRecord(adjustment))
+        assertEquals(
+            roomRepo.insertBalanceAdjustmentRecord(adjustment.copy(createdAt = 9_000, updatedAt = 9_000)),
+            memoryRepo.insertBalanceAdjustmentRecord(adjustment.copy(createdAt = 9_000, updatedAt = 9_000)),
+        )
+        assertConflictParity(LedgerRecordKind.BALANCE_ADJUSTMENT) { repository ->
+            repository.insertBalanceAdjustmentRecord(adjustment.copy(delta = -51))
+        }
+
+        val roomCash = requireNotNull(roomRepo.queryCashFlowRecordByOperationId(cash.operationId))
+        val memoryCash = requireNotNull(memoryRepo.queryCashFlowRecordByOperationId(cash.operationId))
+        roomRepo.softDeleteCashFlowRecord(roomCash.id, 3_000)
+        memoryRepo.softDeleteCashFlowRecord(memoryCash.id, 3_000)
+        assertFalse(roomRepo.insertCashFlowRecord(cash.copy(note = "工资")).inserted)
+        assertFalse(memoryRepo.insertCashFlowRecord(cash.copy(note = "工资")).inserted)
+        assertFalse(roomRepo.updateCashFlowRecord(roomCash.copy(amount = 999, updatedAt = 4_000), roomCash.updatedAt))
+        assertFalse(memoryRepo.updateCashFlowRecord(memoryCash.copy(amount = 999, updatedAt = 4_000), memoryCash.updatedAt))
+        assertEquals(
+            memoryRepo.queryCashFlowRecordByOperationId(cash.operationId),
+            roomRepo.queryCashFlowRecordByOperationId(cash.operationId),
+        )
+
+        val roomTransfer = requireNotNull(roomRepo.queryTransferRecordByOperationId(transfer.operationId))
+        val memoryTransfer = requireNotNull(memoryRepo.queryTransferRecordByOperationId(transfer.operationId))
+        roomRepo.softDeleteTransferRecord(roomTransfer.id, 3_000)
+        memoryRepo.softDeleteTransferRecord(memoryTransfer.id, 3_000)
+        assertFalse(roomRepo.insertTransferRecord(transfer.copy(note = "调拨")).inserted)
+        assertFalse(memoryRepo.insertTransferRecord(transfer.copy(note = "调拨")).inserted)
+        assertFalse(roomRepo.updateTransferRecord(roomTransfer.copy(amount = 999, updatedAt = 4_000), roomTransfer.updatedAt))
+        assertFalse(memoryRepo.updateTransferRecord(memoryTransfer.copy(amount = 999, updatedAt = 4_000), memoryTransfer.updatedAt))
+        assertEquals(
+            memoryRepo.queryTransferRecordByOperationId(transfer.operationId),
+            roomRepo.queryTransferRecordByOperationId(transfer.operationId),
+        )
+
+        val roomUpdate = requireNotNull(roomRepo.queryBalanceUpdateRecordByOperationId(update.operationId))
+        val memoryUpdate = requireNotNull(memoryRepo.queryBalanceUpdateRecordByOperationId(update.operationId))
+        roomRepo.deleteBalanceUpdateRecord(roomUpdate.id, 3_000)
+        memoryRepo.deleteBalanceUpdateRecord(memoryUpdate.id, 3_000)
+        assertFalse(roomRepo.insertBalanceUpdateRecord(update.copy(delta = 999)).inserted)
+        assertFalse(memoryRepo.insertBalanceUpdateRecord(update.copy(delta = 999)).inserted)
+        assertFalse(roomRepo.updateBalanceUpdateRecord(roomUpdate.copy(actualBalance = 999, updatedAt = 4_000), roomUpdate.updatedAt))
+        assertFalse(memoryRepo.updateBalanceUpdateRecord(memoryUpdate.copy(actualBalance = 999, updatedAt = 4_000), memoryUpdate.updatedAt))
+        assertEquals(
+            memoryRepo.queryBalanceUpdateRecordByOperationId(update.operationId),
+            roomRepo.queryBalanceUpdateRecordByOperationId(update.operationId),
+        )
+
+        val roomAdjustment = requireNotNull(roomRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId))
+        val memoryAdjustment = requireNotNull(memoryRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId))
+        roomRepo.deleteBalanceAdjustmentRecord(roomAdjustment.id, 3_000)
+        memoryRepo.deleteBalanceAdjustmentRecord(memoryAdjustment.id, 3_000)
+        assertFalse(roomRepo.insertBalanceAdjustmentRecord(adjustment).inserted)
+        assertFalse(memoryRepo.insertBalanceAdjustmentRecord(adjustment).inserted)
+        assertFalse(
+            roomRepo.updateBalanceAdjustmentRecord(
+                roomAdjustment.copy(delta = 999, updatedAt = 4_000),
+                roomAdjustment.updatedAt,
+            ),
+        )
+        assertFalse(
+            memoryRepo.updateBalanceAdjustmentRecord(
+                memoryAdjustment.copy(delta = 999, updatedAt = 4_000),
+                memoryAdjustment.updatedAt,
+            ),
+        )
+        assertEquals(
+            memoryRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId),
+            roomRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId),
+        )
+    }
+
+    @Test
+    fun concurrentEqualRoomInserts_convergeToOneRowAndOneInsertion() = runBlocking {
+        seedAccount()
+        db.accountDao().insert(
+            com.shihuaidexianyu.money.data.entity.AccountEntity(
+                id = 2,
+                name = "第二账户",
+                initialBalance = 0,
+                createdAt = 1_000,
+                displayOrder = 2,
+            ),
+        )
+        val cash = CashFlowRecord(
+            accountId = 1,
+            direction = CashFlowDirection.INFLOW.value,
+            amount = 100,
+            note = "并发",
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "room-concurrent-cash",
+        )
+        val transfer = TransferRecord(
+            fromAccountId = 1,
+            toAccountId = 2,
+            amount = 100,
+            note = "并发",
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "room-concurrent-transfer",
+        )
+        val update = BalanceUpdateRecord(
+            accountId = 1,
+            actualBalance = 100,
+            systemBalanceBeforeUpdate = 0,
+            delta = 100,
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "room-concurrent-update",
+        )
+        val adjustment = BalanceAdjustmentRecord(
+            accountId = 1,
+            delta = 100,
+            occurredAt = 2_000,
+            createdAt = 2_000,
+            updatedAt = 2_000,
+            operationId = "room-concurrent-adjustment",
+        )
+
+        assertConcurrentConvergence { roomRepo.insertCashFlowRecord(cash) }
+        assertConcurrentConvergence { roomRepo.insertTransferRecord(transfer) }
+        assertConcurrentConvergence { roomRepo.insertBalanceUpdateRecord(update) }
+        assertConcurrentConvergence { roomRepo.insertBalanceAdjustmentRecord(adjustment) }
+
+        assertEquals(1, roomRepo.queryAllCashFlowRecords().size)
+        assertEquals(1, roomRepo.queryAllTransferRecords().size)
+        assertEquals(1, roomRepo.queryAllBalanceUpdateRecords().size)
+        assertEquals(1, roomRepo.queryAllBalanceAdjustmentRecords().size)
+    }
+
+    @Test
+    fun rolledBackRoomTransaction_doesNotPublishPhantomChange() = runBlocking {
+        seedAccount()
+        val emissions = java.util.Collections.synchronizedList(mutableListOf<Long>())
+        val initialEmission = CompletableDeferred<Unit>()
+        val collectionJob = launch(Dispatchers.Default) {
+            roomRepo.observeChangeVersion().collect { version ->
+                emissions += version
+                initialEmission.complete(Unit)
+            }
+        }
+        try {
+            initialEmission.await()
+            val failure = runCatching {
+                roomRepo.runInTransaction {
+                    roomRepo.insertCashFlowRecord(
+                        CashFlowRecord(
+                            accountId = 1,
+                            direction = CashFlowDirection.INFLOW.value,
+                            amount = 100,
+                            note = "回滚",
+                            occurredAt = 2_000,
+                            createdAt = 2_000,
+                            updatedAt = 2_000,
+                            operationId = "rollback-notification",
+                        ),
+                    )
+                    error("rollback")
+                }
+            }.exceptionOrNull()
+            assertTrue(failure is IllegalStateException)
+            delay(100)
+            assertTrue(roomRepo.queryAllCashFlowRecords().isEmpty())
+            assertEquals("回滚事务不应发布伪变更", 1, emissions.size)
+
+            roomRepo.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = 100,
+                    note = "提交",
+                    occurredAt = 2_000,
+                    createdAt = 2_000,
+                    updatedAt = 2_000,
+                    operationId = "committed-notification",
+                ),
+            )
+            repeat(20) {
+                if (emissions.size < 2) delay(10)
+            }
+            assertTrue("提交后的插入应发布变更", emissions.size >= 2)
+            val emissionCountAfterInsert = emissions.size
+            val committed = requireNotNull(
+                roomRepo.queryCashFlowRecordByOperationId("committed-notification"),
+            )
+            assertTrue(
+                roomRepo.updateCashFlowRecord(
+                    committed.copy(amount = 200, updatedAt = 3_000),
+                    committed.updatedAt,
+                ),
+            )
+            repeat(20) {
+                if (emissions.size <= emissionCountAfterInsert) delay(10)
+            }
+            assertTrue("提交后的同计数更新也应发布变更", emissions.size > emissionCountAfterInsert)
+        } finally {
+            collectionJob.cancelAndJoin()
+        }
     }
 
     @Test
@@ -471,7 +776,7 @@ class TransactionRepositoryContractTest {
                     updatedAt = 2_000L,
                     operationId = "delete-contract-cash",
                 ),
-            )
+            ).recordId
             val transferId = repository.insertTransferRecord(
                 TransferRecord(
                     fromAccountId = 1L,
@@ -483,7 +788,7 @@ class TransactionRepositoryContractTest {
                     updatedAt = 3_000L,
                     operationId = "delete-contract-transfer",
                 ),
-            )
+            ).recordId
             val updateId = repository.insertBalanceUpdateRecord(
                 BalanceUpdateRecord(
                     accountId = 1L,
@@ -495,7 +800,7 @@ class TransactionRepositoryContractTest {
                     updatedAt = 4_000L,
                     operationId = "delete-contract-balance-update",
                 ),
-            )
+            ).recordId
             val adjustmentId = repository.insertBalanceAdjustmentRecord(
                 BalanceAdjustmentRecord(
                     accountId = 1L,
@@ -505,7 +810,7 @@ class TransactionRepositoryContractTest {
                     updatedAt = 5_000L,
                     operationId = "delete-contract-balance-adjustment",
                 ),
-            )
+            ).recordId
 
             repository.softDeleteCashFlowRecord(cashId, deletedAt)
             repository.softDeleteTransferRecord(transferId, deletedAt)
@@ -630,6 +935,28 @@ class TransactionRepositoryContractTest {
                 displayOrder = 1,
             ),
         )
+    }
+
+    private suspend fun assertConflictParity(
+        expectedKind: LedgerRecordKind,
+        insert: suspend (com.shihuaidexianyu.money.domain.repository.TransactionRepository) -> Unit,
+    ) {
+        val roomFailure = runCatching { insert(roomRepo) }.exceptionOrNull()
+        val memoryFailure = runCatching { insert(memoryRepo) }.exceptionOrNull()
+        assertTrue(roomFailure is LedgerOperationConflictException)
+        assertTrue(memoryFailure is LedgerOperationConflictException)
+        assertEquals(expectedKind, (roomFailure as LedgerOperationConflictException).kind)
+        assertEquals(expectedKind, (memoryFailure as LedgerOperationConflictException).kind)
+        assertEquals(roomFailure.operationId, memoryFailure.operationId)
+        assertEquals(roomFailure.existingRecordId, memoryFailure.existingRecordId)
+    }
+
+    private suspend fun assertConcurrentConvergence(insert: suspend () -> LedgerInsertResult) {
+        val results = coroutineScope {
+            List(16) { async(Dispatchers.Default) { insert() } }.awaitAll()
+        }
+        assertEquals(1, results.map { it.recordId }.distinct().size)
+        assertEquals(1, results.count { it.inserted })
     }
 
     private suspend fun seedAccountAndCashFlows() {

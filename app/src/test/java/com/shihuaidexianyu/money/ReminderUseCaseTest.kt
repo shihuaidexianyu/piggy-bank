@@ -141,10 +141,11 @@ class ReminderUseCaseTest {
             amount = 1_234L,
             note = "房租 & 水电?#100%",
             reminderId = 9L,
+            expectedDueAt = 1_000L,
         )
 
         assertEquals(
-            "records/cashflow/outflow/7?amount=1234&purpose=%E6%88%BF%E7%A7%9F%20%26%20%E6%B0%B4%E7%94%B5%3F%23100%25&reminderId=9",
+            "records/cashflow/outflow/7?amount=1234&purpose=%E6%88%BF%E7%A7%9F%20%26%20%E6%B0%B4%E7%94%B5%3F%23100%25&reminderId=9&expectedDueAt=1000",
             route,
         )
     }

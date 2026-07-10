@@ -12,9 +12,15 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
+import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
+import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.math.abs
@@ -30,34 +36,82 @@ class InMemoryTransactionRepository : TransactionRepository {
     private val balanceUpdates = mutableListOf<BalanceUpdateRecord>()
     private val adjustments = mutableListOf<BalanceAdjustmentRecord>()
     private val changeVersion = MutableStateFlow(0L)
+    private val ledgerLock = Any()
+    private val transactionMutex = Mutex()
 
     override fun observeChangeVersion(): Flow<Long> = changeVersion.asStateFlow()
 
-    override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()
-
-    override suspend fun insertCashFlowRecord(record: CashFlowRecord): Long {
-        requireNewOperationId(
-            operationId = record.operationId,
-            alreadyExists = cashFlowRecords.any { it.operationId == record.operationId },
-        )
-        val id = nextCashFlowId++
-        cashFlowRecords += record.copy(id = id)
-        bumpVersion()
-        return id
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T = transactionMutex.withLock {
+        val snapshot = synchronized(ledgerLock) { snapshot() }
+        try {
+            block()
+        } catch (throwable: Throwable) {
+            synchronized(ledgerLock) { restore(snapshot) }
+            throw throwable
+        }
     }
 
-    override suspend fun updateCashFlowRecord(record: CashFlowRecord) {
-        replaceCashFlowById(record.id, record)
+    override suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireOperationId(record.operationId)
+        val normalized = record.copy(note = record.note.trim())
+        cashFlowRecords.firstOrNull { it.operationId == normalized.operationId }?.let { existing ->
+            return@synchronized cashFlowReplayResult(existing, normalized)
+        }
+        val id = if (record.id == 0L) {
+            nextCashFlowId++
+        } else {
+            if (cashFlowRecords.any { it.id == record.id }) {
+                throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, record.id)
+            }
+            nextCashFlowId = nextIdAfterExplicit(record.id, nextCashFlowId)
+            record.id
+        }
+        cashFlowRecords += normalized.copy(id = id)
         bumpVersion()
+        LedgerInsertResult(recordId = id, inserted = true)
+    }
+
+    override suspend fun updateCashFlowRecord(
+        record: CashFlowRecord,
+        expectedUpdatedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        val index = cashFlowRecords.indexOfFirst { it.id == record.id }
+        if (index < 0) return@synchronized false
+        val existing = cashFlowRecords[index]
+        if (existing.deletedAt != null ||
+            existing.operationId != record.operationId ||
+            existing.updatedAt != expectedUpdatedAt
+        ) {
+            return@synchronized false
+        }
+        cashFlowRecords[index] = record.copy(
+            id = existing.id,
+            note = record.note.trim(),
+            createdAt = existing.createdAt,
+            operationId = existing.operationId,
+            deletedAt = null,
+        )
+        bumpVersion()
+        true
     }
 
     override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
-        val existing = queryCashFlowRecordById(id) ?: return
-        updateCashFlowRecord(existing.copy(deletedAt = updatedAt, updatedAt = updatedAt))
+        synchronized(ledgerLock) {
+            val index = cashFlowRecords.indexOfFirst { it.id == id && it.deletedAt == null }
+            if (index >= 0) {
+                cashFlowRecords[index] = cashFlowRecords[index].copy(deletedAt = updatedAt, updatedAt = updatedAt)
+                bumpVersion()
+            }
+        }
     }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord? {
         return cashFlowRecords.firstOrNull { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord? {
+        return cashFlowRecords.firstOrNull { it.operationId == operationId }
     }
 
     override suspend fun queryAllCashFlowRecords(): List<CashFlowRecord> {
@@ -95,29 +149,67 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sortedWith(compareBy<CashFlowRecord> { it.occurredAt }.thenBy { it.id })
     }
 
-    override suspend fun insertTransferRecord(record: TransferRecord): Long {
-        requireNewOperationId(
-            operationId = record.operationId,
-            alreadyExists = transferRecords.any { it.operationId == record.operationId },
-        )
-        val id = nextTransferId++
-        transferRecords += record.copy(id = id)
+    override suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireOperationId(record.operationId)
+        val normalized = record.copy(note = record.note.trim())
+        transferRecords.firstOrNull { it.operationId == normalized.operationId }?.let { existing ->
+            return@synchronized transferReplayResult(existing, normalized)
+        }
+        val id = if (record.id == 0L) {
+            nextTransferId++
+        } else {
+            if (transferRecords.any { it.id == record.id }) {
+                throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, record.id)
+            }
+            nextTransferId = nextIdAfterExplicit(record.id, nextTransferId)
+            record.id
+        }
+        transferRecords += normalized.copy(id = id)
         bumpVersion()
-        return id
+        LedgerInsertResult(recordId = id, inserted = true)
     }
 
-    override suspend fun updateTransferRecord(record: TransferRecord) {
-        replaceTransferById(record.id, record)
+    override suspend fun updateTransferRecord(
+        record: TransferRecord,
+        expectedUpdatedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        val index = transferRecords.indexOfFirst { it.id == record.id }
+        if (index < 0) return@synchronized false
+        val existing = transferRecords[index]
+        if (existing.deletedAt != null ||
+            existing.operationId != record.operationId ||
+            existing.updatedAt != expectedUpdatedAt
+        ) {
+            return@synchronized false
+        }
+        transferRecords[index] = record.copy(
+            id = existing.id,
+            note = record.note.trim(),
+            createdAt = existing.createdAt,
+            operationId = existing.operationId,
+            deletedAt = null,
+        )
         bumpVersion()
+        true
     }
 
     override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
-        val existing = queryTransferRecordById(id) ?: return
-        updateTransferRecord(existing.copy(deletedAt = updatedAt, updatedAt = updatedAt))
+        synchronized(ledgerLock) {
+            val index = transferRecords.indexOfFirst { it.id == id && it.deletedAt == null }
+            if (index >= 0) {
+                transferRecords[index] = transferRecords[index].copy(deletedAt = updatedAt, updatedAt = updatedAt)
+                bumpVersion()
+            }
+        }
     }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecord? {
         return transferRecords.firstOrNull { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord? {
+        return transferRecords.firstOrNull { it.operationId == operationId }
     }
 
     override suspend fun queryAllTransferRecords(): List<TransferRecord> {
@@ -156,29 +248,65 @@ class InMemoryTransactionRepository : TransactionRepository {
             .toList()
     }
 
-    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long {
-        requireNewOperationId(
-            operationId = record.operationId,
-            alreadyExists = balanceUpdates.any { it.operationId == record.operationId },
-        )
-        val id = nextBalanceUpdateId++
+    override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireOperationId(record.operationId)
+        balanceUpdates.firstOrNull { it.operationId == record.operationId }?.let { existing ->
+            return@synchronized balanceUpdateReplayResult(existing, record)
+        }
+        val id = if (record.id == 0L) {
+            nextBalanceUpdateId++
+        } else {
+            if (balanceUpdates.any { it.id == record.id }) {
+                throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, record.id)
+            }
+            nextBalanceUpdateId = nextIdAfterExplicit(record.id, nextBalanceUpdateId)
+            record.id
+        }
         balanceUpdates += record.copy(id = id)
         bumpVersion()
-        return id
+        LedgerInsertResult(recordId = id, inserted = true)
     }
 
-    override suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord) {
-        replaceBalanceUpdateById(record.id, record)
+    override suspend fun updateBalanceUpdateRecord(
+        record: BalanceUpdateRecord,
+        expectedUpdatedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        val index = balanceUpdates.indexOfFirst { it.id == record.id }
+        if (index < 0) return@synchronized false
+        val existing = balanceUpdates[index]
+        if (existing.deletedAt != null ||
+            existing.operationId != record.operationId ||
+            existing.updatedAt != expectedUpdatedAt
+        ) {
+            return@synchronized false
+        }
+        balanceUpdates[index] = record.copy(
+            id = existing.id,
+            createdAt = existing.createdAt,
+            operationId = existing.operationId,
+            deletedAt = null,
+        )
         bumpVersion()
+        true
     }
 
     override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
-        val existing = getBalanceUpdateRecordById(id) ?: return
-        updateBalanceUpdateRecord(existing.copy(deletedAt = deletedAt, updatedAt = deletedAt))
+        synchronized(ledgerLock) {
+            val index = balanceUpdates.indexOfFirst { it.id == id && it.deletedAt == null }
+            if (index >= 0) {
+                balanceUpdates[index] = balanceUpdates[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+                bumpVersion()
+            }
+        }
     }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? {
         return balanceUpdates.firstOrNull { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord? {
+        return balanceUpdates.firstOrNull { it.operationId == operationId }
     }
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> {
@@ -206,29 +334,65 @@ class InMemoryTransactionRepository : TransactionRepository {
             .maxWithOrNull(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
     }
 
-    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
-        requireNewOperationId(
-            operationId = record.operationId,
-            alreadyExists = adjustments.any { it.operationId == record.operationId },
-        )
-        val id = nextAdjustmentId++
+    override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireOperationId(record.operationId)
+        adjustments.firstOrNull { it.operationId == record.operationId }?.let { existing ->
+            return@synchronized balanceAdjustmentReplayResult(existing, record)
+        }
+        val id = if (record.id == 0L) {
+            nextAdjustmentId++
+        } else {
+            if (adjustments.any { it.id == record.id }) {
+                throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_ADJUSTMENT, record.id)
+            }
+            nextAdjustmentId = nextIdAfterExplicit(record.id, nextAdjustmentId)
+            record.id
+        }
         adjustments += record.copy(id = id)
         bumpVersion()
-        return id
+        LedgerInsertResult(recordId = id, inserted = true)
     }
 
-    override suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord) {
-        replaceAdjustmentById(record.id, record)
+    override suspend fun updateBalanceAdjustmentRecord(
+        record: BalanceAdjustmentRecord,
+        expectedUpdatedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        requireNewerTimestamp(record.updatedAt, expectedUpdatedAt)
+        val index = adjustments.indexOfFirst { it.id == record.id }
+        if (index < 0) return@synchronized false
+        val existing = adjustments[index]
+        if (existing.deletedAt != null ||
+            existing.operationId != record.operationId ||
+            existing.updatedAt != expectedUpdatedAt
+        ) {
+            return@synchronized false
+        }
+        adjustments[index] = record.copy(
+            id = existing.id,
+            createdAt = existing.createdAt,
+            operationId = existing.operationId,
+            deletedAt = null,
+        )
         bumpVersion()
+        true
     }
 
     override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
-        val existing = getBalanceAdjustmentRecordById(id) ?: return
-        updateBalanceAdjustmentRecord(existing.copy(deletedAt = deletedAt, updatedAt = deletedAt))
+        synchronized(ledgerLock) {
+            val index = adjustments.indexOfFirst { it.id == id && it.deletedAt == null }
+            if (index >= 0) {
+                adjustments[index] = adjustments[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+                bumpVersion()
+            }
+        }
     }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? {
         return adjustments.firstOrNull { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord? {
+        return adjustments.firstOrNull { it.operationId == operationId }
     }
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> {
@@ -493,35 +657,114 @@ class InMemoryTransactionRepository : TransactionRepository {
             (occurredAt == cursor.occurredAt && sourceOrder == cursor.sourceOrder && recordId < cursor.recordId)
     }
 
-    private fun replaceCashFlowById(id: Long, replacement: CashFlowRecord) {
-        val index = cashFlowRecords.indexOfFirst { it.id == id }
-        if (index >= 0) cashFlowRecords[index] = replacement
-    }
-
     private fun Long.isInRange(startInclusive: Long, endExclusive: Long): Boolean =
         this >= startInclusive && this < endExclusive
 
-    private fun replaceTransferById(id: Long, replacement: TransferRecord) {
-        val index = transferRecords.indexOfFirst { it.id == id }
-        if (index >= 0) transferRecords[index] = replacement
-    }
-
-    private fun replaceBalanceUpdateById(id: Long, replacement: BalanceUpdateRecord) {
-        val index = balanceUpdates.indexOfFirst { it.id == id }
-        if (index >= 0) balanceUpdates[index] = replacement
-    }
-
-    private fun replaceAdjustmentById(id: Long, replacement: BalanceAdjustmentRecord) {
-        val index = adjustments.indexOfFirst { it.id == id }
-        if (index >= 0) adjustments[index] = replacement
-    }
-
-    private fun requireNewOperationId(operationId: String, alreadyExists: Boolean) {
+    private fun requireOperationId(operationId: String) {
         require(operationId.isNotBlank()) { "operationId must not be blank" }
-        require(!alreadyExists) { "operationId already exists" }
+    }
+
+    private fun requireNewerTimestamp(updatedAt: Long, expectedUpdatedAt: Long) {
+        require(updatedAt > expectedUpdatedAt) { "新的更新时间必须晚于原记录" }
+    }
+
+    private fun cashFlowReplayResult(existing: CashFlowRecord, requested: CashFlowRecord): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.direction == requested.direction &&
+            existing.amount == requested.amount &&
+            existing.note.trim() == requested.note.trim() &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(samePayload, LedgerRecordKind.CASH_FLOW, requested.operationId, existing.id)
+    }
+
+    private fun transferReplayResult(existing: TransferRecord, requested: TransferRecord): LedgerInsertResult {
+        val samePayload = existing.fromAccountId == requested.fromAccountId &&
+            existing.toAccountId == requested.toAccountId &&
+            existing.amount == requested.amount &&
+            existing.note.trim() == requested.note.trim() &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(samePayload, LedgerRecordKind.TRANSFER, requested.operationId, existing.id)
+    }
+
+    private fun balanceUpdateReplayResult(
+        existing: BalanceUpdateRecord,
+        requested: BalanceUpdateRecord,
+    ): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.actualBalance == requested.actualBalance &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(samePayload, LedgerRecordKind.BALANCE_UPDATE, requested.operationId, existing.id)
+    }
+
+    private fun balanceAdjustmentReplayResult(
+        existing: BalanceAdjustmentRecord,
+        requested: BalanceAdjustmentRecord,
+    ): LedgerInsertResult {
+        val samePayload = existing.accountId == requested.accountId &&
+            existing.delta == requested.delta &&
+            existing.occurredAt == requested.occurredAt
+        return replayResult(samePayload, LedgerRecordKind.BALANCE_ADJUSTMENT, requested.operationId, existing.id)
+    }
+
+    private fun replayResult(
+        samePayload: Boolean,
+        kind: LedgerRecordKind,
+        operationId: String,
+        existingRecordId: Long,
+    ): LedgerInsertResult {
+        if (!samePayload) {
+            throw LedgerOperationConflictException(kind, operationId, existingRecordId)
+        }
+        return LedgerInsertResult(recordId = existingRecordId, inserted = false)
     }
 
     private fun bumpVersion() {
         changeVersion.value = changeVersion.value + 1
     }
+
+    private fun nextIdAfterExplicit(explicitId: Long, currentNextId: Long): Long {
+        if (explicitId < currentNextId) return currentNextId
+        check(explicitId != Long.MAX_VALUE) { "Record id cannot advance beyond Long.MAX_VALUE" }
+        return explicitId + 1
+    }
+
+    private fun snapshot() = LedgerSnapshot(
+        cashFlowRecords = cashFlowRecords.toList(),
+        transferRecords = transferRecords.toList(),
+        balanceUpdates = balanceUpdates.toList(),
+        adjustments = adjustments.toList(),
+        nextCashFlowId = nextCashFlowId,
+        nextTransferId = nextTransferId,
+        nextBalanceUpdateId = nextBalanceUpdateId,
+        nextAdjustmentId = nextAdjustmentId,
+        changeVersion = changeVersion.value,
+    )
+
+    private fun restore(snapshot: LedgerSnapshot) {
+        cashFlowRecords.clear()
+        cashFlowRecords.addAll(snapshot.cashFlowRecords)
+        transferRecords.clear()
+        transferRecords.addAll(snapshot.transferRecords)
+        balanceUpdates.clear()
+        balanceUpdates.addAll(snapshot.balanceUpdates)
+        adjustments.clear()
+        adjustments.addAll(snapshot.adjustments)
+        nextCashFlowId = snapshot.nextCashFlowId
+        nextTransferId = snapshot.nextTransferId
+        nextBalanceUpdateId = snapshot.nextBalanceUpdateId
+        nextAdjustmentId = snapshot.nextAdjustmentId
+        changeVersion.value = snapshot.changeVersion
+    }
+
+    private data class LedgerSnapshot(
+        val cashFlowRecords: List<CashFlowRecord>,
+        val transferRecords: List<TransferRecord>,
+        val balanceUpdates: List<BalanceUpdateRecord>,
+        val adjustments: List<BalanceAdjustmentRecord>,
+        val nextCashFlowId: Long,
+        val nextTransferId: Long,
+        val nextBalanceUpdateId: Long,
+        val nextAdjustmentId: Long,
+        val changeVersion: Long,
+    )
 }

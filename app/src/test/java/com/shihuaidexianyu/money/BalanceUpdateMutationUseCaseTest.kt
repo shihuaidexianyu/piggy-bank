@@ -36,12 +36,14 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
@@ -64,7 +66,7 @@ class BalanceUpdateMutationUseCaseTest {
             ),
         )
 
-        updateBalanceUseCase(accountId = accountId, actualBalance = 11_000, occurredAt = 3_000)
+        updateBalanceUseCase(accountId, 11_000, 3_000, testOperationId())
         val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
 
         updateBalanceUpdateRecordUseCase(
@@ -90,6 +92,7 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
@@ -116,8 +119,8 @@ class BalanceUpdateMutationUseCaseTest {
             ),
         )
 
-        updateBalanceUseCase(accountId = accountId, actualBalance = 130_000, occurredAt = 3_000)
-        updateBalanceUseCase(accountId = accountId, actualBalance = 140_000, occurredAt = 5_000)
+        updateBalanceUseCase(accountId, 130_000, 3_000, testOperationId())
+        updateBalanceUseCase(accountId, 140_000, 5_000, testOperationId())
         val latestRecordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing latest record")
 
         deleteBalanceUpdateRecordUseCase(latestRecordId)
@@ -137,6 +140,7 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
@@ -164,7 +168,7 @@ class BalanceUpdateMutationUseCaseTest {
             ),
         )
 
-        updateBalanceUseCase(accountId = accountId, actualBalance = 11_000, occurredAt = 3_000)
+        updateBalanceUseCase(accountId, 11_000, 3_000, testOperationId())
         val recordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
 
         deleteBalanceUpdateRecordUseCase(recordId)
@@ -189,6 +193,7 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val accountId = accountRepository.createAccount(
             Account(
@@ -210,10 +215,10 @@ class BalanceUpdateMutationUseCaseTest {
             ),
         )
 
-        updateBalanceUseCase(accountId = accountId, actualBalance = 13_000, occurredAt = 5_000)
+        updateBalanceUseCase(accountId, 13_000, 5_000, testOperationId())
         val laterRecordId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing later record")
 
-        updateBalanceUseCase(accountId = accountId, actualBalance = 9_000, occurredAt = 3_000)
+        updateBalanceUseCase(accountId, 9_000, 3_000, testOperationId())
 
         val laterRecord = transactionRepository.getBalanceUpdateRecordById(laterRecordId) ?: error("missing fixed record")
         assertEquals(11_000, laterRecord.systemBalanceBeforeUpdate)
@@ -231,6 +236,7 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
             accountRepository = accountRepository,
@@ -248,6 +254,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountId = accountId,
             actualBalance = 9_000,
             occurredAt = 3_000,
+            operationId = testOperationId(),
         ).let {
             transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
                 .first { record -> record.occurredAt == 3_000L }
@@ -265,7 +272,7 @@ class BalanceUpdateMutationUseCaseTest {
                 operationId = testOperationId(),
             ),
         )
-        updateBalanceUseCase(accountId = accountId, actualBalance = 13_000, occurredAt = 5_000)
+        updateBalanceUseCase(accountId, 13_000, 5_000, testOperationId())
         val laterRecordId = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId)
             .first { record -> record.occurredAt == 5_000L }
             .id
@@ -288,16 +295,19 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val createCashFlow = CreateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val updateCashFlow = UpdateCashFlowRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val deleteCashFlow = DeleteCashFlowRecordUseCase(
             accountRepository = accountRepository,
@@ -308,7 +318,7 @@ class BalanceUpdateMutationUseCaseTest {
         val accountId = accountRepository.createAccount(
             Account(name = "现金", initialBalance = 10_000, createdAt = 1_000),
         )
-        updateBalanceUseCase(accountId = accountId, actualBalance = 10_000, occurredAt = 5_000)
+        updateBalanceUseCase(accountId, 10_000, 5_000, testOperationId())
         val balanceUpdateId = transactionRepository.getLatestBalanceUpdate(accountId)?.id ?: error("missing record")
 
         val cashFlowId = createCashFlow(
@@ -317,7 +327,8 @@ class BalanceUpdateMutationUseCaseTest {
             amount = 2_000,
             note = "工资",
             occurredAt = 3_000,
-        )
+            operationId = testOperationId(),
+        ).recordId
         assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
         assertEquals(12_000, calculateCurrentBalanceUseCase(accountId))
 
@@ -349,16 +360,19 @@ class BalanceUpdateMutationUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = resolveContext,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val createTransfer = CreateTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val updateTransfer = UpdateTransferRecordUseCase(
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val deleteTransfer = DeleteTransferRecordUseCase(
             accountRepository = accountRepository,
@@ -372,8 +386,8 @@ class BalanceUpdateMutationUseCaseTest {
         val secondAccountId = accountRepository.createAccount(
             Account(name = "零钱", initialBalance = 5_000, createdAt = 1_000),
         )
-        updateBalanceUseCase(accountId = firstAccountId, actualBalance = 10_000, occurredAt = 5_000)
-        updateBalanceUseCase(accountId = secondAccountId, actualBalance = 5_000, occurredAt = 5_000)
+        updateBalanceUseCase(firstAccountId, 10_000, 5_000, testOperationId())
+        updateBalanceUseCase(secondAccountId, 5_000, 5_000, testOperationId())
         val firstUpdateId = transactionRepository.getLatestBalanceUpdate(firstAccountId)?.id ?: error("missing first")
         val secondUpdateId = transactionRepository.getLatestBalanceUpdate(secondAccountId)?.id ?: error("missing second")
 
@@ -383,7 +397,8 @@ class BalanceUpdateMutationUseCaseTest {
             amount = 1_000,
             note = "调拨",
             occurredAt = 3_000,
-        )
+            operationId = testOperationId(),
+        ).recordId
         assertBalanceUpdate(transactionRepository, firstUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
         assertBalanceUpdate(transactionRepository, secondUpdateId, systemBalanceBeforeUpdate = 5_000, delta = 0)
         assertEquals(9_000, calculateCurrentBalanceUseCase(firstAccountId))

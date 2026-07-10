@@ -4,20 +4,43 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CashFlowRecordDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(record: CashFlowRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<CashFlowRecordEntity>)
 
-    @Update
-    suspend fun update(record: CashFlowRecordEntity)
+    @Query(
+        """
+        UPDATE cash_flow_records
+        SET accountId = :accountId,
+            direction = :direction,
+            amount = :amount,
+            note = :note,
+            occurredAt = :occurredAt,
+            updatedAt = :updatedAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND deletedAt IS NULL
+            AND updatedAt = :expectedUpdatedAt
+        """,
+    )
+    suspend fun updateActive(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        accountId: Long,
+        direction: String,
+        amount: Long,
+        note: String,
+        occurredAt: Long,
+        updatedAt: Long,
+    ): Int
 
     @Query(
         """
@@ -30,6 +53,9 @@ interface CashFlowRecordDao {
 
     @Query("SELECT * FROM cash_flow_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): CashFlowRecordEntity?
+
+    @Query("SELECT * FROM cash_flow_records WHERE operationId = :operationId LIMIT 1")
+    suspend fun queryByOperationId(operationId: String): CashFlowRecordEntity?
 
     @Query("SELECT COUNT(*) FROM cash_flow_records WHERE deletedAt IS NULL")
     fun observeActiveCount(): Flow<Int>

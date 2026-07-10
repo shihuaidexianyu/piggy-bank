@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
@@ -26,10 +27,11 @@ interface TransactionRepository {
     suspend fun <T> runInTransaction(block: suspend () -> T): T
 
     // === Cash flow records ===
-    suspend fun insertCashFlowRecord(record: CashFlowRecord): Long
-    suspend fun updateCashFlowRecord(record: CashFlowRecord)
+    suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult
+    suspend fun updateCashFlowRecord(record: CashFlowRecord, expectedUpdatedAt: Long): Boolean
     suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long)
     suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord?
+    suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord?
     suspend fun queryAllCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord>
@@ -49,10 +51,11 @@ interface TransactionRepository {
     ): List<CashFlowDailyTotal>
 
     // === Transfer records ===
-    suspend fun insertTransferRecord(record: TransferRecord): Long
-    suspend fun updateTransferRecord(record: TransferRecord)
+    suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult
+    suspend fun updateTransferRecord(record: TransferRecord, expectedUpdatedAt: Long): Boolean
     suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long)
     suspend fun queryTransferRecordById(id: Long): TransferRecord?
+    suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord?
     suspend fun queryAllTransferRecords(): List<TransferRecord>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecord>
     suspend fun queryActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): List<TransferRecord>
@@ -60,20 +63,22 @@ interface TransactionRepository {
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
 
     // === Balance update records ===
-    suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long
-    suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord)
+    suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult
+    suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord, expectedUpdatedAt: Long): Boolean
     suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long)
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
+    suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
 
     // === Balance adjustment records ===
-    suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long
-    suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord)
+    suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult
+    suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord, expectedUpdatedAt: Long): Boolean
     suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
+    suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>

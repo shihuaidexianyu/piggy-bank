@@ -14,6 +14,7 @@ class InMemoryRecurringReminderRepository(
 ) : RecurringReminderRepository {
     private val reminders = MutableStateFlow<Map<Long, RecurringReminder>>(emptyMap())
     private var nextId = 1L
+    private val mutationLock = Any()
 
     override fun observeAllReminders(): Flow<List<RecurringReminder>> =
         reminders.map { it.values.sortedBy { r -> r.nextDueAt } }
@@ -49,6 +50,28 @@ class InMemoryRecurringReminderRepository(
 
     override suspend fun updateReminder(reminder: RecurringReminder) {
         reminders.value = reminders.value + (reminder.id to reminder)
+    }
+
+    override suspend fun advanceOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        nextDueAt: Long,
+        confirmedAt: Long,
+        updatedAt: Long,
+    ): Boolean = synchronized(mutationLock) {
+        val existing = reminders.value[reminderId]
+            ?: return@synchronized false
+        if (!existing.isEnabled || existing.nextDueAt != expectedDueAt) {
+            return@synchronized false
+        }
+        reminders.value = reminders.value + (
+            reminderId to existing.copy(
+                nextDueAt = nextDueAt,
+                lastConfirmedAt = confirmedAt,
+                updatedAt = updatedAt,
+            )
+        )
+        true
     }
 
     override suspend fun deleteReminder(id: Long) {

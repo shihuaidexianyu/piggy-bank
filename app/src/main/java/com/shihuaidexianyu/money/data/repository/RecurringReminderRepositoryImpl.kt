@@ -37,5 +37,19 @@ class RecurringReminderRepositoryImpl(
 
     override suspend fun updateReminder(reminder: RecurringReminder) = dao.update(reminder.toEntity())
 
+    override suspend fun advanceOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        nextDueAt: Long,
+        confirmedAt: Long,
+        updatedAt: Long,
+    ): Boolean = dao.advanceOccurrence(
+        reminderId = reminderId,
+        expectedDueAt = expectedDueAt,
+        nextDueAt = nextDueAt,
+        confirmedAt = confirmedAt,
+        updatedAt = updatedAt,
+    ) == 1
+
     override suspend fun deleteReminder(id: Long) = dao.delete(id)
 }

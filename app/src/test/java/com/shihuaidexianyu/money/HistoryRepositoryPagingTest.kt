@@ -98,7 +98,7 @@ class HistoryRepositoryPagingTest {
                 updatedAt = 1_000L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         repository.softDeleteCashFlowRecord(deletedId, 1_001L)
         repository.insertCashFlowRecord(
             CashFlowRecord(

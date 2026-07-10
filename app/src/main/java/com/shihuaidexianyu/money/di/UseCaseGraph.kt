@@ -107,18 +107,21 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val createTransferRecordUseCase = CreateTransferRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateCashFlowRecordUseCase = UpdateCashFlowRecordUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val deleteCashFlowRecordUseCase = DeleteCashFlowRecordUseCase(
@@ -131,6 +134,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val deleteTransferRecordUseCase = DeleteTransferRecordUseCase(
@@ -144,6 +148,7 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateBalanceUpdateRecordUseCase = UpdateBalanceUpdateRecordUseCase(
@@ -151,6 +156,7 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         resolveBalanceUpdateContextUseCase = resolveBalanceUpdateContextUseCase,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val deleteBalanceUpdateRecordUseCase = DeleteBalanceUpdateRecordUseCase(
@@ -163,12 +169,14 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateBalanceAdjustmentUseCase = UpdateBalanceAdjustmentUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val deleteBalanceAdjustmentUseCase = DeleteBalanceAdjustmentUseCase(
@@ -217,6 +225,7 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         reminderRepository = data.recurringReminderRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val observeDueRemindersUseCase = ObserveDueRemindersUseCase(

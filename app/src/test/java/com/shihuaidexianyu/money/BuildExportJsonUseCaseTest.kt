@@ -72,7 +72,7 @@ class BuildExportJsonUseCaseTest {
                 updatedAt = 3L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 4L)
         val deletedTransferId = transactionRepository.insertTransferRecord(
             TransferRecord(
@@ -85,7 +85,7 @@ class BuildExportJsonUseCaseTest {
                 updatedAt = 4L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         transactionRepository.softDeleteTransferRecord(deletedTransferId, 5L)
         transactionRepository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(

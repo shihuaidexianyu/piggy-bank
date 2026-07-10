@@ -72,7 +72,7 @@ class EditCashFlowViewModelTest {
                 updatedAt = 1_000L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
 
         val vm = buildViewModel(recordId = recordId, accountRepo = accountRepo, txnRepo = txnRepo)
         advanceUntilIdle()
@@ -103,7 +103,7 @@ class EditCashFlowViewModelTest {
                 updatedAt = 1_000L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
 
         val vm = buildViewModel(recordId = recordId, accountRepo = accountRepo, txnRepo = txnRepo)
         advanceUntilIdle()
@@ -136,7 +136,7 @@ class EditCashFlowViewModelTest {
                 updatedAt = 1_000L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
 
         val vm = buildViewModel(recordId = recordId, accountRepo = accountRepo, txnRepo = txnRepo)
         advanceUntilIdle()
@@ -156,7 +156,12 @@ class EditCashFlowViewModelTest {
     ): EditCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
-        val updateUseCase = UpdateCashFlowRecordUseCase(accountRepo, txnRepo, refreshUseCase)
+        val updateUseCase = UpdateCashFlowRecordUseCase(
+            accountRepo,
+            txnRepo,
+            refreshUseCase,
+            testClockProvider,
+        )
         val deleteUseCase = DeleteCashFlowRecordUseCase(accountRepo, txnRepo, refreshUseCase)
         return EditCashFlowViewModel(
             recordId = recordId,

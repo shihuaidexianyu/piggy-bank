@@ -1,11 +1,14 @@
 package com.shihuaidexianyu.money.ui.record
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
+import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.userMessage
@@ -43,7 +46,14 @@ class RecordTransferViewModel(
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createTransferRecordUseCase: CreateTransferRecordUseCase,
+    private val savedStateHandle: SavedStateHandle,
+    operationIdFactory: LedgerOperationIdFactory,
 ) : ViewModel() {
+    private val operationId = savedOperationId(
+        existing = savedStateHandle[OPERATION_ID_KEY],
+        factory = operationIdFactory,
+    ).also { savedStateHandle[OPERATION_ID_KEY] = it }
+    private var saveInFlight = false
     private val _uiState = MutableStateFlow(RecordTransferUiState(fromAccountId = initialFromAccountId))
     val uiState: StateFlow<RecordTransferUiState> = _uiState.asStateFlow()
 
@@ -134,14 +144,28 @@ class RecordTransferViewModel(
     }
 
     fun save() {
+        if (saveInFlight) return
+        saveInFlight = true
         val state = _uiState.value
         viewModelScope.launch {
             val (fromId, toId) = runCatching { RecordValidator.requireTransferAccounts(state.fromAccountId, state.toAccountId) }
-                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("请选择账户")))
+                    return@launch
+                }
             val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
-                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("请输入有效金额")))
+                    return@launch
+                }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordTransferEffect.ShowMessage(error.userMessage("时间不能晚于当前时间")))
+                    return@launch
+                }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {
@@ -151,13 +175,19 @@ class RecordTransferViewModel(
                     amount = amount,
                     note = state.note,
                     occurredAt = state.occurredAtMillis,
+                    operationId = operationId,
                 )
             }.onSuccess {
                 effects.emit(RecordTransferEffect.Saved)
             }.onFailure { throwable ->
+                saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(RecordTransferEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
+    }
+
+    private companion object {
+        const val OPERATION_ID_KEY = "record_transfer_operation_id"
     }
 }

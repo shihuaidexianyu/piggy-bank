@@ -90,7 +90,7 @@ class RoomV14ContractTest {
                 updatedAt = 10,
                 operationId = "cash-test",
             ),
-        )
+        ).recordId
         val transferId = repository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = 1,
@@ -102,7 +102,7 @@ class RoomV14ContractTest {
                 updatedAt = 20,
                 operationId = "transfer-test",
             ),
-        )
+        ).recordId
         val updateId = repository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(
                 accountId = 1,
@@ -114,7 +114,7 @@ class RoomV14ContractTest {
                 updatedAt = 30,
                 operationId = "update-test",
             ),
-        )
+        ).recordId
         val adjustmentId = repository.insertBalanceAdjustmentRecord(
             BalanceAdjustmentRecord(
                 accountId = 1,
@@ -124,7 +124,7 @@ class RoomV14ContractTest {
                 updatedAt = 40,
                 operationId = "adjustment-test",
             ),
-        )
+        ).recordId
 
         assertEquals(4, repository.countHistoryRecords(HistoryRecordFilters()))
         assertEquals(100, repository.sumCashInflowBetween(0, 1_000))

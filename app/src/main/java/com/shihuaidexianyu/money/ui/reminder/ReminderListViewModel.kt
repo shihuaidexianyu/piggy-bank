@@ -33,6 +33,7 @@ data class ReminderUiModel(
     val accountId: Long,
     val direction: String,
     val amount: Long,
+    val nextDueAt: Long,
 )
 
 data class BalanceReminderUiModel(
@@ -122,5 +123,6 @@ internal fun RecurringReminder.toUiModel(settings: AppSettings): ReminderUiModel
         accountId = accountId,
         direction = direction,
         amount = amount,
+        nextDueAt = nextDueAt,
     )
 }

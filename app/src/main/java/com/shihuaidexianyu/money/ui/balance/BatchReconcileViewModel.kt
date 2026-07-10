@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.balance
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
@@ -10,7 +11,10 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.savedOperationId
+import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.Dispatchers
@@ -56,12 +60,16 @@ class BatchReconcileViewModel(
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val updateBalanceUseCase: UpdateBalanceUseCase,
+    private val savedStateHandle: SavedStateHandle,
+    private val operationIdFactory: LedgerOperationIdFactory,
+    private val clockProvider: ClockProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(BatchReconcileUiState())
     val uiState: StateFlow<BatchReconcileUiState> = _uiState.asStateFlow()
 
     private val effects = MutableSharedFlow<BatchReconcileEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var saveInFlight = false
 
     init {
         viewModelScope.launch {
@@ -101,17 +109,22 @@ class BatchReconcileViewModel(
     }
 
     fun saveSelected() {
+        if (saveInFlight) return
+        saveInFlight = true
         val state = _uiState.value
-        if (state.isSaving) return
         val selectedAccounts = state.accounts.filter { it.isSelected }
         if (selectedAccounts.isEmpty()) {
+            saveInFlight = false
             effects.tryEmit(BatchReconcileEffect.ShowMessage("请至少选择一个账户"))
             return
         }
 
         _uiState.value = state.copy(isSaving = true)
         viewModelScope.launch {
-            val occurredAt = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis())
+            val occurredAt = savedStateHandle.get<Long>(OCCURRED_AT_KEY)
+                ?: DateTimeTextFormatter.floorToMinute(clockProvider.nowMillis()).also { timestamp ->
+                    savedStateHandle[OCCURRED_AT_KEY] = timestamp
+                }
             val failedIds = mutableSetOf<Long>()
             val selectedIds = selectedAccounts.map(BatchReconcileAccountUiModel::accountId).toSet()
             var savedCount = 0
@@ -121,12 +134,19 @@ class BatchReconcileViewModel(
                         accountId = account.accountId,
                         actualBalance = account.systemBalance,
                         occurredAt = occurredAt,
+                        operationId = operationIdFor(account.accountId),
                     )
                 }.onSuccess {
                     savedCount += 1
                 }.onFailure { throwable ->
                     failedIds += account.accountId
-                    android.util.Log.e("BatchReconcileViewModel", "Failed to reconcile account ${account.accountId}", throwable)
+                    runCatching {
+                        android.util.Log.e(
+                            "BatchReconcileViewModel",
+                            "Failed to reconcile account ${account.accountId}",
+                            throwable,
+                        )
+                    }
                 }
             }
 
@@ -134,6 +154,7 @@ class BatchReconcileViewModel(
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(BatchReconcileEffect.Saved(savedCount))
             } else {
+                saveInFlight = false
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     accounts = _uiState.value.accounts
@@ -143,6 +164,19 @@ class BatchReconcileViewModel(
                 effects.emit(BatchReconcileEffect.ShowMessage("部分账户保存失败，请重试"))
             }
         }
+    }
+
+    private fun operationIdFor(accountId: Long): String {
+        val key = "$OPERATION_ID_KEY_PREFIX$accountId"
+        return savedOperationId(
+            existing = savedStateHandle[key],
+            factory = operationIdFactory,
+        ).also { savedStateHandle[key] = it }
+    }
+
+    private companion object {
+        const val OCCURRED_AT_KEY = "batch_reconcile_occurred_at"
+        const val OPERATION_ID_KEY_PREFIX = "batch_reconcile_operation_id:"
     }
 
     private suspend fun buildItems(

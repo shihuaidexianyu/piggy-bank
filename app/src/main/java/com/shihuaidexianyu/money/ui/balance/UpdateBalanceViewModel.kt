@@ -1,11 +1,14 @@
 package com.shihuaidexianyu.money.ui.balance
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
+import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.ui.common.userMessage
@@ -46,7 +49,14 @@ class UpdateBalanceViewModel(
     private val accountRepository: AccountRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val updateBalanceUseCase: UpdateBalanceUseCase,
+    private val savedStateHandle: SavedStateHandle,
+    operationIdFactory: LedgerOperationIdFactory,
 ) : ViewModel() {
+    private val operationId = savedOperationId(
+        existing = savedStateHandle[OPERATION_ID_KEY],
+        factory = operationIdFactory,
+    ).also { savedStateHandle[OPERATION_ID_KEY] = it }
+    private var saveInFlight = false
     private val _uiState = MutableStateFlow(UpdateBalanceUiState(selectedAccountId = initialAccountId))
     val uiState: StateFlow<UpdateBalanceUiState> = _uiState.asStateFlow()
 
@@ -108,14 +118,28 @@ class UpdateBalanceViewModel(
     }
 
     fun save() {
+        if (saveInFlight) return
+        saveInFlight = true
         val state = _uiState.value
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请选择账户")))
+                    return@launch
+                }
             val actualBalance = runCatching { RecordValidator.requireSignedAmount(state.actualBalanceText) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请输入有效金额")))
+                    return@launch
+                }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("时间不能晚于当前时间")))
+                    return@launch
+                }
 
             _uiState.value = state.copy(isSaving = true)
             runCatching {
@@ -123,6 +147,7 @@ class UpdateBalanceViewModel(
                     accountId = accountId,
                     actualBalance = actualBalance,
                     occurredAt = state.occurredAtMillis,
+                    operationId = operationId,
                 )
             }.onSuccess { result ->
                 _uiState.value = _uiState.value.copy(
@@ -136,10 +161,15 @@ class UpdateBalanceViewModel(
                 )
                 effects.emit(UpdateBalanceEffect.Saved)
             }.onFailure { throwable ->
+                saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(UpdateBalanceEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
+    }
+
+    private companion object {
+        const val OPERATION_ID_KEY = "update_balance_operation_id"
     }
 
     private fun refreshPreview(resetActualBalanceToSystem: Boolean) {

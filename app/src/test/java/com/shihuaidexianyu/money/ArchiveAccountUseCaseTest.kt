@@ -88,7 +88,7 @@ class ArchiveAccountUseCaseTest {
                 updatedAt = 2L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         val transferId = transactionRepository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = archivedAccountId,
@@ -100,7 +100,7 @@ class ArchiveAccountUseCaseTest {
                 updatedAt = 2L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         val balanceUpdateId = transactionRepository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(
                 accountId = archivedAccountId,
@@ -112,7 +112,7 @@ class ArchiveAccountUseCaseTest {
                 updatedAt = 3L,
                 operationId = testOperationId(),
             ),
-        )
+        ).recordId
         val reminderId = reminderRepository.insertReminder(
             reminder(accountId = archivedAccountId, nextDueAt = 500L),
         )
@@ -126,12 +126,14 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 refreshActivity,
+                testClockProvider,
             )(
                 accountId = archivedAccountId,
                 direction = CashFlowDirection.INFLOW,
                 amount = 100,
                 note = "收入",
                 occurredAt = 5L,
+                operationId = testOperationId(),
             )
         }
         assertArchivedRejected {
@@ -139,6 +141,7 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 refreshActivity,
+                testClockProvider,
             )(
                 recordId = cashFlowId,
                 accountId = archivedAccountId,
@@ -160,12 +163,14 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 refreshActivity,
+                testClockProvider,
             )(
                 fromAccountId = archivedAccountId,
                 toAccountId = activeAccountId,
                 amount = 100,
                 note = "转账",
                 occurredAt = 5L,
+                operationId = testOperationId(),
             )
         }
         assertArchivedRejected {
@@ -173,6 +178,7 @@ class ArchiveAccountUseCaseTest {
                 accountRepository,
                 transactionRepository,
                 refreshActivity,
+                testClockProvider,
             )(
                 recordId = transferId,
                 fromAccountId = activeAccountId,
@@ -195,10 +201,12 @@ class ArchiveAccountUseCaseTest {
                 transactionRepository,
                 resolveContext,
                 refreshActivity,
+                testClockProvider,
             )(
                 accountId = archivedAccountId,
                 actualBalance = 9_000,
                 occurredAt = 5L,
+                operationId = testOperationId(),
             )
         }
         assertArchivedRejected {
@@ -207,6 +215,7 @@ class ArchiveAccountUseCaseTest {
                 transactionRepository,
                 resolveContext,
                 refreshActivity,
+                testClockProvider,
             )(
                 recordId = balanceUpdateId,
                 actualBalance = 9_000,

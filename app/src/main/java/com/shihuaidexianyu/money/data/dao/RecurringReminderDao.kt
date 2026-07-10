@@ -19,6 +19,25 @@ interface RecurringReminderDao {
     @Update
     suspend fun update(reminder: RecurringReminderEntity)
 
+    @Query(
+        """
+        UPDATE recurring_reminders
+        SET nextDueAt = :nextDueAt,
+            lastConfirmedAt = :confirmedAt,
+            updatedAt = :updatedAt
+        WHERE id = :reminderId
+            AND isEnabled = 1
+            AND nextDueAt = :expectedDueAt
+        """,
+    )
+    suspend fun advanceOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        nextDueAt: Long,
+        confirmedAt: Long,
+        updatedAt: Long,
+    ): Int
+
     @Query("DELETE FROM recurring_reminders WHERE id = :id")
     suspend fun delete(id: Long)
 

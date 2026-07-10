@@ -28,12 +28,14 @@ class UpdateBalanceUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+            clockProvider = testClockProvider,
         )
 
         val result = updateBalanceUseCase(
             accountId = accountId,
             actualBalance = 10_000,
             occurredAt = System.currentTimeMillis() - 1_000,
+            operationId = testOperationId(),
         )
 
         assertEquals(0, result.delta)
@@ -58,12 +60,14 @@ class UpdateBalanceUseCaseTest {
             transactionRepository = transactionRepository,
             resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
             refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+            clockProvider = testClockProvider,
         )
 
         val result = updateBalanceUseCase(
             accountId = accountId,
             actualBalance = 130_000,
             occurredAt = System.currentTimeMillis() - 1_000,
+            operationId = testOperationId(),
         )
 
         assertEquals(30_000, result.delta)

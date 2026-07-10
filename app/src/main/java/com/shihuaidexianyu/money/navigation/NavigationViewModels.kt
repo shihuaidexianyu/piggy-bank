@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -13,6 +15,12 @@ internal inline fun <reified VM : ViewModel> moneyViewModelFactory(
     crossinline create: () -> VM,
 ) = viewModelFactory {
     initializer { create() }
+}
+
+internal inline fun <reified VM : ViewModel> moneySavedStateViewModelFactory(
+    crossinline create: (SavedStateHandle) -> VM,
+) = viewModelFactory {
+    initializer { create(createSavedStateHandle()) }
 }
 
 /**

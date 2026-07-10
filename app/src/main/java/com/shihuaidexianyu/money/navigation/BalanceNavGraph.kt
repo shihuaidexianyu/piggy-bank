@@ -10,6 +10,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.di.SystemClockProvider
+import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailScreen
 import com.shihuaidexianyu.money.ui.balance.BalanceAdjustmentDetailViewModel
 import com.shihuaidexianyu.money.ui.balance.BalanceUpdateDetailScreen
@@ -142,7 +144,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
 
     composable(MoneyDestination.BatchReconcileRoute) {
         val viewModel = viewModel<BatchReconcileViewModel>(
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 BatchReconcileViewModel(
                     accountReminderSettingsRepository = container.accountReminderSettingsRepository,
                     accountRepository = container.accountRepository,
@@ -150,6 +152,9 @@ internal fun NavGraphBuilder.addBalanceGraph(
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     updateBalanceUseCase = container.updateBalanceUseCase,
+                    savedStateHandle = savedStateHandle,
+                    operationIdFactory = UuidLedgerOperationIdFactory,
+                    clockProvider = SystemClockProvider,
                 )
             },
         )
@@ -172,12 +177,14 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
         val viewModel = viewModel<UpdateBalanceViewModel>(
             key = "update_balance_$accountId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 UpdateBalanceViewModel(
                     initialAccountId = accountId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     updateBalanceUseCase = container.updateBalanceUseCase,
+                    savedStateHandle = savedStateHandle,
+                    operationIdFactory = UuidLedgerOperationIdFactory,
                 )
             },
         )
@@ -197,6 +204,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                         amount = amount,
                         note = "余额核对补记",
                         reminderId = null,
+                        expectedDueAt = null,
                     ),
                 )
             },
@@ -227,12 +235,14 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val viewModel = viewModel<UpdateBalanceViewModel>(
             viewModelStoreOwner = owner,
             key = "update_balance_$accountId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 UpdateBalanceViewModel(
                     initialAccountId = accountId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
                     calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
                     updateBalanceUseCase = container.updateBalanceUseCase,
+                    savedStateHandle = savedStateHandle,
+                    operationIdFactory = UuidLedgerOperationIdFactory,
                 )
             },
         )

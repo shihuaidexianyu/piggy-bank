@@ -46,6 +46,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                         amount = reminder.amount,
                         note = reminder.name,
                         reminderId = reminder.id,
+                        expectedDueAt = reminder.nextDueAt,
                     ),
                 )
             },

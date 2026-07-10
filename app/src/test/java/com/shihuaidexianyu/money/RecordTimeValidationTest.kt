@@ -30,6 +30,7 @@ class RecordTimeValidationTest {
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+                clockProvider = testClockProvider,
             )
 
             assertFailsWith<IllegalArgumentException> {
@@ -39,6 +40,7 @@ class RecordTimeValidationTest {
                     amount = 100,
                     note = "早餐",
                     occurredAt = 59_000,
+                    operationId = testOperationId(),
                 )
             }
         }
@@ -67,6 +69,7 @@ class RecordTimeValidationTest {
                 accountRepository = accountRepository,
                 transactionRepository = transactionRepository,
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+                clockProvider = testClockProvider,
             )
 
             assertFailsWith<IllegalArgumentException> {
@@ -76,6 +79,7 @@ class RecordTimeValidationTest {
                     amount = 500,
                     note = "调拨",
                     occurredAt = 119_000,
+                    operationId = testOperationId(),
                 )
             }
         }
@@ -98,6 +102,7 @@ class RecordTimeValidationTest {
                 transactionRepository = transactionRepository,
                 resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
                 refreshAccountActivityStateUseCase = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+                clockProvider = testClockProvider,
             )
 
             assertFailsWith<IllegalArgumentException> {
@@ -105,6 +110,7 @@ class RecordTimeValidationTest {
                     accountId = accountId,
                     actualBalance = 9_000,
                     occurredAt = 59_000,
+                    operationId = testOperationId(),
                 )
             }
         }

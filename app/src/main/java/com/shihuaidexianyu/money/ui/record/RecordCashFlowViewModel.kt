@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.record
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
@@ -7,7 +8,9 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.userMessage
@@ -45,12 +48,20 @@ class RecordCashFlowViewModel(
     prefillAmount: Long? = null,
     prefillNote: String? = null,
     private val reminderId: Long? = null,
+    private val expectedDueAt: Long? = null,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val createCashFlowRecordUseCase: CreateCashFlowRecordUseCase,
     private val processDueReminderUseCase: ProcessDueReminderUseCase? = null,
+    private val savedStateHandle: SavedStateHandle,
+    operationIdFactory: LedgerOperationIdFactory,
 ) : ViewModel() {
+    private val operationId = savedOperationId(
+        existing = savedStateHandle[OPERATION_ID_KEY],
+        factory = operationIdFactory,
+    ).also { savedStateHandle[OPERATION_ID_KEY] = it }
+    private var saveInFlight = false
     private val _uiState = MutableStateFlow(
         RecordCashFlowUiState(
             direction = direction,
@@ -141,20 +152,35 @@ class RecordCashFlowViewModel(
             _uiState.value = state.copy(showNoteConfirm = true)
             return
         }
+        if (saveInFlight) return
+        saveInFlight = true
 
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请选择账户")))
+                    return@launch
+                }
             val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("请输入有效金额")))
+                    return@launch
+                }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
-                .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
+                .getOrElse { error ->
+                    saveInFlight = false
+                    effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("时间不能晚于当前时间")))
+                    return@launch
+                }
 
             _uiState.value = state.copy(isSaving = true, showNoteConfirm = false)
             runCatching {
                 if (reminderId != null && processDueReminderUseCase != null) {
                     processDueReminderUseCase(
                         reminderId = reminderId,
+                        expectedDueAt = requireNotNull(expectedDueAt) { "提醒时间不存在" },
                         occurredAt = state.occurredAtMillis,
                         amount = amount,
                         note = state.note,
@@ -166,14 +192,20 @@ class RecordCashFlowViewModel(
                         amount = amount,
                         note = state.note,
                         occurredAt = state.occurredAtMillis,
+                        operationId = operationId,
                     )
                 }
             }.onSuccess {
                 effects.emit(RecordCashFlowEffect.Saved)
             }.onFailure { throwable ->
+                saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(RecordCashFlowEffect.ShowMessage(throwable.message ?: "保存失败"))
             }
         }
+    }
+
+    private companion object {
+        const val OPERATION_ID_KEY = "record_cash_flow_operation_id"
     }
 }

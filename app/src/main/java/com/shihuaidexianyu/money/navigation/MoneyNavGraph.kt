@@ -132,6 +132,7 @@ fun MoneyNavGraph(
                     amount = sharedAmount,
                     note = null,
                     reminderId = null,
+                    expectedDueAt = null,
                 ),
             )
         }
