@@ -4,6 +4,8 @@ import com.shihuaidexianyu.money.data.migration.StartupMigrationBackend
 import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
 import com.shihuaidexianyu.money.data.migration.StartupMigrationErrorKind
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
+import com.shihuaidexianyu.money.data.migration.StartupRecoveryAction
+import com.shihuaidexianyu.money.data.migration.LegacySourceExport
 import com.shihuaidexianyu.money.data.migration.StartupStepResult
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CancellationException
@@ -11,8 +13,64 @@ import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class StartupMigrationCoordinatorTest {
+    @Test
+    fun `startup recovery API exposes explicit settings reset and raw legacy export`() {
+        val actionNames = StartupRecoveryAction.entries.map { it.name }.toSet()
+        assertEquals(
+            setOf(
+                "RETRY",
+                "USE_CURRENT_DATABASE",
+                "RESET_LOCAL_SETTINGS",
+                "EXPORT_LEGACY_SOURCE",
+            ),
+            actionNames,
+        )
+        val backendMethods = StartupMigrationBackend::class.java.methods.map { it.name }.toSet()
+        val coordinatorMethods = StartupMigrationCoordinator::class.java.methods.map { it.name }.toSet()
+        assertTrue("resetCorruptLocalSettings" in backendMethods)
+        assertTrue("exportLegacySource" in backendMethods)
+        assertTrue("resetCorruptLocalSettings" in coordinatorMethods)
+        assertTrue(coordinatorMethods.any { it.startsWith("exportLegacySource") })
+    }
+
+    @Test
+    fun `corrupt settings stays blocked until explicit reset then reruns to ready`() = runBlocking {
+        val backend = FakeBackend(settingsCorrupt = true)
+        val coordinator = StartupMigrationCoordinator(backend)
+
+        coordinator.runMigration()
+        val error = assertIs<StartupMigrationState.RecoverableError>(coordinator.state.value)
+        assertEquals(StartupMigrationErrorKind.CORRUPT_SETTINGS, error.kind)
+        assertEquals(
+            setOf(StartupRecoveryAction.RETRY, StartupRecoveryAction.RESET_LOCAL_SETTINGS),
+            error.actions,
+        )
+        coordinator.retry()
+        assertIs<StartupMigrationState.RecoverableError>(coordinator.state.value)
+
+        coordinator.resetCorruptLocalSettings()
+
+        assertEquals(1, backend.settingsResetCount)
+        assertEquals(StartupMigrationState.Ready, coordinator.state.value)
+    }
+
+    @Test
+    fun `raw legacy export does not dismiss the migration error`() = runBlocking {
+        val backend = FakeBackend(legacyError = StartupMigrationErrorKind.CORRUPT_LEGACY)
+        val coordinator = StartupMigrationCoordinator(backend)
+        coordinator.runMigration()
+
+        val export = coordinator.exportLegacySource().getOrThrow()
+
+        assertEquals("content://money/legacy.json", export.contentUri)
+        assertEquals(1, backend.exportCount)
+        assertIs<StartupMigrationState.RecoverableError>(coordinator.state.value)
+        Unit
+    }
+
     @Test
     fun `startup runs steps in deterministic order and repeated run is idempotent`() = runBlocking {
         val backend = FakeBackend()
@@ -76,6 +134,8 @@ class StartupMigrationCoordinatorTest {
             override suspend fun migratePortableSettingsAndReminderConfigs() = StartupStepResult.Complete
             override suspend fun migrateDevicePreferences() = StartupStepResult.Complete
             override suspend fun explicitlyIgnoreLegacy() = StartupStepResult.Complete
+            override suspend fun resetCorruptLocalSettings() = StartupStepResult.Complete
+            override suspend fun exportLegacySource() = error("not used")
         }
         val coordinator = StartupMigrationCoordinator(backend)
 
@@ -87,12 +147,15 @@ class StartupMigrationCoordinatorTest {
         private var crashLegacyBeforeCommit: Boolean = false,
         private var crashSettingsAfterCommit: Boolean = false,
         private val legacyError: StartupMigrationErrorKind? = null,
+        private var settingsCorrupt: Boolean = false,
     ) : StartupMigrationBackend {
         val calls = mutableListOf<String>()
         var legacyWrites = 0
         var settingsWrites = 0
         var deviceWrites = 0
         var explicitIgnoreCount = 0
+        var settingsResetCount = 0
+        var exportCount = 0
         private var legacyComplete = false
         private var settingsComplete = false
         private var deviceComplete = false
@@ -114,6 +177,13 @@ class StartupMigrationCoordinatorTest {
 
         override suspend fun migratePortableSettingsAndReminderConfigs(): StartupStepResult {
             calls += "settings"
+            if (settingsCorrupt) {
+                return StartupStepResult.RecoverableError(
+                    StartupMigrationErrorKind.CORRUPT_SETTINGS,
+                    "settings corrupt",
+                    setOf(StartupRecoveryAction.RETRY, StartupRecoveryAction.RESET_LOCAL_SETTINGS),
+                )
+            }
             if (settingsComplete) return StartupStepResult.Complete
             settingsWrites++
             settingsComplete = true
@@ -137,6 +207,17 @@ class StartupMigrationCoordinatorTest {
             explicitIgnoreCount++
             legacyComplete = true
             return StartupStepResult.Complete
+        }
+
+        override suspend fun resetCorruptLocalSettings(): StartupStepResult {
+            settingsResetCount++
+            settingsCorrupt = false
+            return StartupStepResult.Complete
+        }
+
+        override suspend fun exportLegacySource(): LegacySourceExport {
+            exportCount++
+            return LegacySourceExport("content://money/legacy.json", "legacy.json")
         }
     }
 }

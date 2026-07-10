@@ -17,7 +17,15 @@ enum class StartupMigrationErrorKind {
 enum class StartupRecoveryAction {
     RETRY,
     USE_CURRENT_DATABASE,
+    RESET_LOCAL_SETTINGS,
+    EXPORT_LEGACY_SOURCE,
 }
+
+data class LegacySourceExport(
+    val contentUri: String,
+    val fileName: String,
+    val mimeType: String = "application/json",
+)
 
 sealed interface StartupMigrationState {
     data object Loading : StartupMigrationState
@@ -49,6 +57,8 @@ interface StartupMigrationBackend {
     suspend fun migratePortableSettingsAndReminderConfigs(): StartupStepResult
     suspend fun migrateDevicePreferences(): StartupStepResult
     suspend fun explicitlyIgnoreLegacy(): StartupStepResult
+    suspend fun resetCorruptLocalSettings(): StartupStepResult
+    suspend fun exportLegacySource(): LegacySourceExport
 }
 
 class StartupMigrationCoordinator(
@@ -75,6 +85,23 @@ class StartupMigrationCoordinator(
         when (val ignored = safely { backend.explicitlyIgnoreLegacy() }) {
             StartupStepResult.Complete -> runRemainingSteps()
             is StartupStepResult.RecoverableError -> publish(ignored)
+        }
+    }
+
+    suspend fun resetCorruptLocalSettings() = mutex.withLock {
+        mutableState.value = StartupMigrationState.Loading
+        when (val reset = safely { backend.resetCorruptLocalSettings() }) {
+            StartupStepResult.Complete -> runSteps()
+            is StartupStepResult.RecoverableError -> publish(reset)
+        }
+    }
+
+    suspend fun exportLegacySource(): Result<LegacySourceExport> = mutex.withLock {
+        try {
+            Result.success(backend.exportLegacySource())
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Result.failure(error)
         }
     }
 

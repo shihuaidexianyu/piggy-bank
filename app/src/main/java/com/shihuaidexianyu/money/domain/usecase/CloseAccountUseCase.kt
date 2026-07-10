@@ -13,7 +13,7 @@ class CloseAccountUseCase(
     private val transactionRunner: DatabaseTransactionRunner,
     private val clockProvider: ClockProvider,
     private val accountLifecycleCoordinator: AccountLifecycleCoordinator,
-    private val accountReminderSettingsRepository: AccountReminderSettingsRepository? = null,
+    private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
 ) {
     suspend operator fun invoke(accountId: Long) {
         accountLifecycleCoordinator.withLifecycleLock {
@@ -27,7 +27,7 @@ class CloseAccountUseCase(
                 // This is one set-based mutation. A validation or query failure above leaves both
                 // account and reminder state untouched; Room rolls both mutations back together.
                 reminderRepository.disableEnabledForAccount(accountId, now)
-                accountReminderSettingsRepository?.setEnabled(accountId, false)
+                accountReminderSettingsRepository.setEnabled(accountId, false)
                 accountRepository.closeAccount(accountId, now)
             }
         }

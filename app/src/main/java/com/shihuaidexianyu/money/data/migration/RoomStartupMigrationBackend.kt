@@ -10,21 +10,25 @@ import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.db.accountReminderSettingsDataStore
 import com.shihuaidexianyu.money.data.db.appSettingsDataStore
+import com.shihuaidexianyu.money.data.db.settingsCorruptionDetectedKey
 import com.shihuaidexianyu.money.data.entity.AccountReminderConfigEntity
 import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
 import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.repository.LegacyMoneyStoreReadResult
 import com.shihuaidexianyu.money.data.repository.PersistentMoneyStore
+import com.shihuaidexianyu.money.data.repository.DevicePreferencesMapper
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 
 interface StartupMigrationFaultInjector {
     fun beforeCommit(step: String)
@@ -43,7 +47,14 @@ class RoomStartupMigrationBackend(
     private val clockProvider: ClockProvider,
     private val legacyStore: PersistentMoneyStore = PersistentMoneyStore(context),
     private val faultInjector: StartupMigrationFaultInjector = StartupMigrationFaultInjector.None,
+    private val legacySourceExporter: LegacySourceRecoveryExporter = LegacySourceRecoveryExporter(
+        context = context,
+        sourceFile = legacyStore.storageFile,
+        clockProvider = clockProvider,
+    ),
 ) : StartupMigrationBackend {
+    private var corruptSettingsSources: Set<LocalSettingsSource> = emptySet()
+
     override suspend fun migrateLegacy(): StartupStepResult {
         if (isComplete(LEGACY_STEP)) return StartupStepResult.Complete
         return when (val source = legacyStore.readStrict()) {
@@ -56,6 +67,7 @@ class RoomStartupMigrationBackend(
             is LegacyMoneyStoreReadResult.Corrupt -> StartupStepResult.RecoverableError(
                 StartupMigrationErrorKind.CORRUPT_LEGACY,
                 source.diagnostic,
+                actions = LEGACY_SOURCE_RECOVERY_ACTIONS,
             )
 
             is LegacyMoneyStoreReadResult.Data -> runMarkedStep(
@@ -66,6 +78,7 @@ class RoomStartupMigrationBackend(
                     return@runMarkedStep StartupStepResult.RecoverableError(
                         StartupMigrationErrorKind.LEGACY_ROOM_CONFLICT,
                         "检测到旧账本文件与当前 Room 账本同时包含数据，未自动合并。",
+                        actions = LEGACY_SOURCE_RECOVERY_ACTIONS,
                     )
                 }
                 val snapshot = source.snapshot
@@ -93,14 +106,10 @@ class RoomStartupMigrationBackend(
     }
 
     override suspend fun migratePortableSettingsAndReminderConfigs(): StartupStepResult {
-        if (isComplete(PORTABLE_STEP)) return StartupStepResult.Complete
-        val legacy = runCatching { readLegacySettings() }.getOrElse { error ->
-            return StartupStepResult.RecoverableError(
-                StartupMigrationErrorKind.CORRUPT_SETTINGS,
-                error.message ?: "无法读取旧设置",
-                actions = setOf(StartupRecoveryAction.RETRY),
-            )
+        val legacy = runCatching { readLegacySettings() }.getOrElsePreservingCancellation { error ->
+            return corruptSettingsError(error.message ?: "无法读取旧设置")
         }
+        if (isComplete(PORTABLE_STEP)) return StartupStepResult.Complete
         return runMarkedStep(
             key = PORTABLE_STEP,
             detail = "portable settings and reminder configs migrated",
@@ -125,14 +134,16 @@ class RoomStartupMigrationBackend(
     }
 
     override suspend fun migrateDevicePreferences(): StartupStepResult {
-        if (isComplete(DEVICE_STEP)) return StartupStepResult.Complete
-        val current = runCatching { devicePreferencesRepository.query() }.getOrElse { error ->
-            return StartupStepResult.RecoverableError(
-                StartupMigrationErrorKind.CORRUPT_SETTINGS,
-                error.message ?: "无法读取设备偏好",
-                actions = setOf(StartupRecoveryAction.RETRY),
-            )
+        val stores = runCatching { readSettingsStores() }.getOrElsePreservingCancellation { error ->
+            return corruptSettingsError(error.message ?: "无法读取设备偏好")
         }
+        val current = runCatching {
+            DevicePreferencesMapper.fromPreferences(stores.first)
+        }.getOrElsePreservingCancellation { error ->
+            corruptSettingsSources = corruptSettingsSources + LocalSettingsSource.APP
+            return corruptSettingsError(error.message ?: "设备偏好格式损坏")
+        }
+        if (isComplete(DEVICE_STEP)) return StartupStepResult.Complete
         devicePreferencesRepository.replace(current)
         context.appSettingsDataStore.edit { preferences ->
             preferences.remove(LegacyKeys.HomePeriod)
@@ -156,6 +167,41 @@ class RoomStartupMigrationBackend(
     ) {
         StartupStepResult.Complete
     }
+
+    override suspend fun resetCorruptLocalSettings(): StartupStepResult {
+        val stores = runCatching {
+            val app = context.appSettingsDataStore.data.first()
+            val reminders = context.accountReminderSettingsDataStore.data.first()
+            app to reminders
+        }.getOrElsePreservingCancellation { error ->
+            return corruptSettingsError(error.message ?: "无法读取待重置的本地设置")
+        }
+        val sources = buildSet {
+            addAll(corruptSettingsSources)
+            if (stores.first[settingsCorruptionDetectedKey] == true) add(LocalSettingsSource.APP)
+            if (stores.second[settingsCorruptionDetectedKey] == true) add(LocalSettingsSource.REMINDERS)
+        }
+        if (sources.isEmpty()) {
+            return corruptSettingsError("未检测到可重置的损坏设置，请重试读取。")
+        }
+        return runCatching {
+            if (LocalSettingsSource.APP in sources) {
+                context.appSettingsDataStore.edit { preferences ->
+                    preferences.clear()
+                    DevicePreferencesMapper.write(preferences, DevicePreferences())
+                }
+            }
+            if (LocalSettingsSource.REMINDERS in sources) {
+                context.accountReminderSettingsDataStore.edit { it.clear() }
+            }
+            corruptSettingsSources = emptySet()
+            StartupStepResult.Complete
+        }.getOrElsePreservingCancellation { error ->
+            corruptSettingsError(error.message ?: "重置本地设置失败")
+        }
+    }
+
+    override suspend fun exportLegacySource(): LegacySourceExport = legacySourceExporter.export()
 
     private suspend fun runMarkedStep(
         key: String,
@@ -195,17 +241,48 @@ class RoomStartupMigrationBackend(
     }
 
     private suspend fun readLegacySettings(): LegacySettingsSnapshot {
-        val app = context.appSettingsDataStore.data.first()
-        val reminders = context.accountReminderSettingsDataStore.data.first()
-        return LegacySettingsSnapshot(
-            portable = PortableSettings(
+        val (app, reminders) = readSettingsStores()
+        val portable = runCatching {
+            PortableSettings(
                 currencySymbol = normalizeCurrencySymbol(app[LegacyKeys.CurrencySymbol] ?: "¥"),
                 amountColorMode = AmountColorMode.fromValue(app[LegacyKeys.AmountColorMode]),
                 monthlyBudgetAmount = app[LegacyKeys.MonthlyBudget]?.takeIf { it > 0L },
-            ),
-            reminderConfigs = parseLegacyReminderConfigs(reminders),
+            )
+        }.getOrElsePreservingCancellation { error ->
+            corruptSettingsSources = corruptSettingsSources + LocalSettingsSource.APP
+            throw error
+        }
+        val reminderConfigs = runCatching {
+            parseLegacyReminderConfigs(reminders)
+        }.getOrElsePreservingCancellation { error ->
+            corruptSettingsSources = corruptSettingsSources + LocalSettingsSource.REMINDERS
+            throw error
+        }
+        return LegacySettingsSnapshot(
+            portable = portable,
+            reminderConfigs = reminderConfigs,
         )
     }
+
+    private suspend fun readSettingsStores(): Pair<Preferences, Preferences> {
+        val app = context.appSettingsDataStore.data.first()
+        val reminders = context.accountReminderSettingsDataStore.data.first()
+        val marked = buildSet {
+            if (app[settingsCorruptionDetectedKey] == true) add(LocalSettingsSource.APP)
+            if (reminders[settingsCorruptionDetectedKey] == true) add(LocalSettingsSource.REMINDERS)
+        }
+        if (marked.isNotEmpty()) {
+            corruptSettingsSources = corruptSettingsSources + marked
+            error("检测到本地设置文件损坏，需要确认重置后才能继续。")
+        }
+        return app to reminders
+    }
+
+    private fun corruptSettingsError(diagnostic: String) = StartupStepResult.RecoverableError(
+        kind = StartupMigrationErrorKind.CORRUPT_SETTINGS,
+        diagnostic = diagnostic,
+        actions = SETTINGS_RECOVERY_ACTIONS,
+    )
 
     private data class LegacySettingsSnapshot(
         val portable: PortableSettings,
@@ -217,11 +294,32 @@ class RoomStartupMigrationBackend(
         const val PORTABLE_STEP = "portable_settings_v1"
         const val DEVICE_STEP = "device_preferences_v1"
         const val COMPLETE_STATE = "complete"
+        val LEGACY_SOURCE_RECOVERY_ACTIONS = setOf(
+            StartupRecoveryAction.RETRY,
+            StartupRecoveryAction.USE_CURRENT_DATABASE,
+            StartupRecoveryAction.EXPORT_LEGACY_SOURCE,
+        )
+        val SETTINGS_RECOVERY_ACTIONS = setOf(
+            StartupRecoveryAction.RETRY,
+            StartupRecoveryAction.RESET_LOCAL_SETTINGS,
+        )
     }
+}
+
+private enum class LocalSettingsSource {
+    APP,
+    REMINDERS,
 }
 
 private fun checkIds(expected: List<Long>, actual: List<Long>) {
     check(expected.sorted() == actual.sorted()) { "旧账本写入后复读校验失败" }
+}
+
+private inline fun <T> Result<T>.getOrElsePreservingCancellation(
+    onFailure: (Throwable) -> T,
+): T = getOrElse { error ->
+    if (error is CancellationException) throw error
+    onFailure(error)
 }
 
 private object LegacyKeys {

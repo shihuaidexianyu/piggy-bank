@@ -23,6 +23,7 @@ import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCa
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ReopenAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.SetAccountHiddenUseCase
+import java.lang.reflect.InvocationTargetException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -34,6 +35,30 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AccountLifecycleUseCaseTest {
+    @Test
+    fun closeAccountConstructorRejectsMissingAccountReminderRepository() {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(100L))
+        val clock = testClockProvider(100L)
+        val constructor = CloseAccountUseCase::class.java.declaredConstructors
+            .single { it.parameterCount == 7 }
+
+        val error = assertFailsWith<InvocationTargetException> {
+            constructor.newInstance(
+                accounts,
+                reminders,
+                CalculateCurrentBalanceUseCase(accounts, transactions, clock),
+                transactions,
+                clock,
+                AccountLifecycleCoordinator(),
+                null,
+            )
+        }
+
+        assertTrue(error.cause is NullPointerException)
+    }
+
     @Test
     fun closureIssuesBatchClosedAccountsIntoOneAggregateRead() = runBlocking {
         val accounts = InMemoryAccountRepository()
@@ -82,6 +107,7 @@ class AccountLifecycleUseCaseTest {
             transactionRunner,
             clock,
             AccountLifecycleCoordinator(),
+            InMemoryAccountReminderSettingsRepository(),
         )
 
         val error = assertFailsWith<IllegalArgumentException> { close(accountId) }

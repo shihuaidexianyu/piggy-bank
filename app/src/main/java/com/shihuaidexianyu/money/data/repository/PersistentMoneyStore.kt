@@ -43,7 +43,7 @@ sealed interface LegacyMoneyStoreReadResult {
 }
 
 class PersistentMoneyStore(
-    private val storageFile: File,
+    internal val storageFile: File,
 ) {
     constructor(context: Context) : this(File(context.filesDir, "money_store.json"))
 
@@ -55,7 +55,7 @@ class PersistentMoneyStore(
             }
         if (text.isBlank()) return LegacyMoneyStoreReadResult.Empty
         return try {
-            val snapshot = parseSnapshot(JSONObject(text))
+            val snapshot = parseSnapshot(JSONObject(text)).also(::validateSnapshot)
             if (snapshot.hasLedgerData) {
                 LegacyMoneyStoreReadResult.Data(snapshot)
             } else {
@@ -67,6 +67,16 @@ class PersistentMoneyStore(
     }
 
     private fun parseSnapshot(json: JSONObject): MoneySnapshot {
+        val cashFlowRecords = json.requireArray("cashFlowRecords").toCashFlowList()
+        val transferRecords = json.requireArray("transferRecords").toTransferList()
+        val balanceUpdates = json.requireArray("balanceUpdates").toBalanceUpdateList()
+        val adjustments = json.requireArray("adjustments").toAdjustmentList()
+        val latestEventAtByAccount = buildLatestEventAtByAccount(
+            cashFlowRecords = cashFlowRecords,
+            transferRecords = transferRecords,
+            balanceUpdates = balanceUpdates,
+            adjustments = adjustments,
+        )
         return MoneySnapshot(
             nextAccountId = json.optLong("nextAccountId", 1),
             nextCashFlowId = json.optLong("nextCashFlowId", 1),
@@ -74,24 +84,32 @@ class PersistentMoneyStore(
             nextBalanceUpdateId = json.optLong("nextBalanceUpdateId", 1),
             nextAdjustmentId = json.optLong("nextAdjustmentId", 1),
             changeVersion = json.optLong("changeVersion", 0),
-            accounts = json.optJSONArray("accounts").toAccountList(),
-            cashFlowRecords = json.optJSONArray("cashFlowRecords").toCashFlowList(),
-            transferRecords = json.optJSONArray("transferRecords").toTransferList(),
-            balanceUpdates = json.optJSONArray("balanceUpdates").toBalanceUpdateList(),
-            adjustments = json.optJSONArray("adjustments").toAdjustmentList(),
+            accounts = json.requireArray("accounts").toAccountList(latestEventAtByAccount),
+            cashFlowRecords = cashFlowRecords,
+            transferRecords = transferRecords,
+            balanceUpdates = balanceUpdates,
+            adjustments = adjustments,
         )
     }
 }
 
-private fun JSONArray?.toAccountList(): List<Account> =
+private fun JSONArray.toAccountList(latestEventAtByAccount: Map<Long, Long>): List<Account> =
     this.toObjectList { item ->
+        val id = item.getLong("id")
+        val createdAt = item.getLong("createdAt")
         Account(
-            id = item.getLong("id"),
+            id = id,
             name = item.getString("name"),
             initialBalance = item.getLong("initialBalance"),
-            createdAt = item.getLong("createdAt"),
+            createdAt = createdAt,
             closedAt = if (item.optBoolean("isArchived")) {
-                item.optNullableLong("archivedAt") ?: item.getLong("createdAt")
+                listOfNotNull(
+                    createdAt,
+                    item.optNullableLong("archivedAt"),
+                    item.optNullableLong("lastUsedAt"),
+                    item.optNullableLong("lastBalanceUpdateAt"),
+                    latestEventAtByAccount[id],
+                ).max()
             } else {
                 null
             },
@@ -103,7 +121,7 @@ private fun JSONArray?.toAccountList(): List<Account> =
         )
     }
 
-private fun JSONArray?.toCashFlowList(): List<CashFlowRecord> =
+private fun JSONArray.toCashFlowList(): List<CashFlowRecord> =
     this.toObjectList { item ->
         CashFlowRecord(
             id = item.getLong("id"),
@@ -120,7 +138,7 @@ private fun JSONArray?.toCashFlowList(): List<CashFlowRecord> =
         )
     }
 
-private fun JSONArray?.toTransferList(): List<TransferRecord> =
+private fun JSONArray.toTransferList(): List<TransferRecord> =
     this.toObjectList { item ->
         TransferRecord(
             id = item.getLong("id"),
@@ -137,7 +155,7 @@ private fun JSONArray?.toTransferList(): List<TransferRecord> =
         )
     }
 
-private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecord> =
+private fun JSONArray.toBalanceUpdateList(): List<BalanceUpdateRecord> =
     this.toObjectList { item ->
         BalanceUpdateRecord(
             id = item.getLong("id"),
@@ -152,7 +170,7 @@ private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecord> =
         )
     }
 
-private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecord> =
+private fun JSONArray.toAdjustmentList(): List<BalanceAdjustmentRecord> =
     this.toObjectList { item ->
         BalanceAdjustmentRecord(
             id = item.getLong("id"),
@@ -165,13 +183,56 @@ private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecord> =
         )
     }
 
-private inline fun <T> JSONArray?.toObjectList(mapper: (JSONObject) -> T): List<T> {
-    if (this == null) return emptyList()
+private inline fun <T> JSONArray.toObjectList(mapper: (JSONObject) -> T): List<T> {
     return buildList(length()) {
         for (index in 0 until length()) {
             add(mapper(getJSONObject(index)))
         }
     }
+}
+
+private fun JSONObject.requireArray(key: String): JSONArray {
+    check(has(key) && !isNull(key)) { "旧账本缺少必要数组：$key" }
+    return opt(key) as? JSONArray ?: error("旧账本字段 $key 必须是数组")
+}
+
+private fun buildLatestEventAtByAccount(
+    cashFlowRecords: List<CashFlowRecord>,
+    transferRecords: List<TransferRecord>,
+    balanceUpdates: List<BalanceUpdateRecord>,
+    adjustments: List<BalanceAdjustmentRecord>,
+): Map<Long, Long> = buildMap {
+    fun record(accountId: Long, occurredAt: Long) {
+        put(accountId, maxOf(get(accountId) ?: Long.MIN_VALUE, occurredAt))
+    }
+    cashFlowRecords.forEach { record(it.accountId, it.occurredAt) }
+    transferRecords.forEach {
+        record(it.fromAccountId, it.occurredAt)
+        record(it.toAccountId, it.occurredAt)
+    }
+    balanceUpdates.forEach { record(it.accountId, it.occurredAt) }
+    adjustments.forEach { record(it.accountId, it.occurredAt) }
+}
+
+private fun validateSnapshot(snapshot: MoneySnapshot) {
+    requireUniquePositiveIds("账户", snapshot.accounts.map { it.id })
+    requireUniquePositiveIds("现金流水", snapshot.cashFlowRecords.map { it.id })
+    requireUniquePositiveIds("转账", snapshot.transferRecords.map { it.id })
+    requireUniquePositiveIds("核对记录", snapshot.balanceUpdates.map { it.id })
+    requireUniquePositiveIds("余额调整", snapshot.adjustments.map { it.id })
+    val accountIds = snapshot.accounts.mapTo(mutableSetOf()) { it.id }
+    snapshot.cashFlowRecords.forEach { require(it.accountId in accountIds) { "现金流水引用了不存在的账户" } }
+    snapshot.transferRecords.forEach {
+        require(it.fromAccountId in accountIds && it.toAccountId in accountIds) { "转账引用了不存在的账户" }
+        require(it.fromAccountId != it.toAccountId) { "转账不能在同一账户内发生" }
+    }
+    snapshot.balanceUpdates.forEach { require(it.accountId in accountIds) { "核对记录引用了不存在的账户" } }
+    snapshot.adjustments.forEach { require(it.accountId in accountIds) { "余额调整引用了不存在的账户" } }
+}
+
+private fun requireUniquePositiveIds(label: String, ids: List<Long>) {
+    require(ids.all { it > 0L }) { "$label ID 必须大于 0" }
+    require(ids.distinct().size == ids.size) { "${label}包含重复 ID" }
 }
 
 private fun JSONObject.optNullableLong(key: String): Long? {

@@ -120,6 +120,7 @@ class UpdateAccountUseCaseTest {
             transactionRunner = closeTransactionRunner,
             clockProvider = testClockProvider,
             accountLifecycleCoordinator = accountLifecycleCoordinator,
+            accountReminderSettingsRepository = blockingReminderRepository,
         )
 
         val updateJob = async(start = CoroutineStart.UNDISPATCHED) {

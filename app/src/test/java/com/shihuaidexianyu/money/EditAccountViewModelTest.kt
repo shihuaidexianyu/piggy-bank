@@ -159,6 +159,7 @@ class EditAccountViewModelTest {
             transactionRunner = txnRepo,
             clockProvider = testClockProvider,
             accountLifecycleCoordinator = accountLifecycleCoordinator,
+            accountReminderSettingsRepository = reminderSettingsRepo,
         )
         val updateUseCase = UpdateAccountUseCase(
             accountRepo,

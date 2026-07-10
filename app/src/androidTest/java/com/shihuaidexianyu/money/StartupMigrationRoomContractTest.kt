@@ -1,7 +1,11 @@
 package com.shihuaidexianyu.money
 
 import android.content.Context
+import android.net.Uri
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -12,10 +16,13 @@ import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.db.accountReminderSettingsDataStore
 import com.shihuaidexianyu.money.data.db.appSettingsDataStore
 import com.shihuaidexianyu.money.data.migration.RoomStartupMigrationBackend
+import com.shihuaidexianyu.money.data.migration.LegacySourceRecoveryExporter
 import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
 import com.shihuaidexianyu.money.data.migration.StartupMigrationFaultInjector
 import com.shihuaidexianyu.money.data.migration.StartupMigrationErrorKind
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
+import com.shihuaidexianyu.money.data.migration.StartupRecoveryAction
+import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
@@ -25,17 +32,25 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.ThemeMode
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONArray
+import org.json.JSONObject
 
 @RunWith(AndroidJUnit4::class)
 class StartupMigrationRoomContractTest {
@@ -116,16 +131,23 @@ class StartupMigrationRoomContractTest {
 
     @Test
     fun corruptLegacyAndNonemptyConflictNeverChangeEitherSource() = runBlocking {
-        legacyFile.writeText("{broken")
+        legacyFile.writeText(
+            emptyLegacyRoot()
+                .put("cashFlowRecords", "damaged")
+                .toString(),
+        )
         val corrupt = coordinator()
         corrupt.runMigration()
         val corruptState = corrupt.state.value as StartupMigrationState.RecoverableError
         assertEquals(StartupMigrationErrorKind.CORRUPT_LEGACY, corruptState.kind)
+        assertTrue(StartupRecoveryAction.EXPORT_LEGACY_SOURCE in corruptState.actions)
         assertTrue(database.accountDao().queryAllAccounts().isEmpty())
         assertNull(database.localMigrationStateDao().queryByKey("legacy_money_store_v1"))
 
         legacyFile.writeText(
-            """{"accounts":[{"id":2,"name":"旧账户","initialBalance":0,"createdAt":1,"displayOrder":0}]}""",
+            emptyLegacyRoot()
+                .put("accounts", JSONArray().put(accountJson(2L, "旧账户")))
+                .toString(),
         )
         AccountRepositoryImpl(database.accountDao()).createAccount(
             Account(name = "当前账户", initialBalance = 0L, createdAt = 1L),
@@ -137,6 +159,204 @@ class StartupMigrationRoomContractTest {
         assertEquals(listOf("当前账户"), database.accountDao().queryAllAccounts().map { it.name })
         assertTrue(legacyFile.exists())
         assertTrue(legacyFile.readText().contains("旧账户"))
+    }
+
+    @Test
+    fun sourceInvariantFailureIsCorruptBeforeRoomAndRawSourceCanBeExported() = runBlocking {
+        val rawSource = emptyLegacyRoot()
+            .put("accounts", JSONArray().put(accountJson(1L, "现金")))
+            .put(
+                "cashFlowRecords",
+                JSONArray().put(
+                    JSONObject()
+                        .put("id", 1L)
+                        .put("accountId", 99L)
+                        .put("direction", "inflow")
+                        .put("amount", 1L)
+                        .put("purpose", "孤立记录")
+                        .put("occurredAt", 2L)
+                        .put("createdAt", 2L)
+                        .put("updatedAt", 2L),
+                ),
+            )
+            .toString()
+        legacyFile.writeText(rawSource)
+        val coordinator = coordinator()
+
+        coordinator.runMigration()
+
+        val error = coordinator.state.value as StartupMigrationState.RecoverableError
+        assertEquals(StartupMigrationErrorKind.CORRUPT_LEGACY, error.kind)
+        assertEquals(
+            setOf(
+                StartupRecoveryAction.RETRY,
+                StartupRecoveryAction.USE_CURRENT_DATABASE,
+                StartupRecoveryAction.EXPORT_LEGACY_SOURCE,
+            ),
+            error.actions,
+        )
+        assertTrue(database.accountDao().queryAllAccounts().isEmpty())
+        assertNull(database.localMigrationStateDao().queryByKey("legacy_money_store_v1"))
+
+        val export = coordinator.exportLegacySource().getOrThrow()
+        val exportedText = requireNotNull(
+            context.contentResolver.openInputStream(Uri.parse(export.contentUri)),
+        ).bufferedReader().use { it.readText() }
+        assertEquals(rawSource, exportedText)
+        assertTrue(export.fileName.startsWith("legacy-money-store-"))
+        assertTrue(export.fileName.endsWith(".json"))
+        val secondExport = coordinator.exportLegacySource().getOrThrow()
+        assertNotEquals(export.fileName, secondExport.fileName)
+        assertNotEquals(export.contentUri, secondExport.contentUri)
+        assertTrue(coordinator.state.value is StartupMigrationState.RecoverableError)
+    }
+
+    @Test
+    fun corruptionMarkerBlocksCompletedStepsUntilExplicitSettingsReset() = runBlocking {
+        val accountId = AccountRepositoryImpl(database.accountDao()).createAccount(
+            Account(name = "现金", initialBalance = 0L, createdAt = 1L),
+        )
+        val portable = PortableSettingsRepositoryImpl(database, database.portableSettingsDao())
+        portable.updateCurrencySymbol("US$")
+        val reminderRepository = AccountReminderSettingsRepositoryImpl(
+            database,
+            database.accountReminderConfigDao(),
+        )
+        reminderRepository.updateReminderConfig(
+            accountId,
+            BalanceUpdateReminderConfig(
+                period = BalanceUpdateReminderPeriod.MONTHLY,
+                monthDay = 18,
+            ),
+        )
+        listOf("legacy_money_store_v1", "portable_settings_v1", "device_preferences_v1")
+            .forEachIndexed { index, key ->
+                database.localMigrationStateDao().upsert(
+                    LocalMigrationStateEntity(
+                        key = key,
+                        state = "complete",
+                        completedAt = index.toLong() + 1L,
+                        detail = "already valid $key",
+                    ),
+                )
+            }
+        val statesBefore = database.localMigrationStateDao().queryAll().associateBy { it.key }
+        context.appSettingsDataStore.edit {
+            it.clear()
+            it[booleanPreferencesKey("corruption_detected")] = true
+        }
+        val coordinator = coordinator()
+
+        coordinator.runMigration()
+
+        val error = coordinator.state.value as StartupMigrationState.RecoverableError
+        assertEquals(StartupMigrationErrorKind.CORRUPT_SETTINGS, error.kind)
+        assertEquals(
+            setOf(StartupRecoveryAction.RETRY, StartupRecoveryAction.RESET_LOCAL_SETTINGS),
+            error.actions,
+        )
+        assertEquals(listOf("现金"), database.accountDao().queryAllAccounts().map { it.name })
+        assertEquals("US$", portable.query().currencySymbol)
+        assertEquals(18, reminderRepository.getReminderConfig(accountId).monthDay)
+
+        coordinator.retry()
+        assertTrue(coordinator.state.value is StartupMigrationState.RecoverableError)
+        coordinator.resetCorruptLocalSettings()
+
+        assertEquals(StartupMigrationState.Ready, coordinator.state.value)
+        assertEquals(DevicePreferencesRepositoryImpl(context).query(), com.shihuaidexianyu.money.domain.model.DevicePreferences())
+        assertEquals("US$", portable.query().currencySymbol)
+        assertEquals(18, reminderRepository.getReminderConfig(accountId).monthDay)
+        assertEquals(statesBefore, database.localMigrationStateDao().queryAll().associateBy { it.key })
+        assertTrue(
+            context.appSettingsDataStore.data.first()[booleanPreferencesKey("corruption_detected")] != true,
+        )
+    }
+
+    @Test
+    fun corruptLegacyReminderPreferencesResetToSafeDefaultsWithoutChangingLedger() = runBlocking {
+        val accountId = AccountRepositoryImpl(database.accountDao()).createAccount(
+            Account(name = "现金", initialBalance = 0L, createdAt = 1L),
+        )
+        context.accountReminderSettingsDataStore.edit {
+            it.clear()
+            it[booleanPreferencesKey("corruption_detected")] = true
+        }
+        val coordinator = coordinator()
+
+        coordinator.runMigration()
+        assertEquals(
+            StartupMigrationErrorKind.CORRUPT_SETTINGS,
+            (coordinator.state.value as StartupMigrationState.RecoverableError).kind,
+        )
+        coordinator.resetCorruptLocalSettings()
+
+        assertEquals(StartupMigrationState.Ready, coordinator.state.value)
+        assertEquals(listOf("现金"), database.accountDao().queryAllAccounts().map { it.name })
+        val config = AccountReminderSettingsRepositoryImpl(
+            database,
+            database.accountReminderConfigDao(),
+        ).getReminderConfig(accountId)
+        assertEquals(BalanceUpdateReminderConfig(), config)
+        assertTrue(
+            context.accountReminderSettingsDataStore.data.first()[booleanPreferencesKey("corruption_detected")] != true,
+        )
+    }
+
+    @Test
+    fun productionCorruptionHandlerMarksARealMalformedPreferencesFile() = runBlocking {
+        val file = File(context.cacheDir, "corrupt-${System.nanoTime()}.preferences_pb")
+        file.writeBytes(byteArrayOf(1, 2, 3, 4, 5))
+        @Suppress("UNCHECKED_CAST")
+        val handler = Class.forName(
+            "com.shihuaidexianyu.money.data.db.DataStoreExtensionsKt",
+        ).getMethod("getSettingsDataStoreCorruptionHandler")
+            .invoke(null) as ReplaceFileCorruptionHandler<Preferences>
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(
+                corruptionHandler = handler,
+                scope = scope,
+                produceFile = { file },
+            )
+
+            val recovered = store.data.first()
+
+            assertTrue(recovered[booleanPreferencesKey("corruption_detected")] == true)
+        } finally {
+            scope.cancel()
+            file.delete()
+        }
+    }
+
+    @Test
+    fun failedRawSourceCopyRemovesPartialCacheFile() = runBlocking {
+        legacyFile.writeText("raw")
+        val exportDirectory = File(context.cacheDir, "exports").apply { mkdirs() }
+        val filesBefore = exportDirectory.listFiles().orEmpty().map { it.name }.toSet()
+        val constructor = LegacySourceRecoveryExporter::class.java.declaredConstructors
+            .single { it.parameterCount == 4 }
+        val failingCopy: (File, File) -> Unit = { _, destination ->
+            destination.writeText("partial")
+            error("injected copy failure")
+        }
+        @Suppress("UNCHECKED_CAST")
+        val exporter = constructor.newInstance(
+            context,
+            legacyFile,
+            ClockProvider { 777L },
+            failingCopy,
+        ) as LegacySourceRecoveryExporter
+
+        var failure: Throwable? = null
+        try {
+            exporter.export()
+        } catch (error: Throwable) {
+            failure = error
+        }
+
+        assertTrue(failure is IllegalStateException)
+        assertEquals(filesBefore, exportDirectory.listFiles().orEmpty().map { it.name }.toSet())
     }
 
     @Test
@@ -206,4 +426,18 @@ class StartupMigrationRoomContractTest {
             }
         }
     }
+
+    private fun emptyLegacyRoot(): JSONObject = JSONObject()
+        .put("accounts", JSONArray())
+        .put("cashFlowRecords", JSONArray())
+        .put("transferRecords", JSONArray())
+        .put("balanceUpdates", JSONArray())
+        .put("adjustments", JSONArray())
+
+    private fun accountJson(id: Long, name: String): JSONObject = JSONObject()
+        .put("id", id)
+        .put("name", name)
+        .put("initialBalance", 0L)
+        .put("createdAt", 1L)
+        .put("displayOrder", id.toInt())
 }

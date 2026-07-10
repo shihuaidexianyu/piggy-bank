@@ -50,7 +50,7 @@ class MainActivity : FragmentActivity() {
                 // A corrupt preference file is surfaced by the startup coordinator. Marking this
                 // read as finished lets the recoverable error page render without exposing ledger UI.
                 try {
-                    container.devicePreferencesRepository.observe().first()
+                    devicePreferencesFlow.first()
                 } finally {
                     value = true
                 }
