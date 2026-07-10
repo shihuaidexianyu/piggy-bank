@@ -29,6 +29,7 @@ local.properties
 .cxx
 signing/
 /.vscode/
+/.worktrees/
 /_preview/
 /_screenshots/*
 !/_screenshots/readme/
