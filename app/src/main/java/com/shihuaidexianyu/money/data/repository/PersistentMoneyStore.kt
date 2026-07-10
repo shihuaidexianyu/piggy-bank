@@ -238,7 +238,6 @@ private fun validateSnapshot(snapshot: MoneySnapshot) {
         require(record.direction in validCashDirections) { "现金流水方向不支持：${record.direction}" }
         require(record.amount > 0L) { "现金流水金额必须大于 0" }
         requireRecordTimes(record.occurredAt, record.createdAt, record.updatedAt, "现金流水")
-        require(record.updatedAt >= record.createdAt) { "现金流水更新时间不能早于创建时间" }
         requireEventOnOrAfterOpening(record.accountId, record.occurredAt, accountsById)
     }
     snapshot.transferRecords.forEach {
@@ -246,7 +245,6 @@ private fun validateSnapshot(snapshot: MoneySnapshot) {
         require(it.fromAccountId != it.toAccountId) { "转账不能在同一账户内发生" }
         require(it.amount > 0L) { "转账金额必须大于 0" }
         requireRecordTimes(it.occurredAt, it.createdAt, it.updatedAt, "转账")
-        require(it.updatedAt >= it.createdAt) { "转账更新时间不能早于创建时间" }
         requireEventOnOrAfterOpening(it.fromAccountId, it.occurredAt, accountsById)
         requireEventOnOrAfterOpening(it.toAccountId, it.occurredAt, accountsById)
     }
@@ -277,6 +275,8 @@ private fun requireRecordTimes(occurredAt: Long, createdAt: Long, updatedAt: Lon
     requirePositiveTime(occurredAt, "${label}发生时间")
     requirePositiveTime(createdAt, "${label}创建时间")
     requirePositiveTime(updatedAt, "${label}更新时间")
+    require(occurredAt <= createdAt) { "${label}发生时间不能晚于创建时间" }
+    require(createdAt <= updatedAt) { "${label}更新时间不能早于创建时间" }
 }
 
 private fun requirePositiveTime(value: Long, label: String) {

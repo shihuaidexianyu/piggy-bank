@@ -227,6 +227,9 @@ class StartupMigrationRoomContractTest {
                 getJSONArray("cashFlowRecords").put(cashFlowJson(occurredAt = 59_999L))
             },
             validLegacyLedgerRoot().apply {
+                getJSONArray("cashFlowRecords").put(cashFlowJson(occurredAt = 70_001L))
+            },
+            validLegacyLedgerRoot().apply {
                 getJSONArray("balanceUpdates").put(balanceUpdateJson(delta = 0L))
             },
         )

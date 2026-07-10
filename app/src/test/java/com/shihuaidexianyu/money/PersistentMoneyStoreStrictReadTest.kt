@@ -231,6 +231,63 @@ class PersistentMoneyStoreStrictReadTest {
         }
     }
 
+    @Test
+    fun `strict read rejects every record type occurring after its creation`() {
+        val directory = createTempDirectory("money-legacy-impossible-time").toFile()
+        try {
+            val file = File(directory, "money_store.json")
+            val store = PersistentMoneyStore(file)
+            val invalidRoots = listOf(
+                validLegacyRoot().apply {
+                    getJSONArray("cashFlowRecords").put(
+                        cashFlowJson(
+                            accountId = 1L,
+                            occurredAt = 80_001L,
+                            createdAt = 80_000L,
+                            updatedAt = 80_000L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("transferRecords").put(
+                        transferJson(
+                            fromId = 1L,
+                            toId = 2L,
+                            occurredAt = 80_001L,
+                            createdAt = 80_000L,
+                            updatedAt = 80_000L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("balanceUpdates").put(
+                        balanceUpdateJson(
+                            accountId = 1L,
+                            occurredAt = 80_001L,
+                            createdAt = 80_000L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("adjustments").put(
+                        adjustmentJson(
+                            accountId = 1L,
+                            occurredAt = 80_001L,
+                            createdAt = 80_000L,
+                        ),
+                    )
+                },
+            )
+
+            invalidRoots.forEach { root ->
+                file.writeText(root.toString())
+                assertIs<LegacyMoneyStoreReadResult.Corrupt>(store.readStrict())
+            }
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     private fun emptyLegacyStoreJson(): String = JSONObject()
         .put("accounts", JSONArray())
         .put("cashFlowRecords", JSONArray())
