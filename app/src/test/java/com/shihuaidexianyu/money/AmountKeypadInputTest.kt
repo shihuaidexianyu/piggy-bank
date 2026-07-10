@@ -2,7 +2,9 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.util.AmountKey
 import com.shihuaidexianyu.money.util.appendAmountKey
+import com.shihuaidexianyu.money.util.parseAmountKeypadPreview
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import org.junit.Test
 
 class AmountKeypadInputTest {
@@ -25,8 +27,21 @@ class AmountKeypadInputTest {
 
     @Test
     fun `operator on empty input is ignored`() {
-        assertEquals("", appendAmountKey("", AmountKey.Plus))
-        assertEquals("", appendAmountKey("", AmountKey.Minus))
+        assertEquals("", appendAmountKey("", AmountKey.Plus, allowSigned = false))
+        assertEquals("", appendAmountKey("", AmountKey.Minus, allowSigned = false))
+    }
+
+    @Test
+    fun `signed mode accepts leading minus and previews negative result`() {
+        val text = appendAmountKey("", AmountKey.Minus, allowSigned = true) + "12.34"
+
+        assertEquals("-12.34", text)
+        assertEquals(-1_234L, parseAmountKeypadPreview(text, allowSigned = true))
+    }
+
+    @Test
+    fun `unsigned mode rejects negative preview`() {
+        assertNull(parseAmountKeypadPreview("-12.34", allowSigned = false))
     }
 
     @Test

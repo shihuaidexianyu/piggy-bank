@@ -124,6 +124,7 @@ fun EditBalanceUpdateScreen(
                         value = state.actualBalanceText,
                         onValueChange = viewModel::updateActualBalance,
                         label = "实际余额",
+                        allowSigned = true,
                     )
                 }
             }

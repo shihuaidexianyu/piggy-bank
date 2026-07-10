@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator
 import com.shihuaidexianyu.money.util.AmountFormatter
+import java.time.ZoneId
 
 /**
  * Periodic [CoroutineWorker] that checks all active accounts for stale balance-update status.
@@ -42,7 +43,12 @@ class BalanceCheckWorker(
                 reminderSettingsRepo.getReminderConfig(account.id)
             }.getOrNull() ?: BalanceUpdateReminderConfig()
 
-            val isStale = AccountStatusCalculator.isStale(account, reminderConfig = config, nowMillis = now)
+            val isStale = AccountStatusCalculator.isStale(
+                account = account,
+                reminderConfig = config,
+                nowMillis = now,
+                zoneId = ZoneId.systemDefault(),
+            )
             if (!isStale) continue
 
             staleCount++

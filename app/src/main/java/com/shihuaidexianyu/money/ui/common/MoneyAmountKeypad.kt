@@ -36,9 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.AmountFormatter
-import com.shihuaidexianyu.money.util.AmountInputParser
 import com.shihuaidexianyu.money.util.AmountKey
 import com.shihuaidexianyu.money.util.appendAmountKey
+import com.shihuaidexianyu.money.util.parseAmountKeypadPreview
 
 private data class AmountKeypadButtonSpec(
     val label: String,
@@ -78,10 +78,13 @@ private val amountKeypadRows = listOf(
 internal fun MoneyAmountKeypadSheet(
     value: String,
     label: String,
+    allowSigned: Boolean,
     onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val previewAmount = remember(value) { AmountInputParser.parseUnsignedToMinor(value) }
+    val previewAmount = remember(value, allowSigned) {
+        parseAmountKeypadPreview(value, allowSigned)
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -113,7 +116,7 @@ internal fun MoneyAmountKeypadSheet(
                                     if (key == null) {
                                         onDismiss()
                                     } else {
-                                        onValueChange(appendAmountKey(value, key))
+                                        onValueChange(appendAmountKey(value, key, allowSigned))
                                     }
                                 },
                                 modifier = Modifier.weight(1f),

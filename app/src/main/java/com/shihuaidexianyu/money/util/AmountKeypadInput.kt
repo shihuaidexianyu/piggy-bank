@@ -9,16 +9,28 @@ sealed interface AmountKey {
     data object Clear : AmountKey
 }
 
-fun appendAmountKey(current: String, key: AmountKey): String {
+fun appendAmountKey(
+    current: String,
+    key: AmountKey,
+    allowSigned: Boolean = false,
+): String {
     return when (key) {
         is AmountKey.Digit -> {
             if (key.value in 0..9) current + key.value.toString() else current
         }
         AmountKey.Decimal -> appendDecimal(current)
-        AmountKey.Plus -> appendOperator(current, '+')
-        AmountKey.Minus -> appendOperator(current, '-')
+        AmountKey.Plus -> appendOperator(current, '+', allowSigned)
+        AmountKey.Minus -> appendOperator(current, '-', allowSigned)
         AmountKey.Delete -> current.dropLast(1)
         AmountKey.Clear -> ""
+    }
+}
+
+fun parseAmountKeypadPreview(text: String, allowSigned: Boolean): Long? {
+    return if (allowSigned) {
+        AmountInputParser.parseSignedToMinor(text)
+    } else {
+        AmountInputParser.parseUnsignedToMinor(text)
     }
 }
 
@@ -32,8 +44,10 @@ private fun appendDecimal(current: String): String {
     }
 }
 
-private fun appendOperator(current: String, operator: Char): String {
-    if (current.isEmpty()) return current
+private fun appendOperator(current: String, operator: Char, allowSigned: Boolean): String {
+    if (current.isEmpty()) {
+        return if (allowSigned && operator == '-') "-" else current
+    }
     if (current.last().isAmountOperator()) return current
     return current + operator
 }

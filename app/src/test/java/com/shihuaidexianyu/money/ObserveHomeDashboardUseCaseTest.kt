@@ -25,8 +25,56 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.time.Instant
+import java.time.ZoneOffset
 
 class ObserveHomeDashboardUseCaseTest {
+    @Test
+    fun `home stale status uses injected clock and zone`() = runBlocking {
+        val now = Instant.parse("2026-04-10T14:30:00Z").toEpochMilli()
+        val lastUpdatedAt = Instant.parse("2026-04-06T10:00:00Z").toEpochMilli()
+        val accountRepository = InMemoryAccountRepository()
+        val reminderSettingsRepository = InMemoryAccountReminderSettingsRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "时区边界账户",
+                initialBalance = 10_000,
+                createdAt = lastUpdatedAt,
+                lastBalanceUpdateAt = lastUpdatedAt,
+            ),
+        )
+        reminderSettingsRepository.updateReminderConfig(
+            accountId,
+            BalanceUpdateReminderConfig(
+                weekday = BalanceUpdateReminderWeekday.FRIDAY,
+                hour = 22,
+                minute = 0,
+            ),
+        )
+        val clockProvider = testClockProvider(now)
+        val single = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository, clockProvider)
+        val batch = CalculateAccountBalancesUseCase(transactionRepository, clockProvider)
+        val useCase = ObserveHomeDashboardUseCase(
+            accountReminderSettingsRepository = reminderSettingsRepository,
+            accountRepository = accountRepository,
+            recurringReminderRepository = InMemoryRecurringReminderRepository(
+                tickerFlow = MutableStateFlow(now).asStateFlow(),
+            ),
+            settingsRepository = InMemorySettingsRepository(AppSettings(homePeriod = HomePeriod.WEEK)),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = single,
+            calculateAccountBalancesUseCase = batch,
+            clockProvider = clockProvider,
+            zoneIdProvider = testZoneIdProvider(ZoneOffset.UTC),
+        )
+
+        val snapshot = useCase().first()
+
+        assertEquals(0, snapshot.staleAccountCount)
+        assertEquals(emptyList(), snapshot.staleAccounts)
+    }
+
     @Test
     fun `home dashboard keeps cash flow and reconciliation amounts separate`() = runBlocking {
         val now = System.currentTimeMillis()
@@ -235,11 +283,12 @@ class ObserveHomeDashboardUseCaseTest {
 
     @Test
     fun `home dashboard exposes stale active accounts only`() = runBlocking {
+        val now = System.currentTimeMillis()
         val accountRepository = InMemoryAccountRepository()
         val reminderSettingsRepository = InMemoryAccountReminderSettingsRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val recurringReminderRepository = InMemoryRecurringReminderRepository(
-            tickerFlow = MutableStateFlow(System.currentTimeMillis()).asStateFlow(),
+            tickerFlow = MutableStateFlow(now).asStateFlow(),
         )
         val oldTime = 1_000L
         val staleBankId = accountRepository.createAccount(
@@ -263,7 +312,7 @@ class ObserveHomeDashboardUseCaseTest {
                 name = "新账户",
                 initialBalance = 3_000,
                 createdAt = oldTime,
-                lastBalanceUpdateAt = System.currentTimeMillis(),
+                lastBalanceUpdateAt = now,
             ),
         )
         val archivedId = accountRepository.createAccount(
@@ -274,7 +323,7 @@ class ObserveHomeDashboardUseCaseTest {
                 lastBalanceUpdateAt = oldTime,
             ),
         )
-        accountRepository.archiveAccount(archivedId, System.currentTimeMillis())
+        accountRepository.archiveAccount(archivedId, now)
         reminderSettingsRepository.updateReminderConfig(
             freshId,
             BalanceUpdateReminderConfig(
@@ -292,7 +341,7 @@ class ObserveHomeDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
-            clockProvider = testClockProvider(),
+            clockProvider = testClockProvider(now),
             zoneIdProvider = testZoneIdProvider(),
         )
 

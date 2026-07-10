@@ -60,6 +60,7 @@ fun CreateAccountScreen(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmountText,
                     label = "当前余额",
+                    allowSigned = true,
                 )
                 AccountVisualFields(
                     colorName = state.colorName,

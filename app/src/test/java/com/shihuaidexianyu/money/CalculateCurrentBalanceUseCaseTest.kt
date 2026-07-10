@@ -14,6 +14,29 @@ import org.junit.Test
 
 class CalculateCurrentBalanceUseCaseTest {
     @Test
+    fun `balance at Long MAX_VALUE includes a record at that exact instant`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(name = "边界账户", initialBalance = 10_000, createdAt = 1_000),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = "inflow",
+                amount = 500,
+                purpose = "最大时间戳",
+                occurredAt = Long.MAX_VALUE,
+                createdAt = Long.MAX_VALUE,
+                updatedAt = Long.MAX_VALUE,
+            ),
+        )
+        val useCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
+
+        assertEquals(10_500, useCase(accountId, atTimeMillis = Long.MAX_VALUE))
+    }
+
+    @Test
     fun `current balance includes record at current time and excludes future record`() = runBlocking {
         val currentTime = 5_000L
         val accountRepository = InMemoryAccountRepository()

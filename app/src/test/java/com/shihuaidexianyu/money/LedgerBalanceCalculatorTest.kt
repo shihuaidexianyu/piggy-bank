@@ -236,9 +236,9 @@ fun `deltasFromRecords ignores records belonging to other accounts`() {
 }
 
 @Test
-fun `deltasFromRecords at Long MAX_VALUE still respects account opening`() {
+fun `deltasFromRecords at Long MAX_VALUE includes a record at that exact instant`() {
     val cashFlows = listOf(
-        cashFlow(occurredAt = 960_000L, amount = 1L, direction = CashFlowDirection.INFLOW),
+        cashFlow(occurredAt = Long.MAX_VALUE, amount = 1L, direction = CashFlowDirection.INFLOW),
     )
     val deltas = LedgerBalanceCalculator.deltasFromRecords(
         account = account,

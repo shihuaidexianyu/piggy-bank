@@ -8,6 +8,8 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.usecase.HomeProjector
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import org.junit.Test
 
@@ -35,6 +37,8 @@ class HomeProjectorTest {
             cashFlowRecordCount = 4,
             transferRecordCount = 2,
             manualAdjustmentRecordCount = 1,
+            snapshotTimeMillis = 4_102_444_800_000L,
+            zoneId = ZoneOffset.UTC,
         )
 
         assertEquals(4_000L, snapshot.totalAssets)
@@ -53,21 +57,21 @@ class HomeProjectorTest {
 
     @Test
     fun `project flags stale accounts based on reminder config`() {
-        // Account last updated at 100L; reminder due at 200L → stale.
+        val mondayMidnight = Instant.parse("2023-10-23T00:00:00Z").toEpochMilli()
+        val nowMillis = mondayMidnight + 9 * 3_600_000L
         val staleAccount = Account(
             id = 1,
             name = "stale",
             initialBalance = 0,
             createdAt = 50L,
-            lastBalanceUpdateAt = 100L,
+            lastBalanceUpdateAt = mondayMidnight - 1L,
         )
-        // Account last updated at 500L; reminder due at 200L → not stale.
         val freshAccount = Account(
             id = 2,
             name = "fresh",
             initialBalance = 0,
             createdAt = 50L,
-            lastBalanceUpdateAt = 500L,
+            lastBalanceUpdateAt = mondayMidnight + 1L,
         )
         val reminderConfig = BalanceUpdateReminderConfig(
             period = BalanceUpdateReminderPeriod.WEEKLY,
@@ -76,10 +80,6 @@ class HomeProjectorTest {
             hour = 0,
             minute = 0,
         )
-        // Pin now to a known Monday 09:00 UTC so the latest reminder fires at Monday 00:00 UTC.
-        // epoch 410_243_200_000L = 1983-01-03 Monday 00:00 UTC; +09:00 = 410_243_200_000L.
-        // Use 1_697_611_200_000L = 2023-10-23 Monday 00:00:00 UTC, then now = 2023-10-23T09:00 UTC.
-        val nowMillis = 1_697_611_200_000L + 9 * 3_600_000L
         val accounts = listOf(staleAccount, freshAccount)
         val snapshot = HomeProjector.project(
             accounts = accounts,
@@ -98,13 +98,12 @@ class HomeProjectorTest {
             cashFlowRecordCount = 0,
             transferRecordCount = 0,
             manualAdjustmentRecordCount = 0,
+            snapshotTimeMillis = nowMillis,
+            zoneId = ZoneOffset.UTC,
         )
 
-        // The pure `HomeProjector` itself does not take `nowMillis`; we assert via AccountStatusCalculator
-        // in its own test. Here we just assert that staleAccounts came through to the snapshot.
-        // Since AccountStatusCalculator uses System.currentTimeMillis() by default, this test only
-        // covers the plumbing (stale accounts are forwarded as-is).
-        assertEquals(snapshot.staleAccounts.size, snapshot.staleAccountCount)
+        assertEquals(listOf(staleAccount), snapshot.staleAccounts)
+        assertEquals(1, snapshot.staleAccountCount)
         assertEquals(accounts, snapshot.activeAccounts)
     }
 
@@ -141,6 +140,8 @@ class HomeProjectorTest {
             cashFlowRecordCount = 0,
             transferRecordCount = 0,
             manualAdjustmentRecordCount = 0,
+            snapshotTimeMillis = 4_102_444_800_000L,
+            zoneId = ZoneOffset.UTC,
         )
         assertEquals(listOf(reminder), snapshot.dueReminders)
     }

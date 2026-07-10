@@ -286,6 +286,7 @@ fun MoneyAmountField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     label: String = "金额",
+    allowSigned: Boolean = false,
 ) {
     var showKeypad by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -302,6 +303,7 @@ fun MoneyAmountField(
         MoneyAmountKeypadSheet(
             value = value,
             label = label,
+            allowSigned = allowSigned,
             onValueChange = onValueChange,
             onDismiss = { showKeypad = false },
         )

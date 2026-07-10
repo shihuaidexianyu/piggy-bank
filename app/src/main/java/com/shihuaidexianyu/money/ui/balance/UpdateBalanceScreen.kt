@@ -127,6 +127,7 @@ fun UpdateBalanceScreen(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
                     label = "实际余额",
+                    allowSigned = true,
                 )
                 if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
                     OutlinedButton(

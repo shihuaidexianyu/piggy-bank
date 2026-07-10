@@ -84,11 +84,13 @@ class ObserveAccountDetailUseCase(
         }
 
         val reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
+        val snapshotTimeMillis = clockProvider.nowMillis()
+        val zoneId = zoneIdProvider.zoneId()
 
         // This month's inflow/outflow for the account.
         val monthRange = TimeRangeCalculator.currentMonthRange(
-            zoneId = zoneIdProvider.zoneId(),
-            nowMillis = clockProvider.nowMillis(),
+            zoneId = zoneId,
+            nowMillis = snapshotTimeMillis,
         )
         val inflow = transactionRepository.sumInflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
         val outflow = transactionRepository.sumOutflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
@@ -104,8 +106,13 @@ class ObserveAccountDetailUseCase(
             account = account,
             settings = settings,
             reminderConfig = reminderConfig,
-            currentBalance = calculateCurrentBalanceUseCase(account.id),
-            isStale = AccountStatusCalculator.isStale(account, reminderConfig = reminderConfig),
+            currentBalance = calculateCurrentBalanceUseCase(account.id, snapshotTimeMillis),
+            isStale = AccountStatusCalculator.isStale(
+                account = account,
+                reminderConfig = reminderConfig,
+                nowMillis = snapshotTimeMillis,
+                zoneId = zoneId,
+            ),
             monthInflow = inflow,
             monthOutflow = outflow,
             recentRecords = recentRecords,

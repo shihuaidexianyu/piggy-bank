@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.util
 
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import java.time.ZoneId
 
 /**
  * Thin wrapper around [com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator].
@@ -12,5 +13,11 @@ object AccountStatusUtils {
         account: Account,
         reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
         nowMillis: Long = System.currentTimeMillis(),
-    ): Boolean = com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator.isStale(account, reminderConfig, nowMillis)
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Boolean = com.shihuaidexianyu.money.domain.usecase.AccountStatusCalculator.isStale(
+        account,
+        reminderConfig,
+        nowMillis,
+        zoneId,
+    )
 }

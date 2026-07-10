@@ -19,17 +19,18 @@ object AccountStatusCalculator {
     fun isStale(
         account: Account,
         reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
-        nowMillis: Long = System.currentTimeMillis(),
+        nowMillis: Long,
+        zoneId: ZoneId,
     ): Boolean {
         val anchor = account.lastBalanceUpdateAt ?: account.createdAt
-        val latestReminderAt = latestReminderAt(nowMillis, reminderConfig)
+        val latestReminderAt = latestReminderAt(nowMillis, reminderConfig, zoneId)
         return anchor < latestReminderAt
     }
 
     private fun latestReminderAt(
         nowMillis: Long,
         reminderConfig: BalanceUpdateReminderConfig,
-        zoneId: ZoneId = ZoneId.systemDefault(),
+        zoneId: ZoneId,
     ): Long {
         val currentDateTime = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDateTime()
         val reminderTime = LocalTime.of(reminderConfig.hour, reminderConfig.minute)

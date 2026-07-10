@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
+import java.time.ZoneId
 
 /**
  * Pure projection from raw ledger inputs to a [HomeDashboardSnapshot]. Extracted from
@@ -27,6 +28,8 @@ internal object HomeProjector {
         cashFlowRecordCount: Int,
         transferRecordCount: Int,
         manualAdjustmentRecordCount: Int,
+        snapshotTimeMillis: Long,
+        zoneId: ZoneId,
     ): HomeDashboardSnapshot {
         val totalAssets = balances.values.sum()
         val openingTotalAssets = openingBalanceByAccount.values.sum() + newAccountOpeningAssets
@@ -45,6 +48,8 @@ internal object HomeProjector {
             AccountStatusCalculator.isStale(
                 account,
                 reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
+                nowMillis = snapshotTimeMillis,
+                zoneId = zoneId,
             )
         }
         return HomeDashboardSnapshot(

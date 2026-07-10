@@ -243,7 +243,7 @@ fun HistoryScreen(
                     )
                     MoneySelectionField(
                         label = "结束日期",
-                        value = state.dateEndAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
+                        value = historyEndDateFieldText(state.dateEndAt),
                         modifier = Modifier.clickable { dateField = HistoryDateField.END },
                     )
                 }
@@ -496,6 +496,13 @@ private fun dateChipLabel(state: HistoryUiState): String {
     val end = state.dateEndAt
     return if (start == null && end == null) "日期" else "日期已选"
 }
+
+internal fun historyEndDateFieldText(
+    endExclusive: Long?,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): String = endExclusive
+    ?.let { DateTimeTextFormatter.formatDisplayedEndDate(it, zoneId) }
+    ?: "不限"
 
 private fun dateSheetSummary(state: HistoryUiState): String {
     val start = state.dateStartAt

@@ -86,12 +86,14 @@ class ObserveHomeDashboardUseCase(
         settings: AppSettings,
         dueReminders: List<RecurringReminder>,
     ): HomeDashboardSnapshot = coroutineScope {
+        val snapshotTimeMillis = clockProvider.nowMillis()
+        val zoneId = zoneIdProvider.zoneId()
         val range = TimeRangeCalculator.currentRange(
             period = settings.homePeriod,
-            zoneId = zoneIdProvider.zoneId(),
-            nowMillis = clockProvider.nowMillis(),
+            zoneId = zoneId,
+            nowMillis = snapshotTimeMillis,
         )
-        val balanceJob = async { calculateAccountBalancesUseCase(accounts) }
+        val balanceJob = async { calculateAccountBalancesUseCase(accounts, snapshotTimeMillis) }
         val openingBalanceJobs = accounts
             .filter { LedgerBalanceCalculator.openingAt(it) < range.startInclusive }
             .map { account ->
@@ -144,6 +146,8 @@ class ObserveHomeDashboardUseCase(
             cashFlowRecordCount = cashFlowRecordCountJob.await(),
             transferRecordCount = transferRecordCountJob.await(),
             manualAdjustmentRecordCount = manualAdjustmentRecordCountJob.await(),
+            snapshotTimeMillis = snapshotTimeMillis,
+            zoneId = zoneId,
         )
     }
 }

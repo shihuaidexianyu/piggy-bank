@@ -66,14 +66,35 @@ internal object LedgerBalanceCalculator {
     ): LedgerBalanceDeltas {
         if (openingAt(account) >= endExclusive) return LedgerBalanceDeltas()
         val startInclusive = openingAt(account)
+        return deltasFromRecordsWhere(
+            account = account,
+            cashFlows = cashFlows,
+            transfers = transfers,
+            balanceUpdates = balanceUpdates,
+            adjustments = adjustments,
+            excludingBalanceUpdateId = excludingBalanceUpdateId,
+            isWithinWindow = { occurredAt ->
+                occurredAt >= startInclusive && occurredAt < endExclusive
+            },
+        )
+    }
+
+    private fun deltasFromRecordsWhere(
+        account: Account,
+        cashFlows: Iterable<CashFlowRecord>,
+        transfers: Iterable<TransferRecord>,
+        balanceUpdates: Iterable<BalanceUpdateRecord>,
+        adjustments: Iterable<BalanceAdjustmentRecord>,
+        excludingBalanceUpdateId: Long?,
+        isWithinWindow: (Long) -> Boolean,
+    ): LedgerBalanceDeltas {
         return LedgerBalanceDeltas(
             inflow = cashFlows
                 .filter {
                     !it.isDeleted &&
                         it.accountId == account.id &&
                         it.direction == CashFlowDirection.INFLOW.value &&
-                        it.occurredAt >= startInclusive &&
-                        it.occurredAt < endExclusive
+                        isWithinWindow(it.occurredAt)
                 }
                 .sumOf(CashFlowRecord::amount),
             outflow = cashFlows
@@ -81,38 +102,34 @@ internal object LedgerBalanceCalculator {
                     !it.isDeleted &&
                         it.accountId == account.id &&
                         it.direction == CashFlowDirection.OUTFLOW.value &&
-                        it.occurredAt >= startInclusive &&
-                        it.occurredAt < endExclusive
+                        isWithinWindow(it.occurredAt)
                 }
                 .sumOf(CashFlowRecord::amount),
             transferIn = transfers
                 .filter {
                     !it.isDeleted &&
                         it.toAccountId == account.id &&
-                        it.occurredAt >= startInclusive &&
-                        it.occurredAt < endExclusive
+                        isWithinWindow(it.occurredAt)
                 }
                 .sumOf(TransferRecord::amount),
             transferOut = transfers
                 .filter {
                     !it.isDeleted &&
                         it.fromAccountId == account.id &&
-                        it.occurredAt >= startInclusive &&
-                        it.occurredAt < endExclusive
+                        isWithinWindow(it.occurredAt)
                 }
                 .sumOf(TransferRecord::amount),
             manualAdjustment = adjustments
                 .filter {
                     it.accountId == account.id &&
-                        it.occurredAt >= startInclusive &&
-                        it.occurredAt < endExclusive
+                        isWithinWindow(it.occurredAt)
                 }
                 .sumOf(BalanceAdjustmentRecord::delta),
-            reconciliation = reconciliationDeltaFromRecordsBefore(
+            reconciliation = reconciliationDeltaFromRecordsWhere(
                 account = account,
                 balanceUpdates = balanceUpdates,
-                endExclusive = endExclusive,
                 excludingBalanceUpdateId = excludingBalanceUpdateId,
+                isWithinWindow = isWithinWindow,
             ),
         )
     }
@@ -125,12 +142,27 @@ internal object LedgerBalanceCalculator {
     ): Long {
         if (openingAt(account) >= endExclusive) return 0L
         val startInclusive = openingAt(account)
+        return reconciliationDeltaFromRecordsWhere(
+            account = account,
+            balanceUpdates = balanceUpdates,
+            excludingBalanceUpdateId = excludingBalanceUpdateId,
+            isWithinWindow = { occurredAt ->
+                occurredAt >= startInclusive && occurredAt < endExclusive
+            },
+        )
+    }
+
+    private fun reconciliationDeltaFromRecordsWhere(
+        account: Account,
+        balanceUpdates: Iterable<BalanceUpdateRecord>,
+        excludingBalanceUpdateId: Long?,
+        isWithinWindow: (Long) -> Boolean,
+    ): Long {
         return balanceUpdates
             .filter {
                 it.accountId == account.id &&
                     it.id != excludingBalanceUpdateId &&
-                    it.occurredAt >= startInclusive &&
-                    it.occurredAt < endExclusive
+                    isWithinWindow(it.occurredAt)
             }
             .sumOf(BalanceUpdateRecord::delta)
     }
@@ -145,14 +177,17 @@ internal object LedgerBalanceCalculator {
         excludingBalanceUpdateId: Long? = null,
     ): LedgerBalanceDeltas {
         if (!isOpenAt(account, atTimeMillis)) return LedgerBalanceDeltas()
-        return deltasFromRecordsBefore(
+        val startInclusive = openingAt(account)
+        return deltasFromRecordsWhere(
             account = account,
             cashFlows = cashFlows,
             transfers = transfers,
             balanceUpdates = balanceUpdates,
             adjustments = adjustments,
-            endExclusive = endExclusiveAfter(atTimeMillis),
             excludingBalanceUpdateId = excludingBalanceUpdateId,
+            isWithinWindow = { occurredAt ->
+                occurredAt >= startInclusive && occurredAt <= atTimeMillis
+            },
         )
     }
 
@@ -163,11 +198,14 @@ internal object LedgerBalanceCalculator {
         excludingBalanceUpdateId: Long? = null,
     ): Long {
         if (!isOpenAt(account, atTimeMillis)) return 0L
-        return reconciliationDeltaFromRecordsBefore(
+        val startInclusive = openingAt(account)
+        return reconciliationDeltaFromRecordsWhere(
             account = account,
             balanceUpdates = balanceUpdates,
-            endExclusive = endExclusiveAfter(atTimeMillis),
             excludingBalanceUpdateId = excludingBalanceUpdateId,
+            isWithinWindow = { occurredAt ->
+                occurredAt >= startInclusive && occurredAt <= atTimeMillis
+            },
         )
     }
 }

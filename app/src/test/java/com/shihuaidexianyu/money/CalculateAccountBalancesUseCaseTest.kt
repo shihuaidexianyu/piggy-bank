@@ -16,6 +16,33 @@ import org.junit.Test
 
 class CalculateAccountBalancesUseCaseTest {
     @Test
+    fun `batch balance at Long MAX_VALUE includes a record at that exact instant`() = runBlocking {
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(name = "边界账户", initialBalance = 10_000, createdAt = 1_000),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 500,
+                purpose = "最大时间戳",
+                occurredAt = Long.MAX_VALUE,
+                createdAt = Long.MAX_VALUE,
+                updatedAt = Long.MAX_VALUE,
+            ),
+        )
+        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val useCase = CalculateAccountBalancesUseCase(transactionRepository)
+
+        assertEquals(
+            mapOf(accountId to 10_500L),
+            useCase(listOf(account), atTimeMillis = Long.MAX_VALUE),
+        )
+    }
+
+    @Test
     fun `batch and single balances include exact current time and exclude future records`() = runBlocking {
         val currentTime = 5_000L
         val accountRepository = InMemoryAccountRepository()
