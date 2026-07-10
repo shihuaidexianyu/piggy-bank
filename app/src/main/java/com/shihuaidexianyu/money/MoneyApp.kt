@@ -26,12 +26,15 @@ import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import com.shihuaidexianyu.money.data.migration.StartupRecoveryAction
 import com.shihuaidexianyu.money.navigation.MoneyNavGraph
 import kotlinx.coroutines.launch
+import com.shihuaidexianyu.money.domain.notification.NotificationLaunchRequest
 
 @Composable
 fun MoneyApp(
     container: MoneyAppContainer,
     shortcutAction: String? = null,
     sharedAmount: Long? = null,
+    notificationLaunchRequest: NotificationLaunchRequest? = null,
+    onNotificationLaunchConsumed: (Long) -> Unit = {},
 ) {
     val state by container.startupMigrationCoordinator.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -52,6 +55,8 @@ fun MoneyApp(
             container = container,
             shortcutAction = shortcutAction,
             sharedAmount = sharedAmount,
+            notificationLaunchRequest = notificationLaunchRequest,
+            onNotificationLaunchConsumed = onNotificationLaunchConsumed,
         )
 
         is StartupMigrationState.RecoverableError -> Column(

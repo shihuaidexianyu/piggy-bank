@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsReposito
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.NotificationSyncingAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
@@ -26,9 +27,14 @@ import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.data.migration.RoomStartupMigrationBackend
 import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
+import com.shihuaidexianyu.money.notification.AndroidMoneyNotificationPublisher
+import com.shihuaidexianyu.money.notification.DefaultMoneyNotificationContentPolicy
+import com.shihuaidexianyu.money.notification.WorkManagerNotificationSyncRequester
 
 internal class DataGraph(context: Context) {
     private val appContext = context.applicationContext
+
+    val notificationSyncRequester = WorkManagerNotificationSyncRequester(appContext)
 
     val moneyDatabase: MoneyDatabase = MoneyDatabase.getInstance(appContext)
 
@@ -57,9 +63,12 @@ internal class DataGraph(context: Context) {
     val devicePreferencesRepository = DevicePreferencesRepositoryImpl(appContext)
 
     val accountReminderSettingsRepository: AccountReminderSettingsRepository =
-        AccountReminderSettingsRepositoryImpl(
+        NotificationSyncingAccountReminderSettingsRepository(
+            delegate = AccountReminderSettingsRepositoryImpl(
             database = moneyDatabase,
             dao = moneyDatabase.accountReminderConfigDao(),
+            ),
+            requester = notificationSyncRequester,
         )
 
     val startupMigrationCoordinator = StartupMigrationCoordinator(
@@ -73,6 +82,11 @@ internal class DataGraph(context: Context) {
 
     val recurringReminderRepository: RecurringReminderRepository =
         RecurringReminderRepositoryImpl(moneyDatabase.recurringReminderDao())
+
+    val moneyNotificationPublisher = AndroidMoneyNotificationPublisher(
+        context = appContext,
+        contentPolicy = DefaultMoneyNotificationContentPolicy(portableSettingsRepository),
+    )
 
     val savingsGoalRepository: SavingsGoalRepository =
         SavingsGoalRepositoryImpl(

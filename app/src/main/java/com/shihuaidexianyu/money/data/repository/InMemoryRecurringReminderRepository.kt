@@ -84,6 +84,23 @@ class InMemoryRecurringReminderRepository(
         true
     }
 
+    override suspend fun acknowledgeNotifiedOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+    ): Boolean = synchronized(mutationLock) {
+        val existing = reminders.value[reminderId] ?: return@synchronized false
+        if (!existing.isEnabled ||
+            existing.nextDueAt != expectedDueAt ||
+            existing.lastNotifiedDueAt == expectedDueAt
+        ) {
+            return@synchronized false
+        }
+        reminders.value = reminders.value + (
+            reminderId to existing.copy(lastNotifiedDueAt = expectedDueAt)
+        )
+        true
+    }
+
     override suspend fun deleteReminder(id: Long) {
         reminders.value = reminders.value - id
     }

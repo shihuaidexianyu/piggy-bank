@@ -19,5 +19,6 @@ interface RecurringReminderRepository {
         confirmedAt: Long,
         updatedAt: Long,
     ): Boolean
+    suspend fun acknowledgeNotifiedOccurrence(reminderId: Long, expectedDueAt: Long): Boolean
     suspend fun deleteReminder(id: Long)
 }

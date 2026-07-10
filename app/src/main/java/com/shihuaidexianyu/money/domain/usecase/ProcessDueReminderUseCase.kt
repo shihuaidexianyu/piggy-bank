@@ -7,6 +7,9 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 class ProcessDueReminderUseCase(
     private val accountRepository: AccountRepository,
@@ -14,6 +17,7 @@ class ProcessDueReminderUseCase(
     private val reminderRepository: RecurringReminderRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
         reminderId: Long,
@@ -27,7 +31,7 @@ class ProcessDueReminderUseCase(
         require(amount > 0) { "金额必须大于 0" }
         val operationId = "cash:reminder:$reminderId:$expectedDueAt"
 
-        return transactionRepository.runInTransaction {
+        val recordId = transactionRepository.runInTransaction {
             val requested = CashFlowRecord(
                 accountId = accountId,
                 direction = direction.value,
@@ -72,5 +76,7 @@ class ProcessDueReminderUseCase(
             }
             insertResult.recordId
         }
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_PROCESSED) }
+        return recordId
     }
 }

@@ -5,6 +5,9 @@ import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 data class UpdateBalanceResult(
     val insertResult: LedgerInsertResult,
@@ -21,6 +24,7 @@ class UpdateBalanceUseCase(
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -30,7 +34,7 @@ class UpdateBalanceUseCase(
     ): UpdateBalanceResult {
         require(operationId.isNotBlank()) { "操作标识不能为空" }
 
-        return transactionRepository.runInTransaction {
+        val result = transactionRepository.runInTransaction {
             transactionRepository.queryBalanceUpdateRecordByOperationId(operationId)?.let { existing ->
                 val replay = transactionRepository.insertBalanceUpdateRecord(
                     BalanceUpdateRecord(
@@ -75,6 +79,8 @@ class UpdateBalanceUseCase(
             }
             stored.toResult(insertResult, account.name)
         }
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }
+        return result
     }
 
     private fun BalanceUpdateRecord.toResult(

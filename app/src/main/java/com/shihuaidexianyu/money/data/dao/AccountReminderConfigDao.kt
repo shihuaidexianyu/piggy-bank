@@ -41,6 +41,38 @@ interface AccountReminderConfigDao {
         newValue: Long,
     ): Int
 
+    @Query(
+        """
+        UPDATE account_reminder_configs
+        SET lastNotifiedBoundaryAt = :boundaryAt
+        WHERE accountId = :accountId
+          AND isEnabled = 1
+          AND period = :period
+          AND weekday = :weekday
+          AND monthDay = :monthDay
+          AND hour = :hour
+          AND minute = :minute
+          AND ((lastNotifiedBoundaryAt IS NULL AND :expectedPreviousBoundaryAt IS NULL)
+               OR lastNotifiedBoundaryAt = :expectedPreviousBoundaryAt)
+          AND EXISTS (
+              SELECT 1 FROM accounts
+              WHERE accounts.id = :accountId
+                AND accounts.closedAt IS NULL
+                AND COALESCE(accounts.lastBalanceUpdateAt, accounts.createdAt) < :boundaryAt
+          )
+        """,
+    )
+    suspend fun acknowledgeStaleBoundary(
+        accountId: Long,
+        period: String,
+        weekday: String,
+        monthDay: Int,
+        hour: Int,
+        minute: Int,
+        expectedPreviousBoundaryAt: Long?,
+        boundaryAt: Long,
+    ): Int
+
     @Query("UPDATE account_reminder_configs SET lastNotifiedBoundaryAt = NULL WHERE accountId = :accountId")
     suspend fun resetLastNotifiedBoundary(accountId: Long): Int
 

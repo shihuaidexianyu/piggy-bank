@@ -18,6 +18,9 @@ class AccountReminderSettingsRepositoryImpl(
     override fun observeReminderConfigs(): Flow<Map<Long, BalanceUpdateReminderConfig>> =
         dao.observeAll().map { rows -> rows.associate { it.accountId to it.toDomain() } }
 
+    override suspend fun queryReminderConfigs(): Map<Long, BalanceUpdateReminderConfig> =
+        dao.queryAll().associate { it.accountId to it.toDomain() }
+
     override suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig =
         dao.queryByAccountId(accountId)?.toDomain() ?: BalanceUpdateReminderConfig()
 
@@ -41,6 +44,22 @@ class AccountReminderSettingsRepositoryImpl(
         expected: Long?,
         newValue: Long,
     ): Boolean = dao.compareAndSetLastNotifiedBoundary(accountId, expected, newValue) == 1
+
+    override suspend fun acknowledgeStaleBoundary(
+        accountId: Long,
+        expectedConfig: BalanceUpdateReminderConfig,
+        expectedPreviousBoundaryAt: Long?,
+        boundaryAt: Long,
+    ): Boolean = dao.acknowledgeStaleBoundary(
+        accountId = accountId,
+        period = expectedConfig.period.value,
+        weekday = expectedConfig.weekday.value,
+        monthDay = expectedConfig.monthDay,
+        hour = expectedConfig.hour,
+        minute = expectedConfig.minute,
+        expectedPreviousBoundaryAt = expectedPreviousBoundaryAt,
+        boundaryAt = boundaryAt,
+    ) == 1
 
     override suspend fun resetLastNotifiedBoundary(accountId: Long) {
         dao.resetLastNotifiedBoundary(accountId)

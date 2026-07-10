@@ -6,6 +6,9 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 class UpdateBalanceUpdateRecordUseCase(
     private val accountRepository: AccountRepository,
@@ -13,6 +16,7 @@ class UpdateBalanceUpdateRecordUseCase(
     private val resolveBalanceUpdateContextUseCase: ResolveBalanceUpdateContextUseCase,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -46,5 +50,6 @@ class UpdateBalanceUpdateRecordUseCase(
             }
             refreshAccountActivityStateUseCase(existing.accountId)
         }
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }
     }
 }

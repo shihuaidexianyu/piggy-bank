@@ -7,16 +7,20 @@ import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 class RestoreLedgerRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(token: LedgerUndoToken): RestoreLedgerResult {
         if (token.version != TOKEN_VERSION || token.operationId.isBlank()) return RestoreLedgerResult.STALE
-        return transactionRepository.runInTransaction {
+        val result = transactionRepository.runInTransaction {
             when (token.kind) {
                 LedgerRecordKind.CASH_FLOW -> restoreCashFlow(token)
                 LedgerRecordKind.TRANSFER -> restoreTransfer(token)
@@ -24,6 +28,10 @@ class RestoreLedgerRecordUseCase(
                 LedgerRecordKind.BALANCE_ADJUSTMENT -> restoreBalanceAdjustment(token)
             }
         }
+        if (token.kind == LedgerRecordKind.BALANCE_UPDATE && result == RestoreLedgerResult.RESTORED) {
+            runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }
+        }
+        return result
     }
 
     private suspend fun restoreCashFlow(token: LedgerUndoToken): RestoreLedgerResult {

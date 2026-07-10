@@ -4,11 +4,15 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 import java.util.concurrent.TimeUnit
 
 class ConfirmReminderUseCase(
     private val accountRepository: AccountRepository,
     private val reminderRepository: RecurringReminderRepository,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(reminderId: Long) {
         val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
@@ -22,6 +26,7 @@ class ConfirmReminderUseCase(
                 updatedAt = now,
             ),
         )
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_SKIPPED) }
     }
 }
 

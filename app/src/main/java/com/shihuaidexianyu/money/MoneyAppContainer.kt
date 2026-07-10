@@ -22,6 +22,10 @@ class MoneyAppContainer(context: Context) {
 
     val startupMigrationCoordinator get() = dataGraph.startupMigrationCoordinator
 
+    val notificationSyncRequester get() = dataGraph.notificationSyncRequester
+
+    val moneyNotificationPublisher get() = dataGraph.moneyNotificationPublisher
+
     val accountReminderSettingsRepository get() = dataGraph.accountReminderSettingsRepository
 
     val recurringReminderRepository get() = dataGraph.recurringReminderRepository
@@ -33,6 +37,10 @@ class MoneyAppContainer(context: Context) {
     val calculateCurrentBalanceUseCase get() = useCaseGraph.calculateCurrentBalanceUseCase
 
     val calculateAccountBalancesUseCase get() = useCaseGraph.calculateAccountBalancesUseCase
+
+    val syncMoneyNotificationsUseCase get() = useCaseGraph.syncMoneyNotificationsUseCase
+
+    val resolveNotificationLaunchUseCase get() = useCaseGraph.resolveNotificationLaunchUseCase
 
     val resolveBalanceUpdateContextUseCase get() = useCaseGraph.resolveBalanceUpdateContextUseCase
 

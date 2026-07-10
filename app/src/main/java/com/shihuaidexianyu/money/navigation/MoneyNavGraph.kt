@@ -18,11 +18,14 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.notification.NotificationLaunchDestination
+import com.shihuaidexianyu.money.domain.notification.NotificationLaunchRequest
+import kotlinx.coroutines.CancellationException
 
 private val topLevelRoutes = MoneyDestination.topLevel.map { it.route }
 private val topLevelRouteSet = topLevelRoutes.toSet()
@@ -97,8 +104,11 @@ fun MoneyNavGraph(
     container: MoneyAppContainer,
     shortcutAction: String? = null,
     sharedAmount: Long? = null,
+    notificationLaunchRequest: NotificationLaunchRequest? = null,
+    onNotificationLaunchConsumed: (Long) -> Unit = {},
 ) {
     val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
@@ -138,8 +148,44 @@ fun MoneyNavGraph(
         }
     }
 
+    LaunchedEffect(notificationLaunchRequest?.token) {
+        val request = notificationLaunchRequest ?: return@LaunchedEffect
+        val destination = try {
+            container.resolveNotificationLaunchUseCase(request.identity)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            NotificationLaunchDestination.ReminderCenter(stateChanged = true)
+        }
+        when (destination) {
+            is NotificationLaunchDestination.ProcessReminder -> {
+                val reminder = destination.reminder
+                navController.navigate(
+                    MoneyDestination.recordCashFlowRoute(
+                        direction = CashFlowDirection.fromValue(reminder.direction),
+                        accountId = reminder.accountId,
+                        amount = reminder.amount,
+                        note = reminder.name,
+                        reminderId = reminder.id,
+                        expectedDueAt = reminder.nextDueAt,
+                    ),
+                )
+            }
+            is NotificationLaunchDestination.ReconcileBalance ->
+                navController.navigate(MoneyDestination.updateBalanceRoute(destination.accountId))
+            is NotificationLaunchDestination.ReminderCenter -> {
+                navController.navigate(MoneyDestination.ReminderListRoute)
+                if (destination.stateChanged) {
+                    snackbarHostState.showSnackbar("提醒状态已变化")
+                }
+            }
+        }
+        onNotificationLaunchConsumed(request.token)
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (currentRoute in topLevelRoutes) {
                 Surface(color = MaterialTheme.colorScheme.surface) {

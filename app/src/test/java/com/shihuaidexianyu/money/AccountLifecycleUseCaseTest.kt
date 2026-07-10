@@ -15,6 +15,7 @@ import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
@@ -42,7 +43,7 @@ class AccountLifecycleUseCaseTest {
         val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(100L))
         val clock = testClockProvider(100L)
         val constructor = CloseAccountUseCase::class.java.declaredConstructors
-            .single { it.parameterCount == 7 }
+            .single { it.parameterCount == 8 }
 
         val error = assertFailsWith<InvocationTargetException> {
             constructor.newInstance(
@@ -53,6 +54,7 @@ class AccountLifecycleUseCaseTest {
                 clock,
                 AccountLifecycleCoordinator(),
                 null,
+                NoOpNotificationSyncRequester,
             )
         }
 

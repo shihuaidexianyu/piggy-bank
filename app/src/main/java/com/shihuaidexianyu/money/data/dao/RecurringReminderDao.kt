@@ -47,6 +47,18 @@ interface RecurringReminderDao {
         updatedAt: Long,
     ): Int
 
+    @Query(
+        """
+        UPDATE recurring_reminders
+        SET lastNotifiedDueAt = :expectedDueAt
+        WHERE id = :reminderId
+          AND isEnabled = 1
+          AND nextDueAt = :expectedDueAt
+          AND (lastNotifiedDueAt IS NULL OR lastNotifiedDueAt != :expectedDueAt)
+        """,
+    )
+    suspend fun acknowledgeNotifiedOccurrence(reminderId: Long, expectedDueAt: Long): Int
+
     @Query("DELETE FROM recurring_reminders WHERE id = :id")
     suspend fun delete(id: Long)
 

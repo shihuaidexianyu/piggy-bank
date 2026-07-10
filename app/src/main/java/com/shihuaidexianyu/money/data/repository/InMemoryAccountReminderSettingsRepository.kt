@@ -12,6 +12,8 @@ class InMemoryAccountReminderSettingsRepository : AccountReminderSettingsReposit
 
     override fun observeReminderConfigs(): Flow<Map<Long, BalanceUpdateReminderConfig>> = reminderConfigs
 
+    override suspend fun queryReminderConfigs(): Map<Long, BalanceUpdateReminderConfig> = reminderConfigs.value
+
     override suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig =
         reminderConfigs.value[accountId] ?: BalanceUpdateReminderConfig()
 
@@ -40,6 +42,24 @@ class InMemoryAccountReminderSettingsRepository : AccountReminderSettingsReposit
         if (!current.isEnabled || current.lastNotifiedBoundaryAt != expected) return@withLock false
         reminderConfigs.value = reminderConfigs.value + (
             accountId to current.copy(lastNotifiedBoundaryAt = newValue)
+        )
+        true
+    }
+
+    override suspend fun acknowledgeStaleBoundary(
+        accountId: Long,
+        expectedConfig: BalanceUpdateReminderConfig,
+        expectedPreviousBoundaryAt: Long?,
+        boundaryAt: Long,
+    ): Boolean = mutex.withLock {
+        val current = reminderConfigs.value[accountId] ?: return@withLock false
+        if (!current.isEnabled || current != expectedConfig ||
+            current.lastNotifiedBoundaryAt != expectedPreviousBoundaryAt
+        ) {
+            return@withLock false
+        }
+        reminderConfigs.value = reminderConfigs.value + (
+            accountId to current.copy(lastNotifiedBoundaryAt = boundaryAt)
         )
         true
     }

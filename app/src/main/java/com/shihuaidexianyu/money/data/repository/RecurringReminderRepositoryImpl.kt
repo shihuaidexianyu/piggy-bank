@@ -54,5 +54,10 @@ class RecurringReminderRepositoryImpl(
         updatedAt = updatedAt,
     ) == 1
 
+    override suspend fun acknowledgeNotifiedOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+    ): Boolean = dao.acknowledgeNotifiedOccurrence(reminderId, expectedDueAt) == 1
+
     override suspend fun deleteReminder(id: Long) = dao.delete(id)
 }

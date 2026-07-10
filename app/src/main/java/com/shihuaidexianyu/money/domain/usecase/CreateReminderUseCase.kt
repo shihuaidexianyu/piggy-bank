@@ -6,10 +6,14 @@ import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 class CreateReminderUseCase(
     private val accountRepository: AccountRepository,
     private val reminderRepository: RecurringReminderRepository,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
         name: String,
@@ -33,7 +37,7 @@ class CreateReminderUseCase(
             periodMonth = periodMonth,
         )
         val now = System.currentTimeMillis()
-        return reminderRepository.insertReminder(
+        val id = reminderRepository.insertReminder(
             RecurringReminder(
                 name = name.trim(),
                 type = type.value,
@@ -50,5 +54,7 @@ class CreateReminderUseCase(
                 updatedAt = now,
             ),
         )
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_CHANGED) }
+        return id
     }
 }

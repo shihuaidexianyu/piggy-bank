@@ -2,8 +2,8 @@ package com.shihuaidexianyu.money
 
 import android.app.Application
 import com.shihuaidexianyu.money.notification.MoneyAppContainerProvider
-import com.shihuaidexianyu.money.notification.ReminderAlarmScheduler
-import com.shihuaidexianyu.money.notification.ReminderNotificationScheduler
+import com.shihuaidexianyu.money.notification.AndroidMoneyNotificationPublisher
+import com.shihuaidexianyu.money.notification.MoneyNotificationScheduler
 import com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,16 +25,20 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
         appScope.launch {
             container.startupMigrationCoordinator.runMigration()
             container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
-            ReminderNotificationScheduler.schedule(this@MoneyApplication)
+            AndroidMoneyNotificationPublisher.ensureChannels(this@MoneyApplication)
+            val legacyReminderIds = runCatching {
+                container.recurringReminderRepository.queryAll().map { it.id }
+            }.getOrDefault(emptyList())
+            val legacyAccountIds = runCatching {
+                container.accountRepository.queryAllAccounts().map { it.id }
+            }.getOrDefault(emptyList())
+            MoneyNotificationScheduler.scheduleAfterReady(
+                context = this@MoneyApplication,
+                legacyReminderIds = legacyReminderIds,
+                legacyAccountIds = legacyAccountIds,
+                requester = container.notificationSyncRequester,
+            )
             BalanceOverviewWidgetProvider.scheduleUpdate(this@MoneyApplication)
-            runCatching {
-                val reminders = container.recurringReminderRepository.queryAll()
-                reminders.forEach { reminder ->
-                    if (reminder.isEnabled) {
-                        ReminderAlarmScheduler.scheduleReminderAlarm(this@MoneyApplication, reminder)
-                    }
-                }
-            }
             container.seedDebugSampleDataIfNeeded()
         }
     }

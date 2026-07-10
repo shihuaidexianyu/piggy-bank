@@ -6,6 +6,9 @@ import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import java.io.InputStream
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 fun interface CurrentBackupSnapshotSource {
     suspend fun build(exportedAt: Long): MoneyBackupSnapshot
@@ -28,6 +31,7 @@ class BackupImportCoordinator(
     private val clockProvider: ClockProvider,
     private val receiptIdGenerator: () -> String = ::secureReceiptId,
     private val markReceiptCommitted: (String) -> ImportReceipt = receiptStore::markCommitted,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     fun stage(input: InputStream): StagedBackupHandle {
         stagedStore.cleanupExpired(clockProvider.nowMillis())
@@ -60,6 +64,7 @@ class BackupImportCoordinator(
             rolledBackReceiptId = null,
         )
         stagedStore.delete(stageId)
+        requestSync(NotificationSyncReason.IMPORT)
         return result
     }
 
@@ -68,13 +73,15 @@ class BackupImportCoordinator(
         val raw = safetyStore.readVerified(receipt.safetySnapshotFileName, receipt.safetySnapshotSha256)
         val target = BackupJsonCodec.decode(raw)
         validator(target)
-        return replaceValidated(
+        val result = replaceValidated(
             target = target,
             sourceFileSha256 = receipt.safetySnapshotSha256,
             kind = ImportReceiptKind.ROLLBACK,
             rolledBackReceiptId = receipt.id,
             expectedCurrentContentSha256 = receipt.targetContentSha256,
         )
+        requestSync(NotificationSyncReason.ROLLBACK)
+        return result
     }
 
     fun history(): List<ImportReceipt> = receiptStore.history()
@@ -163,6 +170,10 @@ class BackupImportCoordinator(
             it.safetySnapshotFileName
         }
         safetyStore.prune(clockProvider.nowMillis(), protected)
+    }
+
+    private fun requestSync(reason: NotificationSyncReason) {
+        runCatching { notificationSyncRequester.request(reason) }
     }
 }
 

@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- POST_NOTIFICATIONS: required on Android 13+ for due-reminder notifications posted by
-         RecurringReminderWorker. On Android 12 and below this permission is auto-granted. -->
+    <!-- Required on Android 13+ for the unified WorkManager notification projection. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- SCHEDULE_EXACT_ALARM: required on Android 12+ for exact-reminder alarms via AlarmManager.
-         On Android 13+ the user must grant this in system settings; we fall back to WorkManager
-         if not granted. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:name=".MoneyApplication"
@@ -60,13 +53,6 @@
                 android:resource="@xml/widget_balance_overview_info" />
         </receiver>
 
-        <receiver
-            android:name=".notification.ReminderAlarmReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.shihuaidexianyu.money.REMINDER_DUE" />
-            </intent-filter>
-        </receiver>
     </application>
 
 </manifest>

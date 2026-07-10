@@ -21,8 +21,18 @@ import com.shihuaidexianyu.money.util.SharedTextAmountExtractor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.catch
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
+import com.shihuaidexianyu.money.domain.notification.MoneyNotificationKey
+import com.shihuaidexianyu.money.domain.notification.NotificationCapability
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationLaunchRequest
+import com.shihuaidexianyu.money.notification.NotificationLaunchIntentConsumer
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : FragmentActivity() {
+    private var notificationsWereAllowed: Boolean? = null
+    private val notificationLaunchRequest = MutableStateFlow<NotificationLaunchRequest?>(null)
+    private var nextLaunchToken = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -31,6 +41,7 @@ class MainActivity : FragmentActivity() {
         val container = (application as MoneyApplication).container
         val shortcutAction = intent?.getStringExtra("shortcut_action")
         val sharedAmount = extractSharedAmount(intent)
+        publishNotificationLaunch(intent)
         setContent {
             val portableSettings by produceState(initialValue = PortableSettings()) {
                 container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
@@ -42,6 +53,7 @@ class MainActivity : FragmentActivity() {
             val devicePreferences by devicePreferencesFlow.collectAsStateWithLifecycle(
                 initialValue = DevicePreferences(),
             )
+            val notificationRequest by notificationLaunchRequest.collectAsStateWithLifecycle()
 
             // Detect when the real DataStore value has loaded. We can't use `collectAsStateWithLifecycle`'s
             // initial value as a sentinel (the user might genuinely have all-default settings), so we
@@ -69,6 +81,13 @@ class MainActivity : FragmentActivity() {
                         container = container,
                         shortcutAction = shortcutAction,
                         sharedAmount = sharedAmount,
+                        notificationLaunchRequest = notificationRequest,
+                        onNotificationLaunchConsumed = { token ->
+                            notificationLaunchRequest.compareAndSet(
+                                notificationLaunchRequest.value?.takeIf { it.token == token },
+                                null,
+                            )
+                        },
                     )
                 }
             }
@@ -84,5 +103,25 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        publishNotificationLaunch(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val app = application as? MoneyApplication ?: return
+        val allowed = app.container.moneyNotificationPublisher.capability(
+            MoneyNotificationKey.Recurring(0L),
+        ) == NotificationCapability.Allowed
+        if (notificationsWereAllowed == false && allowed) {
+            app.container.notificationSyncRequester.request(NotificationSyncReason.PERMISSION_GRANTED)
+        }
+        notificationsWereAllowed = allowed
+    }
+
+    private fun publishNotificationLaunch(intent: Intent?) {
+        val token = nextLaunchToken + 1
+        val request = NotificationLaunchIntentConsumer.consume(intent, token) ?: return
+        nextLaunchToken = token
+        notificationLaunchRequest.value = request
     }
 }

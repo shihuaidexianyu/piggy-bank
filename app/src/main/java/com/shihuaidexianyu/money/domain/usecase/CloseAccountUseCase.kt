@@ -5,6 +5,9 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 
 class CloseAccountUseCase(
     private val accountRepository: AccountRepository,
@@ -14,6 +17,7 @@ class CloseAccountUseCase(
     private val clockProvider: ClockProvider,
     private val accountLifecycleCoordinator: AccountLifecycleCoordinator,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
+    private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(accountId: Long) {
         accountLifecycleCoordinator.withLifecycleLock {
@@ -31,5 +35,6 @@ class CloseAccountUseCase(
                 accountRepository.closeAccount(accountId, now)
             }
         }
+        runCatching { notificationSyncRequester.request(NotificationSyncReason.ACCOUNT_CLOSED) }
     }
 }

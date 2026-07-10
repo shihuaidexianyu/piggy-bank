@@ -12,6 +12,8 @@ import com.shihuaidexianyu.money.data.backup.SafetySnapshotStore
 import com.shihuaidexianyu.money.data.backup.StagedBackupStore
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
+import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import java.io.ByteArrayInputStream
 import kotlin.test.assertEquals
@@ -186,9 +188,28 @@ class BackupImportCoordinatorTest {
         assertEquals("¥", repository.current.portableSettings.currencySymbol)
     }
 
+    @Test
+    fun `confirm and rollback request notification projection refresh`() = runBlocking {
+        val original = fixtureV4()
+        val repository = FakeBackupRepository(original)
+        val requester = RecordingRequester()
+        val coordinator = coordinator(repository, notificationSyncRequester = requester)
+        val target = original.copy(portableSettings = original.portableSettings.copy(currencySymbol = "$"))
+        val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(target).encodeToByteArray()))
+
+        val receipt = coordinator.confirm(stage.id)
+        coordinator.rollback(receipt.id)
+
+        assertEquals(
+            listOf(NotificationSyncReason.IMPORT, NotificationSyncReason.ROLLBACK),
+            requester.reasons,
+        )
+    }
+
     private fun coordinator(
         repository: FakeBackupRepository,
         receiptStore: ImportReceiptStore = ImportReceiptStore(temporaryFolder.root),
+        notificationSyncRequester: NotificationSyncRequester = NotificationSyncRequester {},
         markCommitted: (String) -> ImportReceipt = receiptStore::markCommitted,
     ) = BackupImportCoordinator(
         stagedStore = StagedBackupStore(temporaryFolder.root),
@@ -204,7 +225,15 @@ class BackupImportCoordinatorTest {
         clockProvider = { NOW },
         receiptIdGenerator = sequenceOf("receipt-a", "receipt-b", "receipt-c", "receipt-d").iterator()::next,
         markReceiptCommitted = markCommitted,
+        notificationSyncRequester = notificationSyncRequester,
     )
+
+    private class RecordingRequester : NotificationSyncRequester {
+        val reasons = mutableListOf<NotificationSyncReason>()
+        override fun request(reason: NotificationSyncReason) {
+            reasons += reason
+        }
+    }
 
     private class FakeBackupRepository(
         var current: MoneyBackupSnapshot,
