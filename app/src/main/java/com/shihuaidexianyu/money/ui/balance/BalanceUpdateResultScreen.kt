@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.balance
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +23,7 @@ fun BalanceUpdateResultScreen(
     onOpenAccount: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(onBack = onDone)
     MoneyFormPage(
         title = "更新结果",
         modifier = modifier,

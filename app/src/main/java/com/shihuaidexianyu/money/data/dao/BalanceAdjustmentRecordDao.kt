@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BalanceAdjustmentRecordDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: BalanceAdjustmentRecordEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(record: BalanceAdjustmentRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<BalanceAdjustmentRecordEntity>)

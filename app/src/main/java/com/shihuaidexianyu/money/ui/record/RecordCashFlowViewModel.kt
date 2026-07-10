@@ -181,6 +181,8 @@ class RecordCashFlowViewModel(
                     processDueReminderUseCase(
                         reminderId = reminderId,
                         expectedDueAt = requireNotNull(expectedDueAt) { "提醒时间不存在" },
+                        accountId = accountId,
+                        direction = direction,
                         occurredAt = state.occurredAtMillis,
                         amount = amount,
                         note = state.note,

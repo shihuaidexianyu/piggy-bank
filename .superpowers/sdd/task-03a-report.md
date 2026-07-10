@@ -176,3 +176,78 @@ schema change.
 
 The Android tests were compiled only. In particular, the rollback negative
 assertion uses a 100 ms settling window and was not exercised on-device here.
+
+## Final review-gap fix wave
+
+An independent final Task 3A review found additional in-scope gaps. They were
+closed without changing the Room schema:
+
+- The four DAO `insert` methods are strict `ABORT` again. Idempotent Room
+  repositories alone use dedicated `insertOrIgnore` methods, so the legacy
+  importer cannot silently commit a partial snapshot.
+- Room and InMemory interactive ledger inserts now require `id == 0`, removing
+  ambiguity between a legal SQLite row ID of `-1` and Room's ignored-insert
+  sentinel.
+- All four create use cases and reminder posting resolve replay inside the
+  transaction before reading the clock, checking mutable account/reminder
+  state, or deriving balance evidence. Equal replay therefore survives a
+  device-clock rollback.
+- Reminder posting compares and stores the form's selected account and visible
+  direction. It never copies requested payload fields from an existing row.
+- A processed reminder advances exactly one schedule period from
+  `expectedDueAt`, using one occurrence CAS even when the reminder is severely
+  overdue.
+- Batch reconciliation freezes each account's actual balance together with its
+  operation ID and the shared occurrence time in `SavedStateHandle`.
+- System back on the balance result screen follows the same close-flow callback
+  as the “完成” button.
+
+### RED/GREEN evidence
+
+The fix wave used separate RED/GREEN cycles:
+
+- explicit IDs initially reached Room instead of failing before persistence;
+- four create commands and reminder posting initially failed equal replay after
+  clock rollback;
+- an active edited row's current payload was initially accepted as the original
+  create replay;
+- severely overdue reminders initially skipped repeatedly to a future date;
+- a recreated batch initially changed the failed command payload from `200` to
+  `250` while retaining the same operation ID.
+
+Each regression failed for the expected reason before its production change
+and passed afterward. Three independent scoped reviews approved the DAO,
+replay/reminder, and batch/back changes with no open findings.
+
+### No-schema payload limitation
+
+The current ledger row cannot prove its immutable first create payload after an
+edit. Under the no-schema constraint, active rows with `updatedAt != createdAt`
+therefore fail replay safely with `LedgerOperationConflictException` in both
+Room and InMemory. Required equal tombstone replay remains supported. An
+edited-then-deleted row is inherently indistinguishable from an unedited
+tombstone without a schema-backed operation journal; this remains documented
+rather than adding a hidden persistence mechanism.
+
+### Final verification
+
+Using the Android Studio JBR on the final uncommitted delta:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest --rerun-tasks --console=plain
+.\gradlew.bat :app:kspDebugKotlin --console=plain
+.\gradlew.bat :app:compileDebugAndroidTestKotlin --rerun-tasks --console=plain
+.\gradlew.bat test --rerun-tasks --console=plain
+git diff --check
+```
+
+Results:
+
+- Debug unit tests: success; 216 tests, no failures, errors, or skips.
+- KSP/schema generation: success.
+- Android instrumentation-test compilation: success.
+- Aggregate JVM tests: success; 216 tests, no failures, errors, or skips.
+- Diff check: exit 0; only LF-to-CRLF conversion warnings appeared.
+- Database version remains 14. Entities, migrations, `MoneyDatabase.kt`, and
+  schema JSON are unchanged.
+- Android instrumentation tests were compiled, not executed on a device.

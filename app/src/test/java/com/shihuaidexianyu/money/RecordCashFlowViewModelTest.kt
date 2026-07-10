@@ -5,9 +5,13 @@ import androidx.arch.core.executor.TaskExecutor
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.RecurringReminder
+import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
+import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
@@ -128,6 +132,72 @@ class RecordCashFlowViewModelTest {
         assertEquals(1, records.size)
         assertEquals(10_050L, records[0].amount)
         assertEquals(CashFlowDirection.INFLOW.value, records[0].direction)
+    }
+
+    @Test
+    fun `reminder save uses the account picker and view model direction`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val reminderAccountId = accountRepo.createAccount(Account(name = "原账户", initialBalance = 0, createdAt = 1L))
+        val selectedAccountId = accountRepo.createAccount(Account(name = "所选账户", initialBalance = 0, createdAt = 1L))
+        val txnRepo = InMemoryTransactionRepository()
+        val reminderRepo = InMemoryRecurringReminderRepository()
+        val dueAt = testClockProvider.nowMillis()
+        val reminderId = reminderRepo.insertReminder(
+            RecurringReminder(
+                name = "订阅",
+                type = ReminderType.SUBSCRIPTION.value,
+                accountId = reminderAccountId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 1_200,
+                periodType = ReminderPeriodType.CUSTOM_DAYS.value,
+                periodValue = 1,
+                periodMonth = null,
+                nextDueAt = dueAt,
+                anchorDueAt = dueAt,
+                createdAt = 1,
+                updatedAt = 1,
+            ),
+        )
+        val refresh = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
+        val processReminder = ProcessDueReminderUseCase(
+            accountRepository = accountRepo,
+            transactionRepository = txnRepo,
+            reminderRepository = reminderRepo,
+            refreshAccountActivityStateUseCase = refresh,
+            clockProvider = testClockProvider,
+        )
+        val vm = RecordCashFlowViewModel(
+            direction = CashFlowDirection.INFLOW,
+            initialAccountId = reminderAccountId,
+            prefillAmount = 1_200,
+            prefillNote = "会员续费",
+            reminderId = reminderId,
+            expectedDueAt = dueAt,
+            accountRepository = accountRepo,
+            transactionRepository = txnRepo,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo),
+            createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
+                accountRepo,
+                txnRepo,
+                refresh,
+                testClockProvider,
+            ),
+            processDueReminderUseCase = processReminder,
+            savedStateHandle = SavedStateHandle(),
+            operationIdFactory = LedgerOperationIdFactory { testOperationId() },
+        )
+        advanceUntilIdle()
+        vm.updateAccount(selectedAccountId)
+
+        vm.effectFlow.test {
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(RecordCashFlowEffect.Saved, awaitItem())
+        }
+
+        val stored = txnRepo.queryAllCashFlowRecords().single()
+        assertEquals(selectedAccountId, stored.accountId)
+        assertEquals(CashFlowDirection.INFLOW.value, stored.direction)
     }
 
     @Test

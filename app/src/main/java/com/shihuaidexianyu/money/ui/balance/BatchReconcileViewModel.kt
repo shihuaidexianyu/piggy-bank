@@ -132,7 +132,7 @@ class BatchReconcileViewModel(
                 runCatching {
                     updateBalanceUseCase(
                         accountId = account.accountId,
-                        actualBalance = account.systemBalance,
+                        actualBalance = actualBalanceFor(account.accountId, account.systemBalance),
                         occurredAt = occurredAt,
                         operationId = operationIdFor(account.accountId),
                     )
@@ -174,9 +174,16 @@ class BatchReconcileViewModel(
         ).also { savedStateHandle[key] = it }
     }
 
+    private fun actualBalanceFor(accountId: Long, currentBalance: Long): Long {
+        val key = "$ACTUAL_BALANCE_KEY_PREFIX$accountId"
+        return savedStateHandle.get<Long>(key)
+            ?: currentBalance.also { savedStateHandle[key] = it }
+    }
+
     private companion object {
         const val OCCURRED_AT_KEY = "batch_reconcile_occurred_at"
         const val OPERATION_ID_KEY_PREFIX = "batch_reconcile_operation_id:"
+        const val ACTUAL_BALANCE_KEY_PREFIX = "batch_reconcile_actual_balance:"
     }
 
     private suspend fun buildItems(

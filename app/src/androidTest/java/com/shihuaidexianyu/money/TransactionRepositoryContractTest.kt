@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
@@ -15,7 +16,6 @@ import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
-import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.runBlocking
@@ -106,13 +106,18 @@ class TransactionRepositoryContractTest {
         }
         assertTrue(
             runCatching {
-                roomRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "room-pk-conflict"))
-            }.exceptionOrNull() is LedgerRecordChangedException,
+                roomRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "room-explicit-id"))
+            }.exceptionOrNull() is IllegalArgumentException,
         )
         assertTrue(
             runCatching {
-                memoryRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "memory-pk-conflict"))
-            }.exceptionOrNull() is LedgerRecordChangedException,
+                memoryRepo.insertCashFlowRecord(cash.copy(id = 1, operationId = "memory-explicit-id"))
+            }.exceptionOrNull() is IllegalArgumentException,
+        )
+        assertTrue(
+            runCatching {
+                db.cashFlowRecordDao().insert(cash.copy(id = 1, operationId = "strict-dao-pk-conflict").toEntity())
+            }.isFailure,
         )
 
         val transfer = TransferRecord(

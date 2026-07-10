@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CashFlowRecordDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: CashFlowRecordEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(record: CashFlowRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<CashFlowRecordEntity>)

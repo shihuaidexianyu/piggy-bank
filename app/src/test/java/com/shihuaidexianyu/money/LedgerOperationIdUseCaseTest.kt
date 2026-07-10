@@ -20,6 +20,51 @@ import kotlin.test.assertTrue
 class LedgerOperationIdUseCaseTest {
     private val clock = ClockProvider { 1_000L }
 
+    private class MutableClock(var now: Long) : ClockProvider {
+        override fun nowMillis(): Long = now
+    }
+
+    @Test
+    fun `all create commands replay after clock rollback`() = runBlocking {
+        val clock = MutableClock(now = 1_000L)
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val firstAccountId = accountRepository.createAccount(
+            Account(name = "现金", initialBalance = 0, createdAt = 0),
+        )
+        val secondAccountId = accountRepository.createAccount(
+            Account(name = "储蓄", initialBalance = 0, createdAt = 0),
+        )
+        val refresh = RefreshAccountActivityStateUseCase(accountRepository, transactionRepository)
+        val createCash = CreateCashFlowRecordUseCase(accountRepository, transactionRepository, refresh, clock)
+        val createTransfer = CreateTransferRecordUseCase(accountRepository, transactionRepository, refresh, clock)
+        val updateBalance = UpdateBalanceUseCase(
+            accountRepository,
+            transactionRepository,
+            ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository),
+            refresh,
+            clock,
+        )
+        val createAdjustment = CreateBalanceAdjustmentUseCase(
+            accountRepository,
+            transactionRepository,
+            refresh,
+            clock,
+        )
+
+        assertTrue(createCash(firstAccountId, CashFlowDirection.INFLOW, 100, "工资", 500, "cash-clock").inserted)
+        assertTrue(createTransfer(firstAccountId, secondAccountId, 20, "转账", 500, "transfer-clock").inserted)
+        assertTrue(updateBalance(firstAccountId, 75, 500, "balance-clock").insertResult.inserted)
+        assertTrue(createAdjustment(firstAccountId, 5, 500, "adjustment-clock").inserted)
+
+        clock.now = 499L
+
+        assertFalse(createCash(firstAccountId, CashFlowDirection.INFLOW, 100, "工资", 500, "cash-clock").inserted)
+        assertFalse(createTransfer(firstAccountId, secondAccountId, 20, "转账", 500, "transfer-clock").inserted)
+        assertFalse(updateBalance(firstAccountId, 75, 500, "balance-clock").insertResult.inserted)
+        assertFalse(createAdjustment(firstAccountId, 5, 500, "adjustment-clock").inserted)
+    }
+
     @Test
     fun `create use cases persist caller operation ids and replay after account archive`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()

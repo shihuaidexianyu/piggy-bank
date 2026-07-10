@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TransferRecordDao {
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: TransferRecordEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(record: TransferRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(records: List<TransferRecordEntity>)

@@ -176,6 +176,18 @@ class LedgerFormSavedStateTest {
         assertEquals(listOf(firstAccountId, secondAccountId), repository.balanceCalls.map { it.accountId })
         assertTrue(accountRepository.getAccountById(firstAccountId)?.lastBalanceUpdateAt != null)
 
+        delegate.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = secondAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 50,
+                note = "重试前新增收入",
+                occurredAt = clock.now - 60_000,
+                createdAt = clock.now,
+                updatedAt = clock.now,
+                operationId = "batch-balance-change",
+            ),
+        )
         clock.now += 120_000
         val recreated = batchViewModel(accountRepository, repository, handle, ids, clock)
         attempts = 0
@@ -185,6 +197,7 @@ class LedgerFormSavedStateTest {
             attempts += 1
         }
         assertEquals(listOf(secondAccountId), recreated.uiState.value.accounts.map { it.accountId })
+        assertEquals(250L, recreated.uiState.value.accounts.single().systemBalance)
         recreated.saveSelected()
         advanceUntilIdle()
 
@@ -195,6 +208,7 @@ class LedgerFormSavedStateTest {
         assertEquals(1, secondCalls.map { it.operationId }.distinct().size)
         assertTrue(firstCalls.single().operationId != secondCalls.first().operationId)
         assertEquals(1, secondCalls.map { it.occurredAt }.distinct().size)
+        assertEquals(listOf(200L, 200L), secondCalls.map { it.actualBalance })
         assertEquals(2, ids.createCount)
         assertEquals(2, delegate.queryAllBalanceUpdateRecords().size)
     }

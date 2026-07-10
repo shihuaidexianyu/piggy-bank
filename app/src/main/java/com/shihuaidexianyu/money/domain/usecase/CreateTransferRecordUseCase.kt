@@ -23,24 +23,24 @@ class CreateTransferRecordUseCase(
         require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
         require(amount > 0) { "金额必须大于 0" }
         require(operationId.isNotBlank()) { "操作标识不能为空" }
-        val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
-        val requested = TransferRecord(
-            fromAccountId = fromAccountId,
-            toAccountId = toAccountId,
-            amount = amount,
-            note = note.trim(),
-            occurredAt = occurredAt,
-            createdAt = now,
-            updatedAt = now,
-            operationId = operationId,
-        )
 
         return transactionRepository.runInTransaction {
+            val requested = TransferRecord(
+                fromAccountId = fromAccountId,
+                toAccountId = toAccountId,
+                amount = amount,
+                note = note.trim(),
+                occurredAt = occurredAt,
+                createdAt = 0L,
+                updatedAt = 0L,
+                operationId = operationId,
+            )
             if (transactionRepository.queryTransferRecordByOperationId(operationId) != null) {
                 return@runInTransaction transactionRepository.insertTransferRecord(requested)
             }
 
+            val now = clockProvider.nowMillis()
+            require(occurredAt <= now) { "时间不能晚于当前时间" }
             val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
             val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
             fromAccount.requireActiveForMutation("记录转账")
@@ -48,7 +48,9 @@ class CreateTransferRecordUseCase(
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 
-            transactionRepository.insertTransferRecord(requested).also { result ->
+            transactionRepository.insertTransferRecord(
+                requested.copy(createdAt = now, updatedAt = now),
+            ).also { result ->
                 if (result.inserted) {
                     refreshAccountActivityStateUseCase(fromAccountId)
                     refreshAccountActivityStateUseCase(toAccountId)

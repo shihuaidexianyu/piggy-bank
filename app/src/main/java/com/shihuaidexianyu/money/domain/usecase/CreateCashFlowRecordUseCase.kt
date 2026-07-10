@@ -23,29 +23,31 @@ class CreateCashFlowRecordUseCase(
     ): LedgerInsertResult {
         require(amount > 0) { "金额必须大于 0" }
         require(operationId.isNotBlank()) { "操作标识不能为空" }
-        val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
-        val requested = CashFlowRecord(
-            accountId = accountId,
-            direction = direction.value,
-            amount = amount,
-            note = note.trim(),
-            occurredAt = occurredAt,
-            createdAt = now,
-            updatedAt = now,
-            operationId = operationId,
-        )
 
         return transactionRepository.runInTransaction {
+            val requested = CashFlowRecord(
+                accountId = accountId,
+                direction = direction.value,
+                amount = amount,
+                note = note.trim(),
+                occurredAt = occurredAt,
+                createdAt = 0L,
+                updatedAt = 0L,
+                operationId = operationId,
+            )
             if (transactionRepository.queryCashFlowRecordByOperationId(operationId) != null) {
                 return@runInTransaction transactionRepository.insertCashFlowRecord(requested)
             }
 
+            val now = clockProvider.nowMillis()
+            require(occurredAt <= now) { "时间不能晚于当前时间" }
             val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
             account.requireActiveForMutation("记录收支")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
-            transactionRepository.insertCashFlowRecord(requested).also { result ->
+            transactionRepository.insertCashFlowRecord(
+                requested.copy(createdAt = now, updatedAt = now),
+            ).also { result ->
                 if (result.inserted) {
                     refreshAccountActivityStateUseCase(accountId)
                 }

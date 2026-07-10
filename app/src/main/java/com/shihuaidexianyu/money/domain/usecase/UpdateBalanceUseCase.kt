@@ -29,8 +29,6 @@ class UpdateBalanceUseCase(
         operationId: String,
     ): UpdateBalanceResult {
         require(operationId.isNotBlank()) { "操作标识不能为空" }
-        val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
 
         return transactionRepository.runInTransaction {
             transactionRepository.queryBalanceUpdateRecordByOperationId(operationId)?.let { existing ->
@@ -41,8 +39,8 @@ class UpdateBalanceUseCase(
                         systemBalanceBeforeUpdate = 0,
                         delta = 0,
                         occurredAt = occurredAt,
-                        createdAt = now,
-                        updatedAt = now,
+                        createdAt = 0L,
+                        updatedAt = 0L,
                         operationId = operationId,
                     ),
                 )
@@ -50,6 +48,8 @@ class UpdateBalanceUseCase(
                 return@runInTransaction existing.toResult(replay, account.name)
             }
 
+            val now = clockProvider.nowMillis()
+            require(occurredAt <= now) { "时间不能晚于当前时间" }
             val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
             account.requireActiveForMutation("核对余额")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)

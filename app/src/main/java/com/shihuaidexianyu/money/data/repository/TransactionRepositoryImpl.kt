@@ -52,13 +52,14 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         val normalized = record.copy(note = record.note.trim())
         return database.withTransaction {
             cashFlowRecordDao.queryByOperationId(normalized.operationId)?.toDomain()?.let { existing ->
                 return@withTransaction cashFlowReplayResult(existing, normalized)
             }
-            val insertedId = cashFlowRecordDao.insert(normalized.toEntity())
+            val insertedId = cashFlowRecordDao.insertOrIgnore(normalized.toEntity())
             if (insertedId != INSERT_IGNORED) {
                 return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
             }
@@ -111,13 +112,14 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         val normalized = record.copy(note = record.note.trim())
         return database.withTransaction {
             transferRecordDao.queryByOperationId(normalized.operationId)?.toDomain()?.let { existing ->
                 return@withTransaction transferReplayResult(existing, normalized)
             }
-            val insertedId = transferRecordDao.insert(normalized.toEntity())
+            val insertedId = transferRecordDao.insertOrIgnore(normalized.toEntity())
             if (insertedId != INSERT_IGNORED) {
                 return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
             }
@@ -173,12 +175,13 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         return database.withTransaction {
             balanceUpdateRecordDao.queryByOperationId(record.operationId)?.toDomain()?.let { existing ->
                 return@withTransaction balanceUpdateReplayResult(existing, record)
             }
-            val insertedId = balanceUpdateRecordDao.insert(record.toEntity())
+            val insertedId = balanceUpdateRecordDao.insertOrIgnore(record.toEntity())
             if (insertedId != INSERT_IGNORED) {
                 return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
             }
@@ -226,12 +229,13 @@ class TransactionRepositoryImpl(
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.getLatestForAccount(accountId)?.toDomain()
 
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         return database.withTransaction {
             balanceAdjustmentRecordDao.queryByOperationId(record.operationId)?.toDomain()?.let { existing ->
                 return@withTransaction balanceAdjustmentReplayResult(existing, record)
             }
-            val insertedId = balanceAdjustmentRecordDao.insert(record.toEntity())
+            val insertedId = balanceAdjustmentRecordDao.insertOrIgnore(record.toEntity())
             if (insertedId != INSERT_IGNORED) {
                 return@withTransaction LedgerInsertResult(recordId = insertedId, inserted = true)
             }
@@ -391,6 +395,14 @@ class TransactionRepositoryImpl(
     }
 
     private fun cashFlowReplayResult(existing: CashFlowRecord, requested: CashFlowRecord): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.CASH_FLOW,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.direction == requested.direction &&
             existing.amount == requested.amount &&
@@ -405,6 +417,14 @@ class TransactionRepositoryImpl(
     }
 
     private fun transferReplayResult(existing: TransferRecord, requested: TransferRecord): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.TRANSFER,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.fromAccountId == requested.fromAccountId &&
             existing.toAccountId == requested.toAccountId &&
             existing.amount == requested.amount &&
@@ -422,6 +442,14 @@ class TransactionRepositoryImpl(
         existing: BalanceUpdateRecord,
         requested: BalanceUpdateRecord,
     ): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.BALANCE_UPDATE,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.actualBalance == requested.actualBalance &&
             existing.occurredAt == requested.occurredAt
@@ -437,6 +465,14 @@ class TransactionRepositoryImpl(
         existing: BalanceAdjustmentRecord,
         requested: BalanceAdjustmentRecord,
     ): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.BALANCE_ADJUSTMENT,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.delta == requested.delta &&
             existing.occurredAt == requested.occurredAt
@@ -460,8 +496,25 @@ class TransactionRepositoryImpl(
         return LedgerInsertResult(recordId = existingRecordId, inserted = false)
     }
 
+    private fun rejectUnverifiableActiveEdit(
+        kind: LedgerRecordKind,
+        operationId: String,
+        existingRecordId: Long,
+        createdAt: Long,
+        updatedAt: Long,
+        deletedAt: Long?,
+    ) {
+        if (deletedAt == null && updatedAt != createdAt) {
+            throw LedgerOperationConflictException(kind, operationId, existingRecordId)
+        }
+    }
+
     private fun requireOperationId(operationId: String) {
         require(operationId.isNotBlank()) { "operationId must not be blank" }
+    }
+
+    private fun requireInsertableId(id: Long) {
+        require(id == 0L) { "新建账本记录的 ID 必须为 0" }
     }
 
     private fun requireNewerTimestamp(updatedAt: Long, expectedUpdatedAt: Long) {

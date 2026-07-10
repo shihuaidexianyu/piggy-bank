@@ -52,6 +52,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         val normalized = record.copy(note = record.note.trim())
         cashFlowRecords.firstOrNull { it.operationId == normalized.operationId }?.let { existing ->
@@ -150,6 +151,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         val normalized = record.copy(note = record.note.trim())
         transferRecords.firstOrNull { it.operationId == normalized.operationId }?.let { existing ->
@@ -249,6 +251,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         balanceUpdates.firstOrNull { it.operationId == record.operationId }?.let { existing ->
             return@synchronized balanceUpdateReplayResult(existing, record)
@@ -335,6 +338,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult = synchronized(ledgerLock) {
+        requireInsertableId(record.id)
         requireOperationId(record.operationId)
         adjustments.firstOrNull { it.operationId == record.operationId }?.let { existing ->
             return@synchronized balanceAdjustmentReplayResult(existing, record)
@@ -664,11 +668,23 @@ class InMemoryTransactionRepository : TransactionRepository {
         require(operationId.isNotBlank()) { "operationId must not be blank" }
     }
 
+    private fun requireInsertableId(id: Long) {
+        require(id == 0L) { "新建账本记录的 ID 必须为 0" }
+    }
+
     private fun requireNewerTimestamp(updatedAt: Long, expectedUpdatedAt: Long) {
         require(updatedAt > expectedUpdatedAt) { "新的更新时间必须晚于原记录" }
     }
 
     private fun cashFlowReplayResult(existing: CashFlowRecord, requested: CashFlowRecord): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.CASH_FLOW,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.direction == requested.direction &&
             existing.amount == requested.amount &&
@@ -678,6 +694,14 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     private fun transferReplayResult(existing: TransferRecord, requested: TransferRecord): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.TRANSFER,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.fromAccountId == requested.fromAccountId &&
             existing.toAccountId == requested.toAccountId &&
             existing.amount == requested.amount &&
@@ -690,6 +714,14 @@ class InMemoryTransactionRepository : TransactionRepository {
         existing: BalanceUpdateRecord,
         requested: BalanceUpdateRecord,
     ): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.BALANCE_UPDATE,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.actualBalance == requested.actualBalance &&
             existing.occurredAt == requested.occurredAt
@@ -700,6 +732,14 @@ class InMemoryTransactionRepository : TransactionRepository {
         existing: BalanceAdjustmentRecord,
         requested: BalanceAdjustmentRecord,
     ): LedgerInsertResult {
+        rejectUnverifiableActiveEdit(
+            kind = LedgerRecordKind.BALANCE_ADJUSTMENT,
+            operationId = requested.operationId,
+            existingRecordId = existing.id,
+            createdAt = existing.createdAt,
+            updatedAt = existing.updatedAt,
+            deletedAt = existing.deletedAt,
+        )
         val samePayload = existing.accountId == requested.accountId &&
             existing.delta == requested.delta &&
             existing.occurredAt == requested.occurredAt
@@ -716,6 +756,19 @@ class InMemoryTransactionRepository : TransactionRepository {
             throw LedgerOperationConflictException(kind, operationId, existingRecordId)
         }
         return LedgerInsertResult(recordId = existingRecordId, inserted = false)
+    }
+
+    private fun rejectUnverifiableActiveEdit(
+        kind: LedgerRecordKind,
+        operationId: String,
+        existingRecordId: Long,
+        createdAt: Long,
+        updatedAt: Long,
+        deletedAt: Long?,
+    ) {
+        if (deletedAt == null && updatedAt != createdAt) {
+            throw LedgerOperationConflictException(kind, operationId, existingRecordId)
+        }
     }
 
     private fun bumpVersion() {

@@ -9,20 +9,36 @@ import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
+import com.shihuaidexianyu.money.domain.usecase.ReminderNextDueCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ProcessDueReminderUseCaseTest {
+    @Test
+    fun `equal occurrence replay succeeds after clock rollback`() = runBlocking {
+        val fixture = ReminderProcessFixture()
+        val (reminderId, dueAt) = fixture.createReminder()
+
+        val firstId = fixture.process(reminderId, dueAt, occurredAt = 900)
+        fixture.clock.now = 899
+        val replayId = fixture.process(reminderId, dueAt, occurredAt = 900)
+
+        assertEquals(firstId, replayId)
+        assertEquals(1, fixture.transactionRepository.queryAllCashFlowRecords().size)
+    }
+
     @Test
     fun `equal occurrence replay returns original cash and does not advance twice`() = runBlocking {
         val fixture = ReminderProcessFixture()
@@ -50,6 +66,65 @@ class ProcessDueReminderUseCaseTest {
             fixture.process(reminderId, dueAt, amount = 1_201)
         }
         assertEquals(1, fixture.transactionRepository.queryAllCashFlowRecords().size)
+    }
+
+    @Test
+    fun `selected account and direction are stored for reminder occurrence`() = runBlocking {
+        val fixture = ReminderProcessFixture()
+        val (reminderId, dueAt) = fixture.createReminder()
+        val selectedAccountId = fixture.accountRepository.createAccount(
+            Account(name = "备用账户", initialBalance = 0, createdAt = 1),
+        )
+
+        fixture.process(
+            reminderId = reminderId,
+            expectedDueAt = dueAt,
+            accountId = selectedAccountId,
+            direction = CashFlowDirection.INFLOW,
+        )
+
+        val stored = fixture.transactionRepository.queryAllCashFlowRecords().single()
+        assertEquals(selectedAccountId, stored.accountId)
+        assertEquals(CashFlowDirection.INFLOW.value, stored.direction)
+    }
+
+    @Test
+    fun `replay with another account or direction conflicts`() = runBlocking {
+        val fixture = ReminderProcessFixture()
+        val (reminderId, dueAt) = fixture.createReminder()
+        val anotherAccountId = fixture.accountRepository.createAccount(
+            Account(name = "备用账户", initialBalance = 0, createdAt = 1),
+        )
+        fixture.process(reminderId, dueAt)
+
+        assertFailsWith<LedgerOperationConflictException> {
+            fixture.process(reminderId, dueAt, accountId = anotherAccountId)
+        }
+        assertFailsWith<LedgerOperationConflictException> {
+            fixture.process(reminderId, dueAt, direction = CashFlowDirection.INFLOW)
+        }
+        assertEquals(1, fixture.transactionRepository.queryAllCashFlowRecords().size)
+    }
+
+    @Test
+    fun `delayed processing advances once from expected due`() = runBlocking {
+        val fixture = ReminderProcessFixture()
+        val (reminderId, dueAt) = fixture.createReminder()
+        val day = TimeUnit.DAYS.toMillis(1)
+        fixture.clock.now = dueAt + (2 * day) + 1
+
+        fixture.process(reminderId, dueAt, occurredAt = dueAt)
+
+        val call = fixture.reminderRepository.advanceCalls.single()
+        val expectedNextDueAt = ReminderNextDueCalculator.calculateNextDue(
+            currentDueAt = dueAt,
+            periodType = ReminderPeriodType.CUSTOM_DAYS,
+            periodValue = 1,
+            periodMonth = null,
+        )
+        assertEquals(reminderId, call.reminderId)
+        assertEquals(dueAt, call.expectedDueAt)
+        assertEquals(expectedNextDueAt, call.nextDueAt)
     }
 
     @Test
@@ -115,11 +190,40 @@ class ProcessDueReminderUseCaseTest {
         override fun nowMillis(): Long = now
     }
 
+    private data class AdvanceCall(
+        val reminderId: Long,
+        val expectedDueAt: Long,
+        val nextDueAt: Long,
+    )
+
+    private class RecordingReminderRepository(
+        private val delegate: InMemoryRecurringReminderRepository = InMemoryRecurringReminderRepository(),
+    ) : RecurringReminderRepository by delegate {
+        val advanceCalls = mutableListOf<AdvanceCall>()
+
+        override suspend fun advanceOccurrence(
+            reminderId: Long,
+            expectedDueAt: Long,
+            nextDueAt: Long,
+            confirmedAt: Long,
+            updatedAt: Long,
+        ): Boolean {
+            advanceCalls += AdvanceCall(reminderId, expectedDueAt, nextDueAt)
+            return delegate.advanceOccurrence(
+                reminderId = reminderId,
+                expectedDueAt = expectedDueAt,
+                nextDueAt = nextDueAt,
+                confirmedAt = confirmedAt,
+                updatedAt = updatedAt,
+            )
+        }
+    }
+
     private class ReminderProcessFixture {
         val clock = MutableClock(now = 100_000)
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
-        val reminderRepository = InMemoryRecurringReminderRepository()
+        val reminderRepository = RecordingReminderRepository()
         val accountId = runBlocking {
             accountRepository.createAccount(Account(name = "信用卡", initialBalance = 0, createdAt = 1))
         }
@@ -142,11 +246,15 @@ class ProcessDueReminderUseCaseTest {
         suspend fun process(
             reminderId: Long,
             expectedDueAt: Long,
+            accountId: Long = this.accountId,
+            direction: CashFlowDirection = CashFlowDirection.OUTFLOW,
             occurredAt: Long = 900,
             amount: Long = 1_200,
         ): Long = useCase(
             reminderId = reminderId,
             expectedDueAt = expectedDueAt,
+            accountId = accountId,
+            direction = direction,
             occurredAt = occurredAt,
             amount = amount,
             note = "会员续费",
