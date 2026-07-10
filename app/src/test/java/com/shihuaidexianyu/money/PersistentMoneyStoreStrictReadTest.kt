@@ -128,6 +128,109 @@ class PersistentMoneyStoreStrictReadTest {
         }
     }
 
+    @Test
+    fun `strict read rejects invalid legacy ledger domain semantics`() {
+        val directory = createTempDirectory("money-legacy-domain-invalid").toFile()
+        try {
+            val file = File(directory, "money_store.json")
+            val store = PersistentMoneyStore(file)
+            val invalidRoots = listOf(
+                validLegacyRoot().apply {
+                    getJSONArray("cashFlowRecords").put(
+                        cashFlowJson(1L, 60_000L, direction = "sideways"),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("cashFlowRecords").put(cashFlowJson(1L, 60_000L, amount = 0L))
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("transferRecords").put(
+                        transferJson(1L, 2L, 60_000L, amount = -1L),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("adjustments").put(adjustmentJson(1L, 60_000L, delta = 0L))
+                },
+                validLegacyRoot(accountCreatedAt = 0L),
+                validLegacyRoot().apply {
+                    getJSONArray("accounts").getJSONObject(0)
+                        .put("isArchived", true)
+                        .put("archivedAt", 0L)
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("cashFlowRecords").put(
+                        cashFlowJson(1L, 59_999L),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("transferRecords").put(
+                        transferJson(1L, 2L, 59_999L),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("cashFlowRecords").put(
+                        cashFlowJson(
+                            accountId = 1L,
+                            occurredAt = 60_000L,
+                            createdAt = 80_000L,
+                            updatedAt = 79_999L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("transferRecords").put(
+                        transferJson(
+                            fromId = 1L,
+                            toId = 2L,
+                            occurredAt = 60_000L,
+                            createdAt = 80_000L,
+                            updatedAt = 79_999L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("balanceUpdates").put(
+                        balanceUpdateJson(
+                            accountId = 1L,
+                            occurredAt = 60_000L,
+                            actualBalance = 10L,
+                            systemBalanceBefore = 3L,
+                            delta = 6L,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("balanceUpdates").put(
+                        balanceUpdateJson(
+                            accountId = 1L,
+                            occurredAt = 60_000L,
+                            actualBalance = Long.MAX_VALUE,
+                            systemBalanceBefore = -1L,
+                            delta = Long.MAX_VALUE,
+                        ),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("balanceUpdates").put(
+                        balanceUpdateJson(accountId = 1L, occurredAt = 0L),
+                    )
+                },
+                validLegacyRoot().apply {
+                    getJSONArray("adjustments").put(
+                        adjustmentJson(accountId = 1L, occurredAt = 60_000L, createdAt = 0L),
+                    )
+                },
+            )
+
+            invalidRoots.forEach { root ->
+                file.writeText(root.toString())
+                assertIs<LegacyMoneyStoreReadResult.Corrupt>(store.readStrict())
+            }
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     private fun emptyLegacyStoreJson(): String = JSONObject()
         .put("accounts", JSONArray())
         .put("cashFlowRecords", JSONArray())
@@ -136,11 +239,17 @@ class PersistentMoneyStoreStrictReadTest {
         .put("adjustments", JSONArray())
         .toString()
 
-    private fun activeAccountJson(id: Long) = JSONObject()
+    private fun validLegacyRoot(accountCreatedAt: Long = 60_001L) = JSONObject(emptyLegacyStoreJson()).apply {
+        getJSONArray("accounts")
+            .put(activeAccountJson(1L, accountCreatedAt))
+            .put(activeAccountJson(2L, accountCreatedAt))
+    }
+
+    private fun activeAccountJson(id: Long, createdAt: Long = 1L) = JSONObject()
         .put("id", id)
         .put("name", "账户$id")
         .put("initialBalance", 0L)
-        .put("createdAt", 1L)
+        .put("createdAt", createdAt)
         .put("displayOrder", id.toInt())
 
     private fun archivedAccountJson(id: Long) = activeAccountJson(id)
@@ -149,39 +258,65 @@ class PersistentMoneyStoreStrictReadTest {
         .put("lastUsedAt", 3L)
         .put("lastBalanceUpdateAt", 4L)
 
-    private fun cashFlowJson(accountId: Long, occurredAt: Long) = JSONObject()
+    private fun cashFlowJson(
+        accountId: Long,
+        occurredAt: Long,
+        direction: String = "inflow",
+        amount: Long = 1L,
+        createdAt: Long = occurredAt,
+        updatedAt: Long = createdAt,
+    ) = JSONObject()
         .put("id", 1L)
         .put("accountId", accountId)
-        .put("direction", "inflow")
-        .put("amount", 1L)
+        .put("direction", direction)
+        .put("amount", amount)
         .put("purpose", "测试")
         .put("occurredAt", occurredAt)
-        .put("createdAt", occurredAt)
-        .put("updatedAt", occurredAt)
+        .put("createdAt", createdAt)
+        .put("updatedAt", updatedAt)
 
-    private fun transferJson(fromId: Long, toId: Long, occurredAt: Long) = JSONObject()
+    private fun transferJson(
+        fromId: Long,
+        toId: Long,
+        occurredAt: Long,
+        amount: Long = 1L,
+        createdAt: Long = occurredAt,
+        updatedAt: Long = createdAt,
+    ) = JSONObject()
         .put("id", 1L)
         .put("fromAccountId", fromId)
         .put("toAccountId", toId)
-        .put("amount", 1L)
+        .put("amount", amount)
         .put("note", "测试")
         .put("occurredAt", occurredAt)
-        .put("createdAt", occurredAt)
-        .put("updatedAt", occurredAt)
+        .put("createdAt", createdAt)
+        .put("updatedAt", updatedAt)
 
-    private fun balanceUpdateJson(accountId: Long, occurredAt: Long) = JSONObject()
+    private fun balanceUpdateJson(
+        accountId: Long,
+        occurredAt: Long,
+        actualBalance: Long = 1L,
+        systemBalanceBefore: Long = 0L,
+        delta: Long = 1L,
+        createdAt: Long = occurredAt,
+    ) = JSONObject()
         .put("id", 1L)
         .put("accountId", accountId)
-        .put("actualBalance", 1L)
-        .put("systemBalanceBeforeUpdate", 0L)
-        .put("delta", 1L)
+        .put("actualBalance", actualBalance)
+        .put("systemBalanceBeforeUpdate", systemBalanceBefore)
+        .put("delta", delta)
         .put("occurredAt", occurredAt)
-        .put("createdAt", occurredAt)
+        .put("createdAt", createdAt)
 
-    private fun adjustmentJson(accountId: Long, occurredAt: Long) = JSONObject()
+    private fun adjustmentJson(
+        accountId: Long,
+        occurredAt: Long,
+        delta: Long = 1L,
+        createdAt: Long = occurredAt,
+    ) = JSONObject()
         .put("id", 1L)
         .put("accountId", accountId)
-        .put("delta", 1L)
+        .put("delta", delta)
         .put("occurredAt", occurredAt)
-        .put("createdAt", occurredAt)
+        .put("createdAt", createdAt)
 }

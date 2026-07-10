@@ -5,7 +5,10 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.TimeMath
 import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
@@ -97,6 +100,8 @@ private fun JSONArray.toAccountList(latestEventAtByAccount: Map<Long, Long>): Li
     this.toObjectList { item ->
         val id = item.getLong("id")
         val createdAt = item.getLong("createdAt")
+        val archivedAt = item.optNullableLong("archivedAt")
+        requireNullablePositiveTime(archivedAt, "账户归档时间")
         Account(
             id = id,
             name = item.getString("name"),
@@ -105,7 +110,7 @@ private fun JSONArray.toAccountList(latestEventAtByAccount: Map<Long, Long>): Li
             closedAt = if (item.optBoolean("isArchived")) {
                 listOfNotNull(
                     createdAt,
-                    item.optNullableLong("archivedAt"),
+                    archivedAt,
                     item.optNullableLong("lastUsedAt"),
                     item.optNullableLong("lastBalanceUpdateAt"),
                     latestEventAtByAccount[id],
@@ -220,19 +225,75 @@ private fun validateSnapshot(snapshot: MoneySnapshot) {
     requireUniquePositiveIds("转账", snapshot.transferRecords.map { it.id })
     requireUniquePositiveIds("核对记录", snapshot.balanceUpdates.map { it.id })
     requireUniquePositiveIds("余额调整", snapshot.adjustments.map { it.id })
-    val accountIds = snapshot.accounts.mapTo(mutableSetOf()) { it.id }
-    snapshot.cashFlowRecords.forEach { require(it.accountId in accountIds) { "现金流水引用了不存在的账户" } }
-    snapshot.transferRecords.forEach {
-        require(it.fromAccountId in accountIds && it.toAccountId in accountIds) { "转账引用了不存在的账户" }
-        require(it.fromAccountId != it.toAccountId) { "转账不能在同一账户内发生" }
+    val accountsById = snapshot.accounts.associateBy { it.id }
+    snapshot.accounts.forEach { account ->
+        requirePositiveTime(account.createdAt, "账户创建时间")
+        requireNullablePositiveTime(account.closedAt, "账户关闭时间")
+        requireNullablePositiveTime(account.lastUsedAt, "账户最后使用时间")
+        requireNullablePositiveTime(account.lastBalanceUpdateAt, "账户最后核对时间")
     }
-    snapshot.balanceUpdates.forEach { require(it.accountId in accountIds) { "核对记录引用了不存在的账户" } }
-    snapshot.adjustments.forEach { require(it.accountId in accountIds) { "余额调整引用了不存在的账户" } }
+    val validCashDirections = CashFlowDirection.entries.mapTo(mutableSetOf()) { it.value }
+    snapshot.cashFlowRecords.forEach { record ->
+        require(record.accountId in accountsById) { "现金流水引用了不存在的账户" }
+        require(record.direction in validCashDirections) { "现金流水方向不支持：${record.direction}" }
+        require(record.amount > 0L) { "现金流水金额必须大于 0" }
+        requireRecordTimes(record.occurredAt, record.createdAt, record.updatedAt, "现金流水")
+        require(record.updatedAt >= record.createdAt) { "现金流水更新时间不能早于创建时间" }
+        requireEventOnOrAfterOpening(record.accountId, record.occurredAt, accountsById)
+    }
+    snapshot.transferRecords.forEach {
+        require(it.fromAccountId in accountsById && it.toAccountId in accountsById) { "转账引用了不存在的账户" }
+        require(it.fromAccountId != it.toAccountId) { "转账不能在同一账户内发生" }
+        require(it.amount > 0L) { "转账金额必须大于 0" }
+        requireRecordTimes(it.occurredAt, it.createdAt, it.updatedAt, "转账")
+        require(it.updatedAt >= it.createdAt) { "转账更新时间不能早于创建时间" }
+        requireEventOnOrAfterOpening(it.fromAccountId, it.occurredAt, accountsById)
+        requireEventOnOrAfterOpening(it.toAccountId, it.occurredAt, accountsById)
+    }
+    snapshot.balanceUpdates.forEach { record ->
+        require(record.accountId in accountsById) { "核对记录引用了不存在的账户" }
+        requireRecordTimes(record.occurredAt, record.createdAt, record.updatedAt, "核对记录")
+        requireEventOnOrAfterOpening(record.accountId, record.occurredAt, accountsById)
+        val evidenceDelta = ledgerSubtractExact(
+            record.actualBalance,
+            record.systemBalanceBeforeUpdate,
+        )
+        require(record.delta == evidenceDelta) { "核对记录固定差额与证据不一致" }
+    }
+    snapshot.adjustments.forEach { record ->
+        require(record.accountId in accountsById) { "余额调整引用了不存在的账户" }
+        require(record.delta != 0L) { "余额调整差额不能为 0" }
+        requireRecordTimes(record.occurredAt, record.createdAt, record.updatedAt, "余额调整")
+        requireEventOnOrAfterOpening(record.accountId, record.occurredAt, accountsById)
+    }
 }
 
 private fun requireUniquePositiveIds(label: String, ids: List<Long>) {
     require(ids.all { it > 0L }) { "$label ID 必须大于 0" }
     require(ids.distinct().size == ids.size) { "${label}包含重复 ID" }
+}
+
+private fun requireRecordTimes(occurredAt: Long, createdAt: Long, updatedAt: Long, label: String) {
+    requirePositiveTime(occurredAt, "${label}发生时间")
+    requirePositiveTime(createdAt, "${label}创建时间")
+    requirePositiveTime(updatedAt, "${label}更新时间")
+}
+
+private fun requirePositiveTime(value: Long, label: String) {
+    require(value > 0L) { "${label}必须大于 0" }
+}
+
+private fun requireNullablePositiveTime(value: Long?, label: String) {
+    if (value != null) requirePositiveTime(value, label)
+}
+
+private fun requireEventOnOrAfterOpening(
+    accountId: Long,
+    occurredAt: Long,
+    accountsById: Map<Long, Account>,
+) {
+    val account = requireNotNull(accountsById[accountId]) { "记录引用了不存在的账户" }
+    require(occurredAt >= TimeMath.floorToMinute(account.createdAt)) { "记录时间不能早于账户创建时间" }
 }
 
 private fun JSONObject.optNullableLong(key: String): Long? {

@@ -212,6 +212,43 @@ class StartupMigrationRoomContractTest {
     }
 
     @Test
+    fun invalidLegacyLedgerSemanticsNeverWriteRoomOrMigrationState() = runBlocking {
+        val invalidRoots = listOf(
+            validLegacyLedgerRoot().apply {
+                getJSONArray("cashFlowRecords").put(cashFlowJson(direction = "sideways"))
+            },
+            validLegacyLedgerRoot().apply {
+                getJSONArray("transferRecords").put(transferJson(amount = 0L))
+            },
+            validLegacyLedgerRoot().apply {
+                getJSONArray("adjustments").put(adjustmentJson(delta = 0L))
+            },
+            validLegacyLedgerRoot().apply {
+                getJSONArray("cashFlowRecords").put(cashFlowJson(occurredAt = 59_999L))
+            },
+            validLegacyLedgerRoot().apply {
+                getJSONArray("balanceUpdates").put(balanceUpdateJson(delta = 0L))
+            },
+        )
+
+        invalidRoots.forEach { invalidRoot ->
+            legacyFile.writeText(invalidRoot.toString())
+            val coordinator = coordinator()
+
+            coordinator.runMigration()
+
+            val error = coordinator.state.value as StartupMigrationState.RecoverableError
+            assertEquals(StartupMigrationErrorKind.CORRUPT_LEGACY, error.kind)
+            assertTrue(database.accountDao().queryAllAccounts().isEmpty())
+            assertTrue(database.cashFlowRecordDao().queryAll().isEmpty())
+            assertTrue(database.transferRecordDao().queryAll().isEmpty())
+            assertTrue(database.balanceUpdateRecordDao().queryAll().isEmpty())
+            assertTrue(database.balanceAdjustmentRecordDao().queryAll().isEmpty())
+            assertNull(database.localMigrationStateDao().queryByKey("legacy_money_store_v1"))
+        }
+    }
+
+    @Test
     fun corruptionMarkerBlocksCompletedStepsUntilExplicitSettingsReset() = runBlocking {
         val accountId = AccountRepositoryImpl(database.accountDao()).createAccount(
             Account(name = "现金", initialBalance = 0L, createdAt = 1L),
@@ -335,7 +372,7 @@ class StartupMigrationRoomContractTest {
         val exportDirectory = File(context.cacheDir, "exports").apply { mkdirs() }
         val filesBefore = exportDirectory.listFiles().orEmpty().map { it.name }.toSet()
         val constructor = LegacySourceRecoveryExporter::class.java.declaredConstructors
-            .single { it.parameterCount == 4 }
+            .single { it.parameterCount == 5 }
         val failingCopy: (File, File) -> Unit = { _, destination ->
             destination.writeText("partial")
             error("injected copy failure")
@@ -346,6 +383,39 @@ class StartupMigrationRoomContractTest {
             legacyFile,
             ClockProvider { 777L },
             failingCopy,
+            { _: File -> "content://unused" },
+        ) as LegacySourceRecoveryExporter
+
+        var failure: Throwable? = null
+        try {
+            exporter.export()
+        } catch (error: Throwable) {
+            failure = error
+        }
+
+        assertTrue(failure is IllegalStateException)
+        assertEquals(filesBefore, exportDirectory.listFiles().orEmpty().map { it.name }.toSet())
+    }
+
+    @Test
+    fun failedRawSourceUriCreationAlsoRemovesCopiedCacheFile() = runBlocking {
+        legacyFile.writeText("raw")
+        val exportDirectory = File(context.cacheDir, "exports").apply { mkdirs() }
+        val filesBefore = exportDirectory.listFiles().orEmpty().map { it.name }.toSet()
+        val constructor = LegacySourceRecoveryExporter::class.java.declaredConstructors
+            .single { it.parameterCount == 5 }
+        val successfulCopy: (File, File) -> Unit = { source, destination ->
+            source.copyTo(destination)
+        }
+        val failingUriCreation: (File) -> String = {
+            error("injected URI creation failure")
+        }
+        val exporter = constructor.newInstance(
+            context,
+            legacyFile,
+            ClockProvider { 778L },
+            successfulCopy,
+            failingUriCreation,
         ) as LegacySourceRecoveryExporter
 
         var failure: Throwable? = null
@@ -434,10 +504,56 @@ class StartupMigrationRoomContractTest {
         .put("balanceUpdates", JSONArray())
         .put("adjustments", JSONArray())
 
-    private fun accountJson(id: Long, name: String): JSONObject = JSONObject()
+    private fun validLegacyLedgerRoot(): JSONObject = emptyLegacyRoot().apply {
+        getJSONArray("accounts")
+            .put(accountJson(1L, "账户1", 60_001L))
+            .put(accountJson(2L, "账户2", 60_001L))
+    }
+
+    private fun cashFlowJson(
+        direction: String = "inflow",
+        amount: Long = 1L,
+        occurredAt: Long = 60_000L,
+    ): JSONObject = JSONObject()
+        .put("id", 1L)
+        .put("accountId", 1L)
+        .put("direction", direction)
+        .put("amount", amount)
+        .put("purpose", "测试")
+        .put("occurredAt", occurredAt)
+        .put("createdAt", 70_000L)
+        .put("updatedAt", 70_000L)
+
+    private fun transferJson(amount: Long = 1L): JSONObject = JSONObject()
+        .put("id", 1L)
+        .put("fromAccountId", 1L)
+        .put("toAccountId", 2L)
+        .put("amount", amount)
+        .put("note", "测试")
+        .put("occurredAt", 60_000L)
+        .put("createdAt", 70_000L)
+        .put("updatedAt", 70_000L)
+
+    private fun balanceUpdateJson(delta: Long = 1L): JSONObject = JSONObject()
+        .put("id", 1L)
+        .put("accountId", 1L)
+        .put("actualBalance", 1L)
+        .put("systemBalanceBeforeUpdate", 0L)
+        .put("delta", delta)
+        .put("occurredAt", 60_000L)
+        .put("createdAt", 70_000L)
+
+    private fun adjustmentJson(delta: Long = 1L): JSONObject = JSONObject()
+        .put("id", 1L)
+        .put("accountId", 1L)
+        .put("delta", delta)
+        .put("occurredAt", 60_000L)
+        .put("createdAt", 70_000L)
+
+    private fun accountJson(id: Long, name: String, createdAt: Long = 1L): JSONObject = JSONObject()
         .put("id", id)
         .put("name", name)
         .put("initialBalance", 0L)
-        .put("createdAt", 1L)
+        .put("createdAt", createdAt)
         .put("displayOrder", id.toInt())
 }

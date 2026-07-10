@@ -17,6 +17,13 @@ class LegacySourceRecoveryExporter(
             destination.outputStream().use(input::copyTo)
         }
     },
+    private val buildContentUri: (destination: File) -> String = { destination ->
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            destination,
+        ).toString()
+    },
 ) {
     suspend fun export(): LegacySourceExport = withContext(Dispatchers.IO) {
         require(sourceFile.isFile) { "未找到可导出的旧账本源文件" }
@@ -27,17 +34,13 @@ class LegacySourceRecoveryExporter(
         val destination = File(exportDirectory, fileName)
         try {
             copySource(sourceFile, destination)
+            LegacySourceExport(
+                contentUri = buildContentUri(destination),
+                fileName = fileName,
+            )
         } catch (error: Exception) {
             destination.delete()
             throw error
         }
-        LegacySourceExport(
-            contentUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                destination,
-            ).toString(),
-            fileName = fileName,
-        )
     }
 }
