@@ -335,95 +335,116 @@ class MoneyDatabaseMigrationTest {
         )
 
         migrated.query(
-            "SELECT id, initialBalance, isHidden, closedAt FROM accounts ORDER BY id",
+            "SELECT id, initialBalance, isHidden, closedAt, displayOrder FROM accounts ORDER BY id",
         ).use { cursor ->
             assertTrue(cursor.moveToNext())
             assertEquals(1L, cursor.getLong(0))
             assertEquals(1000L, cursor.getLong(1))
             assertEquals(0, cursor.getInt(2))
             assertTrue(cursor.isNull(3))
+            assertEquals(0, cursor.getInt(4))
             assertTrue(cursor.moveToNext())
             assertEquals(2L, cursor.getLong(0))
             assertEquals(0L, cursor.getLong(1))
             assertEquals(0, cursor.getInt(2))
             assertEquals(2000L, cursor.getLong(3))
+            assertEquals(1, cursor.getInt(4))
             assertTrue(cursor.moveToNext())
             assertEquals(3L, cursor.getLong(0))
             assertEquals(5000L, cursor.getLong(1))
             assertEquals(0, cursor.getInt(2))
             assertEquals(11000L, cursor.getLong(3))
+            assertEquals(2, cursor.getInt(4))
             assertFalse(cursor.moveToNext())
         }
 
         migrated.query(
-            "SELECT id, amount, note, createdAt, updatedAt, deletedAt, operationId " +
+            "SELECT id, accountId, amount, note, occurredAt, createdAt, updatedAt, deletedAt, operationId " +
                 "FROM cash_flow_records ORDER BY id",
         ).use { cursor ->
             assertTrue(cursor.moveToNext())
             assertEquals(10L, cursor.getLong(0))
-            assertEquals(700L, cursor.getLong(1))
-            assertEquals("保留用途", cursor.getString(2))
-            assertEquals(8500L, cursor.getLong(3))
-            assertEquals(8500L, cursor.getLong(4))
-            assertTrue(cursor.isNull(5))
-            assertEquals("cash:legacy-v14:10", cursor.getString(6))
+            assertEquals(3L, cursor.getLong(1))
+            assertEquals(700L, cursor.getLong(2))
+            assertEquals("保留用途", cursor.getString(3))
+            assertEquals(9000L, cursor.getLong(4))
+            assertEquals(8500L, cursor.getLong(5))
+            assertEquals(8500L, cursor.getLong(6))
+            assertTrue(cursor.isNull(7))
+            assertEquals("cash:legacy-v14:10", cursor.getString(8))
             assertTrue(cursor.moveToNext())
             assertEquals(11L, cursor.getLong(0))
-            assertEquals(111L, cursor.getLong(1))
-            assertEquals(2500L, cursor.getLong(4))
-            assertEquals(2500L, cursor.getLong(5))
-            assertEquals("cash:legacy-v14:11", cursor.getString(6))
+            assertEquals(1L, cursor.getLong(1))
+            assertEquals(111L, cursor.getLong(2))
+            assertEquals("已删除现金", cursor.getString(3))
+            assertEquals(2000L, cursor.getLong(4))
+            assertEquals(2000L, cursor.getLong(5))
+            assertEquals(2500L, cursor.getLong(6))
+            assertEquals(2500L, cursor.getLong(7))
+            assertEquals("cash:legacy-v14:11", cursor.getString(8))
             assertFalse(cursor.moveToNext())
         }
 
         migrated.query(
-            "SELECT id, amount, createdAt, updatedAt, deletedAt, operationId " +
+            "SELECT id, fromAccountId, toAccountId, amount, note, occurredAt, createdAt, updatedAt, " +
+                "deletedAt, operationId " +
                 "FROM transfer_records ORDER BY id",
         ).use { cursor ->
             assertTrue(cursor.moveToNext())
             assertEquals(20L, cursor.getLong(0))
-            assertEquals(200L, cursor.getLong(1))
-            assertEquals(7500L, cursor.getLong(2))
-            assertEquals(7500L, cursor.getLong(3))
-            assertTrue(cursor.isNull(4))
-            assertEquals("transfer:legacy-v14:20", cursor.getString(5))
+            assertEquals(3L, cursor.getLong(1))
+            assertEquals(1L, cursor.getLong(2))
+            assertEquals(200L, cursor.getLong(3))
+            assertEquals("晚于归档", cursor.getString(4))
+            assertEquals(8000L, cursor.getLong(5))
+            assertEquals(7500L, cursor.getLong(6))
+            assertEquals(7500L, cursor.getLong(7))
+            assertTrue(cursor.isNull(8))
+            assertEquals("transfer:legacy-v14:20", cursor.getString(9))
             assertTrue(cursor.moveToNext())
             assertEquals(21L, cursor.getLong(0))
-            assertEquals(222L, cursor.getLong(1))
-            assertEquals(6500L, cursor.getLong(3))
-            assertEquals(6500L, cursor.getLong(4))
-            assertEquals("transfer:legacy-v14:21", cursor.getString(5))
+            assertEquals(1L, cursor.getLong(1))
+            assertEquals(3L, cursor.getLong(2))
+            assertEquals(222L, cursor.getLong(3))
+            assertEquals("已删除转账", cursor.getString(4))
+            assertEquals(7000L, cursor.getLong(5))
+            assertEquals(6000L, cursor.getLong(6))
+            assertEquals(6500L, cursor.getLong(7))
+            assertEquals(6500L, cursor.getLong(8))
+            assertEquals("transfer:legacy-v14:21", cursor.getString(9))
             assertFalse(cursor.moveToNext())
         }
 
         migrated.query(
-            "SELECT id, actualBalance, systemBalanceBeforeUpdate, delta, occurredAt, createdAt, " +
+            "SELECT id, accountId, actualBalance, systemBalanceBeforeUpdate, delta, occurredAt, createdAt, " +
                 "updatedAt, deletedAt, operationId FROM balance_update_records",
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals(30L, cursor.getLong(0))
-            assertEquals(1234L, cursor.getLong(1))
-            assertEquals(1000L, cursor.getLong(2))
-            assertEquals(234L, cursor.getLong(3))
-            assertEquals(10000L, cursor.getLong(4))
-            assertEquals(9500L, cursor.getLong(5))
+            assertEquals(3L, cursor.getLong(1))
+            assertEquals(1234L, cursor.getLong(2))
+            assertEquals(1000L, cursor.getLong(3))
+            assertEquals(234L, cursor.getLong(4))
+            assertEquals(10000L, cursor.getLong(5))
             assertEquals(9500L, cursor.getLong(6))
-            assertTrue(cursor.isNull(7))
-            assertEquals("balance-update:legacy-v14:30", cursor.getString(8))
+            assertEquals(9500L, cursor.getLong(7))
+            assertTrue(cursor.isNull(8))
+            assertEquals("balance-update:legacy-v14:30", cursor.getString(9))
         }
 
         migrated.query(
-            "SELECT id, delta, occurredAt, createdAt, updatedAt, deletedAt, operationId " +
+            "SELECT id, accountId, delta, occurredAt, createdAt, updatedAt, deletedAt, operationId " +
                 "FROM balance_adjustment_records",
         ).use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals(40L, cursor.getLong(0))
-            assertEquals(-50L, cursor.getLong(1))
-            assertEquals(11000L, cursor.getLong(2))
-            assertEquals(10500L, cursor.getLong(3))
+            assertEquals(3L, cursor.getLong(1))
+            assertEquals(-50L, cursor.getLong(2))
+            assertEquals(11000L, cursor.getLong(3))
             assertEquals(10500L, cursor.getLong(4))
-            assertTrue(cursor.isNull(5))
-            assertEquals("balance-adjustment:legacy-v14:40", cursor.getString(6))
+            assertEquals(10500L, cursor.getLong(5))
+            assertTrue(cursor.isNull(6))
+            assertEquals("balance-adjustment:legacy-v14:40", cursor.getString(7))
         }
 
         migrated.query(
@@ -483,6 +504,105 @@ class MoneyDatabaseMigrationTest {
 
         migrated.query("PRAGMA foreign_key_check").use { cursor ->
             assertEquals("Foreign-key violations after 13→14 migration", 0, cursor.count)
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateFromVersion13To14ChoosesEachClosedAtCandidateIndependently() {
+        val dbName = "$TEST_DB-v13-closed-at-candidates"
+        helper.createDatabase(dbName, 13).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, archivedAt, isArchived,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName
+                ) VALUES
+                    (200, '活动中转账户', 0, 50, NULL, 0, NULL, NULL, 0, 'blue', 'wallet'),
+                    (101, '现金流最大', 0, 100, 200, 1, 300, 400, 1, 'blue', 'wallet'),
+                    (102, '转出最大', 0, 100, 200, 1, 300, 400, 2, 'blue', 'wallet'),
+                    (103, '转入最大', 0, 100, 200, 1, 300, 400, 3, 'blue', 'wallet'),
+                    (104, '余额核对最大', 0, 100, 200, 1, 300, 400, 4, 'blue', 'wallet'),
+                    (105, '余额调整最大', 0, 100, 200, 1, 300, 400, 5, 'blue', 'wallet'),
+                    (106, '最后使用最大', 0, 100, 200, 1, 1500, 400, 6, 'blue', 'wallet'),
+                    (107, '最后核对最大', 0, 100, 200, 1, 300, 1600, 7, 'blue', 'wallet'),
+                    (108, '归档时间最大', 0, 100, 1700, 1, 300, 400, 8, 'blue', 'wallet'),
+                    (109, '创建时间最大', 0, 1800, 100, 1, 200, 300, 9, 'blue', 'wallet')
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO cash_flow_records (
+                    id, accountId, direction, amount, purpose, occurredAt, createdAt, updatedAt, isDeleted
+                ) VALUES (1001, 101, 'inflow', 1, '现金分支', 1000, 900, 900, 0)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO transfer_records (
+                    id, fromAccountId, toAccountId, amount, note, occurredAt, createdAt, updatedAt, isDeleted
+                ) VALUES
+                    (1002, 102, 200, 1, '转出分支', 1100, 1000, 1000, 0),
+                    (1003, 200, 103, 1, '转入分支', 1200, 1100, 1100, 0)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_update_records (
+                    id, accountId, actualBalance, systemBalanceBeforeUpdate, delta, occurredAt, createdAt
+                ) VALUES (1004, 104, 1, 0, 1, 1300, 1200)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_adjustment_records (
+                    id, accountId, delta, occurredAt, createdAt
+                ) VALUES (1005, 105, 1, 1400, 1300)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 14,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        val expectedClosedAtById = linkedMapOf(
+            101L to ("cash occurredAt" to 1000L),
+            102L to ("transfer from occurredAt" to 1100L),
+            103L to ("transfer to occurredAt" to 1200L),
+            104L to ("balance update occurredAt" to 1300L),
+            105L to ("balance adjustment occurredAt" to 1400L),
+            106L to ("lastUsedAt" to 1500L),
+            107L to ("lastBalanceUpdateAt" to 1600L),
+            108L to ("archivedAt" to 1700L),
+            109L to ("createdAt" to 1800L),
+        )
+        migrated.query(
+            "SELECT id, closedAt FROM accounts WHERE id BETWEEN 101 AND 109 ORDER BY id",
+        ).use { cursor ->
+            var actualCount = 0
+            while (cursor.moveToNext()) {
+                actualCount += 1
+                val accountId = cursor.getLong(0)
+                val (candidate, expectedClosedAt) = requireNotNull(expectedClosedAtById[accountId])
+                assertEquals(
+                    "$candidate must independently determine account $accountId closedAt",
+                    expectedClosedAt,
+                    cursor.getLong(1),
+                )
+            }
+            assertEquals(expectedClosedAtById.size, actualCount)
+        }
+        migrated.query("SELECT closedAt FROM accounts WHERE id = 200").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertTrue("Active transfer peer must remain open", cursor.isNull(0))
+        }
+        migrated.query("PRAGMA foreign_key_check").use { cursor ->
+            assertEquals("Foreign-key violations after isolated candidate migration", 0, cursor.count)
         }
         migrated.close()
     }
