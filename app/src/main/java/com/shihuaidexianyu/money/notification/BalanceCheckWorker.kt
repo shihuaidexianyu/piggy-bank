@@ -11,7 +11,7 @@ import com.shihuaidexianyu.money.util.AmountFormatter
 import java.time.ZoneId
 
 /**
- * Periodic [CoroutineWorker] that checks all active accounts for stale balance-update status.
+ * Periodic [CoroutineWorker] that checks all open accounts for stale balance-update status.
  * For each account whose last balance update is past its configured reminder time, posts a
  * "余额待核对" notification so the user knows to reconcile even when the app is not open.
  *

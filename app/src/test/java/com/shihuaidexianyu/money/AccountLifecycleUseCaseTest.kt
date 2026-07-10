@@ -12,7 +12,7 @@ import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.time.ClockProvider
-import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
@@ -31,28 +31,40 @@ import kotlin.test.assertTrue
 
 class AccountLifecycleUseCaseTest {
     @Test
-    fun closeRollsBackWhenReminderDisableFailsBeforeAccountMutation() = runBlocking {
+    fun closeSamplesCutoffInsideTransactionAndRejectsLedgerWriteCommittedBeforeCloseBlock() = runBlocking {
         val accounts = InMemoryAccountRepository()
         val transactions = InMemoryTransactionRepository()
-        val reminderDelegate = InMemoryRecurringReminderRepository(MutableStateFlow(10_000))
-        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1))
-        val reminderId = reminderDelegate.insertReminder(reminder(accountId, enabled = true, updatedAt = 1))
-        val failingReminders = object : RecurringReminderRepository by reminderDelegate {
-            override suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long) {
-                error("injected reminder failure")
+        val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(100L))
+        val clock = CountingClock(100L)
+        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        val transactionRunner = object : DatabaseTransactionRunner {
+            override suspend fun <T> runInTransaction(block: suspend () -> T): T {
+                transactions.insertCashFlowRecord(
+                    cashFlow(
+                        accountId = accountId,
+                        direction = CashFlowDirection.INFLOW,
+                        amount = 10L,
+                        operationId = "committed-before-close",
+                        occurredAt = 200L,
+                    ),
+                )
+                clock.now = 200L
+                return transactions.runInTransaction(block)
             }
         }
         val close = CloseAccountUseCase(
             accounts,
-            failingReminders,
-            CalculateCurrentBalanceUseCase(accounts, transactions, testClockProvider(10_000)),
-            transactions,
-            testClockProvider(10_000),
+            reminders,
+            CalculateCurrentBalanceUseCase(accounts, transactions, clock),
+            transactionRunner,
+            clock,
         )
 
-        assertFailsWith<IllegalStateException> { close(accountId) }
+        val error = assertFailsWith<IllegalArgumentException> { close(accountId) }
+
+        assertTrue(error.message.orEmpty().contains("余额必须为 0"))
         assertNull(accounts.getAccountById(accountId)?.closedAt)
-        assertTrue(requireNotNull(reminderDelegate.getReminderById(reminderId)).isEnabled)
+        assertEquals(1, clock.calls)
     }
 
     @Test
@@ -216,7 +228,7 @@ class AccountLifecycleUseCaseTest {
         suspend fun balance(accountId: Long): Long = calculateBalance(accountId, clock.now)
     }
 
-    private class CountingClock(val now: Long) : ClockProvider {
+    private class CountingClock(var now: Long) : ClockProvider {
         var calls: Int = 0
             private set
 
@@ -247,14 +259,15 @@ class AccountLifecycleUseCaseTest {
         direction: CashFlowDirection,
         amount: Long,
         operationId: String,
+        occurredAt: Long = 2L,
     ) = CashFlowRecord(
         accountId = accountId,
         direction = direction.value,
         amount = amount,
         note = "",
-        occurredAt = 2,
-        createdAt = 2,
-        updatedAt = 2,
+        occurredAt = occurredAt,
+        createdAt = occurredAt,
+        updatedAt = occurredAt,
         operationId = operationId,
     )
 }

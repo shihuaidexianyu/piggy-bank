@@ -204,6 +204,7 @@ internal class UseCaseGraph(
     val updateAccountUseCase = UpdateAccountUseCase(
         accountRepository = data.accountRepository,
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
+        transactionRunner = data.transactionRepository,
     )
 
     val closeAccountUseCase = CloseAccountUseCase(
@@ -232,6 +233,7 @@ internal class UseCaseGraph(
 
     val updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(
         accountRepository = data.accountRepository,
+        transactionRunner = data.transactionRepository,
     )
 
     val createReminderUseCase = CreateReminderUseCase(

@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
  * Schedules the two periodic workers that power background notifications:
  *
  * 1. [RecurringReminderWorker] — checks for due recurring reminders (subscriptions, manual bills).
- * 2. [BalanceCheckWorker] — checks all active accounts for stale balance-update status.
+ * 2. [BalanceCheckWorker] — checks all open accounts for stale balance-update status.
  *
  * Both use [ExistingPeriodicWorkPolicy.KEEP] so repeated calls (e.g. on every app start) don't
  * create duplicate work — only the first schedule survives.

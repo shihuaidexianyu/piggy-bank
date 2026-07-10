@@ -66,7 +66,7 @@ class LedgerOperationIdUseCaseTest {
     }
 
     @Test
-    fun `create use cases persist caller operation ids and replay after account archive`() = runBlocking {
+    fun `create use cases persist caller operation ids and replay after account close`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val firstAccountId = accountRepository.createAccount(

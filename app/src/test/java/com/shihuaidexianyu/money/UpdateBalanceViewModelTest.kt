@@ -95,6 +95,26 @@ class UpdateBalanceViewModelTest {
         assertEquals(0L, updates[0].delta)
     }
 
+    @Test
+    fun `balance picker includes hidden open accounts and excludes closed accounts`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val visibleId = accountRepo.createAccount(
+            Account(name = "显示", initialBalance = 100L, createdAt = 1L, displayOrder = 0),
+        )
+        val hiddenId = accountRepo.createAccount(
+            Account(name = "隐藏", initialBalance = 200L, createdAt = 2L, isHidden = true, displayOrder = 1),
+        )
+        val closedId = accountRepo.createAccount(
+            Account(name = "关闭", initialBalance = 0L, createdAt = 3L, displayOrder = 2),
+        )
+        accountRepo.closeAccount(closedId, 4L)
+
+        val viewModel = buildViewModel(accountRepo = accountRepo)
+        advanceUntilIdle()
+
+        assertEquals(listOf(visibleId, hiddenId), viewModel.uiState.value.accounts.map { it.id })
+    }
+
     private fun buildViewModel(
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),

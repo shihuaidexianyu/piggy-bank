@@ -298,7 +298,7 @@ class ObserveHomeDashboardUseCaseTest {
     }
 
     @Test
-    fun `home dashboard exposes stale active accounts only`() = runBlocking {
+    fun `home dashboard exposes stale open accounts only`() = runBlocking {
         val now = System.currentTimeMillis()
         val accountRepository = InMemoryAccountRepository()
         val reminderSettingsRepository = InMemoryAccountReminderSettingsRepository()

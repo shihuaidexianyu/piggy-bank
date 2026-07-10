@@ -120,6 +120,33 @@ class LedgerFormSavedStateTest {
     }
 
     @Test
+    fun `transfer picker includes hidden open accounts and excludes closed accounts`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val visibleId = accounts.createAccount(
+            Account(name = "显示", initialBalance = 100L, createdAt = 1L, displayOrder = 0),
+        )
+        val hiddenId = accounts.createAccount(
+            Account(name = "隐藏", initialBalance = 200L, createdAt = 2L, isHidden = true, displayOrder = 1),
+        )
+        val closedId = accounts.createAccount(
+            Account(name = "关闭", initialBalance = 0L, createdAt = 3L, displayOrder = 2),
+        )
+        accounts.closeAccount(closedId, 4L)
+
+        val viewModel = transferViewModel(
+            accounts = accounts,
+            transactions = transactions,
+            handle = SavedStateHandle(),
+            ids = SequenceOperationIdFactory(),
+            fromId = visibleId,
+        )
+        advanceUntilIdle()
+
+        assertEquals(listOf(visibleId, hiddenId), viewModel.uiState.value.accounts.map { it.id })
+    }
+
+    @Test
     fun `balance form reuses saved id across double click failure retry and recreation`() = runTest(dispatcher) {
         val accountRepository = InMemoryAccountRepository()
         val delegate = InMemoryTransactionRepository()

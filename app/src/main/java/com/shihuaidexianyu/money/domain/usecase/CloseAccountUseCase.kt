@@ -13,8 +13,8 @@ class CloseAccountUseCase(
     private val clockProvider: ClockProvider,
 ) {
     suspend operator fun invoke(accountId: Long) {
-        val now = clockProvider.nowMillis()
         transactionRunner.runInTransaction {
+            val now = clockProvider.nowMillis()
             val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
             require(!account.isClosed) { "账户已关闭" }
             val balance = calculateCurrentBalanceUseCase(accountId, now)

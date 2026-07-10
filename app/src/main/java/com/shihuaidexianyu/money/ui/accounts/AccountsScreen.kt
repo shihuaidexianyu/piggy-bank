@@ -55,6 +55,9 @@ import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
 
+internal fun shouldShowAccountOverview(state: AccountsUiState): Boolean =
+    state.openAccounts.isNotEmpty() || state.closedAccounts.isNotEmpty()
+
 @Composable
 fun AccountsScreen(
     state: AccountsUiState,
@@ -94,7 +97,7 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.openAccounts.isNotEmpty()) {
+            if (shouldShowAccountOverview(state)) {
                 item {
                     AccountOverviewCard(state = state)
                 }

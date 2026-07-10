@@ -97,7 +97,7 @@ private fun MoneyStatusPillPreview() {
 private fun MoneySectionHeaderPreview() {
     MoneyTheme(themeMode = ThemeMode.LIGHT) {
         Box(modifier = Modifier.padding(16.dp)) {
-            MoneySectionHeader(title = "活跃账户", trailing = "3 个")
+            MoneySectionHeader(title = "开放账户", trailing = "3 个")
         }
     }
 }
