@@ -32,14 +32,14 @@ class DeleteCashFlowBalanceTest {
             accountId = accountId,
             direction = CashFlowDirection.INFLOW,
             amount = 2_000,
-            purpose = "红包",
+            note = "红包",
             occurredAt = 2_000,
         )
         val outflowId = createCashFlow(
             accountId = accountId,
             direction = CashFlowDirection.OUTFLOW,
             amount = 500,
-            purpose = "午饭",
+            note = "午饭",
             occurredAt = 3_000,
         )
 

@@ -79,7 +79,7 @@ fun EditAccountScreen(
     }
 
     AccountSettingsPickerDialog(
-        picker = if (state.isArchived) null else picker,
+        picker = if (state.isClosed) null else picker,
         colorName = state.colorName,
         iconName = state.iconName,
         reminderConfig = state.reminderConfig,
@@ -104,13 +104,13 @@ fun EditAccountScreen(
                 MoneyListRow(
                     title = "账户名称",
                     trailing = state.name,
-                    showChevron = !state.isArchived,
-                    modifier = Modifier.clickable(enabled = !state.isArchived) {
+                    showChevron = !state.isClosed,
+                    modifier = Modifier.clickable(enabled = !state.isClosed) {
                         nameDraft = state.name
                         dialog = EditAccountDialog.Name
                     },
                 )
-                if (!state.isArchived) {
+                if (!state.isClosed) {
                     AccountVisualListRows(
                         colorName = state.colorName,
                         iconName = state.iconName,
@@ -120,7 +120,7 @@ fun EditAccountScreen(
                 }
             }
         }
-        if (state.isArchived) {
+        if (state.isClosed) {
             item {
                 MoneyCard {
                     Text(

@@ -118,7 +118,7 @@ class EditAccountViewModelTest {
             assertEquals(EditAccountEffect.Archived, awaitItem())
         }
         val account = accountRepo.getAccountById(accountId)
-        assertTrue(account?.isArchived == true)
+        assertTrue(account?.isClosed == true)
     }
 
     private fun buildViewModel(

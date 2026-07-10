@@ -29,7 +29,7 @@ data class AccountListItemUiModel(
     val colorName: String,
     val iconName: String,
     val balance: Long,
-    val isArchived: Boolean,
+    val isClosed: Boolean,
     val isStale: Boolean,
     val displayOrder: Int,
 )
@@ -132,7 +132,7 @@ class AccountsViewModel(
             colorName = account.colorName,
             iconName = account.iconName,
             balance = balance,
-            isArchived = account.isArchived,
+            isClosed = account.isClosed,
             isStale = AccountStatusUtils.isStale(
                 account,
                 reminderConfig = reminderConfig ?: BalanceUpdateReminderConfig(),

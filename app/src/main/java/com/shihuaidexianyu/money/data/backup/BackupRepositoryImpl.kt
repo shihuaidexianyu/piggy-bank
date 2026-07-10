@@ -57,7 +57,7 @@ class BackupRepositoryImpl(
             )
             database.recurringReminderDao().insertAll(snapshot.recurringReminders.map { it.toDomain().toEntity() })
 
-            snapshot.savingsGoals.forEach { backupGoal ->
+            snapshot.savingsGoals.minByOrNull { it.id }?.let { backupGoal ->
                 val goal = backupGoal.toDomain()
                 database.savingsGoalDao().insert(goal.toEntity())
             }
@@ -78,8 +78,7 @@ private fun BackupAccount.toDomain(): Account =
         name = name,
         initialBalance = initialBalance,
         createdAt = createdAt,
-        archivedAt = archivedAt,
-        isArchived = isArchived,
+        closedAt = archivedAt?.takeIf { isArchived } ?: createdAt.takeIf { isArchived },
         lastUsedAt = lastUsedAt,
         lastBalanceUpdateAt = lastBalanceUpdateAt,
         displayOrder = displayOrder,
@@ -93,11 +92,12 @@ private fun BackupCashFlowRecord.toDomain(): CashFlowRecord =
         accountId = accountId,
         direction = direction,
         amount = amount,
-        purpose = purpose,
+        note = purpose,
         occurredAt = occurredAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isDeleted = isDeleted,
+        deletedAt = updatedAt.coerceAtLeast(createdAt).takeIf { isDeleted },
+        operationId = "cash:backup-v3:$id",
     )
 
 private fun BackupTransferRecord.toDomain(): TransferRecord =
@@ -110,7 +110,8 @@ private fun BackupTransferRecord.toDomain(): TransferRecord =
         occurredAt = occurredAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isDeleted = isDeleted,
+        deletedAt = updatedAt.coerceAtLeast(createdAt).takeIf { isDeleted },
+        operationId = "transfer:backup-v3:$id",
     )
 
 private fun BackupBalanceUpdateRecord.toDomain(): BalanceUpdateRecord =
@@ -122,6 +123,8 @@ private fun BackupBalanceUpdateRecord.toDomain(): BalanceUpdateRecord =
         delta = delta,
         occurredAt = occurredAt,
         createdAt = createdAt,
+        updatedAt = createdAt,
+        operationId = "balance-update:backup-v3:$id",
     )
 
 private fun BackupBalanceAdjustmentRecord.toDomain(): BalanceAdjustmentRecord =
@@ -131,6 +134,8 @@ private fun BackupBalanceAdjustmentRecord.toDomain(): BalanceAdjustmentRecord =
         delta = delta,
         occurredAt = occurredAt,
         createdAt = createdAt,
+        updatedAt = createdAt,
+        operationId = "balance-adjustment:backup-v3:$id",
     )
 
 private fun BackupRecurringReminder.toDomain(): RecurringReminder =
@@ -146,6 +151,7 @@ private fun BackupRecurringReminder.toDomain(): RecurringReminder =
         periodMonth = periodMonth,
         isEnabled = isEnabled,
         nextDueAt = nextDueAt,
+        anchorDueAt = nextDueAt,
         lastConfirmedAt = lastConfirmedAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
@@ -179,7 +185,7 @@ private fun BackupBalanceUpdateReminderConfig.toDomain(): BalanceUpdateReminderC
 
 private fun BackupSavingsGoal.toDomain(): SavingsGoal =
     SavingsGoal(
-        id = id,
         targetAmount = targetAmount,
         createdAt = createdAt,
+        updatedAt = createdAt,
     )

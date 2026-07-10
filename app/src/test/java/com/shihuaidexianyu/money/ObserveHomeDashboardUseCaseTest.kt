@@ -93,10 +93,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = range.startInclusive + 1_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -104,10 +105,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = accountId,
                 direction = "outflow",
                 amount = 500,
-                purpose = "午饭",
+                note = "午饭",
                 occurredAt = range.startInclusive + 2_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -118,6 +120,8 @@ class ObserveHomeDashboardUseCaseTest {
                 delta = 300,
                 occurredAt = range.startInclusive + 3_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -128,6 +132,8 @@ class ObserveHomeDashboardUseCaseTest {
                 delta = -700,
                 occurredAt = range.startInclusive + 4_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
 
@@ -178,10 +184,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "周期起点",
+                note = "周期起点",
                 occurredAt = range.startInclusive,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -189,10 +196,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 200,
-                purpose = "入账",
+                note = "入账",
                 occurredAt = range.startInclusive + 1_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -200,10 +208,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 300,
-                purpose = "下一周期起点",
+                note = "下一周期起点",
                 occurredAt = range.endExclusive,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         val deletedCashFlowId = transactionRepository.insertCashFlowRecord(
@@ -211,10 +220,11 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 400,
-                purpose = "已删除",
+                note = "已删除",
                 occurredAt = range.startInclusive + 2_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, now)
@@ -227,6 +237,7 @@ class ObserveHomeDashboardUseCaseTest {
                 occurredAt = range.startInclusive + 3_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         val deletedTransferId = transactionRepository.insertTransferRecord(
@@ -238,6 +249,7 @@ class ObserveHomeDashboardUseCaseTest {
                 occurredAt = range.startInclusive + 4_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteTransferRecord(deletedTransferId, now)
@@ -247,6 +259,8 @@ class ObserveHomeDashboardUseCaseTest {
                 delta = 700,
                 occurredAt = range.startInclusive + 5_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -257,6 +271,8 @@ class ObserveHomeDashboardUseCaseTest {
                 delta = 700,
                 occurredAt = range.startInclusive + 6_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
 

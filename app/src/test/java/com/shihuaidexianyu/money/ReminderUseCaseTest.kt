@@ -73,6 +73,7 @@ class ReminderUseCaseTest {
                 nextDueAt = 100L,
                 createdAt = 1L,
                 updatedAt = 1L,
+                anchorDueAt = 100L,
             ),
         )
         val useCase = UpdateReminderUseCase(accountRepository, reminderRepository)
@@ -119,6 +120,7 @@ class ReminderUseCaseTest {
                 nextDueAt = System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000L,
                 createdAt = 1L,
                 updatedAt = 1L,
+                anchorDueAt = System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000L,
             ),
         )
         val useCase = ConfirmReminderUseCase(accountRepository, reminderRepository)
@@ -137,7 +139,7 @@ class ReminderUseCaseTest {
             direction = CashFlowDirection.OUTFLOW,
             accountId = 7L,
             amount = 1_234L,
-            purpose = "房租 & 水电?#100%",
+            note = "房租 & 水电?#100%",
             reminderId = 9L,
         )
 
@@ -164,6 +166,7 @@ class ReminderUseCaseTest {
                 nextDueAt = 1_000L,
                 createdAt = 1L,
                 updatedAt = 1L,
+                anchorDueAt = 1_000L,
             ),
         )
 

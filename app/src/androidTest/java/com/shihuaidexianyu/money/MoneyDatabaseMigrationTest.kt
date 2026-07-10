@@ -125,11 +125,12 @@ class MoneyDatabaseMigrationTest {
                     accountId,
                     direction,
                     amount,
-                    purpose,
+                    note,
                     occurredAt,
                     createdAt,
                     updatedAt,
-                    isDeleted
+                    deletedAt,
+                    operationId
                 ) VALUES (
                     1,
                     99,
@@ -139,7 +140,8 @@ class MoneyDatabaseMigrationTest {
                     1000,
                     1000,
                     1000,
-                    0
+                    NULL,
+                    'cash:test:missing-account'
                 )
                 """.trimIndent(),
             )
@@ -257,6 +259,232 @@ class MoneyDatabaseMigrationTest {
         } finally {
             accountCursor.close()
         }
+    }
+
+    @Test
+    fun migrateFromVersion13To14PreservesPopulatedLedgerAndNormalizesLifecycle() {
+        val dbName = "$TEST_DB-v13-populated"
+        helper.createDatabase(dbName, 13).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, archivedAt, isArchived,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName
+                ) VALUES
+                    (1, '活动账户', 1000, 1000, NULL, 0, 2000, 2500, 0, 'blue', 'wallet'),
+                    (2, '归档零账户', 0, 1000, 2000, 1, NULL, NULL, 1, 'green', 'cash'),
+                    (3, '归档非零账户', 5000, 1000, 3000, 1, 3500, 4000, 2, 'red', 'bank')
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO cash_flow_records (
+                    id, accountId, direction, amount, purpose, occurredAt, createdAt, updatedAt, isDeleted
+                ) VALUES
+                    (10, 3, 'inflow', 700, '保留用途', 9000, 8500, 8000, 0),
+                    (11, 1, 'outflow', 111, '已删除现金', 2000, 2000, 2500, 1)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO transfer_records (
+                    id, fromAccountId, toAccountId, amount, note, occurredAt, createdAt, updatedAt, isDeleted
+                ) VALUES
+                    (20, 3, 1, 200, '晚于归档', 8000, 7500, 7000, 0),
+                    (21, 1, 3, 222, '已删除转账', 7000, 6000, 6500, 1)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_update_records (
+                    id, accountId, actualBalance, systemBalanceBeforeUpdate, delta, occurredAt, createdAt
+                ) VALUES (30, 3, 1234, 1000, 234, 10000, 9500)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO balance_adjustment_records (
+                    id, accountId, delta, occurredAt, createdAt
+                ) VALUES (40, 3, -50, 11000, 10500)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO recurring_reminders (
+                    id, name, type, accountId, direction, amount, periodType, periodValue, periodMonth,
+                    isEnabled, nextDueAt, lastConfirmedAt, createdAt, updatedAt
+                ) VALUES (50, '关闭账户提醒', 'subscription', 3, 'outflow', 999, 'monthly', 8, NULL,
+                    1, 12000, NULL, 5000, 5000)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO savings_goals (id, targetAmount, createdAt) VALUES
+                    (5, 50000, 500),
+                    (2, 20000, 200)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 14,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query(
+            "SELECT id, initialBalance, isHidden, closedAt FROM accounts ORDER BY id",
+        ).use { cursor ->
+            assertTrue(cursor.moveToNext())
+            assertEquals(1L, cursor.getLong(0))
+            assertEquals(1000L, cursor.getLong(1))
+            assertEquals(0, cursor.getInt(2))
+            assertTrue(cursor.isNull(3))
+            assertTrue(cursor.moveToNext())
+            assertEquals(2L, cursor.getLong(0))
+            assertEquals(0L, cursor.getLong(1))
+            assertEquals(0, cursor.getInt(2))
+            assertEquals(2000L, cursor.getLong(3))
+            assertTrue(cursor.moveToNext())
+            assertEquals(3L, cursor.getLong(0))
+            assertEquals(5000L, cursor.getLong(1))
+            assertEquals(0, cursor.getInt(2))
+            assertEquals(11000L, cursor.getLong(3))
+            assertFalse(cursor.moveToNext())
+        }
+
+        migrated.query(
+            "SELECT id, amount, note, createdAt, updatedAt, deletedAt, operationId " +
+                "FROM cash_flow_records ORDER BY id",
+        ).use { cursor ->
+            assertTrue(cursor.moveToNext())
+            assertEquals(10L, cursor.getLong(0))
+            assertEquals(700L, cursor.getLong(1))
+            assertEquals("保留用途", cursor.getString(2))
+            assertEquals(8500L, cursor.getLong(3))
+            assertEquals(8500L, cursor.getLong(4))
+            assertTrue(cursor.isNull(5))
+            assertEquals("cash:legacy-v14:10", cursor.getString(6))
+            assertTrue(cursor.moveToNext())
+            assertEquals(11L, cursor.getLong(0))
+            assertEquals(111L, cursor.getLong(1))
+            assertEquals(2500L, cursor.getLong(4))
+            assertEquals(2500L, cursor.getLong(5))
+            assertEquals("cash:legacy-v14:11", cursor.getString(6))
+            assertFalse(cursor.moveToNext())
+        }
+
+        migrated.query(
+            "SELECT id, amount, createdAt, updatedAt, deletedAt, operationId " +
+                "FROM transfer_records ORDER BY id",
+        ).use { cursor ->
+            assertTrue(cursor.moveToNext())
+            assertEquals(20L, cursor.getLong(0))
+            assertEquals(200L, cursor.getLong(1))
+            assertEquals(7500L, cursor.getLong(2))
+            assertEquals(7500L, cursor.getLong(3))
+            assertTrue(cursor.isNull(4))
+            assertEquals("transfer:legacy-v14:20", cursor.getString(5))
+            assertTrue(cursor.moveToNext())
+            assertEquals(21L, cursor.getLong(0))
+            assertEquals(222L, cursor.getLong(1))
+            assertEquals(6500L, cursor.getLong(3))
+            assertEquals(6500L, cursor.getLong(4))
+            assertEquals("transfer:legacy-v14:21", cursor.getString(5))
+            assertFalse(cursor.moveToNext())
+        }
+
+        migrated.query(
+            "SELECT id, actualBalance, systemBalanceBeforeUpdate, delta, occurredAt, createdAt, " +
+                "updatedAt, deletedAt, operationId FROM balance_update_records",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(30L, cursor.getLong(0))
+            assertEquals(1234L, cursor.getLong(1))
+            assertEquals(1000L, cursor.getLong(2))
+            assertEquals(234L, cursor.getLong(3))
+            assertEquals(10000L, cursor.getLong(4))
+            assertEquals(9500L, cursor.getLong(5))
+            assertEquals(9500L, cursor.getLong(6))
+            assertTrue(cursor.isNull(7))
+            assertEquals("balance-update:legacy-v14:30", cursor.getString(8))
+        }
+
+        migrated.query(
+            "SELECT id, delta, occurredAt, createdAt, updatedAt, deletedAt, operationId " +
+                "FROM balance_adjustment_records",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(40L, cursor.getLong(0))
+            assertEquals(-50L, cursor.getLong(1))
+            assertEquals(11000L, cursor.getLong(2))
+            assertEquals(10500L, cursor.getLong(3))
+            assertEquals(10500L, cursor.getLong(4))
+            assertTrue(cursor.isNull(5))
+            assertEquals("balance-adjustment:legacy-v14:40", cursor.getString(6))
+        }
+
+        migrated.query(
+            """
+            SELECT COUNT(*), COUNT(DISTINCT operationId) FROM (
+                SELECT operationId FROM cash_flow_records
+                UNION ALL SELECT operationId FROM transfer_records
+                UNION ALL SELECT operationId FROM balance_update_records
+                UNION ALL SELECT operationId FROM balance_adjustment_records
+            )
+            """.trimIndent(),
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(6, cursor.getInt(0))
+            assertEquals(6, cursor.getInt(1))
+        }
+
+        migrated.query(
+            "SELECT isEnabled, nextDueAt, anchorDueAt, lastNotifiedDueAt FROM recurring_reminders WHERE id = 50",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+            assertEquals(12000L, cursor.getLong(1))
+            assertEquals(12000L, cursor.getLong(2))
+            assertTrue(cursor.isNull(3))
+        }
+
+        migrated.query("SELECT id, targetAmount, createdAt, updatedAt FROM savings_goals").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1L, cursor.getLong(0))
+            assertEquals(20000L, cursor.getLong(1))
+            assertEquals(200L, cursor.getLong(2))
+            assertEquals(200L, cursor.getLong(3))
+            assertFalse(cursor.moveToNext())
+        }
+
+        val expectedNewTables = setOf(
+            "portable_settings",
+            "account_reminder_configs",
+            "local_migration_state",
+        )
+        migrated.query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN " +
+                "('portable_settings', 'account_reminder_configs', 'local_migration_state')",
+        ).use { cursor ->
+            val actual = buildSet {
+                while (cursor.moveToNext()) add(cursor.getString(0))
+            }
+            assertEquals(expectedNewTables, actual)
+        }
+        expectedNewTables.forEach { table ->
+            migrated.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("$table must be empty after schema migration", 0, cursor.getInt(0))
+            }
+        }
+
+        migrated.query("PRAGMA foreign_key_check").use { cursor ->
+            assertEquals("Foreign-key violations after 13→14 migration", 0, cursor.count)
+        }
+        migrated.close()
     }
 
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {

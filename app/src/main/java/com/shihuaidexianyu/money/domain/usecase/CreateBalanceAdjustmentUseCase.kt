@@ -22,6 +22,7 @@ class CreateBalanceAdjustmentUseCase(
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
         val now = System.currentTimeMillis()
+        val operationId = newLedgerOperationId()
         val recordId = transactionRepository.runInTransaction {
             val id = transactionRepository.insertBalanceAdjustmentRecord(
                 BalanceAdjustmentRecord(
@@ -29,6 +30,8 @@ class CreateBalanceAdjustmentUseCase(
                     delta = delta,
                     occurredAt = occurredAt,
                     createdAt = now,
+                    updatedAt = now,
+                    operationId = operationId,
                 ),
             )
             refreshAccountActivityStateUseCase(accountId)

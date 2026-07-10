@@ -51,6 +51,7 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertCashFlowRecord(record: CashFlowRecord): Long {
+        requireOperationId(record.operationId)
         return cashFlowRecordDao.insert(record.toEntity()).also { bumpVersion() }
     }
 
@@ -72,8 +73,8 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord> = cashFlowRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
-    override suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String> {
-        return cashFlowRecordDao.queryRecentPurposes(direction = direction, accountId = accountId, limit = limit)
+    override suspend fun queryRecentCashFlowNotes(direction: String, accountId: Long?, limit: Int): List<String> {
+        return cashFlowRecordDao.queryRecentNotes(direction = direction, accountId = accountId, limit = limit)
     }
 
     override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
@@ -85,6 +86,7 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertTransferRecord(record: TransferRecord): Long {
+        requireOperationId(record.operationId)
         return transferRecordDao.insert(record.toEntity()).also { bumpVersion() }
     }
 
@@ -122,6 +124,7 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long {
+        requireOperationId(record.operationId)
         return balanceUpdateRecordDao.insert(record.toEntity()).also { bumpVersion() }
     }
 
@@ -130,14 +133,14 @@ class TransactionRepositoryImpl(
         bumpVersion()
     }
 
-    override suspend fun deleteBalanceUpdateRecord(id: Long) {
-        balanceUpdateRecordDao.deleteById(id)
+    override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
+        balanceUpdateRecordDao.softDelete(id, deletedAt)
         bumpVersion()
     }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.queryById(id)?.toDomain()
 
-    override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryAllActive().map { it.toDomain() }
+    override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryAll().map { it.toDomain() }
 
     override suspend fun queryBalanceUpdateRecordsBetween(
         startInclusive: Long,
@@ -151,6 +154,7 @@ class TransactionRepositoryImpl(
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.getLatestForAccount(accountId)?.toDomain()
 
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
+        requireOperationId(record.operationId)
         return balanceAdjustmentRecordDao.insert(record.toEntity()).also { bumpVersion() }
     }
 
@@ -159,14 +163,14 @@ class TransactionRepositoryImpl(
         bumpVersion()
     }
 
-    override suspend fun deleteBalanceAdjustmentRecord(id: Long) {
-        balanceAdjustmentRecordDao.deleteById(id)
+    override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
+        balanceAdjustmentRecordDao.softDelete(id, deletedAt)
         bumpVersion()
     }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? = balanceAdjustmentRecordDao.queryById(id)?.toDomain()
 
-    override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAllActive().map { it.toDomain() }
+    override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAll().map { it.toDomain() }
 
     override suspend fun queryBalanceAdjustmentRecordsBetween(
         startInclusive: Long,
@@ -288,5 +292,9 @@ class TransactionRepositoryImpl(
 
     private fun bumpVersion() {
         mutationVersion.value = mutationVersion.value + 1
+    }
+
+    private fun requireOperationId(operationId: String) {
+        require(operationId.isNotBlank()) { "operationId must not be blank" }
     }
 }

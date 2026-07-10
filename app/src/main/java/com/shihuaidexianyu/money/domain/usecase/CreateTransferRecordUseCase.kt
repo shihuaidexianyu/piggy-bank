@@ -27,6 +27,7 @@ class CreateTransferRecordUseCase(
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 
         val now = System.currentTimeMillis()
+        val operationId = newLedgerOperationId()
         val recordId = transactionRepository.runInTransaction {
             val id = transactionRepository.insertTransferRecord(
                 TransferRecord(
@@ -37,6 +38,7 @@ class CreateTransferRecordUseCase(
                     occurredAt = occurredAt,
                     createdAt = now,
                     updatedAt = now,
+                    operationId = operationId,
                 ),
             )
             refreshAccountActivityStateUseCase(fromAccountId)

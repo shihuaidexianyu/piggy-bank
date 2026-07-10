@@ -20,6 +20,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.UUID
 import kotlin.random.Random
 
 object DebugSampleDataSeeder {
@@ -189,7 +190,7 @@ object DebugSampleDataSeeder {
                 accountId = incomeAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = randomAmount(random = random, minYuan = 9_500, maxYuan = 18_500),
-                purpose = incomePurposes.random(random),
+                note = incomePurposes.random(random),
                 occurredAt = millisAt(zoneId, payrollDay, 10, random.nextInt(0, 45)),
             )
 
@@ -211,7 +212,7 @@ object DebugSampleDataSeeder {
                     accountId = accountIds.random(random),
                     direction = direction.value,
                     amount = amount,
-                    purpose = if (direction == CashFlowDirection.INFLOW) {
+                    note = if (direction == CashFlowDirection.INFLOW) {
                         incomePurposes.random(random)
                     } else {
                         outflowPurposes.random(random)
@@ -292,6 +293,8 @@ object DebugSampleDataSeeder {
                         delta = delta,
                         occurredAt = occurredAt,
                         createdAt = occurredAt,
+                        updatedAt = occurredAt,
+                        operationId = UUID.randomUUID().toString(),
                     ),
                 )
             }
@@ -311,6 +314,8 @@ object DebugSampleDataSeeder {
                     delta = delta,
                     occurredAt = occurredAt,
                     createdAt = occurredAt,
+                    updatedAt = occurredAt,
+                    operationId = UUID.randomUUID().toString(),
                 ),
             )
         }
@@ -358,6 +363,7 @@ object DebugSampleDataSeeder {
                         null
                     },
                     nextDueAt = nextDueAt,
+                    anchorDueAt = nextDueAt,
                     createdAt = now,
                     updatedAt = now,
                 ),
@@ -385,7 +391,7 @@ object DebugSampleDataSeeder {
         accountId: Long,
         direction: String,
         amount: Long,
-        purpose: String,
+        note: String,
         occurredAt: Long,
     ) {
         dao.insert(
@@ -393,10 +399,11 @@ object DebugSampleDataSeeder {
                 accountId = accountId,
                 direction = direction,
                 amount = amount,
-                purpose = purpose,
+                note = note,
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
                 updatedAt = occurredAt,
+                operationId = UUID.randomUUID().toString(),
             ),
         )
     }
@@ -418,6 +425,7 @@ object DebugSampleDataSeeder {
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
                 updatedAt = occurredAt,
+                operationId = UUID.randomUUID().toString(),
             ),
         )
     }

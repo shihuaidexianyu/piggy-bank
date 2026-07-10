@@ -140,8 +140,8 @@ fun EditCashFlowScreen(
         item {
             MoneyCard {
                 MoneySingleLineField(
-                    value = state.purpose,
-                    onValueChange = viewModel::updatePurpose,
+                    value = state.note,
+                    onValueChange = viewModel::updateNote,
                     label = "用途",
                 )
                 MoneyDateTimeFields(

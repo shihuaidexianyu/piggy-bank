@@ -268,7 +268,7 @@ private fun AccountCard(
     val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
     val balanceText = AmountFormatter.format(account.balance, currencySettings)
-    val showAssetShare = !account.isArchived && account.balance > 0 && positiveAssetsTotal > 0
+    val showAssetShare = !account.isClosed && account.balance > 0 && positiveAssetsTotal > 0
     // Fraction is for UI layout only (a horizontal rectangle width). Compose draw APIs take Float,
     // so we divide as Float *after* the rule-of-money check. The amount itself is never stored as Float.
     @Suppress("FloatingPointUsageInMoney")
@@ -284,7 +284,7 @@ private fun AccountCard(
     }
     val assetShareColor = accountVisualColor(account.colorName)
     val statusText = when {
-        account.isArchived -> "已归档"
+        account.isClosed -> "已归档"
         account.isStale -> "余额待核对"
         else -> "余额正常"
     }
@@ -346,7 +346,7 @@ private fun AccountCard(
                 AccountIconBadge(
                     iconName = account.iconName,
                     colorName = account.colorName,
-                    isArchived = account.isArchived,
+                    isClosed = account.isClosed,
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -384,7 +384,7 @@ private fun AccountCard(
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                     )
-                    if (account.isStale && !account.isArchived) {
+                    if (account.isStale && !account.isClosed) {
                         MoneyStatusPill(
                             text = "待核对",
                             accent = MaterialTheme.colorScheme.secondary,

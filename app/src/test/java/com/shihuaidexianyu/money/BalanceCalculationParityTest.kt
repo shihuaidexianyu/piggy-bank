@@ -33,10 +33,11 @@ class BalanceCalculationParityTest {
                 accountId = primaryId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 2_500,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -44,10 +45,11 @@ class BalanceCalculationParityTest {
                 accountId = primaryId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 800,
-                purpose = "餐饮",
+                note = "餐饮",
                 occurredAt = 3_000,
                 createdAt = 3_000,
                 updatedAt = 3_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -59,6 +61,7 @@ class BalanceCalculationParityTest {
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -70,6 +73,7 @@ class BalanceCalculationParityTest {
                 occurredAt = 4_500,
                 createdAt = 4_500,
                 updatedAt = 4_500,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -78,6 +82,8 @@ class BalanceCalculationParityTest {
                 delta = 200,
                 occurredAt = 5_000,
                 createdAt = 5_000,
+                updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -88,6 +94,8 @@ class BalanceCalculationParityTest {
                 delta = 1_500,
                 occurredAt = 6_000,
                 createdAt = 6_000,
+                updatedAt = 6_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -95,10 +103,11 @@ class BalanceCalculationParityTest {
                 accountId = primaryId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 400,
-                purpose = "退款",
+                note = "退款",
                 occurredAt = 7_000,
                 createdAt = 7_000,
                 updatedAt = 7_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -106,10 +115,11 @@ class BalanceCalculationParityTest {
                 accountId = primaryId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 100,
-                purpose = "零食",
+                note = "零食",
                 occurredAt = 7_500,
                 createdAt = 7_500,
                 updatedAt = 7_500,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -121,6 +131,7 @@ class BalanceCalculationParityTest {
                 occurredAt = 8_000,
                 createdAt = 8_000,
                 updatedAt = 8_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -132,6 +143,7 @@ class BalanceCalculationParityTest {
                 occurredAt = 8_500,
                 createdAt = 8_500,
                 updatedAt = 8_500,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -140,6 +152,8 @@ class BalanceCalculationParityTest {
                 delta = -25,
                 occurredAt = 9_000,
                 createdAt = 9_000,
+                updatedAt = 9_000,
+                operationId = testOperationId(),
             ),
         )
 

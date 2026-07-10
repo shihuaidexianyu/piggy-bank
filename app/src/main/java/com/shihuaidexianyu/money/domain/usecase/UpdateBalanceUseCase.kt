@@ -32,6 +32,7 @@ class UpdateBalanceUseCase(
         val systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate
         val delta = actualBalance - systemBalanceBeforeUpdate
         val now = System.currentTimeMillis()
+        val operationId = newLedgerOperationId()
 
         transactionRepository.runInTransaction {
             transactionRepository.insertBalanceUpdateRecord(
@@ -42,6 +43,8 @@ class UpdateBalanceUseCase(
                     delta = delta,
                     occurredAt = occurredAt,
                     createdAt = now,
+                    updatedAt = now,
+                    operationId = operationId,
                 ),
             )
             refreshAccountActivityStateUseCase(accountId)

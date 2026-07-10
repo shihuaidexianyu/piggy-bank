@@ -35,6 +35,8 @@ data class RecurringReminderEntity(
     val periodMonth: Int?,
     val isEnabled: Boolean = true,
     val nextDueAt: Long,
+    val anchorDueAt: Long,
+    val lastNotifiedDueAt: Long? = null,
     val lastConfirmedAt: Long? = null,
     val createdAt: Long,
     val updatedAt: Long,

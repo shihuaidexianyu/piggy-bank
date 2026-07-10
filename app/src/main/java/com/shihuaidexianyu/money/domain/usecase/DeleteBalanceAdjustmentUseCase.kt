@@ -13,7 +13,7 @@ class DeleteBalanceAdjustmentUseCase(
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireActiveForMutation("删除余额调整")
         transactionRepository.runInTransaction {
-            transactionRepository.deleteBalanceAdjustmentRecord(recordId)
+            transactionRepository.deleteBalanceAdjustmentRecord(recordId, System.currentTimeMillis())
             refreshAccountActivityStateUseCase(existing.accountId)
         }
     }

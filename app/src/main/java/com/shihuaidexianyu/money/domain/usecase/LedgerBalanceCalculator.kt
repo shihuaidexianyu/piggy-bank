@@ -91,7 +91,7 @@ internal object LedgerBalanceCalculator {
         return LedgerBalanceDeltas(
             inflow = cashFlows
                 .filter {
-                    !it.isDeleted &&
+                    it.deletedAt == null &&
                         it.accountId == account.id &&
                         it.direction == CashFlowDirection.INFLOW.value &&
                         isWithinWindow(it.occurredAt)
@@ -99,7 +99,7 @@ internal object LedgerBalanceCalculator {
                 .sumOf(CashFlowRecord::amount),
             outflow = cashFlows
                 .filter {
-                    !it.isDeleted &&
+                    it.deletedAt == null &&
                         it.accountId == account.id &&
                         it.direction == CashFlowDirection.OUTFLOW.value &&
                         isWithinWindow(it.occurredAt)
@@ -107,21 +107,22 @@ internal object LedgerBalanceCalculator {
                 .sumOf(CashFlowRecord::amount),
             transferIn = transfers
                 .filter {
-                    !it.isDeleted &&
+                    it.deletedAt == null &&
                         it.toAccountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
                 .sumOf(TransferRecord::amount),
             transferOut = transfers
                 .filter {
-                    !it.isDeleted &&
+                    it.deletedAt == null &&
                         it.fromAccountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
                 .sumOf(TransferRecord::amount),
             manualAdjustment = adjustments
                 .filter {
-                    it.accountId == account.id &&
+                    it.deletedAt == null &&
+                        it.accountId == account.id &&
                         isWithinWindow(it.occurredAt)
                 }
                 .sumOf(BalanceAdjustmentRecord::delta),
@@ -160,7 +161,8 @@ internal object LedgerBalanceCalculator {
     ): Long {
         return balanceUpdates
             .filter {
-                it.accountId == account.id &&
+                it.deletedAt == null &&
+                    it.accountId == account.id &&
                     it.id != excludingBalanceUpdateId &&
                     isWithinWindow(it.occurredAt)
             }

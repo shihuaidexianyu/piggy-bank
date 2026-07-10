@@ -66,10 +66,11 @@ class BuildExportJsonUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 123,
-                purpose = "早餐",
+                note = "早餐",
                 occurredAt = 3L,
                 createdAt = 3L,
                 updatedAt = 3L,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 4L)
@@ -82,6 +83,7 @@ class BuildExportJsonUseCaseTest {
                 occurredAt = 4L,
                 createdAt = 4L,
                 updatedAt = 4L,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteTransferRecord(deletedTransferId, 5L)
@@ -93,6 +95,8 @@ class BuildExportJsonUseCaseTest {
                 delta = -345,
                 occurredAt = 6L,
                 createdAt = 6L,
+                updatedAt = 6L,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -101,6 +105,8 @@ class BuildExportJsonUseCaseTest {
                 delta = 100,
                 occurredAt = 7L,
                 createdAt = 7L,
+                updatedAt = 7L,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -109,6 +115,8 @@ class BuildExportJsonUseCaseTest {
                 delta = -50,
                 occurredAt = 8L,
                 createdAt = 8L,
+                updatedAt = 8L,
+                operationId = testOperationId(),
             ),
         )
         reminderRepository.insertReminder(
@@ -124,6 +132,7 @@ class BuildExportJsonUseCaseTest {
                 nextDueAt = 10L,
                 createdAt = 10L,
                 updatedAt = 10L,
+                anchorDueAt = 10L,
             ),
         )
 

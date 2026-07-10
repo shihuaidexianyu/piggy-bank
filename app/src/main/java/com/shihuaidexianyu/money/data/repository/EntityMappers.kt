@@ -25,8 +25,8 @@ internal fun AccountEntity.toDomain(): Account = Account(
     name = name,
     initialBalance = initialBalance,
     createdAt = createdAt,
-    archivedAt = archivedAt,
-    isArchived = isArchived,
+    isHidden = isHidden,
+    closedAt = closedAt,
     lastUsedAt = lastUsedAt,
     lastBalanceUpdateAt = lastBalanceUpdateAt,
     displayOrder = displayOrder,
@@ -39,8 +39,8 @@ fun Account.toEntity(): AccountEntity = AccountEntity(
     name = name,
     initialBalance = initialBalance,
     createdAt = createdAt,
-    archivedAt = archivedAt,
-    isArchived = isArchived,
+    isHidden = isHidden,
+    closedAt = closedAt,
     lastUsedAt = lastUsedAt,
     lastBalanceUpdateAt = lastBalanceUpdateAt,
     displayOrder = displayOrder,
@@ -53,11 +53,12 @@ internal fun CashFlowRecordEntity.toDomain(): CashFlowRecord = CashFlowRecord(
     accountId = accountId,
     direction = direction,
     amount = amount,
-    purpose = purpose,
+    note = note,
     occurredAt = occurredAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    isDeleted = isDeleted,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 fun CashFlowRecord.toEntity(): CashFlowRecordEntity = CashFlowRecordEntity(
@@ -65,11 +66,12 @@ fun CashFlowRecord.toEntity(): CashFlowRecordEntity = CashFlowRecordEntity(
     accountId = accountId,
     direction = direction,
     amount = amount,
-    purpose = purpose,
+    note = note,
     occurredAt = occurredAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    isDeleted = isDeleted,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 internal fun TransferRecordEntity.toDomain(): TransferRecord = TransferRecord(
@@ -81,7 +83,8 @@ internal fun TransferRecordEntity.toDomain(): TransferRecord = TransferRecord(
     occurredAt = occurredAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    isDeleted = isDeleted,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 fun TransferRecord.toEntity(): TransferRecordEntity = TransferRecordEntity(
@@ -93,7 +96,8 @@ fun TransferRecord.toEntity(): TransferRecordEntity = TransferRecordEntity(
     occurredAt = occurredAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    isDeleted = isDeleted,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 internal fun BalanceUpdateRecordEntity.toDomain(): BalanceUpdateRecord = BalanceUpdateRecord(
@@ -104,6 +108,9 @@ internal fun BalanceUpdateRecordEntity.toDomain(): BalanceUpdateRecord = Balance
     delta = delta,
     occurredAt = occurredAt,
     createdAt = createdAt,
+    updatedAt = updatedAt,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 fun BalanceUpdateRecord.toEntity(): BalanceUpdateRecordEntity = BalanceUpdateRecordEntity(
@@ -114,6 +121,9 @@ fun BalanceUpdateRecord.toEntity(): BalanceUpdateRecordEntity = BalanceUpdateRec
     delta = delta,
     occurredAt = occurredAt,
     createdAt = createdAt,
+    updatedAt = updatedAt,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 internal fun BalanceAdjustmentRecordEntity.toDomain(): BalanceAdjustmentRecord = BalanceAdjustmentRecord(
@@ -122,6 +132,9 @@ internal fun BalanceAdjustmentRecordEntity.toDomain(): BalanceAdjustmentRecord =
     delta = delta,
     occurredAt = occurredAt,
     createdAt = createdAt,
+    updatedAt = updatedAt,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 fun BalanceAdjustmentRecord.toEntity(): BalanceAdjustmentRecordEntity = BalanceAdjustmentRecordEntity(
@@ -130,6 +143,9 @@ fun BalanceAdjustmentRecord.toEntity(): BalanceAdjustmentRecordEntity = BalanceA
     delta = delta,
     occurredAt = occurredAt,
     createdAt = createdAt,
+    updatedAt = updatedAt,
+    deletedAt = deletedAt,
+    operationId = operationId,
 )
 
 internal fun RecurringReminderEntity.toDomain(): RecurringReminder = RecurringReminder(
@@ -144,6 +160,8 @@ internal fun RecurringReminderEntity.toDomain(): RecurringReminder = RecurringRe
     periodMonth = periodMonth,
     isEnabled = isEnabled,
     nextDueAt = nextDueAt,
+    anchorDueAt = anchorDueAt,
+    lastNotifiedDueAt = lastNotifiedDueAt,
     lastConfirmedAt = lastConfirmedAt,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -161,6 +179,8 @@ fun RecurringReminder.toEntity(): RecurringReminderEntity = RecurringReminderEnt
     periodMonth = periodMonth,
     isEnabled = isEnabled,
     nextDueAt = nextDueAt,
+    anchorDueAt = anchorDueAt,
+    lastNotifiedDueAt = lastNotifiedDueAt,
     lastConfirmedAt = lastConfirmedAt,
     createdAt = createdAt,
     updatedAt = updatedAt,

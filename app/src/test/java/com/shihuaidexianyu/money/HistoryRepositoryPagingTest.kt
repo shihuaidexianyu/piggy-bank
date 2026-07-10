@@ -23,10 +23,11 @@ class HistoryRepositoryPagingTest {
                 accountId = 1L,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
                 updatedAt = occurredAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertTransferRecord(
@@ -38,6 +39,7 @@ class HistoryRepositoryPagingTest {
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
                 updatedAt = occurredAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceUpdateRecord(
@@ -48,6 +50,8 @@ class HistoryRepositoryPagingTest {
                 delta = 200,
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
+                updatedAt = occurredAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceAdjustmentRecord(
@@ -56,6 +60,8 @@ class HistoryRepositoryPagingTest {
                 delta = -50,
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
+                updatedAt = occurredAt,
+                operationId = testOperationId(),
             ),
         )
 
@@ -86,10 +92,11 @@ class HistoryRepositoryPagingTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 100,
-                purpose = "午餐 咖啡",
+                note = "午餐 咖啡",
                 occurredAt = 1_000L,
                 createdAt = 1_000L,
                 updatedAt = 1_000L,
+                operationId = testOperationId(),
             ),
         )
         repository.softDeleteCashFlowRecord(deletedId, 1_001L)
@@ -98,10 +105,11 @@ class HistoryRepositoryPagingTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 200,
-                purpose = "午餐 米饭",
+                note = "午餐 米饭",
                 occurredAt = 2_000L,
                 createdAt = 2_000L,
                 updatedAt = 2_000L,
+                operationId = testOperationId(),
             ),
         )
         repository.insertTransferRecord(
@@ -113,6 +121,7 @@ class HistoryRepositoryPagingTest {
                 occurredAt = 3_000L,
                 createdAt = 3_000L,
                 updatedAt = 3_000L,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceAdjustmentRecord(
@@ -121,6 +130,8 @@ class HistoryRepositoryPagingTest {
                 delta = 400,
                 occurredAt = 4_000L,
                 createdAt = 4_000L,
+                updatedAt = 4_000L,
+                operationId = testOperationId(),
             ),
         )
 
@@ -154,10 +165,11 @@ class HistoryRepositoryPagingTest {
                     accountId = 1L,
                     direction = CashFlowDirection.INFLOW.value,
                     amount = occurredAt,
-                    purpose = "边界记录",
+                    note = "边界记录",
                     occurredAt = occurredAt,
                     createdAt = occurredAt,
                     updatedAt = occurredAt,
+                    operationId = testOperationId(),
                 ),
             )
         }

@@ -130,7 +130,7 @@ fun MoneyNavGraph(
                     direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
                     accountId = 0L,
                     amount = sharedAmount,
-                    purpose = null,
+                    note = null,
                     reminderId = null,
                 ),
             )

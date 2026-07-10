@@ -51,13 +51,13 @@ sealed class MoneyDestination(
             direction: CashFlowDirection,
             accountId: Long,
             amount: Long?,
-            purpose: String?,
+            note: String?,
             reminderId: Long?,
         ): String {
             val baseRoute = recordCashFlowRoute(direction, accountId)
             val query = buildList {
                 amount?.takeIf { it > 0 }?.let { add("amount=$it") }
-                purpose?.takeIf { it.isNotBlank() }?.let { add("purpose=${NavigationQueryCodec.encode(it)}") }
+                note?.takeIf { it.isNotBlank() }?.let { add("purpose=${NavigationQueryCodec.encode(it)}") }
                 reminderId?.takeIf { it > 0 }?.let { add("reminderId=$it") }
             }
             return if (query.isEmpty()) baseRoute else "$baseRoute?${query.joinToString("&")}"

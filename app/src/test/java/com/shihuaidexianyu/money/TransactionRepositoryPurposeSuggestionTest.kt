@@ -7,21 +7,21 @@ import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
-class TransactionRepositoryPurposeSuggestionTest {
+class TransactionRepositoryNoteSuggestionTest {
     @Test
-    fun `recent purposes are unique and account scoped`() = runBlocking {
+    fun `recent notes are unique and account scoped`() = runBlocking {
         val repository = InMemoryTransactionRepository()
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", occurredAt = 1_000))
-        repository.insertCashFlowRecord(cashFlow(accountId = 2, purpose = "咖啡", occurredAt = 2_000))
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", occurredAt = 3_000))
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "地铁", occurredAt = 4_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "早餐", occurredAt = 1_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 2, note = "咖啡", occurredAt = 2_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "早餐", occurredAt = 3_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "地铁", occurredAt = 4_000))
 
-        val accountSuggestions = repository.queryRecentCashFlowPurposes(
+        val accountSuggestions = repository.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = 1,
             limit = 6,
         )
-        val globalSuggestions = repository.queryRecentCashFlowPurposes(
+        val globalSuggestions = repository.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = null,
             limit = 2,
@@ -32,23 +32,23 @@ class TransactionRepositoryPurposeSuggestionTest {
     }
 
     @Test
-    fun `recent purposes ignore deleted records and do not depend on amount`() = runBlocking {
+    fun `recent notes ignore deleted records and do not depend on amount`() = runBlocking {
         val repository = InMemoryTransactionRepository()
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", amount = 1_200, occurredAt = 1_000))
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "地铁", amount = 400, occurredAt = 2_000))
-        repository.insertCashFlowRecord(cashFlow(accountId = 1, purpose = "早餐", amount = 1_300, occurredAt = 3_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "早餐", amount = 1_200, occurredAt = 1_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "地铁", amount = 400, occurredAt = 2_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 1, note = "早餐", amount = 1_300, occurredAt = 3_000))
         val deletedId = repository.insertCashFlowRecord(
-            cashFlow(accountId = 1, purpose = "咖啡", amount = 1_800, occurredAt = 4_000),
+            cashFlow(accountId = 1, note = "咖啡", amount = 1_800, occurredAt = 4_000),
         )
         repository.softDeleteCashFlowRecord(deletedId, updatedAt = 4_100)
-        repository.insertCashFlowRecord(cashFlow(accountId = 2, purpose = "咖啡", amount = 2_000, occurredAt = 5_000))
+        repository.insertCashFlowRecord(cashFlow(accountId = 2, note = "咖啡", amount = 2_000, occurredAt = 5_000))
 
-        val accountSuggestions = repository.queryRecentCashFlowPurposes(
+        val accountSuggestions = repository.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = 1,
             limit = 6,
         )
-        val globalSuggestions = repository.queryRecentCashFlowPurposes(
+        val globalSuggestions = repository.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = null,
             limit = 2,
@@ -60,7 +60,7 @@ class TransactionRepositoryPurposeSuggestionTest {
 
     private fun cashFlow(
         accountId: Long,
-        purpose: String,
+        note: String,
         amount: Long = 100,
         occurredAt: Long,
     ): CashFlowRecord {
@@ -68,10 +68,11 @@ class TransactionRepositoryPurposeSuggestionTest {
             accountId = accountId,
             direction = CashFlowDirection.OUTFLOW.value,
             amount = amount,
-            purpose = purpose,
+            note = note,
             occurredAt = occurredAt,
             createdAt = occurredAt,
             updatedAt = occurredAt,
+            operationId = testOperationId(),
         )
     }
 }

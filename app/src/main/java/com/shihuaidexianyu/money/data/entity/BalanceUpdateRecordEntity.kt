@@ -17,8 +17,9 @@ import androidx.room.PrimaryKey
         ),
     ],
     indices = [
-        Index(value = ["accountId", "occurredAt", "id"]),
-        Index(value = ["occurredAt"]),
+        Index(value = ["accountId", "deletedAt", "occurredAt", "id"]),
+        Index(value = ["deletedAt", "occurredAt"]),
+        Index(value = ["operationId"], unique = true),
     ],
 )
 data class BalanceUpdateRecordEntity(
@@ -30,5 +31,8 @@ data class BalanceUpdateRecordEntity(
     val delta: Long,
     val occurredAt: Long,
     val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+    val operationId: String,
 )
 

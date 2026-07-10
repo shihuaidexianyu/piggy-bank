@@ -122,6 +122,7 @@ class HomeProjectorTest {
             nextDueAt = 10L,
             createdAt = 1L,
             updatedAt = 1L,
+            anchorDueAt = 10L,
         )
         val snapshot = HomeProjector.project(
             accounts = emptyList(),

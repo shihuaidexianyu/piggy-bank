@@ -32,7 +32,7 @@ class InMemoryAccountRepository : AccountRepository {
     override suspend fun isActiveNameAvailable(name: String, excludeId: Long): Boolean {
         val normalizedName = name.trim()
         return accounts.value.none {
-            !it.isArchived && it.name == normalizedName && (excludeId < 0 || it.id != excludeId)
+            !it.isClosed && it.name == normalizedName && (excludeId < 0 || it.id != excludeId)
         }
     }
 
@@ -51,7 +51,7 @@ class InMemoryAccountRepository : AccountRepository {
     override suspend fun archiveAccount(accountId: Long, archivedAt: Long) {
         accounts.value = accounts.value.map { existing ->
             if (existing.id == accountId) {
-                existing.copy(isArchived = true, archivedAt = archivedAt)
+                existing.copy(closedAt = archivedAt)
             } else {
                 existing
             }
@@ -71,16 +71,16 @@ class InMemoryAccountRepository : AccountRepository {
     }
 
     override suspend fun nextDisplayOrder(): Int {
-        return (accounts.value.filterNot(Account::isArchived).maxOfOrNull { it.displayOrder } ?: -1) + 1
+        return (accounts.value.filterNot(Account::isClosed).maxOfOrNull { it.displayOrder } ?: -1) + 1
     }
 
     private fun activeAccounts(list: List<Account>): List<Account> {
-        return list.filterNot(Account::isArchived)
+        return list.filterNot(Account::isClosed)
             .sortedWith(compareBy<Account> { it.displayOrder }.thenBy { it.createdAt })
     }
 
     private fun archivedAccounts(list: List<Account>): List<Account> {
-        return list.filter(Account::isArchived)
-            .sortedWith(compareByDescending<Account> { it.archivedAt }.thenByDescending { it.createdAt })
+        return list.filter(Account::isClosed)
+            .sortedWith(compareByDescending<Account> { it.closedAt }.thenByDescending { it.createdAt })
     }
 }

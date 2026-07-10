@@ -19,6 +19,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -55,10 +56,11 @@ class BalanceUpdateMutationUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -110,6 +112,7 @@ class BalanceUpdateMutationUseCaseTest {
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -124,7 +127,7 @@ class BalanceUpdateMutationUseCaseTest {
     }
 
     @Test
-    fun `deleting balance update removes it and restores current balance`() = runBlocking {
+    fun `deleting balance update retains tombstone and restores current balance`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val resolveContext = ResolveBalanceUpdateContextUseCase(accountRepository, transactionRepository)
@@ -153,10 +156,11 @@ class BalanceUpdateMutationUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -167,7 +171,9 @@ class BalanceUpdateMutationUseCaseTest {
         deleteBalanceUpdateRecordUseCase(recordId)
 
         assertNull(transactionRepository.getBalanceUpdateRecordById(recordId))
-        assertEquals(emptyList(), transactionRepository.queryAllBalanceUpdateRecords())
+        val storedRecord = transactionRepository.queryAllBalanceUpdateRecords().single()
+        assertNotNull(storedRecord.deletedAt)
+        assertEquals(-1_000, storedRecord.delta)
         assertNull(accountRepository.getAccountById(accountId)?.lastBalanceUpdateAt)
         assertEquals(12_000, calculateCurrentBalanceUseCase(accountId))
     }
@@ -196,10 +202,11 @@ class BalanceUpdateMutationUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 1_000,
-                purpose = "补贴",
+                note = "补贴",
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -251,10 +258,11 @@ class BalanceUpdateMutationUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 1_000,
-                purpose = "返现",
+                note = "返现",
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
         updateBalanceUseCase(accountId = accountId, actualBalance = 13_000, occurredAt = 5_000)
@@ -307,7 +315,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountId = accountId,
             direction = CashFlowDirection.INFLOW,
             amount = 2_000,
-            purpose = "工资",
+            note = "工资",
             occurredAt = 3_000,
         )
         assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)
@@ -318,7 +326,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountId = accountId,
             direction = CashFlowDirection.OUTFLOW,
             amount = 500,
-            purpose = "午餐",
+            note = "午餐",
             occurredAt = 3_000,
         )
         assertBalanceUpdate(transactionRepository, balanceUpdateId, systemBalanceBeforeUpdate = 10_000, delta = 0)

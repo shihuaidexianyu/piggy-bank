@@ -37,7 +37,7 @@ class RecordTimeValidationTest {
                     accountId = accountId,
                     direction = CashFlowDirection.OUTFLOW,
                     amount = 100,
-                    purpose = "早餐",
+                    note = "早餐",
                     occurredAt = 59_000,
                 )
             }

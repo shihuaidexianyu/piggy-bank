@@ -27,7 +27,7 @@ data class EditCashFlowUiState(
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val selectedAccountId: Long? = null,
     val amountText: String = "",
-    val purpose: String = "",
+    val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
     val isSaving: Boolean = false,
     val showDeleteConfirm: Boolean = false,
@@ -75,7 +75,7 @@ class EditCashFlowViewModel(
                     },
                     selectedAccountId = record.accountId,
                     amountText = AmountFormatter.formatPlain(record.amount),
-                    purpose = record.purpose,
+                    note = record.note,
                     occurredAtMillis = record.occurredAt,
                 )
             } catch (e: Exception) {
@@ -87,7 +87,7 @@ class EditCashFlowViewModel(
 
     fun updateAccount(accountId: Long) = updateState { copy(selectedAccountId = accountId) }
     fun updateAmount(value: String) = updateState { copy(amountText = value) }
-    fun updatePurpose(value: String) = updateState { copy(purpose = value) }
+    fun updateNote(value: String) = updateState { copy(note = value) }
     fun updateOccurredAt(value: Long) = updateState {
         copy(
             occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
@@ -113,7 +113,7 @@ class EditCashFlowViewModel(
                     accountId = accountId,
                     direction = state.direction,
                     amount = amount,
-                    purpose = state.purpose,
+                    note = state.note,
                     occurredAt = state.occurredAtMillis,
                 )
             }.onSuccess {

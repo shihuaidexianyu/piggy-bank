@@ -19,25 +19,31 @@ interface CashFlowRecordDao {
     @Update
     suspend fun update(record: CashFlowRecordEntity)
 
-    @Query("UPDATE cash_flow_records SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    @Query(
+        """
+        UPDATE cash_flow_records
+        SET deletedAt = :updatedAt, updatedAt = :updatedAt
+        WHERE id = :id AND deletedAt IS NULL
+        """,
+    )
     suspend fun softDelete(id: Long, updatedAt: Long)
 
-    @Query("SELECT * FROM cash_flow_records WHERE id = :id AND isDeleted = 0 LIMIT 1")
+    @Query("SELECT * FROM cash_flow_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): CashFlowRecordEntity?
 
-    @Query("SELECT COUNT(*) FROM cash_flow_records WHERE isDeleted = 0")
+    @Query("SELECT COUNT(*) FROM cash_flow_records WHERE deletedAt IS NULL")
     fun observeActiveCount(): Flow<Int>
 
     @Query("SELECT * FROM cash_flow_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<CashFlowRecordEntity>
 
-    @Query("SELECT * FROM cash_flow_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
+    @Query("SELECT * FROM cash_flow_records WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<CashFlowRecordEntity>
 
     @Query(
         """
         SELECT * FROM cash_flow_records
-        WHERE accountId = :accountId AND isDeleted = 0
+        WHERE accountId = :accountId AND deletedAt IS NULL
         ORDER BY occurredAt DESC, id DESC
         """,
     )
@@ -45,23 +51,23 @@ interface CashFlowRecordDao {
 
     @Query(
         """
-        SELECT purpose FROM cash_flow_records
+        SELECT note FROM cash_flow_records
         WHERE direction = :direction
             AND (:accountId IS NULL OR accountId = :accountId)
-            AND isDeleted = 0
-            AND TRIM(purpose) != ''
-        GROUP BY purpose
+            AND deletedAt IS NULL
+            AND TRIM(note) != ''
+        GROUP BY note
         ORDER BY MAX(occurredAt) DESC, MAX(id) DESC
         LIMIT :limit
         """,
     )
-    suspend fun queryRecentPurposes(direction: String, accountId: Long?, limit: Int): List<String>
+    suspend fun queryRecentNotes(direction: String, accountId: Long?, limit: Int): List<String>
 
     @Query(
         """
         SELECT * FROM cash_flow_records
         WHERE direction = :direction
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
@@ -78,7 +84,7 @@ interface CashFlowRecordDao {
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE accountId = :accountId
             AND direction = 'inflow'
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -90,7 +96,7 @@ interface CashFlowRecordDao {
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE accountId = :accountId
             AND direction = 'outflow'
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -101,7 +107,7 @@ interface CashFlowRecordDao {
         """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE direction = 'inflow'
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -112,7 +118,7 @@ interface CashFlowRecordDao {
         """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE direction = 'outflow'
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -122,7 +128,7 @@ interface CashFlowRecordDao {
     @Query(
         """
         SELECT COUNT(*) FROM cash_flow_records
-        WHERE isDeleted = 0
+        WHERE deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -132,7 +138,7 @@ interface CashFlowRecordDao {
     @Query(
         """
         SELECT * FROM cash_flow_records
-        WHERE isDeleted = 0
+        WHERE deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC
@@ -143,14 +149,14 @@ interface CashFlowRecordDao {
     @Query(
         """
         SELECT
-            CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END AS purpose,
+            CASE WHEN TRIM(note) = '' THEN '未填写用途' ELSE note END AS purpose,
             COALESCE(SUM(amount), 0) AS amount
         FROM cash_flow_records
         WHERE direction = :direction
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
-        GROUP BY CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END
+        GROUP BY CASE WHEN TRIM(note) = '' THEN '未填写用途' ELSE note END
         ORDER BY amount DESC
         """,
     )
@@ -167,7 +173,7 @@ interface CashFlowRecordDao {
             direction AS direction,
             COALESCE(SUM(amount), 0) AS amount
         FROM cash_flow_records
-        WHERE isDeleted = 0
+        WHERE deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         GROUP BY epochDay, direction

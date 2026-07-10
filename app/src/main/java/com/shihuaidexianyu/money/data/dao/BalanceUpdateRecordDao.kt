@@ -19,19 +19,29 @@ interface BalanceUpdateRecordDao {
     @Update
     suspend fun update(record: BalanceUpdateRecordEntity)
 
-    @Query("DELETE FROM balance_update_records WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    @Query(
+        """
+        UPDATE balance_update_records
+        SET deletedAt = :deletedAt, updatedAt = :deletedAt
+        WHERE id = :id AND deletedAt IS NULL
+        """,
+    )
+    suspend fun softDelete(id: Long, deletedAt: Long)
 
-    @Query("SELECT * FROM balance_update_records WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM balance_update_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): BalanceUpdateRecordEntity?
 
     @Query("SELECT * FROM balance_update_records ORDER BY occurredAt DESC, id DESC")
+    suspend fun queryAll(): List<BalanceUpdateRecordEntity>
+
+    @Query("SELECT * FROM balance_update_records WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<BalanceUpdateRecordEntity>
 
     @Query(
         """
         SELECT * FROM balance_update_records
-        WHERE occurredAt >= :startInclusive
+        WHERE deletedAt IS NULL
+            AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
         """,
@@ -41,7 +51,8 @@ interface BalanceUpdateRecordDao {
     @Query(
         """
         SELECT COALESCE(SUM(delta), 0) FROM balance_update_records
-        WHERE delta > 0
+        WHERE deletedAt IS NULL
+            AND delta > 0
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -51,20 +62,21 @@ interface BalanceUpdateRecordDao {
     @Query(
         """
         SELECT COALESCE(SUM(-delta), 0) FROM balance_update_records
-        WHERE delta < 0
+        WHERE deletedAt IS NULL
+            AND delta < 0
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
     )
     suspend fun sumNegativeDeltaBetween(startInclusive: Long, endExclusive: Long): Long
 
-    @Query("SELECT COUNT(*) FROM balance_update_records")
+    @Query("SELECT COUNT(*) FROM balance_update_records WHERE deletedAt IS NULL")
     fun observeCount(): Flow<Int>
 
     @Query(
         """
         SELECT * FROM balance_update_records
-        WHERE accountId = :accountId
+        WHERE accountId = :accountId AND deletedAt IS NULL
         ORDER BY occurredAt DESC, id DESC
         """,
     )
@@ -73,7 +85,7 @@ interface BalanceUpdateRecordDao {
     @Query(
         """
         SELECT * FROM balance_update_records
-        WHERE accountId = :accountId
+        WHERE accountId = :accountId AND deletedAt IS NULL
         ORDER BY occurredAt DESC, id DESC
         LIMIT 1
         """,

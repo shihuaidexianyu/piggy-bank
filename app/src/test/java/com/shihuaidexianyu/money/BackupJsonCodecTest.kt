@@ -185,10 +185,11 @@ class BackupJsonCodecTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = Long.MAX_VALUE,
-                purpose = purpose,
+                note = purpose,
                 occurredAt = 2L,
                 createdAt = 2L,
                 updatedAt = 2L,
+                operationId = testOperationId(),
             ),
         )
         reminderRepository.insertReminder(
@@ -204,6 +205,7 @@ class BackupJsonCodecTest {
                 nextDueAt = 3L,
                 createdAt = 3L,
                 updatedAt = 3L,
+                anchorDueAt = 3L,
             ),
         )
 

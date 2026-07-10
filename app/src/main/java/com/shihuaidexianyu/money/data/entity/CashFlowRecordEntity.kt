@@ -17,8 +17,9 @@ import androidx.room.PrimaryKey
         ),
     ],
     indices = [
-        Index(value = ["accountId", "isDeleted", "occurredAt"]),
-        Index(value = ["direction", "isDeleted", "occurredAt"]),
+        Index(value = ["accountId", "deletedAt", "occurredAt"]),
+        Index(value = ["direction", "deletedAt", "occurredAt"]),
+        Index(value = ["operationId"], unique = true),
     ],
 )
 data class CashFlowRecordEntity(
@@ -27,10 +28,11 @@ data class CashFlowRecordEntity(
     val accountId: Long,
     val direction: String,
     val amount: Long,
-    val purpose: String,
+    val note: String,
     val occurredAt: Long,
     val createdAt: Long,
     val updatedAt: Long,
-    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null,
+    val operationId: String,
 )
 

@@ -33,7 +33,7 @@ interface TransactionRepository {
     suspend fun queryAllCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord>
-    suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
+    suspend fun queryRecentCashFlowNotes(direction: String, accountId: Long?, limit: Int): List<String>
     suspend fun queryActiveCashFlowRecordsByDirectionBetween(
         direction: String,
         startInclusive: Long,
@@ -62,7 +62,7 @@ interface TransactionRepository {
     // === Balance update records ===
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord)
-    suspend fun deleteBalanceUpdateRecord(id: Long)
+    suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long)
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecord>
@@ -72,7 +72,7 @@ interface TransactionRepository {
     // === Balance adjustment records ===
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord)
-    suspend fun deleteBalanceAdjustmentRecord(id: Long)
+    suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecord>

@@ -78,7 +78,7 @@ fun AccountDetailScreen(
                 AccountIconBadge(
                     iconName = state.iconName,
                     colorName = state.colorName,
-                    isArchived = state.isArchived,
+                    isClosed = state.isClosed,
                 )
                 Text(
                     text = AmountFormatter.format(state.currentBalance, state.settings),
@@ -91,7 +91,7 @@ fun AccountDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (state.isArchived) {
+                if (state.isClosed) {
                     MoneyStatusPill(text = "已归档", accent = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Text(
@@ -100,10 +100,10 @@ fun AccountDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (state.isStale && !state.isArchived) {
+                if (state.isStale && !state.isClosed) {
                     MoneyStatusPill(text = "待核对", accent = MaterialTheme.colorScheme.secondary)
                 }
-                if (!state.isArchived) {
+                if (!state.isClosed) {
                     Button(
                         onClick = onStartUpdateBalance,
                         modifier = Modifier.fillMaxWidth(),

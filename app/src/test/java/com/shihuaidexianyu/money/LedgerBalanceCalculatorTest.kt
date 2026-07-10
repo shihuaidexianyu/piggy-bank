@@ -119,7 +119,12 @@ fun `deltasFromRecords sums only records within the open-ended window`() {
 @Test
 fun `deltasFromRecords ignores soft-deleted cash flow and transfer records`() {
     val cashFlows = listOf(
-        cashFlow(occurredAt = 1_500_000L, amount = 1_000L, direction = CashFlowDirection.INFLOW, isDeleted = true),
+        cashFlow(
+            occurredAt = 1_500_000L,
+            amount = 1_000L,
+            direction = CashFlowDirection.INFLOW,
+            deletedAt = 1_500_000L,
+        ),
     )
     val transfers = listOf(
         TransferRecord(
@@ -131,7 +136,8 @@ fun `deltasFromRecords ignores soft-deleted cash flow and transfer records`() {
             occurredAt = 1_500_000L,
             createdAt = 960_000L,
             updatedAt = 960_000L,
-            isDeleted = true,
+            deletedAt = 960_000L,
+            operationId = testOperationId(),
         ),
     )
     val deltas = LedgerBalanceCalculator.deltasFromRecords(
@@ -150,8 +156,8 @@ fun `deltasFromRecords ignores soft-deleted cash flow and transfer records`() {
 @Test
 fun `deltasFromRecords counts transferIn and transferOut separately`() {
     val transfers = listOf(
-        TransferRecord(id = 1, fromAccountId = 1, toAccountId = 2, amount = 300L, note = "", occurredAt = 1_500_000L, createdAt = 960_000L, updatedAt = 960_000L),
-        TransferRecord(id = 2, fromAccountId = 2, toAccountId = 1, amount = 800L, note = "", occurredAt = 1_600_000L, createdAt = 960_000L, updatedAt = 960_000L),
+        TransferRecord(id = 1, fromAccountId = 1, toAccountId = 2, amount = 300L, note = "", occurredAt = 1_500_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
+        TransferRecord(id = 2, fromAccountId = 2, toAccountId = 1, amount = 800L, note = "", occurredAt = 1_600_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
     )
     val deltas = LedgerBalanceCalculator.deltasFromRecords(
         account = account,
@@ -168,12 +174,12 @@ fun `deltasFromRecords counts transferIn and transferOut separately`() {
 @Test
 fun `deltasFromRecords sums manual adjustments and reconciliation deltas`() {
     val balanceUpdates = listOf(
-        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 1_500_000L, createdAt = 960_000L),
-        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 1_600_000L, createdAt = 960_000L),
+        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 1_500_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
+        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 1_600_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
     )
     val adjustments = listOf(
-        BalanceAdjustmentRecord(id = 1, accountId = 1, delta = 33L, occurredAt = 1_700_000L, createdAt = 960_000L),
-        BalanceAdjustmentRecord(id = 2, accountId = 1, delta = -10L, occurredAt = 1_800_000L, createdAt = 960_000L),
+        BalanceAdjustmentRecord(id = 1, accountId = 1, delta = 33L, occurredAt = 1_700_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
+        BalanceAdjustmentRecord(id = 2, accountId = 1, delta = -10L, occurredAt = 1_800_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
     )
     val deltas = LedgerBalanceCalculator.deltasFromRecords(
         account = account,
@@ -190,8 +196,8 @@ fun `deltasFromRecords sums manual adjustments and reconciliation deltas`() {
 @Test
 fun `deltasFromRecords excludes the named balance update when excludingBalanceUpdateId is set`() {
     val balanceUpdates = listOf(
-        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 1_500_000L, createdAt = 960_000L),
-        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 1_600_000L, createdAt = 960_000L),
+        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 1_500_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
+        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 1_600_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()),
     )
     val deltas = LedgerBalanceCalculator.deltasFromRecords(
         account = account,
@@ -208,8 +214,8 @@ fun `deltasFromRecords excludes the named balance update when excludingBalanceUp
 @Test
 fun `reconciliationDeltaFromRecords excludes balance updates outside the window`() {
     val balanceUpdates = listOf(
-        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 959_999L, createdAt = 960_000L), // before opening
-        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 5_000_000L, createdAt = 960_000L), // after atTime
+        BalanceUpdateRecord(id = 1, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = 200L, occurredAt = 959_999L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()), // before opening
+        BalanceUpdateRecord(id = 2, accountId = 1, actualBalance = 0, systemBalanceBeforeUpdate = 0, delta = -50L, occurredAt = 5_000_000L, createdAt = 960_000L, updatedAt = 960_000L, operationId = testOperationId()), // after atTime
     )
     val delta = LedgerBalanceCalculator.reconciliationDeltaFromRecords(
         account = account,
@@ -257,16 +263,17 @@ private fun cashFlow(
     occurredAt: Long,
     amount: Long,
     direction: CashFlowDirection,
-    isDeleted: Boolean = false,
+    deletedAt: Long? = null,
 ): CashFlowRecord = CashFlowRecord(
     id = id,
     accountId = accountId,
     direction = direction.value,
     amount = amount,
-    purpose = "",
+    note = "",
     occurredAt = occurredAt,
     createdAt = 960_000L,
     updatedAt = 960_000L,
-    isDeleted = isDeleted,
+    deletedAt = deletedAt,
+    operationId = testOperationId(),
 )
 }

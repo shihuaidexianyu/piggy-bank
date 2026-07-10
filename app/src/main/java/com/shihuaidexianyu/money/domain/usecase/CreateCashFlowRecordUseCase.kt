@@ -14,7 +14,7 @@ class CreateCashFlowRecordUseCase(
         accountId: Long,
         direction: CashFlowDirection,
         amount: Long,
-        purpose: String,
+        note: String,
         occurredAt: Long,
     ): Long {
         require(amount > 0) { "金额必须大于 0" }
@@ -24,16 +24,18 @@ class CreateCashFlowRecordUseCase(
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
         val now = System.currentTimeMillis()
+        val operationId = newLedgerOperationId()
         val recordId = transactionRepository.runInTransaction {
             val id = transactionRepository.insertCashFlowRecord(
                 CashFlowRecord(
                     accountId = accountId,
                     direction = direction.value,
                     amount = amount,
-                    purpose = purpose.trim(),
+                    note = note.trim(),
                     occurredAt = occurredAt,
                     createdAt = now,
                     updatedAt = now,
+                    operationId = operationId,
                 ),
             )
             refreshAccountActivityStateUseCase(accountId)

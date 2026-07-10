@@ -38,7 +38,7 @@ class BalanceCheckWorker(
         var staleCount = 0
 
         for (account in accounts) {
-            if (account.isArchived) continue
+            if (account.isClosed) continue
             val config = runCatching {
                 reminderSettingsRepo.getReminderConfig(account.id)
             }.getOrNull() ?: BalanceUpdateReminderConfig()

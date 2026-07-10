@@ -19,25 +19,31 @@ interface TransferRecordDao {
     @Update
     suspend fun update(record: TransferRecordEntity)
 
-    @Query("UPDATE transfer_records SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    @Query(
+        """
+        UPDATE transfer_records
+        SET deletedAt = :updatedAt, updatedAt = :updatedAt
+        WHERE id = :id AND deletedAt IS NULL
+        """,
+    )
     suspend fun softDelete(id: Long, updatedAt: Long)
 
-    @Query("SELECT * FROM transfer_records WHERE id = :id AND isDeleted = 0 LIMIT 1")
+    @Query("SELECT * FROM transfer_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): TransferRecordEntity?
 
-    @Query("SELECT COUNT(*) FROM transfer_records WHERE isDeleted = 0")
+    @Query("SELECT COUNT(*) FROM transfer_records WHERE deletedAt IS NULL")
     fun observeActiveCount(): Flow<Int>
 
     @Query("SELECT * FROM transfer_records ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAll(): List<TransferRecordEntity>
 
-    @Query("SELECT * FROM transfer_records WHERE isDeleted = 0 ORDER BY occurredAt DESC, id DESC")
+    @Query("SELECT * FROM transfer_records WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<TransferRecordEntity>
 
     @Query(
         """
         SELECT * FROM transfer_records
-        WHERE isDeleted = 0
+        WHERE deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
@@ -49,7 +55,7 @@ interface TransferRecordDao {
         """
         SELECT * FROM transfer_records
         WHERE (fromAccountId = :accountId OR toAccountId = :accountId)
-            AND isDeleted = 0
+            AND deletedAt IS NULL
         ORDER BY occurredAt DESC, id DESC
         """,
     )
@@ -60,7 +66,7 @@ interface TransferRecordDao {
         SELECT note FROM transfer_records
         WHERE (:fromAccountId IS NULL OR fromAccountId = :fromAccountId)
             AND (:toAccountId IS NULL OR toAccountId = :toAccountId)
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND TRIM(note) != ''
         GROUP BY note
         ORDER BY MAX(occurredAt) DESC, MAX(id) DESC
@@ -73,7 +79,7 @@ interface TransferRecordDao {
         """
         SELECT COALESCE(SUM(amount), 0) FROM transfer_records
         WHERE toAccountId = :accountId
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -84,7 +90,7 @@ interface TransferRecordDao {
         """
         SELECT COALESCE(SUM(amount), 0) FROM transfer_records
         WHERE fromAccountId = :accountId
-            AND isDeleted = 0
+            AND deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,
@@ -94,7 +100,7 @@ interface TransferRecordDao {
     @Query(
         """
         SELECT COUNT(*) FROM transfer_records
-        WHERE isDeleted = 0
+        WHERE deletedAt IS NULL
             AND occurredAt >= :startInclusive
             AND occurredAt < :endExclusive
         """,

@@ -94,9 +94,9 @@ fun AccountIconBadge(
     modifier: Modifier = Modifier,
     size: Dp = 46.dp,
     iconSize: Dp = 24.dp,
-    isArchived: Boolean = false,
+    isClosed: Boolean = false,
 ) {
-    val accent = if (isArchived) {
+    val accent = if (isClosed) {
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
         accountVisualColor(colorName)
@@ -105,7 +105,7 @@ fun AccountIconBadge(
         modifier = modifier
             .size(size)
             .background(
-                color = accent.copy(alpha = if (isArchived) 0.10f else 0.12f),
+                color = accent.copy(alpha = if (isClosed) 0.10f else 0.12f),
                 shape = CircleShape,
             ),
         contentAlignment = Alignment.Center,

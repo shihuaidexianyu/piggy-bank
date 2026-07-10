@@ -27,10 +27,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 1_000,
-                purpose = "同毫秒支出",
+                note = "同毫秒支出",
                 occurredAt = timestamp,
                 createdAt = timestamp,
                 updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -41,6 +42,8 @@ class BalanceUpdateSameTimestampTest {
                 delta = 200,
                 occurredAt = timestamp,
                 createdAt = timestamp,
+                updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -48,10 +51,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 500,
-                purpose = "同毫秒入账",
+                note = "同毫秒入账",
                 occurredAt = timestamp,
                 createdAt = timestamp,
                 updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -62,6 +66,8 @@ class BalanceUpdateSameTimestampTest {
                 delta = -400,
                 occurredAt = timestamp,
                 createdAt = timestamp,
+                updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -69,10 +75,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 300,
-                purpose = "后续入账",
+                note = "后续入账",
                 occurredAt = timestamp + 1,
                 createdAt = timestamp + 1,
                 updatedAt = timestamp + 1,
+                operationId = testOperationId(),
             ),
         )
 
@@ -98,10 +105,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "入账一",
+                note = "入账一",
                 occurredAt = timestamp,
                 createdAt = timestamp,
                 updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -109,10 +117,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 200,
-                purpose = "入账二",
+                note = "入账二",
                 occurredAt = timestamp,
                 createdAt = timestamp,
                 updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -120,10 +129,11 @@ class BalanceUpdateSameTimestampTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 50,
-                purpose = "支出",
+                note = "支出",
                 occurredAt = timestamp,
                 createdAt = timestamp,
                 updatedAt = timestamp,
+                operationId = testOperationId(),
             ),
         )
 

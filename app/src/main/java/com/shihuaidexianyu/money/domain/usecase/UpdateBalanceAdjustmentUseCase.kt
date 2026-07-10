@@ -23,7 +23,11 @@ class UpdateBalanceAdjustmentUseCase(
 
         transactionRepository.runInTransaction {
             transactionRepository.updateBalanceAdjustmentRecord(
-                existing.copy(delta = delta, occurredAt = occurredAt),
+                existing.copy(
+                    delta = delta,
+                    occurredAt = occurredAt,
+                    updatedAt = System.currentTimeMillis(),
+                ),
             )
             refreshAccountActivityStateUseCase(existing.accountId)
         }

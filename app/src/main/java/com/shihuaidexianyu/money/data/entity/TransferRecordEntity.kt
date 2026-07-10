@@ -24,10 +24,10 @@ import androidx.room.PrimaryKey
         ),
     ],
     indices = [
-        Index(value = ["fromAccountId", "isDeleted", "occurredAt"]),
-        Index(value = ["toAccountId", "isDeleted", "occurredAt"]),
-        Index(value = ["occurredAt"]),
-        Index(value = ["isDeleted"]),
+        Index(value = ["fromAccountId", "deletedAt", "occurredAt"]),
+        Index(value = ["toAccountId", "deletedAt", "occurredAt"]),
+        Index(value = ["deletedAt", "occurredAt"]),
+        Index(value = ["operationId"], unique = true),
     ],
 )
 data class TransferRecordEntity(
@@ -40,6 +40,7 @@ data class TransferRecordEntity(
     val occurredAt: Long,
     val createdAt: Long,
     val updatedAt: Long,
-    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null,
+    val operationId: String,
 )
 

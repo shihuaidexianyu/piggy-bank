@@ -131,7 +131,7 @@ private fun CashFlowRecord.toRecentRecord(): AccountDetailRecentRecord {
     val signedAmount = if (direction == com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW.value) amount else -amount
     return AccountDetailRecentRecord(
         id = id,
-        title = purpose.ifBlank { "未填写用途" },
+        title = note.ifBlank { "未填写用途" },
         amount = signedAmount,
         occurredAt = occurredAt,
         kind = AccountDetailRecordKind.CASH_FLOW,

@@ -34,7 +34,7 @@ class ProcessDueReminderUseCaseTest {
             reminderId = reminderId,
             occurredAt = System.currentTimeMillis() - 1_000L,
             amount = 1_200L,
-            purpose = "会员续费",
+            note = "会员续费",
         )
 
         val records = fixture.transactionRepository.queryAllActiveCashFlowRecords()
@@ -43,7 +43,7 @@ class ProcessDueReminderUseCaseTest {
         assertEquals(accountId, records.single().accountId)
         assertEquals(CashFlowDirection.OUTFLOW.value, records.single().direction)
         assertEquals(1_200L, records.single().amount)
-        assertEquals("会员续费", records.single().purpose)
+        assertEquals("会员续费", records.single().note)
         assertTrue(updatedReminder.nextDueAt > System.currentTimeMillis())
         assertTrue(updatedReminder.lastConfirmedAt != null)
     }
@@ -62,7 +62,7 @@ class ProcessDueReminderUseCaseTest {
                 reminderId = reminderId,
                 occurredAt = System.currentTimeMillis() + DAY_MILLIS,
                 amount = 1_200L,
-                purpose = "未来记录",
+                note = "未来记录",
             )
         }
 
@@ -85,7 +85,7 @@ class ProcessDueReminderUseCaseTest {
                 reminderId = reminderId,
                 occurredAt = System.currentTimeMillis() - 1_000L,
                 amount = 1_200L,
-                purpose = "归档账户",
+                note = "归档账户",
             )
         }
 
@@ -124,6 +124,7 @@ class ProcessDueReminderUseCaseTest {
             nextDueAt = nextDueAt,
             createdAt = 1L,
             updatedAt = 1L,
+            anchorDueAt = nextDueAt,
         )
     }
 

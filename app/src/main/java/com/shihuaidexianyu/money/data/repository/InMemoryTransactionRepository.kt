@@ -36,6 +36,10 @@ class InMemoryTransactionRepository : TransactionRepository {
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()
 
     override suspend fun insertCashFlowRecord(record: CashFlowRecord): Long {
+        requireNewOperationId(
+            operationId = record.operationId,
+            alreadyExists = cashFlowRecords.any { it.operationId == record.operationId },
+        )
         val id = nextCashFlowId++
         cashFlowRecords += record.copy(id = id)
         bumpVersion()
@@ -49,11 +53,11 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
         val existing = queryCashFlowRecordById(id) ?: return
-        updateCashFlowRecord(existing.copy(isDeleted = true, updatedAt = updatedAt))
+        updateCashFlowRecord(existing.copy(deletedAt = updatedAt, updatedAt = updatedAt))
     }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord? {
-        return cashFlowRecords.firstOrNull { it.id == id && !it.isDeleted }
+        return cashFlowRecords.firstOrNull { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun queryAllCashFlowRecords(): List<CashFlowRecord> {
@@ -61,21 +65,21 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord> {
-        return cashFlowRecords.filterNot(CashFlowRecord::isDeleted)
+        return cashFlowRecords.filter { it.deletedAt == null }
     }
 
     override suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord> {
         return queryAllActiveCashFlowRecords().filter { it.accountId == accountId }
     }
 
-    override suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String> {
+    override suspend fun queryRecentCashFlowNotes(direction: String, accountId: Long?, limit: Int): List<String> {
         return queryAllActiveCashFlowRecords()
             .asSequence()
             .filter { it.direction == direction }
             .filter { accountId == null || it.accountId == accountId }
-            .filter { it.purpose.isNotBlank() }
+            .filter { it.note.isNotBlank() }
             .sortedWith(compareByDescending<CashFlowRecord> { it.occurredAt }.thenByDescending { it.id })
-            .map { it.purpose }
+            .map { it.note }
             .distinct()
             .take(limit)
             .toList()
@@ -92,6 +96,10 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertTransferRecord(record: TransferRecord): Long {
+        requireNewOperationId(
+            operationId = record.operationId,
+            alreadyExists = transferRecords.any { it.operationId == record.operationId },
+        )
         val id = nextTransferId++
         transferRecords += record.copy(id = id)
         bumpVersion()
@@ -105,11 +113,11 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
         val existing = queryTransferRecordById(id) ?: return
-        updateTransferRecord(existing.copy(isDeleted = true, updatedAt = updatedAt))
+        updateTransferRecord(existing.copy(deletedAt = updatedAt, updatedAt = updatedAt))
     }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecord? {
-        return transferRecords.firstOrNull { it.id == id && !it.isDeleted }
+        return transferRecords.firstOrNull { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun queryAllTransferRecords(): List<TransferRecord> {
@@ -117,7 +125,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun queryAllActiveTransferRecords(): List<TransferRecord> {
-        return transferRecords.filterNot(TransferRecord::isDeleted)
+        return transferRecords.filter { it.deletedAt == null }
     }
 
     override suspend fun queryActiveTransferRecordsBetween(
@@ -149,6 +157,10 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): Long {
+        requireNewOperationId(
+            operationId = record.operationId,
+            alreadyExists = balanceUpdates.any { it.operationId == record.operationId },
+        )
         val id = nextBalanceUpdateId++
         balanceUpdates += record.copy(id = id)
         bumpVersion()
@@ -160,14 +172,13 @@ class InMemoryTransactionRepository : TransactionRepository {
         bumpVersion()
     }
 
-    override suspend fun deleteBalanceUpdateRecord(id: Long) {
-        if (balanceUpdates.removeAll { it.id == id }) {
-            bumpVersion()
-        }
+    override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
+        val existing = getBalanceUpdateRecordById(id) ?: return
+        updateBalanceUpdateRecord(existing.copy(deletedAt = deletedAt, updatedAt = deletedAt))
     }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? {
-        return balanceUpdates.firstOrNull { it.id == id }
+        return balanceUpdates.firstOrNull { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> {
@@ -179,13 +190,14 @@ class InMemoryTransactionRepository : TransactionRepository {
         endExclusive: Long,
     ): List<BalanceUpdateRecord> {
         return balanceUpdates
+            .filter { it.deletedAt == null }
             .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
     }
 
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord> {
         return balanceUpdates
-            .filter { it.accountId == accountId }
+            .filter { it.accountId == accountId && it.deletedAt == null }
             .sortedWith(compareByDescending<BalanceUpdateRecord> { it.occurredAt }.thenByDescending { it.id })
     }
 
@@ -195,6 +207,10 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): Long {
+        requireNewOperationId(
+            operationId = record.operationId,
+            alreadyExists = adjustments.any { it.operationId == record.operationId },
+        )
         val id = nextAdjustmentId++
         adjustments += record.copy(id = id)
         bumpVersion()
@@ -206,14 +222,13 @@ class InMemoryTransactionRepository : TransactionRepository {
         bumpVersion()
     }
 
-    override suspend fun deleteBalanceAdjustmentRecord(id: Long) {
-        if (adjustments.removeAll { it.id == id }) {
-            bumpVersion()
-        }
+    override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
+        val existing = getBalanceAdjustmentRecordById(id) ?: return
+        updateBalanceAdjustmentRecord(existing.copy(deletedAt = deletedAt, updatedAt = deletedAt))
     }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? {
-        return adjustments.firstOrNull { it.id == id }
+        return adjustments.firstOrNull { it.id == id && it.deletedAt == null }
     }
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> {
@@ -225,13 +240,14 @@ class InMemoryTransactionRepository : TransactionRepository {
         endExclusive: Long,
     ): List<BalanceAdjustmentRecord> {
         return adjustments
+            .filter { it.deletedAt == null }
             .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<BalanceAdjustmentRecord> { it.occurredAt }.thenBy { it.id })
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> {
         return adjustments
-            .filter { it.accountId == accountId }
+            .filter { it.accountId == accountId && it.deletedAt == null }
             .sortedWith(compareByDescending<BalanceAdjustmentRecord> { it.occurredAt }.thenByDescending { it.id })
     }
 
@@ -291,21 +307,25 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         balanceUpdates
+            .filter { it.deletedAt == null }
             .filter { it.delta > 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.delta }
 
     override suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         balanceUpdates
+            .filter { it.deletedAt == null }
             .filter { it.delta < 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { -it.delta }
 
     override suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         adjustments
+            .filter { it.deletedAt == null }
             .filter { it.delta > 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.delta }
 
     override suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         adjustments
+            .filter { it.deletedAt == null }
             .filter { it.delta < 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { -it.delta }
 
@@ -320,7 +340,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int {
-        return adjustments.count { it.occurredAt.isInRange(startInclusive, endExclusive) }
+        return adjustments.count { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
     }
 
     override suspend fun queryActiveCashFlowRecordsBetween(
@@ -339,7 +359,7 @@ class InMemoryTransactionRepository : TransactionRepository {
     ): List<PurposeTotal> {
         return queryAllActiveCashFlowRecords()
             .filter { it.direction == direction && it.occurredAt.isInRange(startInclusive, endExclusive) }
-            .groupBy { it.purpose.ifBlank { "未填写用途" } }
+            .groupBy { it.note.ifBlank { "未填写用途" } }
             .map { (purpose, records) -> PurposeTotal(purpose = purpose, amount = records.sumOf { it.amount }) }
             .sortedByDescending { it.amount }
     }
@@ -384,20 +404,20 @@ class InMemoryTransactionRepository : TransactionRepository {
     }
 
     private fun buildHistoryRecords(): List<HistoryRecord> {
-        val cashRecords = cashFlowRecords.filterNot(CashFlowRecord::isDeleted).map { record ->
+        val cashRecords = cashFlowRecords.filter { it.deletedAt == null }.map { record ->
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.CASH_FLOW,
                 sourceOrder = 4,
                 accountId = record.accountId,
                 relatedAccountId = null,
-                title = record.purpose.ifBlank { "未填写用途" },
+                title = record.note.ifBlank { "未填写用途" },
                 amount = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
                 occurredAt = record.occurredAt,
-                keywordSource = record.purpose,
+                keywordSource = record.note,
             )
         }
-        val transferHistoryRecords = transferRecords.filterNot(TransferRecord::isDeleted).map { record ->
+        val transferHistoryRecords = transferRecords.filter { it.deletedAt == null }.map { record ->
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.TRANSFER,
@@ -410,7 +430,7 @@ class InMemoryTransactionRepository : TransactionRepository {
                 keywordSource = record.note,
             )
         }
-        val updateHistoryRecords = balanceUpdates.map { record ->
+        val updateHistoryRecords = balanceUpdates.filter { it.deletedAt == null }.map { record ->
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_UPDATE,
@@ -423,7 +443,7 @@ class InMemoryTransactionRepository : TransactionRepository {
                 keywordSource = "",
             )
         }
-        val adjustmentHistoryRecords = adjustments.map { record ->
+        val adjustmentHistoryRecords = adjustments.filter { it.deletedAt == null }.map { record ->
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_ADJUSTMENT,
@@ -494,6 +514,11 @@ class InMemoryTransactionRepository : TransactionRepository {
     private fun replaceAdjustmentById(id: Long, replacement: BalanceAdjustmentRecord) {
         val index = adjustments.indexOfFirst { it.id == id }
         if (index >= 0) adjustments[index] = replacement
+    }
+
+    private fun requireNewOperationId(operationId: String, alreadyExists: Boolean) {
+        require(operationId.isNotBlank()) { "operationId must not be blank" }
+        require(!alreadyExists) { "operationId already exists" }
     }
 
     private fun bumpVersion() {

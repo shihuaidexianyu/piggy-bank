@@ -44,7 +44,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                         direction = direction,
                         accountId = reminder.accountId,
                         amount = reminder.amount,
-                        purpose = reminder.name,
+                        note = reminder.name,
                         reminderId = reminder.id,
                     ),
                 )

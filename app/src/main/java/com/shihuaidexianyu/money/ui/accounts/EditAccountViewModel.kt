@@ -26,7 +26,7 @@ data class EditAccountUiState(
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
-    val isArchived: Boolean = false,
+    val isClosed: Boolean = false,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
 )
@@ -67,7 +67,7 @@ class EditAccountViewModel(
                     name = account.name,
                     colorName = account.colorName,
                     iconName = account.iconName,
-                    isArchived = account.isArchived,
+                    isClosed = account.isClosed,
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
             } catch (e: Exception) {
@@ -115,7 +115,7 @@ class EditAccountViewModel(
 
     fun save() {
         val state = _uiState.value
-        if (state.isArchived) {
+        if (state.isClosed) {
             effects.tryEmit(EditAccountEffect.ShowMessage("归档账户不能修改账户"))
             return
         }
@@ -143,7 +143,7 @@ class EditAccountViewModel(
     }
 
     fun archive() {
-        if (_uiState.value.isArchived) {
+        if (_uiState.value.isClosed) {
             effects.tryEmit(EditAccountEffect.ShowMessage("账户已归档"))
             return
         }

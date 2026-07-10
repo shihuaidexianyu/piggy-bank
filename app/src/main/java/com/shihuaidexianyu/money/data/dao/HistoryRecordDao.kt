@@ -21,8 +21,7 @@ data class HistoryRecordRow(
  * the 4-table projection lives in exactly one place. Keep the column order in sync with
  * [HistoryRecordRow] — Room maps by position, not name, when the @Query result type is a data class.
  *
- * `isDeleted` filters only apply to cash_flow and transfer (the soft-deletable tables).
- * balance_update and balance_adjustment are hard-deleted at the DAO layer so no filter is needed.
+ * Every ledger table retains soft-deleted rows, so each branch filters on `deletedAt IS NULL`.
  */
 internal const val HISTORY_UNION_FRAGMENT = """
     SELECT
@@ -31,12 +30,12 @@ internal const val HISTORY_UNION_FRAGMENT = """
         4 AS sourceOrder,
         accountId AS accountId,
         NULL AS relatedAccountId,
-        CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END AS title,
+        CASE WHEN TRIM(note) = '' THEN '未填写用途' ELSE note END AS title,
         CASE WHEN direction = 'inflow' THEN amount ELSE -amount END AS amount,
         occurredAt AS occurredAt,
-        purpose AS keywordSource
+        note AS keywordSource
     FROM cash_flow_records
-    WHERE isDeleted = 0
+    WHERE deletedAt IS NULL
     UNION ALL
     SELECT
         id AS recordId,
@@ -49,7 +48,7 @@ internal const val HISTORY_UNION_FRAGMENT = """
         occurredAt AS occurredAt,
         note AS keywordSource
     FROM transfer_records
-    WHERE isDeleted = 0
+    WHERE deletedAt IS NULL
     UNION ALL
     SELECT
         id AS recordId,
@@ -62,6 +61,7 @@ internal const val HISTORY_UNION_FRAGMENT = """
         occurredAt AS occurredAt,
         '' AS keywordSource
     FROM balance_update_records
+    WHERE deletedAt IS NULL
     UNION ALL
     SELECT
         id AS recordId,
@@ -74,6 +74,7 @@ internal const val HISTORY_UNION_FRAGMENT = """
         occurredAt AS occurredAt,
         '' AS keywordSource
     FROM balance_adjustment_records
+    WHERE deletedAt IS NULL
 """
 
 /**

@@ -53,7 +53,7 @@ class RecordCashFlowViewModelTest {
         val txnRepo = InMemoryTransactionRepository()
         val vm = buildViewModel(accountRepo, txnRepo)
         advanceUntilIdle()
-        vm.updatePurpose("测试") // avoid showPurposeConfirm short-circuit
+        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
@@ -69,7 +69,7 @@ class RecordCashFlowViewModelTest {
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("")
-        vm.updatePurpose("测试") // avoid showPurposeConfirm short-circuit
+        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
@@ -85,7 +85,7 @@ class RecordCashFlowViewModelTest {
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("0")
-        vm.updatePurpose("测试") // avoid showPurposeConfirm short-circuit
+        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
@@ -95,18 +95,18 @@ class RecordCashFlowViewModelTest {
     }
 
     @Test
-    fun `save with blank purpose triggers showPurposeConfirm instead of saving`() = runTest(dispatcher) {
+    fun `save with blank note triggers showNoteConfirm instead of saving`() = runTest(dispatcher) {
         val vm = buildViewModel()
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("100")
         vm.save()
         advanceUntilIdle()
-        assertTrue(vm.uiState.value.showPurposeConfirm)
+        assertTrue(vm.uiState.value.showNoteConfirm)
     }
 
     @Test
-    fun `save with confirmBlankPurpose emits Saved and creates record`() = runTest(dispatcher) {
+    fun `save with confirmBlankNote emits Saved and creates record`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val txnRepo = InMemoryTransactionRepository()
         accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
@@ -115,9 +115,9 @@ class RecordCashFlowViewModelTest {
 
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("100.50")
-        vm.updatePurpose("")
+        vm.updateNote("")
         vm.effectFlow.test {
-            vm.save(confirmBlankPurpose = true)
+            vm.save(confirmBlankNote = true)
             advanceUntilIdle()
             val effect = awaitItem()
             assertEquals(RecordCashFlowEffect.Saved, effect)
@@ -149,7 +149,7 @@ class RecordCashFlowViewModelTest {
             direction = CashFlowDirection.INFLOW,
             initialAccountId = null,
             prefillAmount = null,
-            prefillPurpose = null,
+            prefillNote = null,
             reminderId = null,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,

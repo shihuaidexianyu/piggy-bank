@@ -69,8 +69,11 @@ private fun JSONArray?.toAccountList(): List<Account> =
             name = item.getString("name"),
             initialBalance = item.getLong("initialBalance"),
             createdAt = item.getLong("createdAt"),
-            archivedAt = item.optNullableLong("archivedAt"),
-            isArchived = item.optBoolean("isArchived"),
+            closedAt = if (item.optBoolean("isArchived")) {
+                item.optNullableLong("archivedAt") ?: item.getLong("createdAt")
+            } else {
+                null
+            },
             lastUsedAt = item.optNullableLong("lastUsedAt"),
             lastBalanceUpdateAt = item.optNullableLong("lastBalanceUpdateAt"),
             displayOrder = item.optInt("displayOrder"),
@@ -86,11 +89,13 @@ private fun JSONArray?.toCashFlowList(): List<CashFlowRecord> =
             accountId = item.getLong("accountId"),
             direction = item.getString("direction"),
             amount = item.getLong("amount"),
-            purpose = item.getString("purpose"),
+            note = item.getString("purpose"),
             occurredAt = item.getLong("occurredAt"),
             createdAt = item.getLong("createdAt"),
             updatedAt = item.getLong("updatedAt"),
-            isDeleted = item.optBoolean("isDeleted"),
+            deletedAt = item.getLong("updatedAt").coerceAtLeast(item.getLong("createdAt"))
+                .takeIf { item.optBoolean("isDeleted") },
+            operationId = "cash:legacy-store:${item.getLong("id")}",
         )
     }
 
@@ -105,7 +110,9 @@ private fun JSONArray?.toTransferList(): List<TransferRecord> =
             occurredAt = item.getLong("occurredAt"),
             createdAt = item.getLong("createdAt"),
             updatedAt = item.getLong("updatedAt"),
-            isDeleted = item.optBoolean("isDeleted"),
+            deletedAt = item.getLong("updatedAt").coerceAtLeast(item.getLong("createdAt"))
+                .takeIf { item.optBoolean("isDeleted") },
+            operationId = "transfer:legacy-store:${item.getLong("id")}",
         )
     }
 
@@ -119,6 +126,8 @@ private fun JSONArray?.toBalanceUpdateList(): List<BalanceUpdateRecord> =
             delta = item.getLong("delta"),
             occurredAt = item.getLong("occurredAt"),
             createdAt = item.getLong("createdAt"),
+            updatedAt = item.getLong("createdAt"),
+            operationId = "balance-update:legacy-store:${item.getLong("id")}",
         )
     }
 
@@ -130,6 +139,8 @@ private fun JSONArray?.toAdjustmentList(): List<BalanceAdjustmentRecord> =
             delta = item.getLong("delta"),
             occurredAt = item.getLong("occurredAt"),
             createdAt = item.getLong("createdAt"),
+            updatedAt = item.getLong("createdAt"),
+            operationId = "balance-adjustment:legacy-store:${item.getLong("id")}",
         )
     }
 

@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.data.repository
 import com.shihuaidexianyu.money.data.dao.SavingsGoalDao
 import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.domain.model.SavingsGoal
+import com.shihuaidexianyu.money.domain.model.SAVINGS_GOAL_ID
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,8 +24,10 @@ class SavingsGoalRepositoryImpl(
     override suspend fun createGoal(targetAmount: Long, createdAt: Long): Long {
         return savingsGoalDao.insert(
             SavingsGoalEntity(
+                id = SAVINGS_GOAL_ID,
                 targetAmount = targetAmount,
                 createdAt = createdAt,
+                updatedAt = createdAt,
             ),
         )
     }
@@ -42,10 +45,12 @@ internal fun SavingsGoalEntity.toDomain(): SavingsGoal = SavingsGoal(
     id = id,
     targetAmount = targetAmount,
     createdAt = createdAt,
+    updatedAt = updatedAt,
 )
 
 fun SavingsGoal.toEntity(): SavingsGoalEntity = SavingsGoalEntity(
     id = id,
     targetAmount = targetAmount,
     createdAt = createdAt,
+    updatedAt = updatedAt,
 )

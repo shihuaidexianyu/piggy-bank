@@ -195,7 +195,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                         direction = direction,
                         accountId = targetAccountId,
                         amount = amount,
-                        purpose = "余额核对补记",
+                        note = "余额核对补记",
                         reminderId = null,
                     ),
                 )

@@ -27,11 +27,11 @@ data class RecordCashFlowUiState(
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val selectedAccountId: Long? = null,
     val amountText: String = "",
-    val purpose: String = "",
+    val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
-    val purposeSuggestions: List<String> = emptyList(),
+    val noteSuggestions: List<String> = emptyList(),
     val isSaving: Boolean = false,
-    val showPurposeConfirm: Boolean = false,
+    val showNoteConfirm: Boolean = false,
 )
 
 sealed interface RecordCashFlowEffect {
@@ -43,7 +43,7 @@ class RecordCashFlowViewModel(
     private val direction: CashFlowDirection,
     initialAccountId: Long?,
     prefillAmount: Long? = null,
-    prefillPurpose: String? = null,
+    prefillNote: String? = null,
     private val reminderId: Long? = null,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
@@ -60,7 +60,7 @@ class RecordCashFlowViewModel(
                     .setScale(2, RoundingMode.HALF_UP)
                     .toPlainString()
             } ?: "",
-            purpose = prefillPurpose ?: "",
+            note = prefillNote ?: "",
         ),
     )
     val uiState: StateFlow<RecordCashFlowUiState> = _uiState.asStateFlow()
@@ -80,7 +80,7 @@ class RecordCashFlowViewModel(
                     },
                     selectedAccountId = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id,
                 )
-                refreshPurposeSuggestions()
+                refreshNoteSuggestions()
             } catch (e: Exception) {
                 android.util.Log.e("RecordCashFlowViewModel", "Failed to load accounts", e)
             }
@@ -89,19 +89,19 @@ class RecordCashFlowViewModel(
 
     fun updateAccount(accountId: Long) {
         _uiState.value = _uiState.value.copy(selectedAccountId = accountId)
-        refreshPurposeSuggestions()
+        refreshNoteSuggestions()
     }
 
     fun updateAmount(value: String) {
         _uiState.value = _uiState.value.copy(amountText = value)
     }
 
-    fun updatePurpose(value: String) {
-        _uiState.value = _uiState.value.copy(purpose = value)
+    fun updateNote(value: String) {
+        _uiState.value = _uiState.value.copy(note = value)
     }
 
-    fun applyPurposeSuggestion(value: String) {
-        _uiState.value = _uiState.value.copy(purpose = value)
+    fun applyNoteSuggestion(value: String) {
+        _uiState.value = _uiState.value.copy(note = value)
     }
 
     fun updateOccurredAt(value: Long) {
@@ -110,35 +110,35 @@ class RecordCashFlowViewModel(
         )
     }
 
-    fun dismissPurposeConfirm() {
-        _uiState.value = _uiState.value.copy(showPurposeConfirm = false)
+    fun dismissNoteConfirm() {
+        _uiState.value = _uiState.value.copy(showNoteConfirm = false)
     }
 
-    private fun refreshPurposeSuggestions() {
+    private fun refreshNoteSuggestions() {
         val accountId = _uiState.value.selectedAccountId
         viewModelScope.launch {
             runCatching {
-                transactionRepository.queryRecentCashFlowPurposes(
+                transactionRepository.queryRecentCashFlowNotes(
                     direction = direction.value,
                     accountId = accountId,
                     limit = 6,
                 ).ifEmpty {
-                    transactionRepository.queryRecentCashFlowPurposes(
+                    transactionRepository.queryRecentCashFlowNotes(
                         direction = direction.value,
                         accountId = null,
                         limit = 6,
                     )
                 }
             }.onSuccess { suggestions ->
-                _uiState.value = _uiState.value.copy(purposeSuggestions = suggestions)
+                _uiState.value = _uiState.value.copy(noteSuggestions = suggestions)
             }
         }
     }
 
-    fun save(confirmBlankPurpose: Boolean = false) {
+    fun save(confirmBlankNote: Boolean = false) {
         val state = _uiState.value
-        if (state.purpose.isBlank() && !confirmBlankPurpose) {
-            _uiState.value = state.copy(showPurposeConfirm = true)
+        if (state.note.isBlank() && !confirmBlankNote) {
+            _uiState.value = state.copy(showNoteConfirm = true)
             return
         }
 
@@ -150,21 +150,21 @@ class RecordCashFlowViewModel(
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
                 .getOrElse { error -> effects.emit(RecordCashFlowEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
 
-            _uiState.value = state.copy(isSaving = true, showPurposeConfirm = false)
+            _uiState.value = state.copy(isSaving = true, showNoteConfirm = false)
             runCatching {
                 if (reminderId != null && processDueReminderUseCase != null) {
                     processDueReminderUseCase(
                         reminderId = reminderId,
                         occurredAt = state.occurredAtMillis,
                         amount = amount,
-                        purpose = state.purpose,
+                        note = state.note,
                     )
                 } else {
                     createCashFlowRecordUseCase(
                         accountId = accountId,
                         direction = direction,
                         amount = amount,
-                        purpose = state.purpose,
+                        note = state.note,
                         occurredAt = state.occurredAtMillis,
                     )
                 }

@@ -100,12 +100,12 @@ fun RecordCashFlowScreen(
         }
     }
 
-    if (state.showPurposeConfirm) {
+    if (state.showNoteConfirm) {
         MoneyConfirmDialog(
             title = "未填写用途",
             message = "仍要保存吗？",
-            onConfirm = { viewModel.save(confirmBlankPurpose = true) },
-            onDismiss = viewModel::dismissPurposeConfirm,
+            onConfirm = { viewModel.save(confirmBlankNote = true) },
+            onDismiss = viewModel::dismissNoteConfirm,
             confirmLabel = "保存",
             dismissLabel = "返回",
         )
@@ -133,18 +133,18 @@ fun RecordCashFlowScreen(
         item {
             MoneyCard {
                 MoneySingleLineField(
-                    value = state.purpose,
-                    onValueChange = viewModel::updatePurpose,
+                    value = state.note,
+                    onValueChange = viewModel::updateNote,
                     label = "用途",
                 )
-                if (state.purposeSuggestions.isNotEmpty()) {
+                if (state.noteSuggestions.isNotEmpty()) {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.heightIn(min = 36.dp),
                     ) {
-                        items(state.purposeSuggestions) { suggestion ->
+                        items(state.noteSuggestions) { suggestion ->
                             SuggestionChip(
-                                onClick = { viewModel.applyPurposeSuggestion(suggestion) },
+                                onClick = { viewModel.applyNoteSuggestion(suggestion) },
                                 label = { Text(suggestion) },
                             )
                         }

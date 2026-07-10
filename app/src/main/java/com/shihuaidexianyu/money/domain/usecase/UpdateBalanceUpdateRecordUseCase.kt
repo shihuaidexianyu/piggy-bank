@@ -32,6 +32,7 @@ class UpdateBalanceUpdateRecordUseCase(
                     systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
                     delta = actualBalance - context.systemBalanceBeforeUpdate,
                     occurredAt = occurredAt,
+                    updatedAt = System.currentTimeMillis(),
                 ),
             )
             refreshAccountActivityStateUseCase(existing.accountId)

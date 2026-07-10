@@ -25,10 +25,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 500,
-                purpose = "最大时间戳",
+                note = "最大时间戳",
                 occurredAt = Long.MAX_VALUE,
                 createdAt = Long.MAX_VALUE,
                 updatedAt = Long.MAX_VALUE,
+                operationId = testOperationId(),
             ),
         )
         val useCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
@@ -53,10 +54,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 500,
-                purpose = "当前时刻",
+                note = "当前时刻",
                 occurredAt = currentTime,
                 createdAt = currentTime,
                 updatedAt = currentTime,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -64,10 +66,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 9_000,
-                purpose = "未来记录",
+                note = "未来记录",
                 occurredAt = currentTime + 1,
                 createdAt = currentTime + 1,
                 updatedAt = currentTime + 1,
+                operationId = testOperationId(),
             ),
         )
 
@@ -97,10 +100,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -108,10 +112,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "outflow",
                 amount = 500,
-                purpose = "午饭",
+                note = "午饭",
                 occurredAt = 3_000,
                 createdAt = 3_000,
                 updatedAt = 3_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -123,6 +128,7 @@ class CalculateCurrentBalanceUseCaseTest {
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -131,6 +137,8 @@ class CalculateCurrentBalanceUseCaseTest {
                 delta = -100,
                 occurredAt = 5_000,
                 createdAt = 5_000,
+                updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -156,10 +164,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "inflow",
                 amount = 10_000,
-                purpose = "旧记录",
+                note = "旧记录",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -170,6 +179,8 @@ class CalculateCurrentBalanceUseCaseTest {
                 delta = 10_000,
                 occurredAt = 3_000,
                 createdAt = 3_000,
+                updatedAt = 3_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -177,10 +188,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "outflow",
                 amount = 5_000,
-                purpose = "更新后支出",
+                note = "更新后支出",
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -224,10 +236,11 @@ class CalculateCurrentBalanceUseCaseTest {
                 accountId = accountId,
                 direction = "outflow",
                 amount = 2_000,
-                purpose = "",
+                note = "",
                 occurredAt = 1712106600000,
                 createdAt = 1712106636000,
                 updatedAt = 1712106636000,
+                operationId = testOperationId(),
             ),
         )
 

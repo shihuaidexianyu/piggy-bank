@@ -10,7 +10,8 @@ import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
     tableName = "accounts",
     indices = [
         Index(value = ["name"]),
-        Index(value = ["isArchived"]),
+        Index(value = ["isHidden"]),
+        Index(value = ["closedAt"]),
     ],
 )
 data class AccountEntity(
@@ -19,8 +20,8 @@ data class AccountEntity(
     val name: String,
     val initialBalance: Long,
     val createdAt: Long,
-    val archivedAt: Long? = null,
-    val isArchived: Boolean = false,
+    val isHidden: Boolean = false,
+    val closedAt: Long? = null,
     val lastUsedAt: Long? = null,
     val lastBalanceUpdateAt: Long? = null,
     val displayOrder: Int = 0,

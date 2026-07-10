@@ -45,6 +45,7 @@ class CreateReminderUseCase(
                 periodMonth = periodMonth,
                 isEnabled = true,
                 nextDueAt = nextDueAt,
+                anchorDueAt = nextDueAt,
                 createdAt = now,
                 updatedAt = now,
             ),

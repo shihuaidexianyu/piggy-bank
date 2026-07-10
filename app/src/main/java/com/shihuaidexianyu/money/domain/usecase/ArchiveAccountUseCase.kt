@@ -11,7 +11,7 @@ class ArchiveAccountUseCase(
 ) {
     suspend operator fun invoke(accountId: Long, archivedAt: Long = System.currentTimeMillis()) {
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-        require(!account.isArchived) { "账户已归档" }
+        require(!account.isClosed) { "账户已归档" }
         transactionRepository.runInTransaction {
             accountRepository.archiveAccount(accountId, archivedAt)
             reminderRepository.queryAll()

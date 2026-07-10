@@ -76,6 +76,7 @@ class ReminderProcessingConsistencyTest {
             nextDueAt = nextDueAt,
             createdAt = 1L,
             updatedAt = 1L,
+            anchorDueAt = nextDueAt,
         )
     }
 }

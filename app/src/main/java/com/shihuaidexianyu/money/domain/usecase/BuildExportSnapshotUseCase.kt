@@ -57,9 +57,11 @@ class BuildExportSnapshotUseCase(
                 .sortedBy { it.id }
                 .map(TransferRecord::toBackup),
             balanceUpdateRecords = transactionRepository.queryAllBalanceUpdateRecords()
+                .filter { it.deletedAt == null }
                 .sortedBy { it.id }
                 .map(BalanceUpdateRecord::toBackup),
             balanceAdjustmentRecords = transactionRepository.queryAllBalanceAdjustmentRecords()
+                .filter { it.deletedAt == null }
                 .sortedBy { it.id }
                 .map(BalanceAdjustmentRecord::toBackup),
             recurringReminders = recurringReminderRepository.queryAll()
@@ -84,8 +86,8 @@ private fun Account.toBackup(): BackupAccount =
         name = name,
         initialBalance = initialBalance,
         createdAt = createdAt,
-        archivedAt = archivedAt,
-        isArchived = isArchived,
+        archivedAt = closedAt,
+        isArchived = isClosed,
         lastUsedAt = lastUsedAt,
         lastBalanceUpdateAt = lastBalanceUpdateAt,
         displayOrder = displayOrder,
@@ -99,11 +101,11 @@ private fun CashFlowRecord.toBackup(): BackupCashFlowRecord =
         accountId = accountId,
         direction = direction,
         amount = amount,
-        purpose = purpose,
+        purpose = note,
         occurredAt = occurredAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isDeleted = isDeleted,
+        isDeleted = deletedAt != null,
     )
 
 private fun TransferRecord.toBackup(): BackupTransferRecord =
@@ -116,7 +118,7 @@ private fun TransferRecord.toBackup(): BackupTransferRecord =
         occurredAt = occurredAt,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isDeleted = isDeleted,
+        isDeleted = deletedAt != null,
     )
 
 private fun BalanceUpdateRecord.toBackup(): BackupBalanceUpdateRecord =

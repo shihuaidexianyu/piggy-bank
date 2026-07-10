@@ -66,10 +66,11 @@ class EditCashFlowViewModelTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 500L,
-                purpose = "早餐",
+                note = "早餐",
                 occurredAt = 1_000L,
                 createdAt = 1_000L,
                 updatedAt = 1_000L,
+                operationId = testOperationId(),
             ),
         )
 
@@ -96,10 +97,11 @@ class EditCashFlowViewModelTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 500L,
-                purpose = "早餐",
+                note = "早餐",
                 occurredAt = 1_000L,
                 createdAt = 1_000L,
                 updatedAt = 1_000L,
+                operationId = testOperationId(),
             ),
         )
 
@@ -107,7 +109,7 @@ class EditCashFlowViewModelTest {
         advanceUntilIdle()
 
         vm.updateAmount("999")
-        vm.updatePurpose("午餐")
+        vm.updateNote("午餐")
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
@@ -115,7 +117,7 @@ class EditCashFlowViewModelTest {
         }
         val record = txnRepo.queryCashFlowRecordById(recordId)
         assertEquals(99_900L, record?.amount)
-        assertEquals("午餐", record?.purpose)
+        assertEquals("午餐", record?.note)
     }
 
     @Test
@@ -128,10 +130,11 @@ class EditCashFlowViewModelTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 500L,
-                purpose = "早餐",
+                note = "早餐",
                 occurredAt = 1_000L,
                 createdAt = 1_000L,
                 updatedAt = 1_000L,
+                operationId = testOperationId(),
             ),
         )
 

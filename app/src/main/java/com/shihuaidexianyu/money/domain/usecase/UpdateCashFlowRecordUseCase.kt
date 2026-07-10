@@ -14,7 +14,7 @@ class UpdateCashFlowRecordUseCase(
         accountId: Long,
         direction: CashFlowDirection,
         amount: Long,
-        purpose: String,
+        note: String,
         occurredAt: Long,
     ) {
         require(amount > 0) { "金额必须大于 0" }
@@ -30,7 +30,7 @@ class UpdateCashFlowRecordUseCase(
             accountId = accountId,
             direction = direction.value,
             amount = amount,
-            purpose = purpose.trim(),
+            note = note.trim(),
             occurredAt = occurredAt,
             updatedAt = System.currentTimeMillis(),
         )

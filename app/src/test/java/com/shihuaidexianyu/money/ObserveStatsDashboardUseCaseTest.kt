@@ -42,10 +42,11 @@ class ObserveStatsDashboardUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 3_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = now,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -53,10 +54,11 @@ class ObserveStatsDashboardUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 800,
-                purpose = "餐饮",
+                note = "餐饮",
                 occurredAt = now + 1_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -65,6 +67,8 @@ class ObserveStatsDashboardUseCaseTest {
                 delta = -200,
                 occurredAt = now + 2_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -75,6 +79,8 @@ class ObserveStatsDashboardUseCaseTest {
                 delta = 500,
                 occurredAt = now + 3_000,
                 createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
 
@@ -133,10 +139,11 @@ class ObserveStatsDashboardUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 3_000,
-                purpose = "一月工资",
+                note = "一月工资",
                 occurredAt = januaryRange.startInclusive + 1_000,
                 createdAt = januaryRange.startInclusive + 1_000,
                 updatedAt = januaryRange.startInclusive + 1_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -181,10 +188,11 @@ class ObserveStatsDashboardUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = now + 1_000,
                 createdAt = now,
                 updatedAt = now,
+                operationId = testOperationId(),
             ),
         )
 

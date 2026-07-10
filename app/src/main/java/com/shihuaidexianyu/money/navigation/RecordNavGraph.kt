@@ -46,7 +46,7 @@ internal fun NavGraphBuilder.addRecordGraph(
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
         val accountId = entry.arguments?.getLong("accountId") ?: 0L
         val prefillAmount = entry.arguments?.getLong("amount") ?: 0L
-        val prefillPurpose = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
+        val prefillNote = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
         val viewModel = viewModel<RecordCashFlowViewModel>(
             key = "cash_flow_${direction.value}_${accountId}_$reminderId",
@@ -55,7 +55,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     direction = direction,
                     initialAccountId = accountId.takeIf { it > 0 },
                     prefillAmount = prefillAmount.takeIf { it > 0 },
-                    prefillPurpose = prefillPurpose.takeIf { it.isNotEmpty() },
+                    prefillNote = prefillNote.takeIf { it.isNotEmpty() },
                     reminderId = reminderId.takeIf { it > 0 },
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,

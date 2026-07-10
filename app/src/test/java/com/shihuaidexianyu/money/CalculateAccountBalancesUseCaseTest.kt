@@ -27,10 +27,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 500,
-                purpose = "最大时间戳",
+                note = "最大时间戳",
                 occurredAt = Long.MAX_VALUE,
                 createdAt = Long.MAX_VALUE,
                 updatedAt = Long.MAX_VALUE,
+                operationId = testOperationId(),
             ),
         )
         val account = requireNotNull(accountRepository.getAccountById(accountId))
@@ -55,10 +56,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 500,
-                purpose = "当前时刻",
+                note = "当前时刻",
                 occurredAt = currentTime,
                 createdAt = currentTime,
                 updatedAt = currentTime,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -66,10 +68,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = accountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 9_000,
-                purpose = "未来记录",
+                note = "未来记录",
                 occurredAt = currentTime + 1,
                 createdAt = currentTime + 1,
                 updatedAt = currentTime + 1,
+                operationId = testOperationId(),
             ),
         )
         val account = requireNotNull(accountRepository.getAccountById(accountId))
@@ -97,10 +100,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = firstAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -108,10 +112,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = firstAccountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 300,
-                purpose = "餐饮",
+                note = "餐饮",
                 occurredAt = 3_000,
                 createdAt = 3_000,
                 updatedAt = 3_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertTransferRecord(
@@ -123,6 +128,7 @@ class CalculateAccountBalancesUseCaseTest {
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -133,6 +139,8 @@ class CalculateAccountBalancesUseCaseTest {
                 delta = 800,
                 occurredAt = 5_000,
                 createdAt = 5_000,
+                updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceUpdateRecord(
@@ -143,6 +151,8 @@ class CalculateAccountBalancesUseCaseTest {
                 delta = 500,
                 occurredAt = 5_500,
                 createdAt = 5_500,
+                updatedAt = 5_500,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.insertBalanceAdjustmentRecord(
@@ -151,6 +161,8 @@ class CalculateAccountBalancesUseCaseTest {
                 delta = 700,
                 occurredAt = 6_000,
                 createdAt = 6_000,
+                updatedAt = 6_000,
+                operationId = testOperationId(),
             ),
         )
         val deletedCashFlowId = transactionRepository.insertCashFlowRecord(
@@ -158,10 +170,11 @@ class CalculateAccountBalancesUseCaseTest {
                 accountId = firstAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 9_999,
-                purpose = "应忽略",
+                note = "应忽略",
                 occurredAt = 6_500,
                 createdAt = 6_500,
                 updatedAt = 6_500,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 6_600)
@@ -174,6 +187,7 @@ class CalculateAccountBalancesUseCaseTest {
                 occurredAt = 6_700,
                 createdAt = 6_700,
                 updatedAt = 6_700,
+                operationId = testOperationId(),
             ),
         )
         transactionRepository.softDeleteTransferRecord(deletedTransferId, 6_800)

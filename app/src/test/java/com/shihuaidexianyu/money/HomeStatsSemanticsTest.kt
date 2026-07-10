@@ -22,10 +22,11 @@ class HomeStatsSemanticsTest {
                 accountId = 1L,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 2_000,
-                purpose = "工资",
+                note = "工资",
                 occurredAt = 2_000,
                 createdAt = 2_000,
                 updatedAt = 2_000,
+                operationId = testOperationId(),
             ),
         )
         repository.insertCashFlowRecord(
@@ -33,10 +34,11 @@ class HomeStatsSemanticsTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 500,
-                purpose = "午饭",
+                note = "午饭",
                 occurredAt = 3_000,
                 createdAt = 3_000,
                 updatedAt = 3_000,
+                operationId = testOperationId(),
             ),
         )
         repository.insertTransferRecord(
@@ -48,6 +50,7 @@ class HomeStatsSemanticsTest {
                 occurredAt = 4_000,
                 createdAt = 4_000,
                 updatedAt = 4_000,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceUpdateRecord(
@@ -58,6 +61,8 @@ class HomeStatsSemanticsTest {
                 delta = 300,
                 occurredAt = 5_000,
                 createdAt = 5_000,
+                updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceUpdateRecord(
@@ -68,6 +73,8 @@ class HomeStatsSemanticsTest {
                 delta = -700,
                 occurredAt = 6_000,
                 createdAt = 6_000,
+                updatedAt = 6_000,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceAdjustmentRecord(
@@ -76,6 +83,8 @@ class HomeStatsSemanticsTest {
                 delta = 400,
                 occurredAt = 7_000,
                 createdAt = 7_000,
+                updatedAt = 7_000,
+                operationId = testOperationId(),
             ),
         )
 
@@ -100,10 +109,11 @@ class HomeStatsSemanticsTest {
                 accountId = 1L,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "边界外",
+                note = "边界外",
                 occurredAt = startAt,
                 createdAt = startAt,
                 updatedAt = startAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertCashFlowRecord(
@@ -111,10 +121,11 @@ class HomeStatsSemanticsTest {
                 accountId = 1L,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 200,
-                purpose = "边界内",
+                note = "边界内",
                 occurredAt = endAt,
                 createdAt = endAt,
                 updatedAt = endAt,
+                operationId = testOperationId(),
             ),
         )
         val deletedCashFlowId = repository.insertCashFlowRecord(
@@ -122,10 +133,11 @@ class HomeStatsSemanticsTest {
                 accountId = 1L,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 300,
-                purpose = "已删除",
+                note = "已删除",
                 occurredAt = 5_000,
                 createdAt = 5_000,
                 updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
         repository.softDeleteCashFlowRecord(deletedCashFlowId, 5_001)
@@ -138,6 +150,7 @@ class HomeStatsSemanticsTest {
                 occurredAt = startAt,
                 createdAt = startAt,
                 updatedAt = startAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertTransferRecord(
@@ -149,6 +162,7 @@ class HomeStatsSemanticsTest {
                 occurredAt = endAt,
                 createdAt = endAt,
                 updatedAt = endAt,
+                operationId = testOperationId(),
             ),
         )
         val deletedTransferId = repository.insertTransferRecord(
@@ -160,6 +174,7 @@ class HomeStatsSemanticsTest {
                 occurredAt = 5_000,
                 createdAt = 5_000,
                 updatedAt = 5_000,
+                operationId = testOperationId(),
             ),
         )
         repository.softDeleteTransferRecord(deletedTransferId, 5_001)
@@ -169,6 +184,8 @@ class HomeStatsSemanticsTest {
                 delta = 600,
                 occurredAt = startAt,
                 createdAt = startAt,
+                updatedAt = startAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceAdjustmentRecord(
@@ -177,6 +194,8 @@ class HomeStatsSemanticsTest {
                 delta = 700,
                 occurredAt = endAt,
                 createdAt = endAt,
+                updatedAt = endAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceUpdateRecord(
@@ -187,6 +206,8 @@ class HomeStatsSemanticsTest {
                 delta = 700,
                 occurredAt = startAt,
                 createdAt = startAt,
+                updatedAt = startAt,
+                operationId = testOperationId(),
             ),
         )
         repository.insertBalanceUpdateRecord(
@@ -197,6 +218,8 @@ class HomeStatsSemanticsTest {
                 delta = 900,
                 occurredAt = endAt,
                 createdAt = endAt,
+                updatedAt = endAt,
+                operationId = testOperationId(),
             ),
         )
 

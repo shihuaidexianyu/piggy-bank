@@ -58,7 +58,7 @@ class ArchiveAccountUseCaseTest {
             archivedAt = 2_000L,
         )
 
-        assertTrue(accountRepository.getAccountById(accountId)?.isArchived == true)
+        assertTrue(accountRepository.getAccountById(accountId)?.isClosed == true)
         assertTrue(reminderRepository.getReminderById(reminderId)?.isEnabled == false)
         assertTrue(reminderRepository.observeDueReminders().first().isEmpty())
     }
@@ -82,10 +82,11 @@ class ArchiveAccountUseCaseTest {
                 accountId = archivedAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "旧记录",
+                note = "旧记录",
                 occurredAt = 2L,
                 createdAt = 2L,
                 updatedAt = 2L,
+                operationId = testOperationId(),
             ),
         )
         val transferId = transactionRepository.insertTransferRecord(
@@ -97,6 +98,7 @@ class ArchiveAccountUseCaseTest {
                 occurredAt = 2L,
                 createdAt = 2L,
                 updatedAt = 2L,
+                operationId = testOperationId(),
             ),
         )
         val balanceUpdateId = transactionRepository.insertBalanceUpdateRecord(
@@ -107,6 +109,8 @@ class ArchiveAccountUseCaseTest {
                 delta = 0,
                 occurredAt = 3L,
                 createdAt = 3L,
+                updatedAt = 3L,
+                operationId = testOperationId(),
             ),
         )
         val reminderId = reminderRepository.insertReminder(
@@ -126,7 +130,7 @@ class ArchiveAccountUseCaseTest {
                 accountId = archivedAccountId,
                 direction = CashFlowDirection.INFLOW,
                 amount = 100,
-                purpose = "收入",
+                note = "收入",
                 occurredAt = 5L,
             )
         }
@@ -140,7 +144,7 @@ class ArchiveAccountUseCaseTest {
                 accountId = archivedAccountId,
                 direction = CashFlowDirection.OUTFLOW,
                 amount = 50,
-                purpose = "修改",
+                note = "修改",
                 occurredAt = 5L,
             )
         }
@@ -274,6 +278,7 @@ class ArchiveAccountUseCaseTest {
             nextDueAt = nextDueAt,
             createdAt = 1L,
             updatedAt = 1L,
+            anchorDueAt = nextDueAt,
         )
     }
 

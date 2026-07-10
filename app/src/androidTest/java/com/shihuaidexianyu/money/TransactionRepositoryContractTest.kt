@@ -30,6 +30,7 @@ import java.time.ZoneOffset
  * - 按账户查询对账/调整记录的排序
  * - 日聚合（注意：DAO 用 SQL 整数算术，InMemory 用 java.time；本测试只对中午时刻记录做断言，避开子日分歧）
  * - 最近用途去重与排序
+ * - 四类账本记录软删除后的保留与活动查询排除语义
  */
 @RunWith(AndroidJUnit4::class)
 class TransactionRepositoryContractTest {
@@ -110,6 +111,8 @@ class TransactionRepositoryContractTest {
                 delta = 100,
                 occurredAt = baseTime,
                 createdAt = baseTime,
+                updatedAt = baseTime,
+                operationId = "sort-update-1",
             ),
         )
         roomRepo.insertBalanceUpdateRecord(
@@ -120,6 +123,8 @@ class TransactionRepositoryContractTest {
                 delta = 200,
                 occurredAt = baseTime + 1_000,
                 createdAt = baseTime + 1_000,
+                updatedAt = baseTime + 1_000,
+                operationId = "sort-update-2",
             ),
         )
         memoryRepo.insertBalanceUpdateRecord(
@@ -130,6 +135,8 @@ class TransactionRepositoryContractTest {
                 delta = 100,
                 occurredAt = baseTime,
                 createdAt = baseTime,
+                updatedAt = baseTime,
+                operationId = "sort-update-1",
             ),
         )
         memoryRepo.insertBalanceUpdateRecord(
@@ -140,6 +147,8 @@ class TransactionRepositoryContractTest {
                 delta = 200,
                 occurredAt = baseTime + 1_000,
                 createdAt = baseTime + 1_000,
+                updatedAt = baseTime + 1_000,
+                operationId = "sort-update-2",
             ),
         )
 
@@ -159,16 +168,44 @@ class TransactionRepositoryContractTest {
         val accountId = 1L
         val baseTime = 10_000L
         roomRepo.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(accountId = accountId, delta = 50, occurredAt = baseTime, createdAt = baseTime),
+            BalanceAdjustmentRecord(
+                accountId = accountId,
+                delta = 50,
+                occurredAt = baseTime,
+                createdAt = baseTime,
+                updatedAt = baseTime,
+                operationId = "sort-adjustment-1",
+            ),
         )
         roomRepo.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(accountId = accountId, delta = -30, occurredAt = baseTime + 1_000, createdAt = baseTime + 1_000),
+            BalanceAdjustmentRecord(
+                accountId = accountId,
+                delta = -30,
+                occurredAt = baseTime + 1_000,
+                createdAt = baseTime + 1_000,
+                updatedAt = baseTime + 1_000,
+                operationId = "sort-adjustment-2",
+            ),
         )
         memoryRepo.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(accountId = accountId, delta = 50, occurredAt = baseTime, createdAt = baseTime),
+            BalanceAdjustmentRecord(
+                accountId = accountId,
+                delta = 50,
+                occurredAt = baseTime,
+                createdAt = baseTime,
+                updatedAt = baseTime,
+                operationId = "sort-adjustment-1",
+            ),
         )
         memoryRepo.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(accountId = accountId, delta = -30, occurredAt = baseTime + 1_000, createdAt = baseTime + 1_000),
+            BalanceAdjustmentRecord(
+                accountId = accountId,
+                delta = -30,
+                occurredAt = baseTime + 1_000,
+                createdAt = baseTime + 1_000,
+                updatedAt = baseTime + 1_000,
+                operationId = "sort-adjustment-2",
+            ),
         )
 
         val roomRecords = roomRepo.queryBalanceAdjustmentRecordsByAccountId(accountId)
@@ -188,11 +225,11 @@ class TransactionRepositoryContractTest {
             accountId = accountId,
             direction = CashFlowDirection.INFLOW.value,
             amount = 1000,
-            purpose = "薪水",
+            note = "薪水",
             occurredAt = noonLocalMillis,
             createdAt = noonLocalMillis,
             updatedAt = noonLocalMillis,
-            isDeleted = false,
+            operationId = "daily-cash-noon",
         )
         roomRepo.insertCashFlowRecord(record)
         memoryRepo.insertCashFlowRecord(record)
@@ -214,7 +251,7 @@ class TransactionRepositoryContractTest {
     }
 
     @Test
-    fun recentPurposes_returnsDistinctPurposesInBothImplementations() = runBlocking {
+    fun recentNotes_returnsDistinctNotesInBothImplementations() = runBlocking {
         seedAccount()
         val accountId = 1L
         val baseTime = 10_000L
@@ -224,11 +261,11 @@ class TransactionRepositoryContractTest {
                     accountId = accountId,
                     direction = CashFlowDirection.OUTFLOW.value,
                     amount = 100,
-                    purpose = "吃饭",
+                    note = "吃饭",
                     occurredAt = baseTime + i * 1_000L,
                     createdAt = baseTime + i * 1_000L,
                     updatedAt = baseTime + i * 1_000L,
-                    isDeleted = false,
+                    operationId = "recent-meal-$i",
                 ),
             )
             memoryRepo.insertCashFlowRecord(
@@ -236,11 +273,11 @@ class TransactionRepositoryContractTest {
                     accountId = accountId,
                     direction = CashFlowDirection.OUTFLOW.value,
                     amount = 100,
-                    purpose = "吃饭",
+                    note = "吃饭",
                     occurredAt = baseTime + i * 1_000L,
                     createdAt = baseTime + i * 1_000L,
                     updatedAt = baseTime + i * 1_000L,
-                    isDeleted = false,
+                    operationId = "recent-meal-$i",
                 ),
             )
         }
@@ -249,11 +286,11 @@ class TransactionRepositoryContractTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 200,
-                purpose = "打车",
+                note = "打车",
                 occurredAt = baseTime + 5_000L,
                 createdAt = baseTime + 5_000L,
                 updatedAt = baseTime + 5_000L,
-                isDeleted = false,
+                operationId = "recent-taxi",
             ),
         )
         memoryRepo.insertCashFlowRecord(
@@ -261,26 +298,26 @@ class TransactionRepositoryContractTest {
                 accountId = accountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 200,
-                purpose = "打车",
+                note = "打车",
                 occurredAt = baseTime + 5_000L,
                 createdAt = baseTime + 5_000L,
                 updatedAt = baseTime + 5_000L,
-                isDeleted = false,
+                operationId = "recent-taxi",
             ),
         )
 
-        val roomPurposes = roomRepo.queryRecentCashFlowPurposes(
+        val roomNotes = roomRepo.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = accountId,
             limit = 10,
         )
-        val memoryPurposes = memoryRepo.queryRecentCashFlowPurposes(
+        val memoryNotes = memoryRepo.queryRecentCashFlowNotes(
             direction = CashFlowDirection.OUTFLOW.value,
             accountId = accountId,
             limit = 10,
         )
-        assertEquals(memoryPurposes, roomPurposes)
-        assertEquals(listOf("打车", "吃饭"), roomPurposes)
+        assertEquals(memoryNotes, roomNotes)
+        assertEquals(listOf("打车", "吃饭"), roomNotes)
     }
 
     @Test
@@ -294,10 +331,11 @@ class TransactionRepositoryContractTest {
                     accountId = 1L,
                     direction = CashFlowDirection.INFLOW.value,
                     amount = 100,
-                    purpose = "起点",
+                    note = "起点",
                     occurredAt = startInclusive,
                     createdAt = startInclusive,
                     updatedAt = startInclusive,
+                    operationId = "period-cash-start",
                 ),
             )
             repository.insertCashFlowRecord(
@@ -305,10 +343,11 @@ class TransactionRepositoryContractTest {
                     accountId = 1L,
                     direction = CashFlowDirection.INFLOW.value,
                     amount = 200,
-                    purpose = "终点",
+                    note = "终点",
                     occurredAt = endExclusive,
                     createdAt = endExclusive,
                     updatedAt = endExclusive,
+                    operationId = "period-cash-end",
                 ),
             )
             repository.insertTransferRecord(
@@ -320,6 +359,7 @@ class TransactionRepositoryContractTest {
                     occurredAt = startInclusive,
                     createdAt = startInclusive,
                     updatedAt = startInclusive,
+                    operationId = "period-transfer-start",
                 ),
             )
             repository.insertTransferRecord(
@@ -331,6 +371,7 @@ class TransactionRepositoryContractTest {
                     occurredAt = endExclusive,
                     createdAt = endExclusive,
                     updatedAt = endExclusive,
+                    operationId = "period-transfer-end",
                 ),
             )
             repository.insertBalanceUpdateRecord(
@@ -341,6 +382,8 @@ class TransactionRepositoryContractTest {
                     delta = 500,
                     occurredAt = startInclusive,
                     createdAt = startInclusive,
+                    updatedAt = startInclusive,
+                    operationId = "period-update-start",
                 ),
             )
             repository.insertBalanceUpdateRecord(
@@ -351,6 +394,8 @@ class TransactionRepositoryContractTest {
                     delta = 600,
                     occurredAt = endExclusive,
                     createdAt = endExclusive,
+                    updatedAt = endExclusive,
+                    operationId = "period-update-end",
                 ),
             )
             repository.insertBalanceAdjustmentRecord(
@@ -359,6 +404,8 @@ class TransactionRepositoryContractTest {
                     delta = 700,
                     occurredAt = startInclusive,
                     createdAt = startInclusive,
+                    updatedAt = startInclusive,
+                    operationId = "period-adjustment-start",
                 ),
             )
             repository.insertBalanceAdjustmentRecord(
@@ -367,6 +414,8 @@ class TransactionRepositoryContractTest {
                     delta = 800,
                     occurredAt = endExclusive,
                     createdAt = endExclusive,
+                    updatedAt = endExclusive,
+                    operationId = "period-adjustment-end",
                 ),
             )
         }
@@ -394,6 +443,182 @@ class TransactionRepositoryContractTest {
         })
     }
 
+    @Test
+    fun softDeletedLedgerRowsRemainStoredButDisappearFromActiveQueriesInBothImplementations() = runBlocking {
+        seedAccount()
+        db.accountDao().insert(
+            com.shihuaidexianyu.money.data.entity.AccountEntity(
+                id = 2,
+                name = "目标账户",
+                initialBalance = 0,
+                createdAt = 1_000L,
+                displayOrder = 2,
+            ),
+        )
+        val startInclusive = 1_000L
+        val endExclusive = 10_000L
+        val deletedAt = 9_000L
+
+        listOf(roomRepo, memoryRepo).forEach { repository ->
+            val cashId = repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = 100L,
+                    note = "已删除现金",
+                    occurredAt = 2_000L,
+                    createdAt = 2_000L,
+                    updatedAt = 2_000L,
+                    operationId = "delete-contract-cash",
+                ),
+            )
+            val transferId = repository.insertTransferRecord(
+                TransferRecord(
+                    fromAccountId = 1L,
+                    toAccountId = 2L,
+                    amount = 200L,
+                    note = "已删除转账",
+                    occurredAt = 3_000L,
+                    createdAt = 3_000L,
+                    updatedAt = 3_000L,
+                    operationId = "delete-contract-transfer",
+                ),
+            )
+            val updateId = repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 1L,
+                    actualBalance = 300L,
+                    systemBalanceBeforeUpdate = 0L,
+                    delta = 300L,
+                    occurredAt = 4_000L,
+                    createdAt = 4_000L,
+                    updatedAt = 4_000L,
+                    operationId = "delete-contract-balance-update",
+                ),
+            )
+            val adjustmentId = repository.insertBalanceAdjustmentRecord(
+                BalanceAdjustmentRecord(
+                    accountId = 1L,
+                    delta = -50L,
+                    occurredAt = 5_000L,
+                    createdAt = 5_000L,
+                    updatedAt = 5_000L,
+                    operationId = "delete-contract-balance-adjustment",
+                ),
+            )
+
+            repository.softDeleteCashFlowRecord(cashId, deletedAt)
+            repository.softDeleteTransferRecord(transferId, deletedAt)
+            repository.deleteBalanceUpdateRecord(updateId, deletedAt)
+            repository.deleteBalanceAdjustmentRecord(adjustmentId, deletedAt)
+        }
+
+        val roomCash = roomRepo.queryAllCashFlowRecords()
+        val memoryCash = memoryRepo.queryAllCashFlowRecords()
+        assertEquals(memoryCash, roomCash)
+        assertEquals("已删除现金", roomCash.single().note)
+        assertEquals("delete-contract-cash", roomCash.single().operationId)
+        assertEquals(deletedAt, roomCash.single().deletedAt)
+        assertEquals(deletedAt, roomCash.single().updatedAt)
+
+        val roomTransfers = roomRepo.queryAllTransferRecords()
+        val memoryTransfers = memoryRepo.queryAllTransferRecords()
+        assertEquals(memoryTransfers, roomTransfers)
+        assertEquals("delete-contract-transfer", roomTransfers.single().operationId)
+        assertEquals(deletedAt, roomTransfers.single().deletedAt)
+        assertEquals(deletedAt, roomTransfers.single().updatedAt)
+
+        val roomUpdates = roomRepo.queryAllBalanceUpdateRecords()
+        val memoryUpdates = memoryRepo.queryAllBalanceUpdateRecords()
+        assertEquals(memoryUpdates, roomUpdates)
+        assertEquals("delete-contract-balance-update", roomUpdates.single().operationId)
+        assertEquals(deletedAt, roomUpdates.single().deletedAt)
+        assertEquals(deletedAt, roomUpdates.single().updatedAt)
+        assertEquals("Soft deletion must not rewrite the stored reconciliation delta", 300L, roomUpdates.single().delta)
+
+        val roomAdjustments = roomRepo.queryAllBalanceAdjustmentRecords()
+        val memoryAdjustments = memoryRepo.queryAllBalanceAdjustmentRecords()
+        assertEquals(memoryAdjustments, roomAdjustments)
+        assertEquals("delete-contract-balance-adjustment", roomAdjustments.single().operationId)
+        assertEquals(deletedAt, roomAdjustments.single().deletedAt)
+        assertEquals(deletedAt, roomAdjustments.single().updatedAt)
+
+        assertEquals(memoryRepo.queryAllActiveCashFlowRecords(), roomRepo.queryAllActiveCashFlowRecords())
+        assertTrue(roomRepo.queryAllActiveCashFlowRecords().isEmpty())
+        assertEquals(memoryRepo.queryAllActiveTransferRecords(), roomRepo.queryAllActiveTransferRecords())
+        assertTrue(roomRepo.queryAllActiveTransferRecords().isEmpty())
+        assertEquals(
+            memoryRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
+            roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
+        )
+        assertTrue(roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive).isEmpty())
+        assertEquals(
+            memoryRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
+            roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
+        )
+        assertTrue(roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive).isEmpty())
+
+        assertEquals(
+            memoryRepo.sumInflowBetween(1L, startInclusive, endExclusive),
+            roomRepo.sumInflowBetween(1L, startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumInflowBetween(1L, startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.sumTransferOutBetween(1L, startInclusive, endExclusive),
+            roomRepo.sumTransferOutBetween(1L, startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumTransferOutBetween(1L, startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.sumTransferInBetween(2L, startInclusive, endExclusive),
+            roomRepo.sumTransferInBetween(2L, startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumTransferInBetween(2L, startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.sumAdjustmentBetween(1L, startInclusive, endExclusive),
+            roomRepo.sumAdjustmentBetween(1L, startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumAdjustmentBetween(1L, startInclusive, endExclusive))
+
+        assertEquals(
+            memoryRepo.sumCashInflowBetween(startInclusive, endExclusive),
+            roomRepo.sumCashInflowBetween(startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumCashInflowBetween(startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive),
+            roomRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive),
+            roomRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive),
+        )
+        assertEquals(0L, roomRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive),
+            roomRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive),
+        )
+        assertTrue(
+            roomRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive).isEmpty(),
+        )
+        assertEquals(
+            memoryRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds),
+            roomRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds),
+        )
+        assertTrue(
+            roomRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds).isEmpty(),
+        )
+
+        val filters = HistoryRecordFilters()
+        assertEquals(
+            memoryRepo.queryHistoryRecords(filters, cursor = null, limit = 20),
+            roomRepo.queryHistoryRecords(filters, cursor = null, limit = 20),
+        )
+        assertTrue(roomRepo.queryHistoryRecords(filters, cursor = null, limit = 20).isEmpty())
+        assertEquals(memoryRepo.countHistoryRecords(filters), roomRepo.countHistoryRecords(filters))
+        assertEquals(0, roomRepo.countHistoryRecords(filters))
+    }
+
     private suspend fun seedAccount() {
         val accountDao = db.accountDao()
         accountDao.insert(
@@ -417,18 +642,18 @@ class TransactionRepositoryContractTest {
             Triple("普通吃饭", 50_00L, CashFlowDirection.OUTFLOW.value),
             Triple("100% 报销", 3_400L, CashFlowDirection.INFLOW.value),
         )
-        samples.forEachIndexed { index, (purpose, amount, direction) ->
+        samples.forEachIndexed { index, (note, amount, direction) ->
             val occurredAt = baseTime + index * 60_000L
             roomRepo.insertCashFlowRecord(
                 CashFlowRecord(
                     accountId = accountId,
                     direction = direction,
                     amount = amount,
-                    purpose = purpose,
+                    note = note,
                     occurredAt = occurredAt,
                     createdAt = occurredAt,
                     updatedAt = occurredAt,
-                    isDeleted = false,
+                    operationId = "history-cash-$index",
                 ),
             )
             memoryRepo.insertCashFlowRecord(
@@ -436,11 +661,11 @@ class TransactionRepositoryContractTest {
                     accountId = accountId,
                     direction = direction,
                     amount = amount,
-                    purpose = purpose,
+                    note = note,
                     occurredAt = occurredAt,
                     createdAt = occurredAt,
                     updatedAt = occurredAt,
-                    isDeleted = false,
+                    operationId = "history-cash-$index",
                 ),
             )
         }

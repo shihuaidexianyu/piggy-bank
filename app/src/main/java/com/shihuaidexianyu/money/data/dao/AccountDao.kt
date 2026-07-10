@@ -22,16 +22,16 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
     suspend fun queryById(id: Long): AccountEntity?
 
-    @Query("SELECT * FROM accounts WHERE isArchived = 0 ORDER BY displayOrder ASC, createdAt ASC")
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL ORDER BY displayOrder ASC, createdAt ASC")
     fun observeActiveAccounts(): Flow<List<AccountEntity>>
 
-    @Query("SELECT * FROM accounts WHERE isArchived = 0 ORDER BY displayOrder ASC, createdAt ASC")
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL ORDER BY displayOrder ASC, createdAt ASC")
     suspend fun queryActiveAccounts(): List<AccountEntity>
 
-    @Query("SELECT * FROM accounts WHERE isArchived = 1 ORDER BY archivedAt DESC, createdAt DESC")
+    @Query("SELECT * FROM accounts WHERE closedAt IS NOT NULL ORDER BY closedAt DESC, createdAt DESC")
     fun observeArchivedAccounts(): Flow<List<AccountEntity>>
 
-    @Query("SELECT * FROM accounts WHERE isArchived = 1 ORDER BY archivedAt DESC, createdAt DESC")
+    @Query("SELECT * FROM accounts WHERE closedAt IS NOT NULL ORDER BY closedAt DESC, createdAt DESC")
     suspend fun queryArchivedAccounts(): List<AccountEntity>
 
     @Query("UPDATE accounts SET lastUsedAt = :timestamp WHERE id = :accountId")
@@ -43,7 +43,7 @@ interface AccountDao {
     @Query(
         """
         UPDATE accounts
-        SET archivedAt = :archivedAt, isArchived = 1
+        SET closedAt = :archivedAt
         WHERE id = :accountId
         """,
     )
@@ -52,12 +52,12 @@ interface AccountDao {
     @Query(
         """
         SELECT COUNT(*) FROM accounts
-        WHERE isArchived = 0 AND name = :name AND (:excludeId < 0 OR id != :excludeId)
+        WHERE closedAt IS NULL AND name = :name AND (:excludeId < 0 OR id != :excludeId)
         """,
     )
     suspend fun countActiveAccountsByName(name: String, excludeId: Long = -1): Int
 
-    @Query("SELECT COALESCE(MAX(displayOrder), -1) + 1 FROM accounts WHERE isArchived = 0")
+    @Query("SELECT COALESCE(MAX(displayOrder), -1) + 1 FROM accounts WHERE closedAt IS NULL")
     suspend fun nextDisplayOrder(): Int
 
     @Query("DELETE FROM accounts")

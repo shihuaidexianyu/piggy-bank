@@ -15,7 +15,7 @@ class ProcessDueReminderUseCase(
         reminderId: Long,
         occurredAt: Long,
         amount: Long,
-        purpose: String,
+        note: String,
     ): Long {
         val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
         val account = requireNotNull(accountRepository.getAccountById(reminder.accountId)) { "账户不存在" }
@@ -25,16 +25,18 @@ class ProcessDueReminderUseCase(
         AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
         val now = System.currentTimeMillis()
+        val operationId = newLedgerOperationId()
         val recordId = transactionRepository.runInTransaction {
             val insertedId = transactionRepository.insertCashFlowRecord(
                 CashFlowRecord(
                     accountId = reminder.accountId,
                     direction = reminder.direction,
                     amount = amount,
-                    purpose = purpose.trim(),
+                    note = note.trim(),
                     occurredAt = occurredAt,
                     createdAt = now,
                     updatedAt = now,
+                    operationId = operationId,
                 ),
             )
             reminderRepository.updateReminder(
