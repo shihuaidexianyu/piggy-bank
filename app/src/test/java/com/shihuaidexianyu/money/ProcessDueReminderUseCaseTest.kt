@@ -118,13 +118,29 @@ class ProcessDueReminderUseCaseTest {
         val call = fixture.reminderRepository.advanceCalls.single()
         val expectedNextDueAt = ReminderNextDueCalculator.calculateNextDue(
             currentDueAt = dueAt,
+            anchorDueAt = dueAt,
             periodType = ReminderPeriodType.CUSTOM_DAYS,
             periodValue = 1,
             periodMonth = null,
+            zoneId = java.time.ZoneId.of("UTC"),
         )
         assertEquals(reminderId, call.reminderId)
         assertEquals(dueAt, call.expectedDueAt)
         assertEquals(expectedNextDueAt, call.nextDueAt)
+    }
+
+    @Test
+    fun `processing keeps updated version monotonic when clock moves backward`() = runBlocking {
+        val fixture = ReminderProcessFixture()
+        val dueAt = 1_000L
+        val reminderId = fixture.reminderRepository.insertReminder(
+            testReminder(fixture.accountId, dueAt).copy(updatedAt = 200_000L),
+        )
+        fixture.clock.now = 100_000L
+
+        fixture.process(reminderId, dueAt)
+
+        assertEquals(200_001L, fixture.reminderRepository.getReminderById(reminderId)?.updatedAt)
     }
 
     @Test
@@ -204,6 +220,7 @@ class ProcessDueReminderUseCaseTest {
         override suspend fun advanceOccurrence(
             reminderId: Long,
             expectedDueAt: Long,
+            expectedUpdatedAt: Long,
             nextDueAt: Long,
             confirmedAt: Long,
             updatedAt: Long,
@@ -212,6 +229,7 @@ class ProcessDueReminderUseCaseTest {
             return delegate.advanceOccurrence(
                 reminderId = reminderId,
                 expectedDueAt = expectedDueAt,
+                expectedUpdatedAt = expectedUpdatedAt,
                 nextDueAt = nextDueAt,
                 confirmedAt = confirmedAt,
                 updatedAt = updatedAt,
@@ -236,6 +254,7 @@ class ProcessDueReminderUseCaseTest {
                 transactionRepository = transactionRepository,
             ),
             clockProvider = clock,
+            zoneIdProvider = { java.time.ZoneId.of("UTC") },
         )
 
         suspend fun createReminder(dueAt: Long = 1_000): Pair<Long, Long> {

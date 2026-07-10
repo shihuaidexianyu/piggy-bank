@@ -12,7 +12,6 @@ import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
@@ -26,6 +25,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.RestoreLedgerRecordUseCase
+import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
 import kotlinx.coroutines.runBlocking
 import kotlin.test.assertEquals
 import org.junit.Test
@@ -37,7 +37,11 @@ class NotificationMutationRequestTest {
         val reminders = InMemoryRecurringReminderRepository()
         val requester = RecordingRequester()
         val accountId = accounts.createAccount(Account(name = "wallet", initialBalance = 0, createdAt = 1))
-        val reminderId = CreateReminderUseCase(accounts, reminders, requester)(
+        val clock = testClockProvider(1_000L)
+        val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider {
+            java.time.ZoneId.of("Asia/Shanghai")
+        }
+        val reminderId = CreateReminderUseCase(accounts, reminders, clock, zone, requester)(
             name = "bill",
             type = ReminderType.MANUAL,
             accountId = accountId,
@@ -46,8 +50,9 @@ class NotificationMutationRequestTest {
             periodType = ReminderPeriodType.CUSTOM_DAYS,
             periodValue = 1,
             periodMonth = null,
+            anchorDueAt = 2_000L,
         )
-        UpdateReminderUseCase(accounts, reminders, requester)(
+        UpdateReminderUseCase(accounts, reminders, clock, zone, requester)(
             reminderId = reminderId,
             name = "new bill",
             type = ReminderType.MANUAL,
@@ -59,7 +64,7 @@ class NotificationMutationRequestTest {
             periodMonth = null,
             isEnabled = true,
         )
-        ConfirmReminderUseCase(accounts, reminders, requester)(reminderId)
+        SkipReminderUseCase(accounts, reminders, { 3_000L }, zone, requester)(reminderId, 2_000L)
         DeleteReminderUseCase(accounts, reminders, requester)(reminderId)
 
         assertEquals(
@@ -99,6 +104,9 @@ class NotificationMutationRequestTest {
         val configs = InMemoryAccountReminderSettingsRepository()
         val requester = RecordingRequester()
         val clock = testClockProvider(10_000)
+        val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider {
+            java.time.ZoneId.of("UTC")
+        }
         val accountId = accounts.createAccount(Account(name = "wallet", initialBalance = 0, createdAt = 1))
         configs.updateReminderConfig(accountId, BalanceUpdateReminderConfig())
         val refresh = RefreshAccountActivityStateUseCase(accounts, transactions)
@@ -110,6 +118,7 @@ class NotificationMutationRequestTest {
             reminders,
             refresh,
             clock,
+            zone,
             requester,
         )(
             reminderId = reminderId,
@@ -183,7 +192,13 @@ class NotificationMutationRequestTest {
         val accountId = accounts.createAccount(Account(name = "wallet", initialBalance = 0, createdAt = 1))
         val throwingRequester = NotificationSyncRequester { error("work manager unavailable") }
 
-        val id = CreateReminderUseCase(accounts, reminders, throwingRequester)(
+        val id = CreateReminderUseCase(
+            accounts,
+            reminders,
+            testClockProvider(1_000L),
+            { java.time.ZoneId.of("Asia/Shanghai") },
+            throwingRequester,
+        )(
             name = "bill",
             type = ReminderType.MANUAL,
             accountId = accountId,
@@ -192,6 +207,7 @@ class NotificationMutationRequestTest {
             periodType = ReminderPeriodType.CUSTOM_DAYS,
             periodValue = 1,
             periodMonth = null,
+            anchorDueAt = 60_000L,
         )
 
         assertEquals("bill", reminders.getReminderById(id)?.name)

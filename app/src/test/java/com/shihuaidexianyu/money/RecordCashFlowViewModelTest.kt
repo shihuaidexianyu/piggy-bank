@@ -213,6 +213,7 @@ class RecordCashFlowViewModelTest {
             reminderRepository = reminderRepo,
             refreshAccountActivityStateUseCase = refresh,
             clockProvider = testClockProvider,
+            zoneIdProvider = { java.time.ZoneId.of("UTC") },
         )
         val vm = RecordCashFlowViewModel(
             direction = CashFlowDirection.INFLOW,

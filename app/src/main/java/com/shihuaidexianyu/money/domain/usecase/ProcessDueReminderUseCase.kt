@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 
 class ProcessDueReminderUseCase(
     private val accountRepository: AccountRepository,
@@ -17,6 +18,7 @@ class ProcessDueReminderUseCase(
     private val reminderRepository: RecurringReminderRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
@@ -62,14 +64,20 @@ class ProcessDueReminderUseCase(
                     reminderRepository.advanceOccurrence(
                         reminderId = reminderId,
                         expectedDueAt = expectedDueAt,
+                        expectedUpdatedAt = reminder.updatedAt,
                         nextDueAt = ReminderNextDueCalculator.calculateNextDue(
                             currentDueAt = expectedDueAt,
+                            anchorDueAt = reminder.anchorDueAt,
                             periodType = ReminderPeriodType.fromValue(reminder.periodType),
                             periodValue = reminder.periodValue,
                             periodMonth = reminder.periodMonth,
+                            zoneId = zoneIdProvider.zoneId(),
                         ),
                         confirmedAt = now,
-                        updatedAt = now,
+                        updatedAt = com.shihuaidexianyu.money.domain.time.nextMutationTimestamp(
+                            now,
+                            reminder.updatedAt,
+                        ),
                     ),
                 ) { "提醒状态已变化" }
                 refreshAccountActivityStateUseCase(accountId)

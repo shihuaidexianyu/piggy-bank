@@ -11,14 +11,34 @@ interface RecurringReminderRepository {
     suspend fun queryDue(): List<RecurringReminder>
     suspend fun insertReminder(reminder: RecurringReminder): Long
     suspend fun updateReminder(reminder: RecurringReminder)
+    suspend fun updateReminderIfUnchanged(
+        reminder: RecurringReminder,
+        expectedUpdatedAt: Long,
+        clearNotificationCursor: Boolean,
+    ): Boolean
     suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long)
     suspend fun advanceOccurrence(
         reminderId: Long,
         expectedDueAt: Long,
+        expectedUpdatedAt: Long,
         nextDueAt: Long,
         confirmedAt: Long,
         updatedAt: Long,
     ): Boolean
     suspend fun acknowledgeNotifiedOccurrence(reminderId: Long, expectedDueAt: Long): Boolean
+    suspend fun skipOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        expectedUpdatedAt: Long,
+        advancedDueAt: Long,
+        skippedUpdatedAt: Long,
+    ): Boolean
+    suspend fun undoSkippedOccurrence(
+        reminderId: Long,
+        skippedDueAt: Long,
+        advancedDueAt: Long,
+        skippedUpdatedAt: Long,
+        restoredUpdatedAt: Long,
+    ): Boolean
     suspend fun deleteReminder(id: Long)
 }

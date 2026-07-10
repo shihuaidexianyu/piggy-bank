@@ -141,6 +141,8 @@ fun MoneySingleLineField(
     enabled: Boolean = true,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    isError: Boolean = false,
+    supportingText: String? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -152,6 +154,8 @@ fun MoneySingleLineField(
         singleLine = true,
         textStyle = textStyle,
         keyboardOptions = keyboardOptions,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,

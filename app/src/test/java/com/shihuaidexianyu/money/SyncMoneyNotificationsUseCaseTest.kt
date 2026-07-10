@@ -15,6 +15,8 @@ import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.PublishResult
 import com.shihuaidexianyu.money.domain.usecase.SyncMoneyNotificationsUseCase
+import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.UndoSkipReminderUseCase
 import java.time.ZoneId
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -37,6 +39,21 @@ class SyncMoneyNotificationsUseCaseTest {
             NOW - 1,
             fixture.reminders.getReminderById(reminderId)?.lastNotifiedDueAt,
         )
+    }
+
+    @Test
+    fun `undoing a notified skipped occurrence allows it to be posted again`() = runBlocking {
+        val fixture = Fixture()
+        val dueAt = NOW - 1
+        val reminderId = fixture.addReminder(nextDueAt = dueAt)
+
+        fixture.sync()
+        val token = fixture.skip(reminderId, dueAt)
+        fixture.undo(token)
+        fixture.sync()
+
+        assertEquals(2, fixture.publisher.posted.size)
+        assertEquals(dueAt, fixture.reminders.getReminderById(reminderId)?.lastNotifiedDueAt)
     }
 
     @Test
@@ -228,6 +245,21 @@ class SyncMoneyNotificationsUseCaseTest {
         }
 
         suspend fun sync() = useCase()
+
+        suspend fun skip(reminderId: Long, expectedDueAt: Long) = SkipReminderUseCase(
+            accountRepository = accounts,
+            reminderRepository = reminders,
+            clockProvider = { NOW },
+            zoneIdProvider = { ZoneId.of("Asia/Shanghai") },
+            notificationSyncRequester = requests,
+        )(reminderId, expectedDueAt)
+
+        suspend fun undo(token: com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken) =
+            UndoSkipReminderUseCase(
+                reminderRepository = reminders,
+                clockProvider = { NOW },
+                notificationSyncRequester = requests,
+            )(token)
 
         suspend fun addAccount(name: String, closedAt: Long? = null): Long =
             accounts.createAccount(

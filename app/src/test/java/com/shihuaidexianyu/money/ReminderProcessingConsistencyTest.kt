@@ -7,17 +7,17 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class ReminderProcessingConsistencyTest {
     @Test
-    fun `confirming closed account reminder fails without advancing reminder`() = runBlocking {
+    fun `skipping closed account reminder fails without advancing reminder`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
@@ -28,17 +28,22 @@ class ReminderProcessingConsistencyTest {
             testReminder(accountId = accountId, nextDueAt = 1_000L),
         )
         val before = requireNotNull(reminderRepository.getReminderById(reminderId))
-        val useCase = ConfirmReminderUseCase(accountRepository, reminderRepository)
+        val useCase = SkipReminderUseCase(
+            accountRepository,
+            reminderRepository,
+            clockProvider = { 2_000L },
+            zoneIdProvider = { java.time.ZoneId.of("UTC") },
+        )
 
         assertFailsWith<IllegalArgumentException> {
-            useCase(reminderId)
+            useCase(reminderId, 1_000L)
         }
 
         assertEquals(before, reminderRepository.getReminderById(reminderId))
     }
 
     @Test
-    fun `confirming active reminder advances next due and records confirmation time together`() = runBlocking {
+    fun `skipping active reminder advances one due and leaves confirmation untouched`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
@@ -47,17 +52,21 @@ class ReminderProcessingConsistencyTest {
         val reminderId = reminderRepository.insertReminder(
             testReminder(
                 accountId = accountId,
-                nextDueAt = System.currentTimeMillis() - 3L * 24L * 60L * 60L * 1000L,
+                nextDueAt = 60_000L,
             ),
         )
-        val useCase = ConfirmReminderUseCase(accountRepository, reminderRepository)
+        val useCase = SkipReminderUseCase(
+            accountRepository,
+            reminderRepository,
+            clockProvider = { 3L * 86_400_000L },
+            zoneIdProvider = { java.time.ZoneId.of("UTC") },
+        )
 
-        useCase(reminderId)
+        useCase(reminderId, 60_000L)
 
         val updated = assertNotNull(reminderRepository.getReminderById(reminderId))
-        assertTrue(updated.nextDueAt > System.currentTimeMillis())
-        assertNotNull(updated.lastConfirmedAt)
-        assertEquals(updated.lastConfirmedAt, updated.updatedAt)
+        assertEquals(60_000L + 86_400_000L, updated.nextDueAt)
+        assertNull(updated.lastConfirmedAt)
     }
 
     private fun testReminder(

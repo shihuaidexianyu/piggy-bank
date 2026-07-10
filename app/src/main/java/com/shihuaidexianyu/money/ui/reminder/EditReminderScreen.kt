@@ -28,6 +28,7 @@ fun EditReminderScreen(
     viewModel: EditReminderViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onSaved: (Boolean) -> Unit = { onBack() },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -35,9 +36,8 @@ fun EditReminderScreen(
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         when (effect) {
-            EditReminderEffect.Saved,
-            EditReminderEffect.Closed,
-            -> onBack()
+            is EditReminderEffect.Saved -> onSaved(effect.shouldRequestNotificationPermission)
+            EditReminderEffect.Closed -> onBack()
             is EditReminderEffect.ShowMessage -> Unit
         }
     }
@@ -122,25 +122,9 @@ fun EditReminderScreen(
                     onSelect = viewModel::updatePeriodType,
                 )
                 when (state.periodType) {
-                    ReminderPeriodType.MONTHLY -> {
-                        MoneySingleLineField(
-                            value = state.periodDay,
-                            onValueChange = viewModel::updatePeriodDay,
-                            label = "每月几号 (1-31)",
-                        )
-                    }
-                    ReminderPeriodType.YEARLY -> {
-                        MoneySingleLineField(
-                            value = state.periodMonth,
-                            onValueChange = viewModel::updatePeriodMonth,
-                            label = "月份 (1-12)",
-                        )
-                        MoneySingleLineField(
-                            value = state.periodDay,
-                            onValueChange = viewModel::updatePeriodDay,
-                            label = "日期 (1-31)",
-                        )
-                    }
+                    ReminderPeriodType.MONTHLY,
+                    ReminderPeriodType.YEARLY,
+                    -> Unit
                     ReminderPeriodType.CUSTOM_DAYS -> {
                         MoneySingleLineField(
                             value = state.periodCustomDays,
@@ -149,6 +133,19 @@ fun EditReminderScreen(
                         )
                     }
                 }
+                MoneySingleLineField(
+                    value = state.anchorDateText,
+                    onValueChange = viewModel::updateAnchorDate,
+                    label = "首次日期 (YYYY-MM-DD)",
+                    isError = state.anchorError != null,
+                )
+                MoneySingleLineField(
+                    value = state.anchorTimeText,
+                    onValueChange = viewModel::updateAnchorTime,
+                    label = "首次时间 (HH:mm)",
+                    isError = state.anchorError != null,
+                    supportingText = state.anchorError,
+                )
             }
         }
         item {

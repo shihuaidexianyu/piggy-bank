@@ -99,9 +99,11 @@ class MoneyAppContainer(context: Context) {
 
     val deleteReminderUseCase get() = useCaseGraph.deleteReminderUseCase
 
-    val confirmReminderUseCase get() = useCaseGraph.confirmReminderUseCase
-
     val processDueReminderUseCase get() = useCaseGraph.processDueReminderUseCase
+
+    val skipReminderUseCase get() = useCaseGraph.skipReminderUseCase
+
+    val undoSkipReminderUseCase get() = useCaseGraph.undoSkipReminderUseCase
 
     val observeDueRemindersUseCase get() = useCaseGraph.observeDueRemindersUseCase
 

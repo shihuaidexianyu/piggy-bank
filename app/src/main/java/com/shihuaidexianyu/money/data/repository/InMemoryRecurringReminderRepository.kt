@@ -52,6 +52,23 @@ class InMemoryRecurringReminderRepository(
         reminders.value = reminders.value + (reminder.id to reminder)
     }
 
+    override suspend fun updateReminderIfUnchanged(
+        reminder: RecurringReminder,
+        expectedUpdatedAt: Long,
+        clearNotificationCursor: Boolean,
+    ): Boolean = synchronized(mutationLock) {
+        val existing = reminders.value[reminder.id] ?: return@synchronized false
+        if (existing.updatedAt != expectedUpdatedAt) return@synchronized false
+        reminders.value = reminders.value + (
+            reminder.id to reminder.copy(
+                lastNotifiedDueAt = if (clearNotificationCursor) null else existing.lastNotifiedDueAt,
+                lastConfirmedAt = existing.lastConfirmedAt,
+                createdAt = existing.createdAt,
+            )
+        )
+        true
+    }
+
     override suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long) {
         reminders.value = reminders.value.mapValues { (_, reminder) ->
             if (reminder.accountId == accountId && reminder.isEnabled) {
@@ -65,13 +82,16 @@ class InMemoryRecurringReminderRepository(
     override suspend fun advanceOccurrence(
         reminderId: Long,
         expectedDueAt: Long,
+        expectedUpdatedAt: Long,
         nextDueAt: Long,
         confirmedAt: Long,
         updatedAt: Long,
     ): Boolean = synchronized(mutationLock) {
         val existing = reminders.value[reminderId]
             ?: return@synchronized false
-        if (!existing.isEnabled || existing.nextDueAt != expectedDueAt) {
+        if (!existing.isEnabled || existing.nextDueAt != expectedDueAt ||
+            existing.updatedAt != expectedUpdatedAt
+        ) {
             return@synchronized false
         }
         reminders.value = reminders.value + (
@@ -97,6 +117,44 @@ class InMemoryRecurringReminderRepository(
         }
         reminders.value = reminders.value + (
             reminderId to existing.copy(lastNotifiedDueAt = expectedDueAt)
+        )
+        true
+    }
+
+    override suspend fun skipOccurrence(
+        reminderId: Long,
+        expectedDueAt: Long,
+        expectedUpdatedAt: Long,
+        advancedDueAt: Long,
+        skippedUpdatedAt: Long,
+    ): Boolean = synchronized(mutationLock) {
+        val existing = reminders.value[reminderId] ?: return@synchronized false
+        if (!existing.isEnabled || existing.nextDueAt != expectedDueAt ||
+            existing.updatedAt != expectedUpdatedAt
+        ) return@synchronized false
+        reminders.value = reminders.value + (
+            reminderId to existing.copy(nextDueAt = advancedDueAt, updatedAt = skippedUpdatedAt)
+        )
+        true
+    }
+
+    override suspend fun undoSkippedOccurrence(
+        reminderId: Long,
+        skippedDueAt: Long,
+        advancedDueAt: Long,
+        skippedUpdatedAt: Long,
+        restoredUpdatedAt: Long,
+    ): Boolean = synchronized(mutationLock) {
+        val existing = reminders.value[reminderId] ?: return@synchronized false
+        if (!existing.isEnabled || existing.nextDueAt != advancedDueAt ||
+            existing.updatedAt != skippedUpdatedAt
+        ) return@synchronized false
+        reminders.value = reminders.value + (
+            reminderId to existing.copy(
+                nextDueAt = skippedDueAt,
+                lastNotifiedDueAt = null,
+                updatedAt = restoredUpdatedAt,
+            )
         )
         true
     }

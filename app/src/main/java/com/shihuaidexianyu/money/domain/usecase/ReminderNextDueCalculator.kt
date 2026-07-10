@@ -3,79 +3,72 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 object ReminderNextDueCalculator {
 
     /**
-     * Default time-of-day applied to every reminder's due date. 09:00 local time is a reasonable
-     * "morning reminder" slot. Made a named constant instead of an inline `LocalTime.of(9, 0)` magic
-     * value so it's easy to find/change.
+     * Reminder timestamps intentionally have no stored timezone. Every calculation interprets the
+     * anchor in the currently injected device zone, so changing the device timezone can change the
+     * future UTC instants while retaining the newly interpreted local calendar schedule.
      */
-    private val DEFAULT_DUE_TIME_OF_DAY: LocalTime = LocalTime.of(9, 0)
-
-    fun calculateFirstDue(
-        periodType: ReminderPeriodType,
-        periodValue: Int,
-        periodMonth: Int?,
-    ): Long {
-        val today = LocalDate.now()
-        val candidate = when (periodType) {
-            ReminderPeriodType.MONTHLY -> {
-                val dayOfMonth = periodValue.coerceIn(1, today.lengthOfMonth())
-                val thisMonth = today.withDayOfMonth(dayOfMonth)
-                if (thisMonth >= today) thisMonth else thisMonth.plusMonths(1)
-                    .withDayOfMonth(periodValue.coerceIn(1, thisMonth.plusMonths(1).lengthOfMonth()))
-            }
-            ReminderPeriodType.YEARLY -> {
-                val month = (periodMonth ?: 1).coerceIn(1, 12)
-                val maxDay = LocalDate.of(today.year, month, 1).lengthOfMonth()
-                val day = periodValue.coerceIn(1, maxDay)
-                val thisYear = LocalDate.of(today.year, month, day)
-                if (thisYear >= today) thisYear else {
-                    val nextMaxDay = LocalDate.of(today.year + 1, month, 1).lengthOfMonth()
-                    LocalDate.of(today.year + 1, month, periodValue.coerceIn(1, nextMaxDay))
-                }
-            }
-            ReminderPeriodType.CUSTOM_DAYS -> {
-                today.plusDays(periodValue.toLong().coerceAtLeast(1))
-            }
-        }
-        return candidate.atTime(DEFAULT_DUE_TIME_OF_DAY)
-            .atZone(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
+    fun defaultFutureAnchor(nowMillis: Long, zoneId: ZoneId): Long {
+        val now = Instant.ofEpochMilli(nowMillis).atZone(zoneId)
+        val minute = now.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+        return minute.toInstant().toEpochMilli()
     }
 
     fun calculateNextDue(
         currentDueAt: Long,
+        anchorDueAt: Long,
         periodType: ReminderPeriodType,
         periodValue: Int,
         periodMonth: Int?,
+        zoneId: ZoneId,
     ): Long {
-        val currentDate = Instant.ofEpochMilli(currentDueAt)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
+        val current = Instant.ofEpochMilli(currentDueAt).atZone(zoneId)
+        val anchor = Instant.ofEpochMilli(anchorDueAt).atZone(zoneId)
+        val anchorTime = anchor.toLocalTime().withSecond(0).withNano(0)
         val nextDate = when (periodType) {
             ReminderPeriodType.MONTHLY -> {
-                val next = currentDate.plusMonths(1)
-                next.withDayOfMonth(periodValue.coerceIn(1, next.lengthOfMonth()))
+                val nextMonth = current.toLocalDate().plusMonths(1).withDayOfMonth(1)
+                nextMonth.withDayOfMonth(periodValue.coerceIn(1, nextMonth.lengthOfMonth()))
             }
             ReminderPeriodType.YEARLY -> {
-                val next = currentDate.plusYears(1)
-                val month = (periodMonth ?: next.monthValue).coerceIn(1, 12)
-                val maxDay = LocalDate.of(next.year, month, 1).lengthOfMonth()
-                LocalDate.of(next.year, month, periodValue.coerceIn(1, maxDay))
+                val nextYear = current.year + 1
+                val month = (periodMonth ?: anchor.monthValue).coerceIn(1, 12)
+                val firstOfMonth = LocalDate.of(nextYear, month, 1)
+                firstOfMonth.withDayOfMonth(periodValue.coerceIn(1, firstOfMonth.lengthOfMonth()))
             }
-            ReminderPeriodType.CUSTOM_DAYS -> {
-                currentDate.plusDays(periodValue.toLong().coerceAtLeast(1))
-            }
+            ReminderPeriodType.CUSTOM_DAYS ->
+                current.toLocalDate().plusDays(periodValue.toLong().coerceAtLeast(1))
         }
-        return nextDate.atTime(DEFAULT_DUE_TIME_OF_DAY)
-            .atZone(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
+        return nextDate.atTime(anchorTime).atZone(zoneId).toInstant().toEpochMilli()
+    }
+
+    fun firstOccurrenceAtOrAfter(
+        anchorDueAt: Long,
+        cutoffMillis: Long,
+        periodType: ReminderPeriodType,
+        periodValue: Int,
+        periodMonth: Int?,
+        zoneId: ZoneId,
+    ): Long {
+        var occurrence = anchorDueAt
+        while (occurrence < cutoffMillis) {
+            val next = calculateNextDue(
+                currentDueAt = occurrence,
+                anchorDueAt = anchorDueAt,
+                periodType = periodType,
+                periodValue = periodValue,
+                periodMonth = periodMonth,
+                zoneId = zoneId,
+            )
+            check(next > occurrence) { "提醒周期没有向未来推进" }
+            occurrence = next
+        }
+        return occurrence
     }
 }
 

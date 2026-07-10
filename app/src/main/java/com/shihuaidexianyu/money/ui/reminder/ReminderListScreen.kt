@@ -18,9 +18,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyBackButton
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -39,6 +44,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun ReminderListScreen(
@@ -47,13 +53,32 @@ fun ReminderListScreen(
     onEditReminder: (Long) -> Unit,
     onProcessReminder: (ReminderUiModel) -> Unit,
     onDeleteReminder: (Long) -> Unit,
-    onConfirmReminder: (Long) -> Unit,
+    onSkipReminder: (Long, Long) -> Unit,
+    onUndoSkip: (ReminderSkipUndoToken) -> Unit,
+    effects: Flow<ReminderListEffect>,
+    notificationPermissionState: NotificationPermissionUiState,
+    onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
     onUpdateBalance: (Long) -> Unit,
     onBatchReconcile: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var deleteTarget by remember { mutableStateOf<Long?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(effects) {
+        effects.collect { effect ->
+            when (effect) {
+                is ReminderListEffect.Skipped -> {
+                    if (snackbarHostState.showSnackbar("已跳过本期", "撤销") == SnackbarResult.ActionPerformed) {
+                        onUndoSkip(effect.token)
+                    }
+                }
+                is ReminderListEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+            }
+        }
+    }
 
     deleteTarget?.let { id ->
         MoneyConfirmDialog(
@@ -68,6 +93,7 @@ fun ReminderListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
                 Icon(Icons.Rounded.Add, contentDescription = "添加提醒")
@@ -86,7 +112,19 @@ fun ReminderListScreen(
                 contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (!state.isLoading && state.balanceReminders.isEmpty() && state.reminders.isEmpty()) {
+                if (notificationPermissionState != NotificationPermissionUiState.Granted) {
+                    item {
+                        NotificationPermissionStatusCard(
+                            state = notificationPermissionState,
+                            onRequest = onRequestNotificationPermission,
+                            onOpenSettings = onOpenNotificationSettings,
+                        )
+                    }
+                }
+                if (!state.isLoading && state.balanceReminders.isEmpty() &&
+                    state.dueReminders.isEmpty() && state.upcomingReminders.isEmpty() &&
+                    state.pausedReminders.isEmpty()
+                ) {
                     item {
                         MoneyEmptyStateCard(
                             title = "暂无待处理提醒",
@@ -117,25 +155,47 @@ fun ReminderListScreen(
                         )
                     }
                 }
-                if (state.reminders.isNotEmpty()) {
+                if (state.dueReminders.isNotEmpty()) {
                     item {
                         MoneySectionHeader(
-                            title = "定期提醒",
-                            trailing = "${state.reminders.size} 条",
+                            title = "已到期",
+                            trailing = "${state.dueReminders.size} 条",
                         )
                     }
                 }
-                items(state.reminders, key = { it.id }) { reminder ->
+                items(state.dueReminders, key = { "due:${it.id}" }) { reminder ->
                     ReminderListItem(
                         reminder = reminder,
-                        onClick = {
-                            if (reminder.isOverdue && reminder.isEnabled) {
-                                onProcessReminder(reminder)
-                            } else {
-                                onEditReminder(reminder.id)
-                            }
-                        },
-                        onConfirmOnly = { onConfirmReminder(reminder.id) },
+                        isDue = true,
+                        onProcess = { onProcessReminder(reminder) },
+                        onSkip = { onSkipReminder(reminder.id, reminder.nextDueAt) },
+                        onEdit = { onEditReminder(reminder.id) },
+                        onDelete = { deleteTarget = reminder.id },
+                    )
+                }
+                if (state.upcomingReminders.isNotEmpty()) {
+                    item { MoneySectionHeader("即将到期", "${state.upcomingReminders.size} 条") }
+                }
+                items(state.upcomingReminders, key = { "upcoming:${it.id}" }) { reminder ->
+                    ReminderListItem(
+                        reminder = reminder,
+                        isDue = false,
+                        onProcess = {},
+                        onSkip = {},
+                        onEdit = { onEditReminder(reminder.id) },
+                        onDelete = { deleteTarget = reminder.id },
+                    )
+                }
+                if (state.pausedReminders.isNotEmpty()) {
+                    item { MoneySectionHeader("已暂停", "${state.pausedReminders.size} 条") }
+                }
+                items(state.pausedReminders, key = { "paused:${it.id}" }) { reminder ->
+                    ReminderListItem(
+                        reminder = reminder,
+                        isDue = false,
+                        onProcess = {},
+                        onSkip = {},
+                        onEdit = { onEditReminder(reminder.id) },
                         onDelete = { deleteTarget = reminder.id },
                     )
                 }
@@ -240,13 +300,15 @@ private fun BalanceReminderRow(
 @Composable
 private fun ReminderListItem(
     reminder: ReminderUiModel,
-    onClick: () -> Unit,
-    onConfirmOnly: () -> Unit,
+    isDue: Boolean,
+    onProcess: () -> Unit,
+    onSkip: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     MoneyCard(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onEdit),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Row(
@@ -304,18 +366,70 @@ private fun ReminderListItem(
                 )
             }
         }
-        if (reminder.isOverdue && reminder.isEnabled) {
+        if (isDue) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onClick) {
-                    Text("生成记录")
+                TextButton(onClick = onProcess) {
+                    Text("记账")
                 }
-                TextButton(onClick = onConfirmOnly) {
-                    Text("仅确认")
+                TextButton(onClick = onSkip) {
+                    Text("跳过本期")
+                }
+                TextButton(onClick = onEdit) {
+                    Text("编辑")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionStatusCard(
+    state: NotificationPermissionUiState,
+    onRequest: () -> Unit,
+    onOpenSettings: (NotificationSettingsTarget) -> Unit,
+) {
+    val title: String
+    val message: String
+    val actionLabel: String
+    val action: () -> Unit
+    when (state) {
+        NotificationPermissionUiState.Granted -> return
+        NotificationPermissionUiState.NotRequested -> {
+            title = "开启提醒通知"
+            message = "创建提醒后可在到期时收到系统通知。"
+            actionLabel = "允许通知"
+            action = onRequest
+        }
+        is NotificationPermissionUiState.Denied -> if (state.canRequestAgain) {
+            title = "通知权限已拒绝"
+            message = "你可以在需要提醒时再次申请通知权限。"
+            actionLabel = "再次申请"
+            action = onRequest
+        } else {
+            title = "通知权限不可再次申请"
+            message = "请前往系统设置为 Money 开启通知。"
+            actionLabel = "打开设置"
+            action = { onOpenSettings(NotificationSettingsTarget.APPLICATION) }
+        }
+        is NotificationPermissionUiState.SettingsRequired -> {
+            title = when (state.target) {
+                NotificationSettingsTarget.APPLICATION -> "应用通知已关闭"
+                NotificationSettingsTarget.RECURRING_CHANNEL -> "定期提醒通知渠道已关闭"
+                NotificationSettingsTarget.BALANCE_CHANNEL -> "余额核对通知渠道已关闭"
+            }
+            message = "请在系统设置中开启对应通知，应用不会把未发送的通知标记为已通知。"
+            actionLabel = "打开设置"
+            action = { onOpenSettings(state.target) }
+        }
+    }
+    MoneyCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = action) { Text(actionLabel) }
         }
     }
 }

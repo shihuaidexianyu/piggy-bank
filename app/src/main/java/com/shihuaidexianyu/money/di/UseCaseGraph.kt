@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
@@ -35,6 +34,8 @@ import com.shihuaidexianyu.money.domain.usecase.RestoreLedgerRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.SetAccountHiddenUseCase
+import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.UndoSkipReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
@@ -273,22 +274,20 @@ internal class UseCaseGraph(
     val createReminderUseCase = CreateReminderUseCase(
         accountRepository = data.accountRepository,
         reminderRepository = data.recurringReminderRepository,
+        clockProvider = SystemClockProvider,
+        zoneIdProvider = SystemZoneIdProvider,
         notificationSyncRequester = data.notificationSyncRequester,
     )
 
     val updateReminderUseCase = UpdateReminderUseCase(
         accountRepository = data.accountRepository,
         reminderRepository = data.recurringReminderRepository,
+        clockProvider = SystemClockProvider,
+        zoneIdProvider = SystemZoneIdProvider,
         notificationSyncRequester = data.notificationSyncRequester,
     )
 
     val deleteReminderUseCase = DeleteReminderUseCase(
-        accountRepository = data.accountRepository,
-        reminderRepository = data.recurringReminderRepository,
-        notificationSyncRequester = data.notificationSyncRequester,
-    )
-
-    val confirmReminderUseCase = ConfirmReminderUseCase(
         accountRepository = data.accountRepository,
         reminderRepository = data.recurringReminderRepository,
         notificationSyncRequester = data.notificationSyncRequester,
@@ -299,6 +298,21 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         reminderRepository = data.recurringReminderRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
+        zoneIdProvider = SystemZoneIdProvider,
+        notificationSyncRequester = data.notificationSyncRequester,
+    )
+
+    val skipReminderUseCase = SkipReminderUseCase(
+        accountRepository = data.accountRepository,
+        reminderRepository = data.recurringReminderRepository,
+        clockProvider = SystemClockProvider,
+        zoneIdProvider = SystemZoneIdProvider,
+        notificationSyncRequester = data.notificationSyncRequester,
+    )
+
+    val undoSkipReminderUseCase = UndoSkipReminderUseCase(
+        reminderRepository = data.recurringReminderRepository,
         clockProvider = SystemClockProvider,
         notificationSyncRequester = data.notificationSyncRequester,
     )

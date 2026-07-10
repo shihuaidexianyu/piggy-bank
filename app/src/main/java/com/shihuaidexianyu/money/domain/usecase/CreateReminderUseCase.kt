@@ -9,10 +9,14 @@ import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 
 class CreateReminderUseCase(
     private val accountRepository: AccountRepository,
     private val reminderRepository: RecurringReminderRepository,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
@@ -24,19 +28,24 @@ class CreateReminderUseCase(
         periodType: ReminderPeriodType,
         periodValue: Int,
         periodMonth: Int?,
+        anchorDueAt: Long,
     ): Long {
         require(name.isNotBlank()) { "名称不能为空" }
         require(amount > 0) { "金额必须大于 0" }
         val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
         account.requireOpenForMutation("创建提醒")
         ReminderScheduleValidator.validate(periodType, periodValue, periodMonth)
-
-        val nextDueAt = ReminderNextDueCalculator.calculateFirstDue(
-            periodType = periodType,
-            periodValue = periodValue,
-            periodMonth = periodMonth,
-        )
-        val now = System.currentTimeMillis()
+        val now = clockProvider.nowMillis()
+        require(anchorDueAt > now) { "首次提醒时间必须晚于当前时间" }
+        val anchorLocal = java.time.Instant.ofEpochMilli(anchorDueAt).atZone(zoneIdProvider.zoneId())
+        if (periodType == ReminderPeriodType.MONTHLY) {
+            require(periodValue == anchorLocal.dayOfMonth) { "首次日期必须与每月日期一致" }
+        }
+        if (periodType == ReminderPeriodType.YEARLY) {
+            require(periodValue == anchorLocal.dayOfMonth && periodMonth == anchorLocal.monthValue) {
+                "首次日期必须与每年日期一致"
+            }
+        }
         val id = reminderRepository.insertReminder(
             RecurringReminder(
                 name = name.trim(),
@@ -48,8 +57,8 @@ class CreateReminderUseCase(
                 periodValue = periodValue,
                 periodMonth = periodMonth,
                 isEnabled = true,
-                nextDueAt = nextDueAt,
-                anchorDueAt = nextDueAt,
+                nextDueAt = anchorDueAt,
+                anchorDueAt = anchorDueAt,
                 createdAt = now,
                 updatedAt = now,
             ),

@@ -8,10 +8,15 @@ import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
+import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 
 class UpdateReminderUseCase(
     private val accountRepository: AccountRepository,
     private val reminderRepository: RecurringReminderRepository,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(
@@ -24,7 +29,9 @@ class UpdateReminderUseCase(
         periodType: ReminderPeriodType,
         periodValue: Int,
         periodMonth: Int?,
+        anchorDueAt: Long? = null,
         isEnabled: Boolean,
+        expectedUpdatedAt: Long? = null,
     ) {
         require(name.isNotBlank()) { "名称不能为空" }
         require(amount > 0) { "金额必须大于 0" }
@@ -36,31 +43,48 @@ class UpdateReminderUseCase(
         val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         existingAccount.requireOpenForMutation("修改提醒")
 
-        val periodChanged = existing.periodType != periodType.value ||
+        val requestedAnchorDueAt = anchorDueAt ?: existing.anchorDueAt
+        val scheduleChanged = existing.periodType != periodType.value ||
             existing.periodValue != periodValue ||
-            existing.periodMonth != periodMonth
+            existing.periodMonth != periodMonth ||
+            existing.anchorDueAt != requestedAnchorDueAt
 
-        val nextDueAt = if (periodChanged) {
-            ReminderNextDueCalculator.calculateFirstDue(periodType, periodValue, periodMonth)
+        val now = clockProvider.nowMillis()
+        val nextDueAt = if (scheduleChanged) {
+            ReminderNextDueCalculator.firstOccurrenceAtOrAfter(
+                anchorDueAt = requestedAnchorDueAt,
+                cutoffMillis = now,
+                periodType = periodType,
+                periodValue = periodValue,
+                periodMonth = periodMonth,
+                zoneId = zoneIdProvider.zoneId(),
+            )
         } else {
             existing.nextDueAt
         }
 
-        reminderRepository.updateReminder(
-            existing.copy(
-                name = name.trim(),
-                type = type.value,
-                accountId = accountId,
-                direction = direction.value,
-                amount = amount,
-                periodType = periodType.value,
-                periodValue = periodValue,
-                periodMonth = periodMonth,
-                isEnabled = isEnabled,
-                nextDueAt = nextDueAt,
-                updatedAt = System.currentTimeMillis(),
+        val expectedVersion = expectedUpdatedAt ?: existing.updatedAt
+        check(
+            reminderRepository.updateReminderIfUnchanged(
+                existing.copy(
+                    name = name.trim(),
+                    type = type.value,
+                    accountId = accountId,
+                    direction = direction.value,
+                    amount = amount,
+                    periodType = periodType.value,
+                    periodValue = periodValue,
+                    periodMonth = periodMonth,
+                    isEnabled = isEnabled,
+                    nextDueAt = nextDueAt,
+                    anchorDueAt = if (scheduleChanged) requestedAnchorDueAt else existing.anchorDueAt,
+                    lastNotifiedDueAt = if (scheduleChanged) null else existing.lastNotifiedDueAt,
+                    updatedAt = nextMutationTimestamp(now, existing.updatedAt),
+                ),
+                expectedUpdatedAt = expectedVersion,
+                clearNotificationCursor = scheduleChanged,
             ),
-        )
+        ) { "提醒状态已变化" }
         runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_CHANGED) }
     }
 }

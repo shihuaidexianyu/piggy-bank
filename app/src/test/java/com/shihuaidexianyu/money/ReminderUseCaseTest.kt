@@ -7,12 +7,12 @@ import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderReposi
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
 import com.shihuaidexianyu.money.navigation.MoneyDestination
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,12 @@ class ReminderUseCaseTest {
                 createdAt = 1L,
             ),
         )
-        val useCase = CreateReminderUseCase(accountRepository, reminderRepository)
+        val useCase = CreateReminderUseCase(
+            accountRepository,
+            reminderRepository,
+            testClockProvider(1_000L),
+            { java.time.ZoneId.of("Asia/Shanghai") },
+        )
 
         val error = assertFailsWith<IllegalArgumentException> {
             useCase(
@@ -43,6 +48,7 @@ class ReminderUseCaseTest {
                 periodType = ReminderPeriodType.YEARLY,
                 periodValue = 30,
                 periodMonth = 2,
+                anchorDueAt = 60_000L,
             )
         }
 
@@ -76,7 +82,12 @@ class ReminderUseCaseTest {
                 anchorDueAt = 100L,
             ),
         )
-        val useCase = UpdateReminderUseCase(accountRepository, reminderRepository)
+        val useCase = UpdateReminderUseCase(
+            accountRepository,
+            reminderRepository,
+            testClockProvider(1_000L),
+            { java.time.ZoneId.of("Asia/Shanghai") },
+        )
 
         val error = assertFailsWith<IllegalArgumentException> {
             useCase(
@@ -97,7 +108,7 @@ class ReminderUseCaseTest {
     }
 
     @Test
-    fun `confirm reminder advances overdue reminder into the future`() = runBlocking {
+    fun `skip reminder advances exactly one occurrence without confirmation`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
@@ -117,20 +128,25 @@ class ReminderUseCaseTest {
                 periodType = ReminderPeriodType.CUSTOM_DAYS.value,
                 periodValue = 1,
                 periodMonth = null,
-                nextDueAt = System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000L,
+                nextDueAt = 60_000L,
                 createdAt = 1L,
                 updatedAt = 1L,
-                anchorDueAt = System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000L,
+                anchorDueAt = 60_000L,
             ),
         )
-        val useCase = ConfirmReminderUseCase(accountRepository, reminderRepository)
+        val useCase = com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase(
+            accountRepository,
+            reminderRepository,
+            clockProvider = { 10L * 86_400_000L },
+            zoneIdProvider = { java.time.ZoneId.of("UTC") },
+        )
 
-        useCase(reminderId)
+        useCase(reminderId, 60_000L)
 
         val updated = reminderRepository.getReminderById(reminderId)
         assertTrue(updated != null)
-        assertTrue(updated.nextDueAt > System.currentTimeMillis())
-        assertTrue(updated.lastConfirmedAt != null)
+        assertEquals(60_000L + 86_400_000L, updated.nextDueAt)
+        assertNull(updated.lastConfirmedAt)
     }
 
     @Test

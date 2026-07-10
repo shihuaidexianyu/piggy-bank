@@ -5,21 +5,29 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
+import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.usecase.ConfirmReminderUseCase
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.UndoSkipReminderUseCase
+import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 data class ReminderUiModel(
     val id: Long,
@@ -36,6 +44,12 @@ data class ReminderUiModel(
     val nextDueAt: Long,
 )
 
+data class ReminderListProjection(
+    val due: List<ReminderUiModel>,
+    val upcoming: List<ReminderUiModel>,
+    val paused: List<ReminderUiModel>,
+)
+
 data class BalanceReminderUiModel(
     val accountId: Long,
     val name: String,
@@ -46,17 +60,30 @@ data class BalanceReminderUiModel(
 data class ReminderListUiState(
     val isLoading: Boolean = true,
     val balanceReminders: List<BalanceReminderUiModel> = emptyList(),
-    val reminders: List<ReminderUiModel> = emptyList(),
+    val dueReminders: List<ReminderUiModel> = emptyList(),
+    val upcomingReminders: List<ReminderUiModel> = emptyList(),
+    val pausedReminders: List<ReminderUiModel> = emptyList(),
 )
+
+sealed interface ReminderListEffect {
+    data class Skipped(val token: ReminderSkipUndoToken) : ReminderListEffect
+    data class ShowMessage(override val message: String) : ReminderListEffect, UiEffect.HasMessage
+}
 
 class ReminderListViewModel(
     private val reminderRepository: RecurringReminderRepository,
     private val deleteReminderUseCase: DeleteReminderUseCase,
-    private val confirmReminderUseCase: ConfirmReminderUseCase,
+    private val skipReminderUseCase: SkipReminderUseCase,
+    private val undoSkipReminderUseCase: UndoSkipReminderUseCase,
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReminderListUiState())
     val uiState: StateFlow<ReminderListUiState> = _uiState.asStateFlow()
+
+    private val effects = MutableSharedFlow<ReminderListEffect>(extraBufferCapacity = 1)
+    val effectFlow = effects.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -65,6 +92,12 @@ class ReminderListViewModel(
                 observeHomeDashboardUseCase(),
             ) { reminders, snapshot -> reminders to snapshot }
                 .collect { (reminders, snapshot) ->
+                    val projection = partitionReminderModels(
+                        reminders = reminders,
+                        settings = snapshot.settings,
+                        nowMillis = clockProvider.nowMillis(),
+                        zoneId = zoneIdProvider.zoneId(),
+                    )
                     _uiState.value = ReminderListUiState(
                         isLoading = false,
                         balanceReminders = snapshot.staleAccounts.map { account ->
@@ -80,46 +113,79 @@ class ReminderListViewModel(
                                 } ?: "尚未核对",
                             )
                         },
-                        reminders = reminders.map { it.toUiModel(snapshot.settings) },
+                        dueReminders = projection.due,
+                        upcomingReminders = projection.upcoming,
+                        pausedReminders = projection.paused,
                     )
                 }
         }
     }
 
     fun deleteReminder(id: Long) {
+        viewModelScope.launch { deleteReminderUseCase(id) }
+    }
+
+    fun skipReminder(id: Long, expectedDueAt: Long) {
         viewModelScope.launch {
-            deleteReminderUseCase(id)
+            runCatching { skipReminderUseCase(id, expectedDueAt) }
+                .onSuccess { effects.emit(ReminderListEffect.Skipped(it)) }
+                .onFailure { effects.emit(ReminderListEffect.ShowMessage(it.message ?: "跳过失败，请刷新后重试")) }
         }
     }
 
-    fun confirmReminder(id: Long) {
+    fun undoSkip(token: ReminderSkipUndoToken) {
         viewModelScope.launch {
-            confirmReminderUseCase(id)
+            when (undoSkipReminderUseCase(token)) {
+                UndoReminderSkipResult.RESTORED -> Unit
+                UndoReminderSkipResult.STALE -> effects.emit(
+                    ReminderListEffect.ShowMessage("提醒已发生变化，无法撤销"),
+                )
+                UndoReminderSkipResult.NOT_FOUND -> effects.emit(
+                    ReminderListEffect.ShowMessage("提醒已删除，无法撤销"),
+                )
+            }
         }
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
+private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
 
-internal fun RecurringReminder.toUiModel(settings: PortableSettings): ReminderUiModel {
-    val periodType = ReminderPeriodType.fromValue(this.periodType)
-    val periodDesc = when (periodType) {
+internal fun partitionReminderModels(
+    reminders: List<RecurringReminder>,
+    settings: PortableSettings,
+    nowMillis: Long,
+    zoneId: ZoneId,
+): ReminderListProjection {
+    val models = reminders
+        .sortedWith(compareBy<RecurringReminder> { it.nextDueAt }.thenBy { it.id })
+        .map { it.toUiModel(settings, nowMillis, zoneId) }
+    return ReminderListProjection(
+        due = models.filter { it.isEnabled && it.isOverdue },
+        upcoming = models.filter { it.isEnabled && !it.isOverdue },
+        paused = models.filterNot { it.isEnabled },
+    )
+}
+
+internal fun RecurringReminder.toUiModel(
+    settings: PortableSettings,
+    nowMillis: Long,
+    zoneId: ZoneId,
+): ReminderUiModel {
+    val periodDescription = when (ReminderPeriodType.fromValue(periodType)) {
         ReminderPeriodType.MONTHLY -> "每月${periodValue}日"
         ReminderPeriodType.YEARLY -> "每年${periodMonth ?: 1}月${periodValue}日"
         ReminderPeriodType.CUSTOM_DAYS -> "每${periodValue}天"
     }
-    val nextDate = Instant.ofEpochMilli(nextDueAt)
-        .atZone(ZoneId.systemDefault())
-        .toLocalDate()
+    val nextDue = Instant.ofEpochMilli(nextDueAt).atZone(zoneId)
     return ReminderUiModel(
         id = id,
         name = name,
         type = ReminderType.fromValue(type),
         amountFormatted = AmountFormatter.format(amount, settings),
-        periodDescription = periodDesc,
-        nextDueFormatted = nextDate.format(dateFormatter),
+        periodDescription = periodDescription,
+        nextDueFormatted = nextDue.format(dateFormatter),
         isEnabled = isEnabled,
-        isOverdue = isEnabled && nextDueAt <= System.currentTimeMillis(),
+        isOverdue = isEnabled && nextDueAt <= nowMillis,
         accountId = accountId,
         direction = direction,
         amount = amount,
