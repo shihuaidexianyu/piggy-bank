@@ -15,8 +15,8 @@ import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
 import com.shihuaidexianyu.money.domain.model.SAVINGS_GOAL_ID
 import com.shihuaidexianyu.money.domain.time.MutationTimestampOverflowException
 import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
+import com.shihuaidexianyu.money.domain.model.backup.BackupPortableSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
-import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import kotlinx.coroutines.Dispatchers
@@ -93,7 +93,7 @@ class SavingsGoalRoomContractTest {
     }
 
     @Test
-    fun legacyV3Import_keepsSmallestGoalIdAndPersistsSingletonId() = runBlocking {
+    fun v4Import_persistsSingletonGoalWithFixedId() = runBlocking {
         val backupRepository = BackupRepositoryImpl(
             database = database,
             portableSettingsRepository = InMemoryPortableSettingsRepository(),
@@ -101,9 +101,11 @@ class SavingsGoalRoomContractTest {
         )
         backupRepository.replaceAll(
             emptySnapshot().copy(
-                savingsGoals = listOf(
-                    BackupSavingsGoal(id = 9L, targetAmount = 900L, createdAt = 9L),
-                    BackupSavingsGoal(id = 2L, targetAmount = 200L, createdAt = 2L),
+                savingsGoal = BackupSavingsGoal(
+                    id = SAVINGS_GOAL_ID,
+                    targetAmount = 200L,
+                    createdAt = 2L,
+                    updatedAt = 2L,
                 ),
             ),
         )
@@ -141,20 +143,10 @@ class SavingsGoalRoomContractTest {
             databaseVersion = 14,
             exportedAt = 1L,
         ),
-        settings = BackupSettings(
-            homePeriod = "month",
+        portableSettings = BackupPortableSettings(
             currencySymbol = "¥",
-            showStaleMark = true,
-            themeMode = "system",
             amountColorMode = "red_income_green_expense",
-            lastHistoryKeyword = "",
-            lastHistoryExcludeKeyword = "",
-            lastHistoryAccountId = -1L,
-            lastHistoryDateStartAt = -1L,
-            lastHistoryDateEndAt = -1L,
-            lastHistoryMinAmountText = "",
-            lastHistoryMaxAmountText = "",
-            lastHistoryAmountDirection = "all",
+            monthlyBudgetAmount = null,
         ),
         accounts = emptyList(),
         cashFlowRecords = emptyList(),
@@ -163,6 +155,6 @@ class SavingsGoalRoomContractTest {
         balanceAdjustmentRecords = emptyList(),
         recurringReminders = emptyList(),
         accountReminderConfigs = emptyList(),
-        savingsGoals = emptyList(),
+        savingsGoal = null,
     )
 }

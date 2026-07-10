@@ -1,0 +1,17 @@
+{
+  "metadata":{"schemaVersion":1,"databaseVersion":9,"exportedAt":1700000000001},
+  "settings":{"homePeriod":"month","currencySymbol":"¥","showStaleMark":true,"themeMode":"dark","amountColorMode":"red_income_green_expense","lastHistoryKeyword":"不得迁移的设备筛选","lastHistoryAccountId":1,"lastHistoryDateStartAt":-1,"lastHistoryDateEndAt":-1,"lastHistoryMinAmountText":"","lastHistoryMaxAmountText":"","lastHistoryAmountDirection":""},
+  "accounts":[
+    {"id":1,"name":"旧账户","initialBalance":-100,"createdAt":100,"archivedAt":900,"isArchived":true,"lastUsedAt":500,"lastBalanceUpdateAt":700,"displayOrder":0,"colorName":"blue","iconName":"wallet"},
+    {"id":2,"name":"开放账户","initialBalance":200,"createdAt":100,"archivedAt":null,"isArchived":false,"lastUsedAt":500,"lastBalanceUpdateAt":null,"displayOrder":1,"colorName":"green","iconName":"bank"}
+  ],
+  "cashFlowRecords":[{"id":10,"accountId":1,"direction":"inflow","amount":25,"purpose":"一段很长的旧用途备注","occurredAt":500,"createdAt":500,"updatedAt":600,"isDeleted":true}],
+  "transferRecords":[{"id":20,"fromAccountId":1,"toAccountId":2,"amount":20,"note":"旧转账","occurredAt":550,"createdAt":550,"updatedAt":550,"isDeleted":false}],
+  "balanceUpdateRecords":[{"id":30,"accountId":1,"actualBalance":150,"systemBalanceBeforeUpdate":100,"delta":50,"occurredAt":700,"createdAt":700}],
+  "balanceAdjustmentRecords":[
+    {"id":40,"accountId":1,"delta":99,"occurredAt":750,"createdAt":750,"sourceUpdateRecordId":30},
+    {"id":41,"accountId":1,"delta":-5,"occurredAt":1000,"createdAt":1000,"sourceUpdateRecordId":0}
+  ],
+  "recurringReminders":[{"id":50,"name":"房租","type":"manual","accountId":2,"direction":"outflow","amount":1000,"periodType":"monthly","periodValue":1,"periodMonth":null,"isEnabled":true,"nextDueAt":2000,"lastConfirmedAt":null,"createdAt":100,"updatedAt":100}],
+  "accountReminderConfigs":[{"accountId":1,"config":{"period":"weekly","weekday":"friday","monthDay":1,"hour":22,"minute":0}}]
+}

@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.di
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
+import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
@@ -21,7 +22,6 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
-import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
@@ -297,6 +297,7 @@ internal class UseCaseGraph(
         portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
         databaseVersion = MONEY_DATABASE_VERSION,
+        clockProvider = SystemClockProvider,
     )
 
     val buildExportJsonUseCase = BuildExportJsonUseCase(
@@ -304,10 +305,22 @@ internal class UseCaseGraph(
         backupJsonEncoder = BackupJsonCodec,
     )
 
-    val validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase()
+    val validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase(SystemClockProvider)
 
-    val importBackupUseCase = ImportBackupUseCase(
+    val backupImportCoordinator = BackupImportCoordinator(
+        stagedStore = data.stagedBackupStore,
+        safetyStore = data.safetySnapshotStore,
+        receiptStore = data.importReceiptStore,
+        currentSnapshotSource = { exportedAt -> buildExportSnapshotUseCase(exportedAt) },
         backupRepository = data.backupRepository,
-        validateBackupSnapshotUseCase = validateBackupSnapshotUseCase,
+        validator = validateBackupSnapshotUseCase,
+        clockProvider = SystemClockProvider,
     )
+
+    init {
+        data.startupMigrationCoordinator.installBeforeReadyStep {
+            backupImportCoordinator.cleanupExpiredStages()
+            backupImportCoordinator.recoverPendingReceipts()
+        }
+    }
 }

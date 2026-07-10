@@ -144,6 +144,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
+            onRollbackImport = viewModel::rollbackImport,
         )
     }
 

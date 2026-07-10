@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.di.SystemClockProvider
 import com.shihuaidexianyu.money.ui.settings.SettingsViewModel
 
 internal inline fun <reified VM : ViewModel> moneyViewModelFactory(
@@ -42,9 +43,8 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
                 buildExportJsonUseCase = container.buildExportJsonUseCase,
                 exportJsonFileWriter = container.exportJsonFileWriter,
                 backupFileReader = container.backupFileReader,
-                preImportBackupWriter = container.preImportBackupWriter,
-                importBackupUseCase = container.importBackupUseCase,
-                validateBackupSnapshotUseCase = container.validateBackupSnapshotUseCase,
+                backupImportCoordinator = container.backupImportCoordinator,
+                clockProvider = SystemClockProvider,
             )
         },
     )

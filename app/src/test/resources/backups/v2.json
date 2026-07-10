@@ -1,0 +1,9 @@
+{
+  "metadata":{"schemaVersion":2,"databaseVersion":10,"exportedAt":1700000000002},
+  "settings":{"homePeriod":"week","currencySymbol":"$","showStaleMark":false,"themeMode":"light","amountColorMode":"green_income_red_expense","lastHistoryKeyword":"local-only","lastHistoryAccountId":-1,"lastHistoryDateStartAt":-1,"lastHistoryDateEndAt":-1,"lastHistoryMinAmountText":"","lastHistoryMaxAmountText":"","lastHistoryAmountDirection":""},
+  "accounts":[{"id":1,"name":"现金","initialBalance":0,"createdAt":100,"archivedAt":null,"isArchived":false,"lastUsedAt":null,"lastBalanceUpdateAt":null,"displayOrder":0,"colorName":"blue","iconName":"wallet"}],
+  "cashFlowRecords":[],"transferRecords":[],"balanceUpdateRecords":[],
+  "balanceAdjustmentRecords":[{"id":1,"accountId":1,"delta":-10,"occurredAt":200,"createdAt":200}],
+  "recurringReminders":[],
+  "accountReminderConfigs":[{"accountId":1,"config":{"period":"monthly","weekday":"monday","monthDay":15,"hour":8,"minute":30}}]
+}

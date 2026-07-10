@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.shihuaidexianyu.money.data.backup.BackupFileReader
 import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
-import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
+import com.shihuaidexianyu.money.data.backup.ImportReceiptStore
+import com.shihuaidexianyu.money.data.backup.SafetySnapshotStore
+import com.shihuaidexianyu.money.data.backup.StagedBackupStore
 import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
@@ -84,11 +86,15 @@ internal class DataGraph(context: Context) {
             accountReminderSettingsRepository = accountReminderSettingsRepository,
         )
 
-    val exportJsonFileWriter = ExportJsonFileWriter(appContext)
+    val exportJsonFileWriter = ExportJsonFileWriter(appContext, SystemZoneIdProvider)
 
-    val backupFileReader = BackupFileReader(appContext)
+    val stagedBackupStore = StagedBackupStore(appContext.cacheDir)
 
-    val preImportBackupWriter = PreImportBackupWriter(appContext)
+    val safetySnapshotStore = SafetySnapshotStore(appContext.filesDir)
+
+    val importReceiptStore = ImportReceiptStore(appContext.filesDir)
+
+    val backupFileReader = BackupFileReader(appContext, stagedBackupStore)
 
     suspend fun seedDebugSampleDataIfNeeded() {
         startupMigrationCoordinator.withReadyLedgerAccess { true } ?: return

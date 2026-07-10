@@ -1,0 +1,10 @@
+{
+  "metadata":{"schemaVersion":3,"databaseVersion":13,"exportedAt":1700000000003},
+  "settings":{"homePeriod":"month","currencySymbol":"€","showStaleMark":true,"themeMode":"system","amountColorMode":"red_income_green_expense","lastHistoryKeyword":"secret-local-filter","lastHistoryExcludeKeyword":"x","lastHistoryAccountId":-1,"lastHistoryDateStartAt":-1,"lastHistoryDateEndAt":-1,"lastHistoryMinAmountText":"","lastHistoryMaxAmountText":"","lastHistoryAmountDirection":""},
+  "accounts":[{"id":1,"name":"卡","initialBalance":100,"createdAt":100,"archivedAt":150,"isArchived":true,"lastUsedAt":300,"lastBalanceUpdateAt":null,"displayOrder":0,"colorName":"blue","iconName":"bank"}],
+  "cashFlowRecords":[{"id":1,"accountId":1,"direction":"outflow","amount":10,"purpose":"保留 purpose 原文","occurredAt":300,"createdAt":300,"updatedAt":400,"isDeleted":true}],
+  "transferRecords":[],"balanceUpdateRecords":[],"balanceAdjustmentRecords":[],
+  "recurringReminders":[{"id":1,"name":"会员","type":"subscription","accountId":1,"direction":"outflow","amount":20,"periodType":"yearly","periodValue":1,"periodMonth":6,"isEnabled":false,"nextDueAt":2000,"lastConfirmedAt":1000,"createdAt":100,"updatedAt":1000}],
+  "accountReminderConfigs":[{"accountId":1,"config":{"period":"weekly","weekday":"sunday","monthDay":1,"hour":9,"minute":5}}],
+  "savingsGoals":[{"id":9,"targetAmount":9000,"createdAt":900},{"id":2,"targetAmount":2000,"createdAt":200}]
+}

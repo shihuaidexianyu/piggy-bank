@@ -34,13 +34,15 @@ import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 import kotlinx.coroutines.flow.SharedFlow
 
 private sealed interface SettingsDialog {
+    data object ExportWarning : SettingsDialog
     data object ThemeMode : SettingsDialog
     data object AmountColorMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
     data class ImportConfirm(
         val preview: BackupValidationResult,
-        val uri: Uri,
+        val stageId: String,
     ) : SettingsDialog
+    data class ImportSuccess(val receiptId: String) : SettingsDialog
 }
 
 @Composable
@@ -55,7 +57,8 @@ fun SettingsScreen(
     onCreateSavingsGoal: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
-    onConfirmImport: (Uri) -> Unit,
+    onConfirmImport: (String) -> Unit,
+    onRollbackImport: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = state.portableSettings
@@ -87,29 +90,35 @@ fun SettingsScreen(
             is SettingsEffect.ImportPreviewReady -> {
                 dialog = SettingsDialog.ImportConfirm(
                     preview = effect.preview,
-                    uri = effect.uri,
+                    stageId = effect.stageId,
                 )
             }
 
-            is SettingsEffect.PreImportBackupReady -> {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = effect.mimeType
-                    putExtra(Intent.EXTRA_STREAM, effect.uri)
-                    putExtra(Intent.EXTRA_TITLE, effect.fileName)
-                    putExtra(Intent.EXTRA_SUBJECT, effect.fileName)
-                    clipData = ClipData.newUri(context.contentResolver, effect.fileName, effect.uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(shareIntent, "导入前备份"))
+            is SettingsEffect.ImportFinished -> {
+                dialog = SettingsDialog.ImportSuccess(effect.receipt.id)
             }
 
-            SettingsEffect.ImportFinished -> Unit
+            is SettingsEffect.RollbackFinished -> Unit
             is SettingsEffect.ShowMessage -> Unit
         }
     }
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
+            SettingsDialog.ExportWarning -> {
+                MoneyConfirmDialog(
+                    title = "导出明文备份",
+                    message = "将生成未加密 JSON，仅保存到可信位置。",
+                    onConfirm = {
+                        onExportData()
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                    confirmLabel = "继续导出",
+                    dismissLabel = "取消",
+                )
+            }
+
             SettingsDialog.ThemeMode -> {
                 MoneyChoiceDialog(
                     title = "主题模式",
@@ -157,12 +166,26 @@ fun SettingsScreen(
                     title = "覆盖导入数据",
                     message = currentDialog.preview.confirmMessage(),
                     onConfirm = {
-                        onConfirmImport(currentDialog.uri)
+                        onConfirmImport(currentDialog.stageId)
                         dialog = null
                     },
                     onDismiss = { dialog = null },
                     confirmLabel = "确认导入",
                     dismissLabel = "取消",
+                )
+            }
+
+            is SettingsDialog.ImportSuccess -> {
+                MoneyConfirmDialog(
+                    title = "导入完成",
+                    message = "已保存导入前安全快照。若结果不符合预期，可立即撤销本次导入。",
+                    onConfirm = {
+                        onRollbackImport(currentDialog.receiptId)
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                    confirmLabel = "撤销本次导入",
+                    dismissLabel = "完成",
                 )
             }
         }
@@ -219,13 +242,25 @@ fun SettingsScreen(
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "导出数据",
-                    subtitle = "生成 JSON 文件并分享",
+                    subtitle = "未加密 JSON，仅保存到可信位置",
                     trailing = if (state.isExporting) "导出中" else "JSON",
                     modifier = Modifier.clickable(
                         enabled = !state.isExporting && !state.isImporting,
-                        onClick = onExportData,
+                        onClick = { dialog = SettingsDialog.ExportWarning },
                     ),
                 )
+                state.importHistory.firstOrNull()?.let { receipt ->
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "撤销最近一次导入",
+                        subtitle = "使用已验证的导入前安全快照恢复",
+                        trailing = "撤销",
+                        modifier = Modifier.clickable(
+                            enabled = !state.isImporting && !state.isExporting,
+                            onClick = { onRollbackImport(receipt.id) },
+                        ),
+                    )
+                }
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "导入数据",
@@ -264,7 +299,7 @@ fun SettingsScreen(
 
 private fun BackupValidationResult.confirmMessage(): String {
     return """
-        将使用所选 JSON 备份覆盖当前所有账户、流水、余额记录、提醒和设置。
+        将使用所选 JSON 备份覆盖当前所有账户、流水、余额记录、提醒和可迁移设置。主题、生物识别和金额遮罩等本机设置不会改变。
 
         导入前会自动生成一份当前数据备份。
 

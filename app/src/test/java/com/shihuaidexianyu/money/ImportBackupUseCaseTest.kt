@@ -1,231 +1,211 @@
 package com.shihuaidexianyu.money
 
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
-import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
-import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
-import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
-import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
-import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
-import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
-import com.shihuaidexianyu.money.domain.repository.BackupRepository
-import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
+import com.shihuaidexianyu.money.domain.usecase.MAX_BACKUP_LEDGER_RECORDS
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
-import kotlinx.coroutines.runBlocking
+import kotlin.test.assertTrue
 import org.junit.Test
 
-class ImportBackupUseCaseTest {
+class ValidateBackupSnapshotUseCaseTest {
+    private val validator = ValidateBackupSnapshotUseCase { 2_000_000_000_000L }
+
     @Test
-    fun `valid snapshot is validated before replace`() = runBlocking {
-        val repository = FakeBackupRepository()
+    fun `valid snapshot returns complete counts`() {
         val snapshot = validSnapshot()
-        val useCase = ImportBackupUseCase(
-            backupRepository = repository,
-            validateBackupSnapshotUseCase = ValidateBackupSnapshotUseCase(),
-        )
 
-        val result = useCase(snapshot)
+        val result = validator(snapshot)
 
-        assertEquals(snapshot, repository.replacedSnapshot)
-        assertEquals(1, result.accountCount)
         assertEquals(1, result.cashFlowCount)
         assertEquals(1, result.transferCount)
         assertEquals(1, result.balanceUpdateCount)
         assertEquals(1, result.balanceAdjustmentCount)
-        assertEquals(1, result.reminderCount)
-        assertEquals(42L, result.exportedAt)
+        assertEquals(1, result.savingsGoalCount)
     }
 
     @Test
-    fun `invalid reference fails without replacing data`() = runBlocking {
-        val repository = FakeBackupRepository()
-        val useCase = ImportBackupUseCase(repository, ValidateBackupSnapshotUseCase())
-        val invalid = validSnapshot().copy(
+    fun `invalid FK and self transfer are rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            validator(validSnapshot().copy(cashFlowRecords = validSnapshot().cashFlowRecords.map { it.copy(accountId = 99L) }))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            validator(validSnapshot().copy(transferRecords = validSnapshot().transferRecords.map { it.copy(toAccountId = it.fromAccountId) }))
+        }
+    }
+
+    @Test
+    fun `duplicate ids and operation ids are rejected with paths`() {
+        val valid = validSnapshot()
+        assertFailureContains("accounts.id") {
+            validator(valid.copy(accounts = valid.accounts + valid.accounts.first()))
+        }
+        assertFailureContains("cashFlowRecords.operationId") {
+            validator(
+                valid.copy(cashFlowRecords = valid.cashFlowRecords + valid.cashFlowRecords.single().copy(id = 99L)),
+            )
+        }
+    }
+
+    @Test
+    fun `invalid amount schedule lifecycle and reconciliation evidence are rejected`() {
+        val valid = validSnapshot()
+        assertFailureContains("amount") {
+            validator(valid.copy(cashFlowRecords = valid.cashFlowRecords.map { it.copy(amount = 0L) }))
+        }
+        assertFailureContains("间隔天数") {
+            validator(
+                valid.copy(recurringReminders = valid.recurringReminders.map { it.copy(periodValue = 0) }),
+            )
+        }
+        assertFailureContains("晚于账户关闭时间") {
+            validator(
+                valid.copy(
+                    accounts = valid.accounts.map {
+                        if (it.id == 1L) {
+                            it.copy(closedAt = 450L, lastUsedAt = null, lastBalanceUpdateAt = null)
+                        } else {
+                            it
+                        }
+                    },
+                    recurringReminders = valid.recurringReminders.map { it.copy(isEnabled = false) },
+                ),
+            )
+        }
+        assertFailureContains("核对证据") {
+            validator(
+                valid.copy(balanceUpdateRecords = valid.balanceUpdateRecords.map { it.copy(delta = 49L) }),
+            )
+        }
+    }
+
+    @Test
+    fun `aggregate overflow and record limit are rejected before write`() {
+        val valid = validSnapshot()
+        assertFailureContains("算术溢出") {
+            validator(
+                valid.copy(accounts = valid.accounts.map { if (it.id == 1L) it.copy(initialBalance = Long.MAX_VALUE) else it }),
+            )
+        }
+        assertFailureContains("数量超过") {
+            validator(
+                valid.copy(cashFlowRecords = List(MAX_BACKUP_LEDGER_RECORDS + 1) { valid.cashFlowRecords.single() }),
+            )
+        }
+    }
+
+    @Test
+    fun `historical prefix overflow is rejected in occurred time order`() {
+        val valid = validSnapshot()
+        val overflow = valid.copy(
+            accounts = valid.accounts.map { if (it.id == 1L) it.copy(initialBalance = 0L) else it },
             cashFlowRecords = listOf(
-                validSnapshot().cashFlowRecords.single().copy(accountId = 99L),
+                BackupCashFlowRecord(
+                    id = 10L,
+                    accountId = 1L,
+                    direction = "inflow",
+                    amount = Long.MAX_VALUE,
+                    note = "",
+                    occurredAt = 200L,
+                    createdAt = 200L,
+                    updatedAt = 200L,
+                    operationId = "cash:overflow:in",
+                ),
+                BackupCashFlowRecord(
+                    id = 11L,
+                    accountId = 1L,
+                    direction = "outflow",
+                    amount = Long.MAX_VALUE,
+                    note = "",
+                    occurredAt = 400L,
+                    createdAt = 400L,
+                    updatedAt = 400L,
+                    operationId = "cash:overflow:out",
+                ),
+            ),
+            transferRecords = emptyList(),
+            balanceUpdateRecords = emptyList(),
+            balanceAdjustmentRecords = listOf(
+                BackupBalanceAdjustmentRecord(
+                    id = 12L,
+                    accountId = 1L,
+                    delta = 1L,
+                    occurredAt = 300L,
+                    createdAt = 300L,
+                    updatedAt = 300L,
+                    operationId = "adjustment:overflow",
+                ),
             ),
         )
 
-        assertFailsWith<IllegalArgumentException> {
-            useCase(invalid)
-        }
-
-        assertNull(repository.replacedSnapshot)
+        assertFailureContains("算术溢出") { validator(overflow) }
     }
 
     @Test
-    fun `duplicate account ids are rejected`() {
-        val snapshot = validSnapshot()
-        val invalid = snapshot.copy(accounts = snapshot.accounts + snapshot.accounts.single())
-
-        assertFailsWith<IllegalArgumentException> {
-            ValidateBackupSnapshotUseCase()(invalid)
+    fun `invalid metadata account order and visual enums are rejected`() {
+        val valid = validSnapshot()
+        assertFailureContains("databaseVersion") {
+            validator(valid.copy(metadata = valid.metadata.copy(databaseVersion = 0)))
         }
-    }
-
-    @Test
-    fun `unknown enums and negative amounts are rejected`() {
-        assertFailsWith<IllegalArgumentException> {
-            ValidateBackupSnapshotUseCase()(
-                validSnapshot().copy(
-                    recurringReminders = listOf(validSnapshot().recurringReminders.single().copy(periodType = "weekly")),
-                ),
-            )
+        assertFailureContains("displayOrder") {
+            validator(valid.copy(accounts = valid.accounts.map { it.copy(displayOrder = -1) }))
         }
-        assertFailsWith<IllegalArgumentException> {
-            ValidateBackupSnapshotUseCase()(
-                validSnapshot().copy(
-                    transferRecords = listOf(validSnapshot().transferRecords.single().copy(amount = -1L)),
-                ),
-            )
-        }
-        assertFailsWith<IllegalArgumentException> {
-            ValidateBackupSnapshotUseCase()(
-                validSnapshot().copy(
-                    accountReminderConfigs = listOf(
-                        validSnapshot().accountReminderConfigs.single().copy(
-                            config = validSnapshot().accountReminderConfigs.single().config.copy(period = "yearly"),
-                        ),
-                    ),
-                ),
-            )
-        }
-        assertFailsWith<IllegalArgumentException> {
-            ValidateBackupSnapshotUseCase()(
-                validSnapshot().copy(
-                    accounts = listOf(validSnapshot().accounts.single().copy(iconName = "custom")),
-                ),
-            )
-        }
-    }
-
-    private class FakeBackupRepository : BackupRepository {
-        var replacedSnapshot: MoneyBackupSnapshot? = null
-
-        override suspend fun replaceAll(snapshot: MoneyBackupSnapshot) {
-            replacedSnapshot = snapshot
+        assertFailureContains("colorName") {
+            validator(valid.copy(accounts = valid.accounts.map { it.copy(colorName = "unknown") }))
         }
     }
 
     private fun validSnapshot(): MoneyBackupSnapshot {
-        return MoneyBackupSnapshot(
-            metadata = BackupMetadata(
-                schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
-                databaseVersion = 7,
-                exportedAt = 42L,
-            ),
-            settings = BackupSettings(
-                homePeriod = "week",
-                currencySymbol = "¥",
-                showStaleMark = true,
-                themeMode = "system",
-                amountColorMode = "red_income_green_expense",
-                lastHistoryKeyword = "",
-                lastHistoryAccountId = -1L,
-                lastHistoryDateStartAt = -1L,
-                lastHistoryDateEndAt = -1L,
-                lastHistoryMinAmountText = "",
-                lastHistoryMaxAmountText = "",
-                lastHistoryAmountDirection = "all",
-            ),
-            accounts = listOf(
-                BackupAccount(
-                    id = 1L,
-                    name = "现金",
-                    initialBalance = 10_000L,
-                    createdAt = 1L,
-                    archivedAt = null,
-                    isArchived = false,
-                    lastUsedAt = null,
-                    lastBalanceUpdateAt = null,
-                    displayOrder = 0,
-                    colorName = "blue",
-                    iconName = "wallet",
-                ),
-            ),
-            cashFlowRecords = listOf(
-                BackupCashFlowRecord(
-                    id = 1L,
-                    accountId = 1L,
-                    direction = "outflow",
-                    amount = 100L,
-                    purpose = "早餐",
-                    occurredAt = 2L,
-                    createdAt = 2L,
-                    updatedAt = 2L,
-                    isDeleted = false,
+        val base = BackupJsonCodec.decode(requireNotNull(javaClass.getResource("/backups/v4.json")).readText())
+        val secondAccount = BackupAccount(
+            id = 2L,
+            name = "银行卡",
+            initialBalance = 0L,
+            createdAt = 100L,
+            lastUsedAt = null,
+            lastBalanceUpdateAt = null,
+            displayOrder = 1,
+            colorName = "green",
+        )
+        return base.copy(
+            metadata = base.metadata.copy(exportedAt = 1_700_000_000_004L),
+            accounts = base.accounts + secondAccount,
+            accountReminderConfigs = base.accountReminderConfigs + BackupAccountReminderConfig(
+                accountId = 2L,
+                config = BackupBalanceUpdateReminderConfig(
+                    period = "weekly",
+                    weekday = "friday",
+                    monthDay = 1,
+                    hour = 22,
+                    minute = 0,
+                    isEnabled = true,
                 ),
             ),
             transferRecords = listOf(
                 BackupTransferRecord(
                     id = 1L,
                     fromAccountId = 1L,
-                    toAccountId = 1L,
-                    amount = 50L,
-                    note = "内部校正",
-                    occurredAt = 3L,
-                    createdAt = 3L,
-                    updatedAt = 3L,
-                    isDeleted = false,
-                ),
-            ),
-            balanceUpdateRecords = listOf(
-                BackupBalanceUpdateRecord(
-                    id = 1L,
-                    accountId = 1L,
-                    actualBalance = 9_900L,
-                    systemBalanceBeforeUpdate = 9_950L,
-                    delta = -50L,
-                    occurredAt = 4L,
-                    createdAt = 4L,
-                ),
-            ),
-            balanceAdjustmentRecords = listOf(
-                BackupBalanceAdjustmentRecord(
-                    id = 1L,
-                    accountId = 1L,
-                    delta = 20L,
-                    occurredAt = 5L,
-                    createdAt = 5L,
-                ),
-            ),
-            recurringReminders = listOf(
-                BackupRecurringReminder(
-                    id = 1L,
-                    name = "订阅",
-                    type = "subscription",
-                    accountId = 1L,
-                    direction = "outflow",
-                    amount = 888L,
-                    periodType = "monthly",
-                    periodValue = 9,
-                    periodMonth = null,
-                    isEnabled = true,
-                    nextDueAt = 6L,
-                    lastConfirmedAt = null,
-                    createdAt = 6L,
-                    updatedAt = 6L,
-                ),
-            ),
-            accountReminderConfigs = listOf(
-                BackupAccountReminderConfig(
-                    accountId = 1L,
-                    config = BackupBalanceUpdateReminderConfig(
-                        period = "monthly",
-                        weekday = "friday",
-                        monthDay = 28,
-                        hour = 22,
-                        minute = 0,
-                    ),
+                    toAccountId = 2L,
+                    amount = 10L,
+                    note = "转账",
+                    occurredAt = 600L,
+                    createdAt = 600L,
+                    updatedAt = 600L,
+                    operationId = "transfer:v4:1",
                 ),
             ),
         )
+    }
+
+    private fun assertFailureContains(expected: String, block: () -> Unit) {
+        val error = assertFailsWith<IllegalArgumentException> { block() }
+        assertTrue(error.message.orEmpty().contains(expected), error.message)
     }
 }

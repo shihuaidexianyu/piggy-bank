@@ -1,0 +1,12 @@
+{
+  "metadata":{"schemaVersion":4,"databaseVersion":14,"exportedAt":1700000000004,"appVersionName":"2.1.0","appVersionCode":101},
+  "portableSettings":{"currencySymbol":"¥","amountColorMode":"red_income_green_expense","monthlyBudgetAmount":500000},
+  "accounts":[{"id":1,"name":"现金","initialBalance":-100,"createdAt":100,"isHidden":true,"closedAt":null,"lastUsedAt":500,"lastBalanceUpdateAt":400,"displayOrder":0,"colorName":"blue","iconName":"wallet"}],
+  "cashFlowRecords":[{"id":1,"accountId":1,"direction":"inflow","amount":50,"note":"原样备注","occurredAt":200,"createdAt":200,"updatedAt":300,"deletedAt":300,"operationId":"cash:v4:1"}],
+  "transferRecords":[],
+  "balanceUpdateRecords":[{"id":2,"accountId":1,"actualBalance":0,"systemBalanceBeforeUpdate":-50,"delta":50,"occurredAt":400,"createdAt":400,"updatedAt":400,"deletedAt":null,"operationId":"balance-update:v4:2"}],
+  "balanceAdjustmentRecords":[{"id":3,"accountId":1,"delta":-1,"occurredAt":500,"createdAt":500,"updatedAt":500,"deletedAt":null,"operationId":"balance-adjustment:v4:3"}],
+  "recurringReminders":[{"id":1,"name":"水费","type":"manual","accountId":1,"direction":"outflow","amount":20,"periodType":"custom_days","periodValue":30,"periodMonth":null,"isEnabled":true,"nextDueAt":2000,"anchorDueAt":1000,"lastConfirmedAt":null,"createdAt":100,"updatedAt":100}],
+  "accountReminderConfigs":[{"accountId":1,"config":{"period":"monthly","weekday":"friday","monthDay":8,"hour":21,"minute":30,"isEnabled":false}}],
+  "savingsGoal":{"id":1,"targetAmount":1000000,"createdAt":100,"updatedAt":200}
+}

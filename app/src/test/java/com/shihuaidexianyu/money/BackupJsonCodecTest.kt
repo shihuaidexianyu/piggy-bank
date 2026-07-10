@@ -1,255 +1,149 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
-import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
-import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
-import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
-import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.RecurringReminder
-import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
-import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
-import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
-import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
-import com.shihuaidexianyu.money.domain.model.backup.BackupSettings
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
-import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
-import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
-import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
+import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
+import java.io.InputStream
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
-import org.json.JSONObject
 import org.junit.Test
 
 class BackupJsonCodecTest {
     @Test
-    fun `backup codec round trips snapshot and ignores unknown fields`() {
-        val snapshot = MoneyBackupSnapshot(
-            metadata = BackupMetadata(
-                schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
-                databaseVersion = 7,
-                exportedAt = Long.MAX_VALUE,
-            ),
-            settings = BackupSettings(
-                homePeriod = "week",
-                currencySymbol = "元\"\\\n",
-                showStaleMark = true,
-                themeMode = "system",
-                amountColorMode = "red_income_green_expense",
-                lastHistoryKeyword = "咖啡",
-                lastHistoryAccountId = -1L,
-                lastHistoryDateStartAt = 0L,
-                lastHistoryDateEndAt = 0L,
-                lastHistoryMinAmountText = "",
-                lastHistoryMaxAmountText = "",
-                lastHistoryAmountDirection = "all",
-            ),
-            accounts = listOf(
-                BackupAccount(
-                    id = 1L,
-                    name = "现金\n账户",
-                    initialBalance = Long.MAX_VALUE,
-                    createdAt = 1L,
-                    archivedAt = null,
-                    isArchived = false,
-                    lastUsedAt = null,
-                    lastBalanceUpdateAt = null,
-                    displayOrder = 0,
-                    colorName = "green",
-                    iconName = "cash",
-                ),
-            ),
-            cashFlowRecords = emptyList(),
-            transferRecords = emptyList(),
-            balanceUpdateRecords = emptyList(),
-            balanceAdjustmentRecords = emptyList(),
-            recurringReminders = emptyList(),
-            accountReminderConfigs = listOf(
-                BackupAccountReminderConfig(
-                    accountId = 1L,
-                    config = BackupBalanceUpdateReminderConfig(
-                        period = "monthly",
-                        weekday = "friday",
-                        monthDay = 28,
-                        hour = 22,
-                        minute = 0,
-                    ),
-                ),
-            ),
-        )
+    fun `v1 fixture migrates sequentially and preserves exact legacy ledger values`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v1.json"))
 
+        assertEquals(MONEY_BACKUP_SCHEMA_VERSION, snapshot.metadata.schemaVersion)
+        assertEquals(-100L, snapshot.accounts.single { it.id == 1L }.initialBalance)
+        assertEquals(1_000L, snapshot.accounts.single { it.id == 1L }.closedAt)
+        assertEquals("一段很长的旧用途备注", snapshot.cashFlowRecords.single().note)
+        assertEquals(600L, snapshot.cashFlowRecords.single().deletedAt)
+        assertEquals("cash:legacy-backup:10", snapshot.cashFlowRecords.single().operationId)
+        assertEquals(listOf(41L), snapshot.balanceAdjustmentRecords.map { it.id })
+        assertEquals(-5L, snapshot.balanceAdjustmentRecords.single().delta)
+        assertEquals("balance-adjustment:legacy-backup:41", snapshot.balanceAdjustmentRecords.single().operationId)
+        assertEquals(snapshot.recurringReminders.single().nextDueAt, snapshot.recurringReminders.single().anchorDueAt)
+        assertFalse(snapshot.accountReminderConfigs.single { it.accountId == 1L }.config.isEnabled)
+        assertNull(snapshot.savingsGoal)
+    }
+
+    @Test
+    fun `v1 migration fills a default reminder config for every account and remains importable`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v1.json"))
+
+        assertEquals(snapshot.accounts.map { it.id }.toSet(), snapshot.accountReminderConfigs.map { it.accountId }.toSet())
+        assertTrue(snapshot.accountReminderConfigs.single { it.accountId == 2L }.config.isEnabled)
+        ValidateBackupSnapshotUseCase { 1_800_000_000_000L }(snapshot)
+    }
+
+    @Test
+    fun `v2 fixture receives deterministic operation metadata`() {
+        val first = BackupJsonCodec.decode(fixture("v2.json"))
+        val second = BackupJsonCodec.decode(fixture("v2.json"))
+
+        assertEquals(first, second)
+        assertEquals("balance-adjustment:legacy-backup:1", first.balanceAdjustmentRecords.single().operationId)
+        assertEquals(200L, first.balanceAdjustmentRecords.single().updatedAt)
+        assertNull(first.balanceAdjustmentRecords.single().deletedAt)
+    }
+
+    @Test
+    fun `v3 fixture discards device fields and reduces smallest goal to singleton`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v3.json"))
         val encoded = BackupJsonCodec.encode(snapshot)
-        val withUnknownField = encoded.dropLast(1) + ",\"unknownTopLevel\":true}"
 
-        assertEquals(snapshot, BackupJsonCodec.decode(withUnknownField))
+        assertEquals("€", snapshot.portableSettings.currencySymbol)
+        assertEquals(1L, snapshot.savingsGoal?.id)
+        assertEquals(2_000L, snapshot.savingsGoal?.targetAmount)
+        assertEquals(200L, snapshot.savingsGoal?.updatedAt)
+        assertEquals(300L, snapshot.accounts.single().closedAt)
+        assertEquals("保留 purpose 原文", snapshot.cashFlowRecords.single().note)
+        assertFalse(encoded.contains("themeMode"))
+        assertFalse(encoded.contains("lastHistoryKeyword"))
+        assertFalse(encoded.contains("\"lastNotified"))
+        assertFalse(encoded.contains("\"isArchived\""))
+        assertFalse(encoded.contains("\"purpose\":"))
     }
 
     @Test
-    fun `backup codec upgrades schema 1 and drops linked adjustment records`() {
-        val raw = """
-            {
-              "metadata":{"schemaVersion":1,"databaseVersion":8,"exportedAt":42},
-              "settings":{
-                "homePeriod":"week",
-                "currencySymbol":"¥",
-                "showStaleMark":true,
-                "themeMode":"system",
-                "amountColorMode":"red_income_green_expense",
-                "lastHistoryKeyword":"",
-                "lastHistoryAccountId":-1,
-                "lastHistoryDateStartAt":-1,
-                "lastHistoryDateEndAt":-1,
-                "lastHistoryMinAmountText":"",
-                "lastHistoryMaxAmountText":"",
-                "lastHistoryAmountDirection":"all"
-              },
-              "accounts":[
-                {
-                  "id":1,
-                  "name":"现金",
-                  "initialBalance":100,
-                  "createdAt":1,
-                  "archivedAt":null,
-                  "isArchived":false,
-                  "lastUsedAt":null,
-                  "lastBalanceUpdateAt":null,
-                  "displayOrder":0,
-                  "colorName":"blue"
-                }
-              ],
-              "cashFlowRecords":[],
-              "transferRecords":[],
-              "balanceUpdateRecords":[],
-              "balanceAdjustmentRecords":[
-                {"id":1,"accountId":1,"delta":10,"sourceUpdateRecordId":5,"occurredAt":2,"createdAt":2},
-                {"id":2,"accountId":1,"delta":20,"sourceUpdateRecordId":0,"occurredAt":3,"createdAt":3}
-              ],
-              "recurringReminders":[],
-              "accountReminderConfigs":[
-                {"accountId":1,"config":{"weekday":"friday","hour":22,"minute":0}}
-              ]
-            }
-        """.trimIndent()
+    fun `v4 fixture round trips all portable fields and ledger metadata`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v4.json"))
 
-        val decoded = BackupJsonCodec.decode(raw)
-
-        assertEquals(MONEY_BACKUP_SCHEMA_VERSION, decoded.metadata.schemaVersion)
-        assertEquals(listOf(2L), decoded.balanceAdjustmentRecords.map { it.id })
-        assertEquals(20L, decoded.balanceAdjustmentRecords.single().delta)
-        assertEquals("wallet", decoded.accounts.single().iconName)
-        assertEquals("weekly", decoded.accountReminderConfigs.single().config.period)
-        assertEquals(1, decoded.accountReminderConfigs.single().config.monthDay)
+        assertEquals(snapshot, BackupJsonCodec.decode(BackupJsonCodec.encode(snapshot)))
+        assertEquals(500_000L, snapshot.portableSettings.monthlyBudgetAmount)
+        assertTrue(snapshot.accounts.single().isHidden)
+        assertEquals("cash:v4:1", snapshot.cashFlowRecords.single().operationId)
+        assertEquals(300L, snapshot.cashFlowRecords.single().deletedAt)
+        assertEquals(50L, snapshot.balanceUpdateRecords.single().delta)
+        assertFalse(snapshot.accountReminderConfigs.single().config.isEnabled)
     }
 
     @Test
-    fun `export json is parseable with empty collections`() = runBlocking {
-        val json = buildUseCase()(exportedAt = 42L)
-        val root = JSONObject(json)
+    fun `all legacy fixtures produce snapshots accepted by the v4 import validator`() {
+        val validator = ValidateBackupSnapshotUseCase { 1_800_000_000_000L }
 
-        assertEquals(3, root.getJSONObject("metadata").getInt("schemaVersion"))
-        assertEquals(42L, root.getJSONObject("metadata").getLong("exportedAt"))
-        assertEquals(0, root.getJSONArray("accounts").length())
-        assertEquals(0, root.getJSONArray("cashFlowRecords").length())
-        assertEquals(0, root.getJSONArray("transferRecords").length())
-        assertEquals(0, root.getJSONArray("balanceUpdateRecords").length())
-        assertEquals(0, root.getJSONArray("balanceAdjustmentRecords").length())
-        assertEquals(0, root.getJSONArray("recurringReminders").length())
-        assertEquals(0, root.getJSONArray("accountReminderConfigs").length())
-        assertEquals(0, root.getJSONArray("savingsGoals").length())
+        listOf("v1.json", "v2.json", "v3.json").forEach { name ->
+            validator(BackupJsonCodec.decode(fixture(name)))
+        }
     }
 
     @Test
-    fun `export json escapes text and preserves nulls and long values`() = runBlocking {
-        val accountRepository = InMemoryAccountRepository()
-        val transactionRepository = InMemoryTransactionRepository()
-        val reminderRepository = InMemoryRecurringReminderRepository()
-        val accountName = "现金\"账户\\A\n第二行"
-        val accountId = accountRepository.createAccount(
-            Account(
-                name = accountName,
-                initialBalance = Long.MAX_VALUE,
-                createdAt = 1L,
-                colorName = "blue",
-            ),
-        )
-        val purpose = "早餐\t包子\\豆浆\""
-        transactionRepository.insertCashFlowRecord(
-            CashFlowRecord(
-                accountId = accountId,
-                direction = CashFlowDirection.OUTFLOW.value,
-                amount = Long.MAX_VALUE,
-                note = purpose,
-                occurredAt = 2L,
-                createdAt = 2L,
-                updatedAt = 2L,
-                operationId = testOperationId(),
-            ),
-        )
-        reminderRepository.insertReminder(
-            RecurringReminder(
-                name = "订阅\n会员",
-                type = ReminderType.SUBSCRIPTION.value,
-                accountId = accountId,
-                direction = CashFlowDirection.OUTFLOW.value,
-                amount = 888L,
-                periodType = ReminderPeriodType.MONTHLY.value,
-                periodValue = 9,
-                periodMonth = null,
-                nextDueAt = 3L,
-                createdAt = 3L,
-                updatedAt = 3L,
-                anchorDueAt = 3L,
-            ),
-        )
+    fun `future schema is rejected instead of being decoded optimistically`() {
+        val future = fixture("v4.json").replace("\"schemaVersion\":4", "\"schemaVersion\":5")
 
-        val json = buildUseCase(
-            accountRepository = accountRepository,
-            transactionRepository = transactionRepository,
-            reminderRepository = reminderRepository,
-            portableSettingsRepository = TestSettingsRepository(
-                PortableSettings(
-                    currencySymbol = "￥\"\\\n",
-                ),
-            ),
-        )(exportedAt = Long.MAX_VALUE)
-        val root = JSONObject(json)
+        val error = assertFailsWith<IllegalArgumentException> { BackupJsonCodec.decode(future) }
 
-        assertEquals(Long.MAX_VALUE, root.getJSONObject("metadata").getLong("exportedAt"))
-        assertEquals("￥\"\\", root.getJSONObject("settings").getString("currencySymbol"))
-        assertEquals("", root.getJSONObject("settings").getString("lastHistoryKeyword"))
-        assertEquals(accountName, root.getJSONArray("accounts").getJSONObject(0).getString("name"))
-        assertEquals(Long.MAX_VALUE, root.getJSONArray("accounts").getJSONObject(0).getLong("initialBalance"))
-        assertEquals(purpose, root.getJSONArray("cashFlowRecords").getJSONObject(0).getString("purpose"))
-        assertEquals(Long.MAX_VALUE, root.getJSONArray("cashFlowRecords").getJSONObject(0).getLong("amount"))
-        assertTrue(root.getJSONArray("recurringReminders").getJSONObject(0).isNull("periodMonth"))
+        assertTrue(error.message.orEmpty().contains("不支持的备份版本"))
     }
 
-    private fun buildUseCase(
-        accountRepository: InMemoryAccountRepository = InMemoryAccountRepository(),
-        transactionRepository: InMemoryTransactionRepository = InMemoryTransactionRepository(),
-        reminderRepository: InMemoryRecurringReminderRepository = InMemoryRecurringReminderRepository(),
-        portableSettingsRepository: TestSettingsRepository = TestSettingsRepository(),
-        reminderSettingsRepository: InMemoryAccountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
-        savingsGoalRepository: InMemorySavingsGoalRepository = InMemorySavingsGoalRepository(),
-    ): BuildExportJsonUseCase {
-        return BuildExportJsonUseCase(
-            buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
-                accountReminderSettingsRepository = reminderSettingsRepository,
-                accountRepository = accountRepository,
-                recurringReminderRepository = reminderRepository,
-                savingsGoalRepository = savingsGoalRepository,
-                portableSettingsRepository = portableSettingsRepository,
-                transactionRepository = transactionRepository,
-                databaseVersion = 10,
-            ),
-            backupJsonEncoder = com.shihuaidexianyu.money.data.backup.BackupJsonCodec,
-        )
+    @Test
+    fun `missing zero and unknown schema versions are rejected`() {
+        val v4 = fixture("v4.json")
+        listOf(
+            v4.replace("\"schemaVersion\":4,", ""),
+            v4.replace("\"schemaVersion\":4", "\"schemaVersion\":0"),
+            v4.replace("\"schemaVersion\":4", "\"schemaVersion\":99"),
+            fixture("v3.json").replace("\"schemaVersion\":3", "\"schemaVersion\":\"3\""),
+        ).forEach { raw ->
+            assertFailsWith<IllegalArgumentException> { BackupJsonCodec.decode(raw) }
+        }
     }
+
+    @Test
+    fun `legacy backups with missing required collections are rejected instead of becoming empty ledgers`() {
+        listOf("v1.json", "v2.json", "v3.json").forEach { name ->
+            val malformed = fixture(name).replace(Regex("\\s*\\\"cashFlowRecords\\\"\\s*:\\s*\\[[^]]*],?"), "")
+
+            assertFailsWith<IllegalArgumentException>(name) { BackupJsonCodec.decode(malformed) }
+        }
+    }
+
+    @Test
+    fun `legacy backups with malformed required scalar fields are rejected`() {
+        val invalidArchived = fixture("v1.json").replace("\"isArchived\":true", "\"isArchived\":\"yes\"")
+        val missingRecordId = fixture("v2.json").replace("{\"id\":1,\"accountId\":1,\"delta\":-10", "{\"accountId\":1,\"delta\":-10")
+
+        assertFailsWith<IllegalArgumentException> { BackupJsonCodec.decode(invalidArchived) }
+        assertFailsWith<IllegalArgumentException> { BackupJsonCodec.decode(missingRecordId) }
+    }
+
+    @Test
+    fun `legacy migration preserves contradictory update time for validator rejection`() {
+        val malformed = fixture("v3.json").replace("\"updatedAt\":400", "\"updatedAt\":200")
+
+        val snapshot = BackupJsonCodec.decode(malformed)
+
+        assertEquals(200L, snapshot.cashFlowRecords.single().updatedAt)
+        assertFailsWith<IllegalArgumentException> {
+            ValidateBackupSnapshotUseCase { 1_800_000_000_000L }(snapshot)
+        }
+    }
+
+    private fun fixture(name: String): String =
+        requireNotNull(resource("/backups/$name")).bufferedReader().use { it.readText() }
+
+    private fun resource(path: String): InputStream? = javaClass.getResourceAsStream(path)
 }

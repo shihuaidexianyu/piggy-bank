@@ -64,6 +64,8 @@ interface StartupMigrationBackend {
 class StartupMigrationCoordinator(
     private val backend: StartupMigrationBackend,
 ) {
+    @Volatile
+    private var beforeReadyStep: suspend () -> Unit = {}
     private val mutableState = MutableStateFlow<StartupMigrationState>(StartupMigrationState.Loading)
     val state: StateFlow<StartupMigrationState> = mutableState.asStateFlow()
     private val mutex = Mutex()
@@ -72,6 +74,11 @@ class StartupMigrationCoordinator(
 
     inline fun <T> withReadyLedgerAccess(block: () -> T): T? =
         if (isReady) block() else null
+
+    fun installBeforeReadyStep(step: suspend () -> Unit) {
+        check(!isReady) { "启动迁移已经完成" }
+        beforeReadyStep = step
+    }
 
     suspend fun runMigration() = mutex.withLock {
         mutableState.value = StartupMigrationState.Loading
@@ -118,8 +125,16 @@ class StartupMigrationCoordinator(
             is StartupStepResult.RecoverableError -> return publish(settings)
         }
         when (val device = safely { backend.migrateDevicePreferences() }) {
-            StartupStepResult.Complete -> mutableState.value = StartupMigrationState.Ready
+            StartupStepResult.Complete -> Unit
             is StartupStepResult.RecoverableError -> publish(device)
+        }
+        if (mutableState.value is StartupMigrationState.RecoverableError) return
+        when (val receipts = safely {
+            beforeReadyStep()
+            StartupStepResult.Complete
+        }) {
+            StartupStepResult.Complete -> mutableState.value = StartupMigrationState.Ready
+            is StartupStepResult.RecoverableError -> publish(receipts)
         }
     }
 

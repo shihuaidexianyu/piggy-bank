@@ -38,16 +38,16 @@ class BuildExportJsonUseCaseTest {
             portableSettingsRepository = TestSettingsRepository(),
             transactionRepository = InMemoryTransactionRepository(),
             databaseVersion = 14,
+            clockProvider = { 99L },
         )
 
-        assertTrue(useCase(1L).savingsGoals.isEmpty())
+        assertEquals(null, useCase(1L).savingsGoal)
         goals.upsert(10_000L, 2L)
         goals.upsert(20_000L, 3L)
-        val exported = useCase(4L).savingsGoals
+        val exported = useCase(4L).savingsGoal
 
-        assertEquals(1, exported.size)
-        assertEquals(1L, exported.single().id)
-        assertEquals(20_000L, exported.single().targetAmount)
+        assertEquals(1L, exported?.id)
+        assertEquals(20_000L, exported?.targetAmount)
     }
 
     @Test
@@ -168,25 +168,26 @@ class BuildExportJsonUseCaseTest {
                 portableSettingsRepository = TestSettingsRepository(PortableSettings(currencySymbol = "元")),
                 transactionRepository = transactionRepository,
                 databaseVersion = 10,
+                clockProvider = { 99L },
             ),
             backupJsonEncoder = BackupJsonCodec,
         )(exportedAt = 42L)
 
         val snapshot = BackupJsonCodec.decode(json)
-        assertEquals(3, snapshot.metadata.schemaVersion)
+        assertEquals(4, snapshot.metadata.schemaVersion)
         assertEquals(10, snapshot.metadata.databaseVersion)
         assertEquals(42L, snapshot.metadata.exportedAt)
-        assertEquals("元", snapshot.settings.currencySymbol)
+        assertEquals("元", snapshot.portableSettings.currencySymbol)
         assertEquals(listOf(accountId, archivedAccountId), snapshot.accounts.map { it.id })
-        assertTrue(snapshot.accounts.first { it.id == archivedAccountId }.isArchived)
+        assertTrue(snapshot.accounts.first { it.id == archivedAccountId }.closedAt != null)
         val account = snapshot.accounts.first { it.id == accountId }
         assertEquals(12_345L, account.initialBalance)
         assertEquals("cash", account.iconName)
         assertEquals(1, snapshot.cashFlowRecords.size)
         assertEquals(123L, snapshot.cashFlowRecords.single().amount)
-        assertTrue(snapshot.cashFlowRecords.single().isDeleted)
+        assertTrue(snapshot.cashFlowRecords.single().deletedAt != null)
         assertEquals(1, snapshot.transferRecords.size)
-        assertTrue(snapshot.transferRecords.single().isDeleted)
+        assertTrue(snapshot.transferRecords.single().deletedAt != null)
         assertEquals(12_000L, snapshot.balanceUpdateRecords.single().actualBalance)
         assertEquals(listOf(100L, -50L), snapshot.balanceAdjustmentRecords.map { it.delta })
         assertEquals(888L, snapshot.recurringReminders.single().amount)

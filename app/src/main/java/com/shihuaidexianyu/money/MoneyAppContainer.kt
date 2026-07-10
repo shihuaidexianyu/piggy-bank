@@ -109,11 +109,10 @@ class MoneyAppContainer(context: Context) {
 
     val validateBackupSnapshotUseCase get() = useCaseGraph.validateBackupSnapshotUseCase
 
-    val importBackupUseCase get() = useCaseGraph.importBackupUseCase
+    val backupImportCoordinator get() = useCaseGraph.backupImportCoordinator
 
     val exportJsonFileWriter get() = dataGraph.exportJsonFileWriter
 
     val backupFileReader get() = dataGraph.backupFileReader
 
-    val preImportBackupWriter get() = dataGraph.preImportBackupWriter
 }

@@ -3,7 +3,4 @@
     <cache-path
         name="exports"
         path="exports/" />
-    <files-path
-        name="pre_import_backups"
-        path="pre_import_backups/" />
 </paths>

@@ -91,6 +91,30 @@ class StartupMigrationCoordinatorTest {
     }
 
     @Test
+    fun `before ready recovery hook runs after migrations and its failure keeps ledger gated`() = runBlocking {
+        val backend = FakeBackend()
+        val coordinator = StartupMigrationCoordinator(backend)
+        var shouldFail = true
+        coordinator.installBeforeReadyStep {
+            backend.calls += "receipts"
+            if (shouldFail) error("receipt recovery failed")
+        }
+
+        coordinator.runMigration()
+
+        assertIs<StartupMigrationState.RecoverableError>(coordinator.state.value)
+        assertEquals(null, coordinator.withReadyLedgerAccess { true })
+        assertEquals(listOf("legacy", "settings", "device", "receipts"), backend.calls)
+
+        shouldFail = false
+        coordinator.retry()
+
+        assertEquals(StartupMigrationState.Ready, coordinator.state.value)
+        assertEquals(true, coordinator.withReadyLedgerAccess { true })
+        assertEquals("receipts", backend.calls.last())
+    }
+
+    @Test
     fun `crash before commit retries while crash after commit does not overwrite`() = runBlocking {
         val beforeCommit = FakeBackend(crashLegacyBeforeCommit = true)
         val coordinator = StartupMigrationCoordinator(beforeCommit)

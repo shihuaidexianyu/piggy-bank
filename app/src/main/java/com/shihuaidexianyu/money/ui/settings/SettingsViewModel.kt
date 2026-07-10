@@ -3,8 +3,9 @@ package com.shihuaidexianyu.money.ui.settings
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.backup.BackupFileReader
-import com.shihuaidexianyu.money.data.backup.PreImportBackupWriter
+import com.shihuaidexianyu.money.data.backup.ImportReceipt
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
@@ -14,10 +15,10 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
-import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
-import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
+import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.ui.common.userMessage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,12 +27,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SettingsUiState(
     val portableSettings: PortableSettings = PortableSettings(),
     val devicePreferences: DevicePreferences = DevicePreferences(),
     val isExporting: Boolean = false,
     val isImporting: Boolean = false,
+    val importHistory: List<ImportReceipt> = emptyList(),
 )
 
 sealed interface SettingsEffect {
@@ -43,18 +46,20 @@ sealed interface SettingsEffect {
 
     data class ImportPreviewReady(
         val preview: BackupValidationResult,
-        val uri: Uri,
+        val stageId: String,
     ) : SettingsEffect
 
-    data object ImportFinished : SettingsEffect, UiEffect.HasMessage {
+    data class ImportFinished(
+        val receipt: ImportReceipt,
+    ) : SettingsEffect, UiEffect.HasMessage {
         override val message: String = "导入完成"
     }
 
-    data class PreImportBackupReady(
-        val uri: Uri,
-        val fileName: String,
-        val mimeType: String,
-    ) : SettingsEffect
+    data class RollbackFinished(
+        val receipt: ImportReceipt,
+    ) : SettingsEffect, UiEffect.HasMessage {
+        override val message: String = "已撤销并生成新的保护快照"
+    }
 
     data class ShowMessage(
         override val message: String,
@@ -67,12 +72,12 @@ class SettingsViewModel(
     private val buildExportJsonUseCase: BuildExportJsonUseCase,
     private val exportJsonFileWriter: ExportJsonFileWriter,
     private val backupFileReader: BackupFileReader,
-    private val preImportBackupWriter: PreImportBackupWriter,
-    private val importBackupUseCase: ImportBackupUseCase,
-    private val validateBackupSnapshotUseCase: ValidateBackupSnapshotUseCase,
+    private val backupImportCoordinator: BackupImportCoordinator,
+    private val clockProvider: ClockProvider,
 ) : ViewModel() {
     private val isExporting = MutableStateFlow(false)
     private val isImporting = MutableStateFlow(false)
+    private val importHistory = MutableStateFlow<List<ImportReceipt>>(emptyList())
     private val effects = MutableSharedFlow<SettingsEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
 
@@ -82,12 +87,14 @@ class SettingsViewModel(
             devicePreferencesRepository.observe(),
             isExporting,
             isImporting,
-        ) { portable, device, exporting, importing ->
+            importHistory,
+        ) { portable, device, exporting, importing, history ->
             SettingsUiState(
                 portableSettings = portable,
                 devicePreferences = device,
                 isExporting = exporting,
                 isImporting = importing,
+                importHistory = history,
             )
         }
             .stateIn(
@@ -95,6 +102,12 @@ class SettingsViewModel(
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = SettingsUiState(),
             )
+
+    init {
+        viewModelScope.launch {
+            importHistory.value = withContext(Dispatchers.IO) { backupImportCoordinator.history() }
+        }
+    }
 
     fun updateCurrencySymbol(symbol: String) {
         viewModelScope.launch { portableSettingsRepository.updateCurrencySymbol(symbol) }
@@ -117,9 +130,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             isExporting.value = true
             runCatching {
-                val exportedAt = System.currentTimeMillis()
-                val json = buildExportJsonUseCase(exportedAt = exportedAt)
-                exportJsonFileWriter.write(json = json, timestamp = exportedAt)
+                withContext(Dispatchers.IO) {
+                    val exportedAt = clockProvider.nowMillis()
+                    val json = buildExportJsonUseCase(exportedAt = exportedAt)
+                    exportJsonFileWriter.write(json = json, timestamp = exportedAt)
+                }
             }.onSuccess { file ->
                 effects.emit(
                     SettingsEffect.ExportReady(
@@ -140,10 +155,17 @@ class SettingsViewModel(
         viewModelScope.launch {
             isImporting.value = true
             runCatching {
-                val snapshot = backupFileReader.readSnapshot(uri)
-                validateBackupSnapshotUseCase(snapshot)
+                withContext(Dispatchers.IO) {
+                    val stage = backupFileReader.stage(uri, clockProvider.nowMillis())
+                    backupImportCoordinator.preview(stage.id)
+                }
             }.onSuccess { preview ->
-                effects.emit(SettingsEffect.ImportPreviewReady(preview = preview, uri = uri))
+                effects.emit(
+                    SettingsEffect.ImportPreviewReady(
+                        preview = preview.validation,
+                        stageId = preview.stageId,
+                    ),
+                )
             }.onFailure { error ->
                 effects.emit(SettingsEffect.ShowMessage(error.userMessage("无法读取备份文件")))
             }
@@ -151,31 +173,42 @@ class SettingsViewModel(
         }
     }
 
-    fun confirmImport(uri: Uri) {
+    fun confirmImport(stageId: String) {
         if (isImporting.value || isExporting.value) return
         viewModelScope.launch {
             isImporting.value = true
-            var backupEffect: SettingsEffect.PreImportBackupReady? = null
             runCatching {
-                val timestamp = System.currentTimeMillis()
-                val currentJson = buildExportJsonUseCase(exportedAt = timestamp)
-                val preImportBackup = preImportBackupWriter.write(
-                    json = currentJson,
-                    timestamp = timestamp,
-                )
-                backupEffect = SettingsEffect.PreImportBackupReady(
-                    uri = preImportBackup.uri,
-                    fileName = preImportBackup.fileName,
-                    mimeType = preImportBackup.mimeType,
-                )
-                val snapshot = backupFileReader.readSnapshot(uri)
-                importBackupUseCase(snapshot)
-            }.onSuccess {
-                effects.emit(SettingsEffect.ImportFinished)
+                withContext(Dispatchers.IO) {
+                    val receipt = backupImportCoordinator.confirm(stageId)
+                    receipt to backupImportCoordinator.history()
+                }
+            }.onSuccess { (receipt, history) ->
+                importHistory.value = history
+                effects.emit(SettingsEffect.ImportFinished(receipt))
             }.onFailure { error ->
-                backupEffect?.let { effects.emit(it) }
                 effects.emit(SettingsEffect.ShowMessage(error.userMessage("导入失败")))
             }
+            isImporting.value = false
+        }
+    }
+
+    fun rollbackImport(receiptId: String) {
+        if (isImporting.value || isExporting.value) return
+        viewModelScope.launch {
+            isImporting.value = true
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val receipt = backupImportCoordinator.rollback(receiptId)
+                    receipt to backupImportCoordinator.history()
+                }
+            }
+                .onSuccess { (receipt, history) ->
+                    importHistory.value = history
+                    effects.emit(SettingsEffect.RollbackFinished(receipt))
+                }
+                .onFailure { error ->
+                    effects.emit(SettingsEffect.ShowMessage(error.userMessage("撤销导入失败")))
+                }
             isImporting.value = false
         }
     }
