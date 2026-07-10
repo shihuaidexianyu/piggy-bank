@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.di
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
-import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -22,14 +22,18 @@ import com.shihuaidexianyu.money.domain.usecase.DeleteSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ImportBackupUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalsUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
+import com.shihuaidexianyu.money.domain.usecase.ReopenAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.RestoreLedgerRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
+import com.shihuaidexianyu.money.domain.usecase.SetAccountHiddenUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUpdateRecordUseCase
@@ -101,6 +105,7 @@ internal class UseCaseGraph(
     val createAccountUseCase = CreateAccountUseCase(
         accountRepository = data.accountRepository,
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
+        clockProvider = SystemClockProvider,
     )
 
     val createCashFlowRecordUseCase = CreateCashFlowRecordUseCase(
@@ -128,6 +133,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateTransferRecordUseCase = UpdateTransferRecordUseCase(
@@ -141,6 +147,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateBalanceUseCase = UpdateBalanceUseCase(
@@ -163,6 +170,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val createBalanceAdjustmentUseCase = CreateBalanceAdjustmentUseCase(
@@ -183,6 +191,14 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
+    )
+
+    val restoreLedgerRecordUseCase = RestoreLedgerRecordUseCase(
+        accountRepository = data.accountRepository,
+        transactionRepository = data.transactionRepository,
+        refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateAccountUseCase = UpdateAccountUseCase(
@@ -190,10 +206,28 @@ internal class UseCaseGraph(
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
     )
 
-    val archiveAccountUseCase = ArchiveAccountUseCase(
+    val closeAccountUseCase = CloseAccountUseCase(
         accountRepository = data.accountRepository,
         reminderRepository = data.recurringReminderRepository,
+        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+        transactionRunner = data.transactionRepository,
+        clockProvider = SystemClockProvider,
+    )
+
+    val setAccountHiddenUseCase = SetAccountHiddenUseCase(
+        accountRepository = data.accountRepository,
+        transactionRunner = data.transactionRepository,
+    )
+
+    val reopenAccountUseCase = ReopenAccountUseCase(
+        accountRepository = data.accountRepository,
+        transactionRunner = data.transactionRepository,
+    )
+
+    val observeAccountClosureIssuesUseCase = ObserveAccountClosureIssuesUseCase(
+        accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
+        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
     )
 
     val updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(

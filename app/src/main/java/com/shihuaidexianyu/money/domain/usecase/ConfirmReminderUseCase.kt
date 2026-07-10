@@ -13,7 +13,7 @@ class ConfirmReminderUseCase(
     suspend operator fun invoke(reminderId: Long) {
         val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
         val account = requireNotNull(accountRepository.getAccountById(reminder.accountId)) { "账户不存在" }
-        account.requireActiveForMutation("确认提醒")
+        account.requireOpenForMutation("确认提醒")
         val now = System.currentTimeMillis()
         reminderRepository.updateReminder(
             reminder.copy(

@@ -92,7 +92,7 @@ fun AccountDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (state.isClosed) {
-                    MoneyStatusPill(text = "已归档", accent = MaterialTheme.colorScheme.onSurfaceVariant)
+                    MoneyStatusPill(text = "已关闭", accent = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Text(
                         text = "提醒时间 ${state.reminderConfig.displayText}",

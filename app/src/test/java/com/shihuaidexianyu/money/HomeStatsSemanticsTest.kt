@@ -140,7 +140,7 @@ class HomeStatsSemanticsTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        repository.softDeleteCashFlowRecord(deletedCashFlowId, 5_001)
+        repository.softDeleteCurrentCashFlowRecord(deletedCashFlowId, 5_001)
         repository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = 1L,
@@ -177,7 +177,7 @@ class HomeStatsSemanticsTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        repository.softDeleteTransferRecord(deletedTransferId, 5_001)
+        repository.softDeleteCurrentTransferRecord(deletedTransferId, 5_001)
         repository.insertBalanceAdjustmentRecord(
             BalanceAdjustmentRecord(
                 accountId = 1L,

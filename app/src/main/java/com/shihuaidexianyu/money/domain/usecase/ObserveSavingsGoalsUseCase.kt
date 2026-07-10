@@ -16,7 +16,7 @@ class ObserveSavingsGoalsUseCase(
 ) {
     operator fun invoke(): Flow<List<SavingsGoalWithProgress>> = combine(
         savingsGoalRepository.observeAll(),
-        accountRepository.observeActiveAccounts(),
+        accountRepository.observeOpenAccounts(),
         transactionRepository.observeChangeVersion(),
     ) { goals, accounts, _ ->
         if (goals.isEmpty()) {

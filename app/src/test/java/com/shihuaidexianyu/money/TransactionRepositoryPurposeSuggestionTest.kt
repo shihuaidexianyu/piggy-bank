@@ -40,7 +40,7 @@ class TransactionRepositoryNoteSuggestionTest {
         val deletedId = repository.insertCashFlowRecord(
             cashFlow(accountId = 1, note = "咖啡", amount = 1_800, occurredAt = 4_000),
         ).recordId
-        repository.softDeleteCashFlowRecord(deletedId, updatedAt = 4_100)
+        repository.softDeleteCurrentCashFlowRecord(deletedId, updatedAt = 4_100)
         repository.insertCashFlowRecord(cashFlow(accountId = 2, note = "咖啡", amount = 2_000, occurredAt = 5_000))
 
         val accountSuggestions = repository.queryRecentCashFlowNotes(

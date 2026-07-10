@@ -60,7 +60,7 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
             if (container != null) {
                 kotlinx.coroutines.runBlocking {
                     runCatching {
-                        val accounts = container.accountRepository.queryActiveAccounts()
+                        val accounts = container.accountRepository.queryAllAccounts()
                         val balances = container.calculateAccountBalancesUseCase(accounts)
                         val totalAssets = balances.values.sum()
 

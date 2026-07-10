@@ -84,11 +84,24 @@ class TransactionRepositoryImpl(
         ).changed()
     }
 
-    override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
-        cashFlowRecordDao.softDelete(id, updatedAt)
-    }
+    override suspend fun softDeleteCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = cashFlowRecordDao.softDelete(id, operationId, expectedUpdatedAt, deletedAt).changed()
+
+    override suspend fun restoreCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = cashFlowRecordDao.restore(id, operationId, expectedDeletedAt, restoredAt).changed()
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord? = cashFlowRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryStoredCashFlowRecordById(id: Long): CashFlowRecord? =
+        cashFlowRecordDao.queryStoredById(id)?.toDomain()
 
     override suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord? =
         cashFlowRecordDao.queryByOperationId(operationId)?.toDomain()
@@ -144,11 +157,24 @@ class TransactionRepositoryImpl(
         ).changed()
     }
 
-    override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
-        transferRecordDao.softDelete(id, updatedAt)
-    }
+    override suspend fun softDeleteTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = transferRecordDao.softDelete(id, operationId, expectedUpdatedAt, deletedAt).changed()
+
+    override suspend fun restoreTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = transferRecordDao.restore(id, operationId, expectedDeletedAt, restoredAt).changed()
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecord? = transferRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryStoredTransferRecordById(id: Long): TransferRecord? =
+        transferRecordDao.queryStoredById(id)?.toDomain()
 
     override suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord? =
         transferRecordDao.queryByOperationId(operationId)?.toDomain()
@@ -206,11 +232,24 @@ class TransactionRepositoryImpl(
         ).changed()
     }
 
-    override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
-        balanceUpdateRecordDao.softDelete(id, deletedAt)
-    }
+    override suspend fun softDeleteBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = balanceUpdateRecordDao.softDelete(id, operationId, expectedUpdatedAt, deletedAt).changed()
+
+    override suspend fun restoreBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = balanceUpdateRecordDao.restore(id, operationId, expectedDeletedAt, restoredAt).changed()
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryStoredBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? =
+        balanceUpdateRecordDao.queryStoredById(id)?.toDomain()
 
     override suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord? =
         balanceUpdateRecordDao.queryByOperationId(operationId)?.toDomain()
@@ -261,11 +300,24 @@ class TransactionRepositoryImpl(
         ).changed()
     }
 
-    override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
-        balanceAdjustmentRecordDao.softDelete(id, deletedAt)
-    }
+    override suspend fun softDeleteBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = balanceAdjustmentRecordDao.softDelete(id, operationId, expectedUpdatedAt, deletedAt).changed()
+
+    override suspend fun restoreBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = balanceAdjustmentRecordDao.restore(id, operationId, expectedDeletedAt, restoredAt).changed()
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? = balanceAdjustmentRecordDao.queryById(id)?.toDomain()
+
+    override suspend fun queryStoredBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? =
+        balanceAdjustmentRecordDao.queryStoredById(id)?.toDomain()
 
     override suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord? =
         balanceAdjustmentRecordDao.queryByOperationId(operationId)?.toDomain()

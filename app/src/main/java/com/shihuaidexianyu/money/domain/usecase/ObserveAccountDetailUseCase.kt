@@ -52,16 +52,15 @@ class ObserveAccountDetailUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<AccountDetailSnapshot> {
         return combine(
-            accountRepository.observeActiveAccounts(),
-            accountRepository.observeArchivedAccounts(),
+            accountRepository.observeAllAccounts(),
             accountReminderSettingsRepository.observeReminderConfigs(),
             settingsRepository.observeSettings(),
             transactionRepository.observeChangeVersion(),
-        ) { active, archived, reminderConfigs, settings, _ ->
-            Quadruple(active, archived, reminderConfigs, settings)
-        }.mapLatest { (active, archived, reminderConfigs, settings) ->
+        ) { accounts, reminderConfigs, settings, _ ->
+            Triple(accounts, reminderConfigs, settings)
+        }.mapLatest { (accounts, reminderConfigs, settings) ->
             buildSnapshot(
-                account = (active + archived).firstOrNull { it.id == accountId },
+                account = accounts.firstOrNull { it.id == accountId },
                 settings = settings,
                 reminderConfigs = reminderConfigs,
             )
@@ -119,13 +118,6 @@ class ObserveAccountDetailUseCase(
         )
     }
 }
-
-private data class Quadruple<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D,
-)
 
 private fun CashFlowRecord.toRecentRecord(): AccountDetailRecentRecord {
     val signedAmount = if (direction == com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW.value) amount else -amount

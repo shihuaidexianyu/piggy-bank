@@ -175,10 +175,10 @@ class ProcessDueReminderUseCaseTest {
     }
 
     @Test
-    fun `archived account blocks a genuinely new reminder occurrence`() = runBlocking {
+    fun `closed account blocks a genuinely new reminder occurrence`() = runBlocking {
         val fixture = ReminderProcessFixture()
         val (reminderId, dueAt) = fixture.createReminder()
-        fixture.accountRepository.archiveAccount(fixture.accountId, archivedAt = 2)
+        fixture.accountRepository.closeAccount(fixture.accountId, closedAt = 2)
 
         assertFailsWith<IllegalArgumentException> {
             fixture.process(reminderId, dueAt)

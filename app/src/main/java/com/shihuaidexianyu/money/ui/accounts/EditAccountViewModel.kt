@@ -11,7 +11,7 @@ import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
-import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +33,7 @@ data class EditAccountUiState(
 
 sealed interface EditAccountEffect {
     data object Saved : EditAccountEffect
-    data object Archived : EditAccountEffect
+    data object AccountClosed : EditAccountEffect
     data object Closed : EditAccountEffect
     data class ShowMessage(
         override val message: String,
@@ -44,7 +44,7 @@ class EditAccountViewModel(
     private val accountId: Long,
     private val accountRepository: AccountRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
-    private val archiveAccountUseCase: ArchiveAccountUseCase,
+    private val closeAccountUseCase: CloseAccountUseCase,
     private val updateAccountUseCase: UpdateAccountUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(EditAccountUiState())
@@ -116,7 +116,7 @@ class EditAccountViewModel(
     fun save() {
         val state = _uiState.value
         if (state.isClosed) {
-            effects.tryEmit(EditAccountEffect.ShowMessage("归档账户不能修改账户"))
+            effects.tryEmit(EditAccountEffect.ShowMessage("关闭账户不能修改账户"))
             return
         }
         viewModelScope.launch {
@@ -142,20 +142,20 @@ class EditAccountViewModel(
         }
     }
 
-    fun archive() {
+    fun closeAccount() {
         if (_uiState.value.isClosed) {
-            effects.tryEmit(EditAccountEffect.ShowMessage("账户已归档"))
+            effects.tryEmit(EditAccountEffect.ShowMessage("账户已关闭"))
             return
         }
         viewModelScope.launch {
-            runCatching { archiveAccountUseCase(accountId) }.onSuccess {
-                effects.emit(EditAccountEffect.Archived)
+            runCatching { closeAccountUseCase(accountId) }.onSuccess {
+                effects.emit(EditAccountEffect.AccountClosed)
             }.onFailure { error ->
                 if (accountRepository.getAccountById(accountId) == null) {
                     emitClosedOnce()
                     return@onFailure
                 }
-                effects.emit(EditAccountEffect.ShowMessage(error.message ?: "归档失败"))
+                effects.emit(EditAccountEffect.ShowMessage(error.message ?: "关闭失败"))
             }
         }
     }

@@ -10,13 +10,13 @@ import org.junit.Test
 
 class UpdateAccountDisplayOrderUseCaseTest {
     @Test
-    fun `reorders active accounts by provided ids`() = runBlocking {
+    fun `reorders all open accounts including hidden by provided ids`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val firstId = repository.createAccount(
             Account(name = "A", initialBalance = 0, createdAt = 1, displayOrder = 0),
         )
         val secondId = repository.createAccount(
-            Account(name = "B", initialBalance = 0, createdAt = 1, displayOrder = 1),
+            Account(name = "B", initialBalance = 0, createdAt = 1, isHidden = true, displayOrder = 1),
         )
         val thirdId = repository.createAccount(
             Account(name = "C", initialBalance = 0, createdAt = 1, displayOrder = 2),
@@ -47,6 +47,6 @@ class UpdateAccountDisplayOrderUseCaseTest {
             )
         }
 
-        assertEquals("账户顺序必须覆盖全部活跃账户", error.message)
+        assertEquals("账户顺序必须覆盖全部开放账户", error.message)
     }
 }

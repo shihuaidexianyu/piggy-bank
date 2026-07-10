@@ -75,7 +75,7 @@ class BatchReconcileViewModel(
         viewModelScope.launch {
             try {
                 combine(
-                    accountRepository.observeActiveAccounts(),
+                    accountRepository.observeOpenAccounts(),
                     accountReminderSettingsRepository.observeReminderConfigs(),
                     settingsRepository.observeSettings(),
                     transactionRepository.observeChangeVersion(),

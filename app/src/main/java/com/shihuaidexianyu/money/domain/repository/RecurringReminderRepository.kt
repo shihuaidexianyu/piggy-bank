@@ -11,6 +11,7 @@ interface RecurringReminderRepository {
     suspend fun queryDue(): List<RecurringReminder>
     suspend fun insertReminder(reminder: RecurringReminder): Long
     suspend fun updateReminder(reminder: RecurringReminder)
+    suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long)
     suspend fun advanceOccurrence(
         reminderId: Long,
         expectedDueAt: Long,

@@ -70,7 +70,7 @@ class ObserveStatsDashboardUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(selectionFlow: Flow<StatsRangeSelection>): Flow<StatsDashboardSnapshot> {
         return combine(
-            accountRepository.observeActiveAccounts(),
+            accountRepository.observeAllAccounts(),
             settingsRepository.observeSettings(),
             transactionRepository.observeChangeVersion(),
             selectionFlow,

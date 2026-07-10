@@ -43,9 +43,9 @@ class FormErrorTest {
     }
 
     @Test
-    fun `maps archived account message to ArchivedAccount with action suffix`() {
-        val error = IllegalArgumentException("归档账户不能修改账户").toFormError()
-        assertEquals(FormError.ArchivedAccount("修改账户"), error)
+    fun `maps closed account message to ClosedAccount with action suffix`() {
+        val error = IllegalArgumentException("关闭账户不能修改账户").toFormError()
+        assertEquals(FormError.ClosedAccount("修改账户"), error)
     }
 
     @Test

@@ -24,7 +24,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 
 private sealed interface EditAccountDialog {
     data object Name : EditAccountDialog
-    data object ArchiveConfirm : EditAccountDialog
+    data object CloseConfirm : EditAccountDialog
 }
 
 @Composable
@@ -42,7 +42,7 @@ fun EditAccountScreen(
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         when (effect) {
-            EditAccountEffect.Saved, EditAccountEffect.Archived -> onBack()
+            EditAccountEffect.Saved, EditAccountEffect.AccountClosed -> onBack()
             EditAccountEffect.Closed -> onClosed()
             else -> {}
         }
@@ -63,16 +63,16 @@ fun EditAccountScreen(
                 )
             }
 
-            EditAccountDialog.ArchiveConfirm -> {
+            EditAccountDialog.CloseConfirm -> {
                 MoneyConfirmDialog(
-                    title = "归档账户",
-                    message = "归档后，这个账户会移到已归档列表。",
+                    title = "关闭账户",
+                    message = "仅当余额为 0 时可以关闭；关闭后账户将只读并保留历史记录。",
                     onConfirm = {
                         dialog = null
-                        viewModel.archive()
+                        viewModel.closeAccount()
                     },
                     onDismiss = { dialog = null },
-                    confirmLabel = "确认归档",
+                    confirmLabel = "确认关闭",
                 )
             }
         }
@@ -124,7 +124,7 @@ fun EditAccountScreen(
             item {
                 MoneyCard {
                     Text(
-                        text = "这个账户已归档，仅保留历史记录和余额查看。",
+                        text = "这个账户已关闭，仅保留历史记录和余额查看。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -145,14 +145,14 @@ fun EditAccountScreen(
                     MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
                 }
             }
-            item { MoneySectionHeader(title = "归档") }
+            item { MoneySectionHeader(title = "关闭") }
             item {
                 MoneyListSection {
                     MoneyListRow(
-                        title = "归档账户",
-                        subtitle = "移到已归档列表",
+                        title = "关闭账户",
+                        subtitle = "余额为 0 时关闭并保留历史",
                         showChevron = false,
-                        modifier = Modifier.clickable { dialog = EditAccountDialog.ArchiveConfirm },
+                        modifier = Modifier.clickable { dialog = EditAccountDialog.CloseConfirm },
                     )
                 }
             }

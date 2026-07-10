@@ -103,7 +103,7 @@ class CreateAccountViewModelTest {
             val effect = awaitItem()
             assertEquals(CreateAccountEffect.Saved, effect)
         }
-        val accounts = accountRepo.queryActiveAccounts()
+        val accounts = accountRepo.queryOpenAccounts()
         assertEquals(1, accounts.size)
         assertEquals("微信零钱", accounts[0].name)
         assertEquals(123_456L, accounts[0].initialBalance)
@@ -124,7 +124,7 @@ class CreateAccountViewModelTest {
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
     ): CreateAccountViewModel {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
-        val createUseCase = CreateAccountUseCase(accountRepo, reminderSettingsRepo)
+        val createUseCase = CreateAccountUseCase(accountRepo, reminderSettingsRepo, testClockProvider)
         return CreateAccountViewModel(createUseCase)
     }
 }

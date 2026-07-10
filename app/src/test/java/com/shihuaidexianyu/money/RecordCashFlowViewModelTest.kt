@@ -135,6 +135,22 @@ class RecordCashFlowViewModelTest {
     }
 
     @Test
+    fun `current mutation picker includes hidden open accounts and excludes closed accounts`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val hiddenId = accountRepo.createAccount(
+            Account(name = "隐藏账户", initialBalance = 0, createdAt = 1, isHidden = true),
+        )
+        val closedId = accountRepo.createAccount(Account(name = "关闭账户", initialBalance = 0, createdAt = 1))
+        accountRepo.closeAccount(closedId, closedAt = 2)
+
+        val vm = buildViewModel(accountRepo, InMemoryTransactionRepository())
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.accounts.any { it.id == hiddenId })
+        assertTrue(vm.uiState.value.accounts.none { it.id == closedId })
+    }
+
+    @Test
     fun `reminder save uses the account picker and view model direction`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val reminderAccountId = accountRepo.createAccount(Account(name = "原账户", initialBalance = 0, createdAt = 1L))

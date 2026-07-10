@@ -37,6 +37,9 @@ class RecurringReminderRepositoryImpl(
 
     override suspend fun updateReminder(reminder: RecurringReminder) = dao.update(reminder.toEntity())
 
+    override suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long) =
+        dao.disableEnabledForAccount(accountId, updatedAt)
+
     override suspend fun advanceOccurrence(
         reminderId: Long,
         expectedDueAt: Long,

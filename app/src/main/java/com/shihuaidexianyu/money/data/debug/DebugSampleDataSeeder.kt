@@ -49,7 +49,7 @@ object DebugSampleDataSeeder {
         val reminderDao = database.recurringReminderDao()
 
         val hasData =
-            accountDao.queryActiveAccounts().isNotEmpty() ||
+            accountDao.queryAllAccounts().isNotEmpty() ||
                 cashFlowDao.queryAllActive().isNotEmpty() ||
                 transferDao.queryAllActive().isNotEmpty() ||
                 balanceUpdateDao.queryAllActive().isNotEmpty() ||

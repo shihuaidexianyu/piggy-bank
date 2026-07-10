@@ -15,10 +15,25 @@ import org.junit.Test
 
 class CreateAccountUseCaseTest {
     @Test
+    fun `default creation time comes from injected clock and is floored to minute`() = runBlocking {
+        val repository = InMemoryAccountRepository()
+        val useCase = CreateAccountUseCase(
+            accountRepository = repository,
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            clockProvider = testClockProvider(123_456),
+        )
+
+        val accountId = useCase(name = "现金", initialBalance = 0)
+
+        assertEquals(120_000, repository.getAccountById(accountId)?.createdAt)
+    }
+
+    @Test
     fun `blank name is rejected`() = runBlocking {
         val useCase = CreateAccountUseCase(
             accountRepository = InMemoryAccountRepository(),
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            clockProvider = testClockProvider,
         )
 
         val error = assertFailsWith<IllegalArgumentException> {
@@ -35,6 +50,7 @@ class CreateAccountUseCaseTest {
         val useCase = CreateAccountUseCase(
             accountRepository = repository,
             accountReminderSettingsRepository = reminderRepository,
+            clockProvider = testClockProvider,
         )
         useCase(
             name = "现金",
@@ -60,6 +76,7 @@ class CreateAccountUseCaseTest {
         val useCase = CreateAccountUseCase(
             accountRepository = repository,
             accountReminderSettingsRepository = reminderRepository,
+            clockProvider = testClockProvider,
         )
 
         val accountId = useCase(
@@ -92,6 +109,7 @@ class CreateAccountUseCaseTest {
         val useCase = CreateAccountUseCase(
             accountRepository = repository,
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            clockProvider = testClockProvider,
         )
 
         val accountId = useCase(

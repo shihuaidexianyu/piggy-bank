@@ -22,6 +22,15 @@ interface RecurringReminderDao {
     @Query(
         """
         UPDATE recurring_reminders
+        SET isEnabled = 0, updatedAt = :updatedAt
+        WHERE accountId = :accountId AND isEnabled = 1
+        """,
+    )
+    suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long)
+
+    @Query(
+        """
+        UPDATE recurring_reminders
         SET nextDueAt = :nextDueAt,
             lastConfirmedAt = :confirmedAt,
             updatedAt = :updatedAt

@@ -17,13 +17,13 @@ import org.junit.Test
 
 class ReminderProcessingConsistencyTest {
     @Test
-    fun `confirming archived account reminder fails without advancing reminder`() = runBlocking {
+    fun `confirming closed account reminder fails without advancing reminder`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val reminderRepository = InMemoryRecurringReminderRepository()
         val accountId = accountRepository.createAccount(
             Account(name = "旧账户", initialBalance = 0L, createdAt = 1L),
         )
-        accountRepository.archiveAccount(accountId, archivedAt = 2L)
+        accountRepository.closeAccount(accountId, closedAt = 2L)
         val reminderId = reminderRepository.insertReminder(
             testReminder(accountId = accountId, nextDueAt = 1_000L),
         )

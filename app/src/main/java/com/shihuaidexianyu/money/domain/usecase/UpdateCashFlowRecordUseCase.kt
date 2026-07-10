@@ -24,27 +24,27 @@ class UpdateCashFlowRecordUseCase(
         require(amount > 0) { "金额必须大于 0" }
         val now = clockProvider.nowMillis()
         require(occurredAt <= now) { "时间不能晚于当前时间" }
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-        account.requireActiveForMutation("修改收支记录")
-        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
-
-        val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId)) { "记录不存在或已删除" }
-        val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
-        existingAccount.requireActiveForMutation("修改收支记录")
-        val updated = existing.copy(
-            accountId = accountId,
-            direction = direction.value,
-            amount = amount,
-            note = note.trim(),
-            occurredAt = occurredAt,
-            updatedAt = nextLedgerMutationTimestamp(now, existing.updatedAt),
-        )
-        val affectedAccountIds = setOf(existing.accountId, accountId)
         transactionRepository.runInTransaction {
+            val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId)) {
+                "记录不存在或已删除"
+            }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+            account.requireOpenForMutation("修改收支记录")
+            existingAccount.requireOpenForMutation("修改收支记录")
+            AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
+            val updated = existing.copy(
+                accountId = accountId,
+                direction = direction.value,
+                amount = amount,
+                note = note.trim(),
+                occurredAt = occurredAt,
+                updatedAt = nextLedgerMutationTimestamp(now, existing.updatedAt),
+            )
             if (!transactionRepository.updateCashFlowRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
             }
-            affectedAccountIds.forEach {
+            setOf(existing.accountId, accountId).forEach {
                 refreshAccountActivityStateUseCase(it)
             }
         }

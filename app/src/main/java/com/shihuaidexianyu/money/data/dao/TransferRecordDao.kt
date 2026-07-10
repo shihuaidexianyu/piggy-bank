@@ -48,14 +48,41 @@ interface TransferRecordDao {
     @Query(
         """
         UPDATE transfer_records
-        SET deletedAt = :updatedAt, updatedAt = :updatedAt
-        WHERE id = :id AND deletedAt IS NULL
+        SET deletedAt = :deletedAt, updatedAt = :deletedAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND updatedAt = :expectedUpdatedAt
+            AND deletedAt IS NULL
         """,
     )
-    suspend fun softDelete(id: Long, updatedAt: Long)
+    suspend fun softDelete(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Int
+
+    @Query(
+        """
+        UPDATE transfer_records
+        SET deletedAt = NULL, updatedAt = :restoredAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND deletedAt = :expectedDeletedAt
+        """,
+    )
+    suspend fun restore(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Int
 
     @Query("SELECT * FROM transfer_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): TransferRecordEntity?
+
+    @Query("SELECT * FROM transfer_records WHERE id = :id LIMIT 1")
+    suspend fun queryStoredById(id: Long): TransferRecordEntity?
 
     @Query("SELECT * FROM transfer_records WHERE operationId = :operationId LIMIT 1")
     suspend fun queryByOperationId(operationId: String): TransferRecordEntity?

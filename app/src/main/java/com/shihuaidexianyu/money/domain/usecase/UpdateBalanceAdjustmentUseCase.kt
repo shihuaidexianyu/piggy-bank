@@ -21,12 +21,13 @@ class UpdateBalanceAdjustmentUseCase(
         val now = clockProvider.nowMillis()
         require(occurredAt <= now) { "时间不能晚于当前时间" }
 
-        val existing = requireNotNull(transactionRepository.getBalanceAdjustmentRecordById(recordId)) { "余额调整记录不存在" }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
-        account.requireActiveForMutation("修改余额调整")
-        AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
-
         transactionRepository.runInTransaction {
+            val existing = requireNotNull(transactionRepository.getBalanceAdjustmentRecordById(recordId)) {
+                "余额调整记录不存在"
+            }
+            val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+            account.requireOpenForMutation("修改余额调整")
+            AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
             val updated = existing.copy(
                 delta = delta,
                 occurredAt = occurredAt,

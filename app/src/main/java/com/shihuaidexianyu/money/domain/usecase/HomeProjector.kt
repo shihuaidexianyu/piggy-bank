@@ -13,6 +13,7 @@ import java.time.ZoneId
 internal object HomeProjector {
     fun project(
         accounts: List<Account>,
+        openAccounts: List<Account> = accounts,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
         dueReminders: List<RecurringReminder>,
@@ -44,7 +45,7 @@ internal object HomeProjector {
             reconciliationIncrease = reconciliationIncrease,
             reconciliationDecrease = reconciliationDecrease,
         )
-        val staleAccounts = accounts.filter { account ->
+        val staleAccounts = openAccounts.filter { account ->
             AccountStatusCalculator.isStale(
                 account,
                 reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig(),
@@ -58,7 +59,7 @@ internal object HomeProjector {
             periodBreakdown = periodBreakdown,
             periodRecordCount = cashFlowRecordCount + transferRecordCount + manualAdjustmentRecordCount,
             staleAccountCount = staleAccounts.size,
-            activeAccounts = accounts,
+            openAccounts = openAccounts,
             staleAccounts = staleAccounts,
             accountBalances = balances,
             dueReminders = dueReminders,

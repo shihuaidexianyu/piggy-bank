@@ -64,7 +64,7 @@ class EditCashFlowViewModel(
                     emitDeletedOnce()
                     return@launch
                 }
-                val accounts = accountRepository.queryActiveAccounts()
+                val accounts = accountRepository.queryOpenAccounts()
                 _uiState.value = EditCashFlowUiState(
                     isLoading = false,
                     direction = CashFlowDirection.fromValue(record.direction),

@@ -122,7 +122,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             state = state,
             onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
             onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
-            onToggleArchiveVisibility = viewModel::toggleArchiveVisibility,
+            onToggleClosedVisibility = viewModel::toggleClosedVisibility,
         )
     }
 

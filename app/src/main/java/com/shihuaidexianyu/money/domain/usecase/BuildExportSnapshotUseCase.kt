@@ -40,8 +40,7 @@ class BuildExportSnapshotUseCase(
     private val databaseVersion: Int,
 ) {
     suspend operator fun invoke(exportedAt: Long = System.currentTimeMillis()): MoneyBackupSnapshot {
-        val accounts = (accountRepository.queryActiveAccounts() + accountRepository.queryArchivedAccounts())
-            .sortedBy { it.id }
+        val accounts = accountRepository.queryAllAccounts().sortedBy { it.id }
         return MoneyBackupSnapshot(
             metadata = BackupMetadata(
                 schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,

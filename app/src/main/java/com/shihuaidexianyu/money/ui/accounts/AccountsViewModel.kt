@@ -43,16 +43,16 @@ data class SavingsGoalUiModel(
 data class AccountsUiState(
     val isLoading: Boolean = true,
     val settings: AppSettings = AppSettings(),
-    val showArchived: Boolean = false,
-    val activeAccounts: List<AccountListItemUiModel> = emptyList(),
-    val archivedAccounts: List<AccountListItemUiModel> = emptyList(),
+    val showClosed: Boolean = false,
+    val openAccounts: List<AccountListItemUiModel> = emptyList(),
+    val closedAccounts: List<AccountListItemUiModel> = emptyList(),
     val savingsGoal: SavingsGoalUiModel? = null,
 )
 
 private data class AccountsSnapshot(
     val settings: AppSettings,
-    val activeAccounts: List<AccountListItemUiModel>,
-    val archivedAccounts: List<AccountListItemUiModel>,
+    val openAccounts: List<AccountListItemUiModel>,
+    val closedAccounts: List<AccountListItemUiModel>,
     val savingsGoal: SavingsGoalUiModel?,
 )
 
@@ -66,22 +66,22 @@ class AccountsViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
-    private val showArchivedFlow = MutableStateFlow(false)
+    private val showClosedFlow = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
             try {
                 val snapshotFlow = combine(
-                    accountRepository.observeActiveAccounts(),
-                    accountRepository.observeArchivedAccounts(),
+                    accountRepository.observeOpenAccounts(),
+                    accountRepository.observeClosedAccounts(),
                     accountReminderSettingsRepository.observeReminderConfigs(),
                     settingsRepository.observeSettings(),
                     transactionRepository.observeChangeVersion(),
-                ) { active, archived, reminderConfigs, settings, _ ->
+                ) { open, closed, reminderConfigs, settings, _ ->
                     AccountsSnapshot(
                         settings = settings,
-                        activeAccounts = buildItems(active, reminderConfigs),
-                        archivedAccounts = buildItems(archived, reminderConfigs),
+                        openAccounts = buildItems(open, reminderConfigs),
+                        closedAccounts = buildItems(closed, reminderConfigs),
                         savingsGoal = null,
                     )
                 }
@@ -90,13 +90,13 @@ class AccountsViewModel(
                 }
                 combine(snapshotFlow, goalsFlow) { snapshot, goal ->
                     snapshot.copy(savingsGoal = goal)
-                }.combine(showArchivedFlow) { snapshot, showArchived ->
+                }.combine(showClosedFlow) { snapshot, showClosed ->
                     AccountsUiState(
                         isLoading = false,
                         settings = snapshot.settings,
-                        showArchived = showArchived,
-                        activeAccounts = snapshot.activeAccounts,
-                        archivedAccounts = snapshot.archivedAccounts,
+                        showClosed = showClosed,
+                        openAccounts = snapshot.openAccounts,
+                        closedAccounts = snapshot.closedAccounts,
                         savingsGoal = snapshot.savingsGoal,
                     )
                 }.collect { state ->
@@ -108,8 +108,8 @@ class AccountsViewModel(
         }
     }
 
-    fun toggleArchiveVisibility() {
-        showArchivedFlow.update { !it }
+    fun toggleClosedVisibility() {
+        showClosedFlow.update { !it }
     }
 
     private suspend fun buildItems(

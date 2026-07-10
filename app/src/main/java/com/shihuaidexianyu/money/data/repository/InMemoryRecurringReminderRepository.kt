@@ -52,6 +52,16 @@ class InMemoryRecurringReminderRepository(
         reminders.value = reminders.value + (reminder.id to reminder)
     }
 
+    override suspend fun disableEnabledForAccount(accountId: Long, updatedAt: Long) {
+        reminders.value = reminders.value.mapValues { (_, reminder) ->
+            if (reminder.accountId == accountId && reminder.isEnabled) {
+                reminder.copy(isEnabled = false, updatedAt = updatedAt)
+            } else {
+                reminder
+            }
+        }
+    }
+
     override suspend fun advanceOccurrence(
         reminderId: Long,
         expectedDueAt: Long,

@@ -74,6 +74,120 @@ class TransactionRepositoryContractTest {
     }
 
     @Test
+    fun fourKindDeleteAndRestoreCas_areEquivalentAndPreservePayload() = runBlocking {
+        seedAccount()
+        db.accountDao().insert(
+            com.shihuaidexianyu.money.data.entity.AccountEntity(
+                id = 2,
+                name = "第二账户",
+                initialBalance = 0,
+                createdAt = 1,
+                displayOrder = 1,
+            ),
+        )
+
+        listOf(roomRepo, memoryRepo).forEach { repository ->
+            val cashId = repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = 100,
+                    note = "工资",
+                    occurredAt = 10,
+                    createdAt = 10,
+                    updatedAt = 10,
+                    operationId = "restore-cash",
+                ),
+            ).recordId
+            val cash = requireNotNull(repository.queryStoredCashFlowRecordById(cashId))
+            assertFalse(repository.softDeleteCashFlowRecord(cashId, "wrong", 10, 100))
+            assertFalse(repository.softDeleteCashFlowRecord(cashId, cash.operationId, 9, 100))
+            assertTrue(repository.softDeleteCashFlowRecord(cashId, cash.operationId, 10, 100))
+            assertEquals(cash.copy(updatedAt = 100, deletedAt = 100), repository.queryStoredCashFlowRecordById(cashId))
+            assertFalse(repository.restoreCashFlowRecord(cashId, cash.operationId, 99, 200))
+            assertTrue(repository.restoreCashFlowRecord(cashId, cash.operationId, 100, 200))
+            assertEquals(cash.copy(updatedAt = 200), repository.queryStoredCashFlowRecordById(cashId))
+
+            val transferId = repository.insertTransferRecord(
+                TransferRecord(
+                    fromAccountId = 1,
+                    toAccountId = 2,
+                    amount = 50,
+                    note = "转账",
+                    occurredAt = 11,
+                    createdAt = 11,
+                    updatedAt = 11,
+                    operationId = "restore-transfer",
+                ),
+            ).recordId
+            val transfer = requireNotNull(repository.queryStoredTransferRecordById(transferId))
+            assertFalse(repository.softDeleteTransferRecord(transferId, "wrong", 11, 101))
+            assertTrue(repository.softDeleteTransferRecord(transferId, transfer.operationId, 11, 101))
+            assertEquals(
+                transfer.copy(updatedAt = 101, deletedAt = 101),
+                repository.queryStoredTransferRecordById(transferId),
+            )
+            assertFalse(repository.restoreTransferRecord(transferId, transfer.operationId, 100, 201))
+            assertTrue(repository.restoreTransferRecord(transferId, transfer.operationId, 101, 201))
+            assertEquals(transfer.copy(updatedAt = 201), repository.queryStoredTransferRecordById(transferId))
+
+            val updateId = repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 1,
+                    actualBalance = 500,
+                    systemBalanceBeforeUpdate = 480,
+                    delta = 20,
+                    occurredAt = 12,
+                    createdAt = 12,
+                    updatedAt = 12,
+                    operationId = "restore-update",
+                ),
+            ).recordId
+            val update = requireNotNull(repository.queryStoredBalanceUpdateRecordById(updateId))
+            assertFalse(repository.softDeleteBalanceUpdateRecord(updateId, "wrong", 12, 102))
+            assertTrue(repository.softDeleteBalanceUpdateRecord(updateId, update.operationId, 12, 102))
+            assertEquals(
+                update.copy(updatedAt = 102, deletedAt = 102),
+                repository.queryStoredBalanceUpdateRecordById(updateId),
+            )
+            assertFalse(repository.restoreBalanceUpdateRecord(updateId, update.operationId, 101, 202))
+            assertTrue(repository.restoreBalanceUpdateRecord(updateId, update.operationId, 102, 202))
+            assertEquals(update.copy(updatedAt = 202), repository.queryStoredBalanceUpdateRecordById(updateId))
+
+            val adjustmentId = repository.insertBalanceAdjustmentRecord(
+                BalanceAdjustmentRecord(
+                    accountId = 1,
+                    delta = -10,
+                    occurredAt = 13,
+                    createdAt = 13,
+                    updatedAt = 13,
+                    operationId = "restore-adjustment",
+                ),
+            ).recordId
+            val adjustment = requireNotNull(repository.queryStoredBalanceAdjustmentRecordById(adjustmentId))
+            assertFalse(repository.softDeleteBalanceAdjustmentRecord(adjustmentId, "wrong", 13, 103))
+            assertTrue(
+                repository.softDeleteBalanceAdjustmentRecord(
+                    adjustmentId,
+                    adjustment.operationId,
+                    13,
+                    103,
+                ),
+            )
+            assertEquals(
+                adjustment.copy(updatedAt = 103, deletedAt = 103),
+                repository.queryStoredBalanceAdjustmentRecordById(adjustmentId),
+            )
+            assertFalse(repository.restoreBalanceAdjustmentRecord(adjustmentId, adjustment.operationId, 102, 203))
+            assertTrue(repository.restoreBalanceAdjustmentRecord(adjustmentId, adjustment.operationId, 103, 203))
+            assertEquals(
+                adjustment.copy(updatedAt = 203),
+                repository.queryStoredBalanceAdjustmentRecordById(adjustmentId),
+            )
+        }
+    }
+
+    @Test
     fun idempotentInsertResultsAndConflicts_areEquivalentAcrossImplementations() = runBlocking {
         seedAccount()
         db.accountDao().insert(
@@ -177,8 +291,8 @@ class TransactionRepositoryContractTest {
 
         val roomCash = requireNotNull(roomRepo.queryCashFlowRecordByOperationId(cash.operationId))
         val memoryCash = requireNotNull(memoryRepo.queryCashFlowRecordByOperationId(cash.operationId))
-        roomRepo.softDeleteCashFlowRecord(roomCash.id, 3_000)
-        memoryRepo.softDeleteCashFlowRecord(memoryCash.id, 3_000)
+        roomRepo.softDeleteCurrentCashFlowRecord(roomCash.id, 3_000)
+        memoryRepo.softDeleteCurrentCashFlowRecord(memoryCash.id, 3_000)
         assertFalse(roomRepo.insertCashFlowRecord(cash.copy(note = "工资")).inserted)
         assertFalse(memoryRepo.insertCashFlowRecord(cash.copy(note = "工资")).inserted)
         assertFalse(roomRepo.updateCashFlowRecord(roomCash.copy(amount = 999, updatedAt = 4_000), roomCash.updatedAt))
@@ -190,8 +304,8 @@ class TransactionRepositoryContractTest {
 
         val roomTransfer = requireNotNull(roomRepo.queryTransferRecordByOperationId(transfer.operationId))
         val memoryTransfer = requireNotNull(memoryRepo.queryTransferRecordByOperationId(transfer.operationId))
-        roomRepo.softDeleteTransferRecord(roomTransfer.id, 3_000)
-        memoryRepo.softDeleteTransferRecord(memoryTransfer.id, 3_000)
+        roomRepo.softDeleteCurrentTransferRecord(roomTransfer.id, 3_000)
+        memoryRepo.softDeleteCurrentTransferRecord(memoryTransfer.id, 3_000)
         assertFalse(roomRepo.insertTransferRecord(transfer.copy(note = "调拨")).inserted)
         assertFalse(memoryRepo.insertTransferRecord(transfer.copy(note = "调拨")).inserted)
         assertFalse(roomRepo.updateTransferRecord(roomTransfer.copy(amount = 999, updatedAt = 4_000), roomTransfer.updatedAt))
@@ -203,8 +317,8 @@ class TransactionRepositoryContractTest {
 
         val roomUpdate = requireNotNull(roomRepo.queryBalanceUpdateRecordByOperationId(update.operationId))
         val memoryUpdate = requireNotNull(memoryRepo.queryBalanceUpdateRecordByOperationId(update.operationId))
-        roomRepo.deleteBalanceUpdateRecord(roomUpdate.id, 3_000)
-        memoryRepo.deleteBalanceUpdateRecord(memoryUpdate.id, 3_000)
+        roomRepo.softDeleteCurrentBalanceUpdateRecord(roomUpdate.id, 3_000)
+        memoryRepo.softDeleteCurrentBalanceUpdateRecord(memoryUpdate.id, 3_000)
         assertFalse(roomRepo.insertBalanceUpdateRecord(update.copy(delta = 999)).inserted)
         assertFalse(memoryRepo.insertBalanceUpdateRecord(update.copy(delta = 999)).inserted)
         assertFalse(roomRepo.updateBalanceUpdateRecord(roomUpdate.copy(actualBalance = 999, updatedAt = 4_000), roomUpdate.updatedAt))
@@ -216,8 +330,8 @@ class TransactionRepositoryContractTest {
 
         val roomAdjustment = requireNotNull(roomRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId))
         val memoryAdjustment = requireNotNull(memoryRepo.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId))
-        roomRepo.deleteBalanceAdjustmentRecord(roomAdjustment.id, 3_000)
-        memoryRepo.deleteBalanceAdjustmentRecord(memoryAdjustment.id, 3_000)
+        roomRepo.softDeleteCurrentBalanceAdjustmentRecord(roomAdjustment.id, 3_000)
+        memoryRepo.softDeleteCurrentBalanceAdjustmentRecord(memoryAdjustment.id, 3_000)
         assertFalse(roomRepo.insertBalanceAdjustmentRecord(adjustment).inserted)
         assertFalse(memoryRepo.insertBalanceAdjustmentRecord(adjustment).inserted)
         assertFalse(
@@ -817,10 +931,10 @@ class TransactionRepositoryContractTest {
                 ),
             ).recordId
 
-            repository.softDeleteCashFlowRecord(cashId, deletedAt)
-            repository.softDeleteTransferRecord(transferId, deletedAt)
-            repository.deleteBalanceUpdateRecord(updateId, deletedAt)
-            repository.deleteBalanceAdjustmentRecord(adjustmentId, deletedAt)
+            repository.softDeleteCurrentCashFlowRecord(cashId, deletedAt)
+            repository.softDeleteCurrentTransferRecord(transferId, deletedAt)
+            repository.softDeleteCurrentBalanceUpdateRecord(updateId, deletedAt)
+            repository.softDeleteCurrentBalanceAdjustmentRecord(adjustmentId, deletedAt)
         }
 
         val roomCash = roomRepo.queryAllCashFlowRecords()

@@ -67,9 +67,17 @@ class MoneyAppContainer(context: Context) {
 
     val deleteBalanceAdjustmentUseCase get() = useCaseGraph.deleteBalanceAdjustmentUseCase
 
+    val restoreLedgerRecordUseCase get() = useCaseGraph.restoreLedgerRecordUseCase
+
     val updateAccountUseCase get() = useCaseGraph.updateAccountUseCase
 
-    val archiveAccountUseCase get() = useCaseGraph.archiveAccountUseCase
+    val closeAccountUseCase get() = useCaseGraph.closeAccountUseCase
+
+    val setAccountHiddenUseCase get() = useCaseGraph.setAccountHiddenUseCase
+
+    val reopenAccountUseCase get() = useCaseGraph.reopenAccountUseCase
+
+    val observeAccountClosureIssuesUseCase get() = useCaseGraph.observeAccountClosureIssuesUseCase
 
     val updateAccountDisplayOrderUseCase get() = useCaseGraph.updateAccountDisplayOrderUseCase
 

@@ -1,15 +1,34 @@
 package com.shihuaidexianyu.money.domain.model
 
+import kotlinx.serialization.Serializable
+
 data class LedgerInsertResult(
     val recordId: Long,
     val inserted: Boolean,
 )
 
+@Serializable
 enum class LedgerRecordKind {
     CASH_FLOW,
     TRANSFER,
     BALANCE_UPDATE,
     BALANCE_ADJUSTMENT,
+}
+
+@Serializable
+data class LedgerUndoToken(
+    val version: Int = 1,
+    val kind: LedgerRecordKind,
+    val recordId: Long,
+    val operationId: String,
+    val deletedAt: Long,
+)
+
+enum class RestoreLedgerResult {
+    RESTORED,
+    ALREADY_ACTIVE,
+    STALE,
+    NOT_FOUND,
 }
 
 class LedgerOperationConflictException(

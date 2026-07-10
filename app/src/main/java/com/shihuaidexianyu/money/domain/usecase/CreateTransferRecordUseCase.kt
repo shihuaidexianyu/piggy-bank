@@ -43,8 +43,8 @@ class CreateTransferRecordUseCase(
             require(occurredAt <= now) { "时间不能晚于当前时间" }
             val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
             val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
-            fromAccount.requireActiveForMutation("记录转账")
-            toAccount.requireActiveForMutation("记录转账")
+            fromAccount.requireOpenForMutation("记录转账")
+            toAccount.requireOpenForMutation("记录转账")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 

@@ -183,6 +183,15 @@ class ObserveStatsDashboardUseCaseTest {
                 createdAt = now,
             ),
         )
+        accountRepository.setHidden(accountId, hidden = true)
+        val legacyClosedId = accountRepository.createAccount(
+            Account(
+                name = "迁移关闭账户",
+                initialBalance = 5_000,
+                createdAt = range.startInclusive - 1_000,
+            ),
+        )
+        accountRepository.closeAccount(legacyClosedId, now)
         transactionRepository.insertCashFlowRecord(
             CashFlowRecord(
                 accountId = accountId,
@@ -214,8 +223,8 @@ class ObserveStatsDashboardUseCaseTest {
             ),
         ).first()
 
-        assertEquals(10_000, snapshot.openingAssets)
-        assertEquals(12_000, snapshot.closingAssets)
+        assertEquals(15_000, snapshot.openingAssets)
+        assertEquals(17_000, snapshot.closingAssets)
         assertEquals(2_000, snapshot.totalInflow)
         assertEquals(2_000, snapshot.netCashFlow)
         assertEquals(2_000, snapshot.assetChange)

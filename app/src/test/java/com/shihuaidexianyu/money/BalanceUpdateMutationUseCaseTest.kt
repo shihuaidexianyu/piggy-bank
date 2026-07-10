@@ -98,6 +98,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val accountId = accountRepository.createAccount(
             Account(
@@ -146,6 +147,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
@@ -242,6 +244,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val accountId = accountRepository.createAccount(
             Account(
@@ -313,6 +316,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val accountId = accountRepository.createAccount(
@@ -378,6 +382,7 @@ class BalanceUpdateMutationUseCaseTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository)
         val firstAccountId = accountRepository.createAccount(

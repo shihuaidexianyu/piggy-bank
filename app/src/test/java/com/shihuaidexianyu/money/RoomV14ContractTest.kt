@@ -132,10 +132,10 @@ class RoomV14ContractTest {
         assertEquals(50, repository.sumManualAdjustmentDecreaseBetween(0, 1_000))
         assertEquals(150, repository.ledgerBalanceAt100())
 
-        repository.softDeleteCashFlowRecord(cashId, 100)
-        repository.softDeleteTransferRecord(transferId, 100)
-        repository.deleteBalanceUpdateRecord(updateId, 100)
-        repository.deleteBalanceAdjustmentRecord(adjustmentId, 100)
+        repository.softDeleteCurrentCashFlowRecord(cashId, 100)
+        repository.softDeleteCurrentTransferRecord(transferId, 100)
+        repository.softDeleteCurrentBalanceUpdateRecord(updateId, 100)
+        repository.softDeleteCurrentBalanceAdjustmentRecord(adjustmentId, 100)
 
         assertEquals(1, repository.queryAllCashFlowRecords().size)
         assertEquals(1, repository.queryAllTransferRecords().size)

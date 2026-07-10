@@ -177,7 +177,7 @@ class CalculateAccountBalancesUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 6_600)
+        transactionRepository.softDeleteCurrentCashFlowRecord(deletedCashFlowId, 6_600)
         val deletedTransferId = transactionRepository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = secondAccountId,
@@ -190,7 +190,7 @@ class CalculateAccountBalancesUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteTransferRecord(deletedTransferId, 6_800)
+        transactionRepository.softDeleteCurrentTransferRecord(deletedTransferId, 6_800)
 
         val accounts = listOf(
             accountRepository.getAccountById(firstAccountId) ?: error("missing account"),

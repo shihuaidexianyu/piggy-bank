@@ -39,7 +39,7 @@ class LedgerActiveUpdateCasTest {
                 expectedUpdatedAt = cash.updatedAt,
             ),
         )
-        repository.softDeleteCashFlowRecord(cashId, 30)
+        repository.softDeleteCurrentCashFlowRecord(cashId, 30)
         assertFalse(repository.updateCashFlowRecord(cash.copy(amount = 2, updatedAt = 40), cash.updatedAt))
         assertEquals(30, repository.queryCashFlowRecordByOperationId(cash.operationId)?.deletedAt)
 
@@ -47,7 +47,7 @@ class LedgerActiveUpdateCasTest {
         val transfer = requireNotNull(repository.queryTransferRecordById(transferId))
         assertFalse(repository.updateTransferRecord(transfer.copy(amount = 2, updatedAt = 20), 9))
         assertFalse(repository.updateTransferRecord(transfer.copy(operationId = "changed", updatedAt = 20), 10))
-        repository.softDeleteTransferRecord(transferId, 30)
+        repository.softDeleteCurrentTransferRecord(transferId, 30)
         assertFalse(repository.updateTransferRecord(transfer.copy(amount = 2, updatedAt = 40), 10))
         assertEquals(30, repository.queryTransferRecordByOperationId(transfer.operationId)?.deletedAt)
 
@@ -55,7 +55,7 @@ class LedgerActiveUpdateCasTest {
         val update = requireNotNull(repository.getBalanceUpdateRecordById(updateId))
         assertFalse(repository.updateBalanceUpdateRecord(update.copy(actualBalance = 2, updatedAt = 20), 9))
         assertFalse(repository.updateBalanceUpdateRecord(update.copy(operationId = "changed", updatedAt = 20), 10))
-        repository.deleteBalanceUpdateRecord(updateId, 30)
+        repository.softDeleteCurrentBalanceUpdateRecord(updateId, 30)
         assertFalse(repository.updateBalanceUpdateRecord(update.copy(actualBalance = 2, updatedAt = 40), 10))
         assertEquals(30, repository.queryBalanceUpdateRecordByOperationId(update.operationId)?.deletedAt)
 
@@ -63,7 +63,7 @@ class LedgerActiveUpdateCasTest {
         val adjustment = requireNotNull(repository.getBalanceAdjustmentRecordById(adjustmentId))
         assertFalse(repository.updateBalanceAdjustmentRecord(adjustment.copy(delta = 2, updatedAt = 20), 9))
         assertFalse(repository.updateBalanceAdjustmentRecord(adjustment.copy(operationId = "changed", updatedAt = 20), 10))
-        repository.deleteBalanceAdjustmentRecord(adjustmentId, 30)
+        repository.softDeleteCurrentBalanceAdjustmentRecord(adjustmentId, 30)
         assertFalse(repository.updateBalanceAdjustmentRecord(adjustment.copy(delta = 2, updatedAt = 40), 10))
         assertEquals(30, repository.queryBalanceAdjustmentRecordByOperationId(adjustment.operationId)?.deletedAt)
     }

@@ -76,7 +76,7 @@ class HomeViewModel(
                                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                             )
                         },
-                        accountOptions = snapshot.activeAccounts.map { account ->
+                        accountOptions = snapshot.openAccounts.map { account ->
                             account.toAccountOptionUiModel(
                                 balance = snapshot.accountBalances[account.id] ?: 0L,
                                 isStale = account.id in staleAccountIds,

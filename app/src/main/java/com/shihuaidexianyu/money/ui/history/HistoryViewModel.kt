@@ -21,7 +21,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -200,12 +199,7 @@ class HistoryViewModel(
         reloadFirstPage()
     }
 
-    private fun observeAccounts() = combine(
-        accountRepository.observeActiveAccounts(),
-        accountRepository.observeArchivedAccounts(),
-    ) { active, archived ->
-        (active + archived).distinctBy(Account::id)
-    }
+    private fun observeAccounts() = accountRepository.observeAllAccounts()
 
     private fun applySettings(settings: AppSettings) {
         _uiState.update { it.copy(settings = settings) }

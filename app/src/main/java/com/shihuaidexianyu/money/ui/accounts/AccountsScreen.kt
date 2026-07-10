@@ -60,11 +60,11 @@ fun AccountsScreen(
     state: AccountsUiState,
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
-    onToggleArchiveVisibility: () -> Unit,
+    onToggleClosedVisibility: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hasArchivedAccounts = state.archivedAccounts.isNotEmpty()
-    val positiveAssetsTotal = state.activeAccounts.sumOf { account ->
+    val hasClosedAccounts = state.closedAccounts.isNotEmpty()
+    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts).sumOf { account ->
         if (account.balance > 0) account.balance else 0L
     }
 
@@ -94,20 +94,20 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.activeAccounts.isNotEmpty()) {
+            if (state.openAccounts.isNotEmpty()) {
                 item {
                     AccountOverviewCard(state = state)
                 }
             }
-            if (state.activeAccounts.isEmpty()) {
+            if (state.openAccounts.isEmpty()) {
                 item {
                     MoneyEmptyStateCard(
-                        title = if (hasArchivedAccounts) "还没有活跃账户" else "还没有账户",
-                        subtitle = if (hasArchivedAccounts) "归档账户可以在下方查看。" else "创建账户后，就能开始记录资金流和查看总资产。",
+                        title = if (hasClosedAccounts) "还没有开放账户" else "还没有账户",
+                        subtitle = if (hasClosedAccounts) "关闭账户可以在下方查看。" else "创建账户后，就能开始记录资金流和查看总资产。",
                     ) {
-                        if (hasArchivedAccounts) {
-                            OutlinedButton(onClick = onToggleArchiveVisibility) {
-                                Text(if (state.showArchived) "收起已归档" else "查看已归档")
+                        if (hasClosedAccounts) {
+                            OutlinedButton(onClick = onToggleClosedVisibility) {
+                                Text(if (state.showClosed) "收起已关闭" else "查看已关闭")
                             }
                         } else {
                             OutlinedButton(onClick = onCreateAccount) { Text("创建第一个账户") }
@@ -115,14 +115,14 @@ fun AccountsScreen(
                     }
                 }
             } else {
-                val staleCount = state.activeAccounts.count { it.isStale }
+                val staleCount = state.openAccounts.count { it.isStale }
                 item {
                     MoneySectionHeader(
-                        title = "活跃账户",
-                        trailing = if (staleCount > 0) "$staleCount 个待核对" else "${state.activeAccounts.size} 个",
+                        title = "开放账户",
+                        trailing = if (staleCount > 0) "$staleCount 个待核对" else "${state.openAccounts.size} 个",
                     )
                 }
-                itemsIndexed(state.activeAccounts, key = { _, account -> account.id }) { _, account ->
+                itemsIndexed(state.openAccounts, key = { _, account -> account.id }) { _, account ->
                     AccountCard(
                         account = account,
                         currencySettings = state.settings,
@@ -131,31 +131,31 @@ fun AccountsScreen(
                     )
                 }
             }
-            if (hasArchivedAccounts) {
+            if (hasClosedAccounts) {
                 item {
                     MoneyCard(contentPadding = PaddingValues(0.dp)) {
                         MoneyListRow(
-                            title = "已归档账户",
-                            trailing = "${state.archivedAccounts.size} 个",
+                            title = "已关闭账户",
+                            trailing = "${state.closedAccounts.size} 个",
                             showChevron = false,
                             accessory = {
                                 Text(
-                                    text = if (state.showArchived) "收起" else "查看",
+                                    text = if (state.showClosed) "收起" else "查看",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(start = 12.dp),
                                 )
                             },
-                            modifier = Modifier.clickable(onClick = onToggleArchiveVisibility),
+                            modifier = Modifier.clickable(onClick = onToggleClosedVisibility),
                         )
                     }
                 }
             }
-            if (state.showArchived) {
+            if (state.showClosed) {
                 item {
-                    MoneySectionHeader(title = "已归档")
+                    MoneySectionHeader(title = "已关闭")
                 }
-                itemsIndexed(state.archivedAccounts, key = { _, account -> account.id }) { _, account ->
+                itemsIndexed(state.closedAccounts, key = { _, account -> account.id }) { _, account ->
                     AccountCard(
                         account = account,
                         currencySettings = state.settings,
@@ -170,8 +170,8 @@ fun AccountsScreen(
 
 @Composable
 private fun AccountOverviewCard(state: AccountsUiState) {
-    val totalAssets = state.activeAccounts.sumOf { it.balance }
-    val staleCount = state.activeAccounts.count { it.isStale }
+    val totalAssets = (state.openAccounts + state.closedAccounts).sumOf { it.balance }
+    val staleCount = state.openAccounts.count { it.isStale }
     val current = LocalMoneyColors.current.current
     val goal = state.savingsGoal
     val goalPercentage = if (goal != null && goal.targetAmount > 0L) {
@@ -284,7 +284,7 @@ private fun AccountCard(
     }
     val assetShareColor = accountVisualColor(account.colorName)
     val statusText = when {
-        account.isClosed -> "已归档"
+        account.isClosed -> "已关闭"
         account.isStale -> "余额待核对"
         else -> "余额正常"
     }

@@ -50,7 +50,7 @@ class BuildExportJsonUseCaseTest {
                 colorName = "red",
             ),
         )
-        accountRepository.archiveAccount(archivedAccountId, 9L)
+        accountRepository.closeAccount(archivedAccountId, 9L)
         reminderSettingsRepository.updateReminderConfig(
             accountId,
             BalanceUpdateReminderConfig(
@@ -73,7 +73,7 @@ class BuildExportJsonUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, 4L)
+        transactionRepository.softDeleteCurrentCashFlowRecord(deletedCashFlowId, 4L)
         val deletedTransferId = transactionRepository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = accountId,
@@ -86,7 +86,7 @@ class BuildExportJsonUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteTransferRecord(deletedTransferId, 5L)
+        transactionRepository.softDeleteCurrentTransferRecord(deletedTransferId, 5L)
         transactionRepository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(
                 accountId = accountId,

@@ -47,7 +47,7 @@ class ProcessDueReminderUseCase(
             val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
             check(reminder.isEnabled && reminder.nextDueAt == expectedDueAt) { "提醒状态已变化" }
             val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-            account.requireActiveForMutation("处理提醒")
+            account.requireOpenForMutation("处理提醒")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
             val insertResult = transactionRepository.insertCashFlowRecord(

@@ -6,13 +6,13 @@ class UpdateAccountDisplayOrderUseCase(
     private val accountRepository: AccountRepository,
 ) {
     suspend operator fun invoke(orderedAccountIds: List<Long>) {
-        val activeAccounts = accountRepository.queryActiveAccounts()
-        val activeAccountIds = activeAccounts.map { it.id }
+        val openAccounts = accountRepository.queryOpenAccounts()
+        val openAccountIds = openAccounts.map { it.id }
 
         require(orderedAccountIds.size == orderedAccountIds.distinct().size) { "账户顺序不能包含重复项" }
-        require(orderedAccountIds.toSet() == activeAccountIds.toSet()) { "账户顺序必须覆盖全部活跃账户" }
+        require(orderedAccountIds.toSet() == openAccountIds.toSet()) { "账户顺序必须覆盖全部开放账户" }
 
-        val accountById = activeAccounts.associateBy { it.id }
+        val accountById = openAccounts.associateBy { it.id }
         orderedAccountIds.forEachIndexed { index, accountId ->
             val account = requireNotNull(accountById[accountId]) { "账户不存在" }
             if (account.displayOrder != index) {

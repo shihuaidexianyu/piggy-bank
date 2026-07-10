@@ -51,7 +51,7 @@ class CreateReminderViewModel(
 
     init {
         viewModelScope.launch {
-            val accounts = accountRepository.queryActiveAccounts()
+            val accounts = accountRepository.queryOpenAccounts()
             _uiState.value = _uiState.value.copy(
                 accounts = accounts.toAccountOptionUiModels(),
                 selectedAccountId = accounts.firstOrNull()?.id,

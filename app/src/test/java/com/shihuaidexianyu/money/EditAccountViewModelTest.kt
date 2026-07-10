@@ -8,7 +8,8 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.usecase.ArchiveAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.ui.accounts.EditAccountEffect
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
@@ -55,10 +56,10 @@ class EditAccountViewModelTest {
     }
 
     @Test
-    fun `save with archived account emits ShowMessage without invoking use case`() = runTest(dispatcher) {
+    fun `save with closed account emits ShowMessage without invoking use case`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val accountId = accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
-        accountRepo.archiveAccount(accountId, archivedAt = 100L)
+        accountRepo.closeAccount(accountId, closedAt = 100L)
         val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo)
         advanceUntilIdle()
 
@@ -67,7 +68,7 @@ class EditAccountViewModelTest {
             advanceUntilIdle()
             val effect = awaitItem()
             assertTrue(effect is EditAccountEffect.ShowMessage)
-            assertEquals("归档账户不能修改账户", effect.message)
+            assertEquals("关闭账户不能修改账户", effect.message)
         }
     }
 
@@ -106,19 +107,36 @@ class EditAccountViewModelTest {
     }
 
     @Test
-    fun `archive success emits Archived and marks account archived`() = runTest(dispatcher) {
+    fun `close success emits AccountClosed and marks account closed`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val accountId = accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
         val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo)
         advanceUntilIdle()
 
         vm.effectFlow.test {
-            vm.archive()
+            vm.closeAccount()
             advanceUntilIdle()
-            assertEquals(EditAccountEffect.Archived, awaitItem())
+            assertEquals(EditAccountEffect.AccountClosed, awaitItem())
         }
         val account = accountRepo.getAccountById(accountId)
         assertTrue(account?.isClosed == true)
+    }
+
+    @Test
+    fun `close with nonzero balance surfaces failure and keeps account open`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val accountId = accountRepo.createAccount(Account(name = "现金", initialBalance = 100, createdAt = 1L))
+        val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo)
+        advanceUntilIdle()
+
+        vm.effectFlow.test {
+            vm.closeAccount()
+            advanceUntilIdle()
+            val effect = awaitItem()
+            assertTrue(effect is EditAccountEffect.ShowMessage)
+            assertEquals("账户余额必须为 0 才能关闭", effect.message)
+        }
+        assertTrue(accountRepo.getAccountById(accountId)?.isClosed == false)
     }
 
     private fun buildViewModel(
@@ -128,13 +146,23 @@ class EditAccountViewModelTest {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
         val reminderRepo = InMemoryRecurringReminderRepository()
         val txnRepo = InMemoryTransactionRepository()
-        val archiveUseCase = ArchiveAccountUseCase(accountRepo, reminderRepo, txnRepo)
+        val closeUseCase = CloseAccountUseCase(
+            accountRepository = accountRepo,
+            reminderRepository = reminderRepo,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
+                accountRepo,
+                txnRepo,
+                testClockProvider,
+            ),
+            transactionRunner = txnRepo,
+            clockProvider = testClockProvider,
+        )
         val updateUseCase = UpdateAccountUseCase(accountRepo, reminderSettingsRepo)
         return EditAccountViewModel(
             accountId = accountId,
             accountRepository = accountRepo,
             accountReminderSettingsRepository = reminderSettingsRepo,
-            archiveAccountUseCase = archiveUseCase,
+            closeAccountUseCase = closeUseCase,
             updateAccountUseCase = updateUseCase,
         )
     }

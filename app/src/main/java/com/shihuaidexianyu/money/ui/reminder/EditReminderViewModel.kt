@@ -65,7 +65,7 @@ class EditReminderViewModel(
                     emitClosedOnce()
                     return@launch
                 }
-                val accounts = accountRepository.queryActiveAccounts()
+                val accounts = accountRepository.queryOpenAccounts()
                 val periodType = ReminderPeriodType.fromValue(reminder.periodType)
                 _uiState.value = EditReminderUiState(
                     isLoading = false,

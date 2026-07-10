@@ -22,17 +22,35 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id = :id LIMIT 1")
     suspend fun queryById(id: Long): AccountEntity?
 
-    @Query("SELECT * FROM accounts WHERE closedAt IS NULL ORDER BY displayOrder ASC, createdAt ASC")
-    fun observeActiveAccounts(): Flow<List<AccountEntity>>
+    @Query("SELECT * FROM accounts ORDER BY displayOrder ASC, createdAt ASC")
+    fun observeAllAccounts(): Flow<List<AccountEntity>>
 
     @Query("SELECT * FROM accounts WHERE closedAt IS NULL ORDER BY displayOrder ASC, createdAt ASC")
-    suspend fun queryActiveAccounts(): List<AccountEntity>
+    fun observeOpenAccounts(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL AND isHidden = 0 ORDER BY displayOrder ASC, createdAt ASC")
+    fun observeVisibleOpenAccounts(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL AND isHidden = 1 ORDER BY displayOrder ASC, createdAt ASC")
+    fun observeHiddenOpenAccounts(): Flow<List<AccountEntity>>
 
     @Query("SELECT * FROM accounts WHERE closedAt IS NOT NULL ORDER BY closedAt DESC, createdAt DESC")
-    fun observeArchivedAccounts(): Flow<List<AccountEntity>>
+    fun observeClosedAccounts(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts ORDER BY displayOrder ASC, createdAt ASC")
+    suspend fun queryAllAccounts(): List<AccountEntity>
+
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL ORDER BY displayOrder ASC, createdAt ASC")
+    suspend fun queryOpenAccounts(): List<AccountEntity>
+
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL AND isHidden = 0 ORDER BY displayOrder ASC, createdAt ASC")
+    suspend fun queryVisibleOpenAccounts(): List<AccountEntity>
+
+    @Query("SELECT * FROM accounts WHERE closedAt IS NULL AND isHidden = 1 ORDER BY displayOrder ASC, createdAt ASC")
+    suspend fun queryHiddenOpenAccounts(): List<AccountEntity>
 
     @Query("SELECT * FROM accounts WHERE closedAt IS NOT NULL ORDER BY closedAt DESC, createdAt DESC")
-    suspend fun queryArchivedAccounts(): List<AccountEntity>
+    suspend fun queryClosedAccounts(): List<AccountEntity>
 
     @Query("UPDATE accounts SET lastUsedAt = :timestamp WHERE id = :accountId")
     suspend fun updateLastUsedAt(accountId: Long, timestamp: Long)
@@ -43,11 +61,17 @@ interface AccountDao {
     @Query(
         """
         UPDATE accounts
-        SET closedAt = :archivedAt
-        WHERE id = :accountId
+        SET isHidden = :hidden
+        WHERE id = :accountId AND closedAt IS NULL
         """,
     )
-    suspend fun archiveAccount(accountId: Long, archivedAt: Long)
+    suspend fun setHidden(accountId: Long, hidden: Boolean)
+
+    @Query("UPDATE accounts SET closedAt = :closedAt WHERE id = :accountId AND closedAt IS NULL")
+    suspend fun closeAccount(accountId: Long, closedAt: Long)
+
+    @Query("UPDATE accounts SET closedAt = NULL WHERE id = :accountId")
+    suspend fun reopenAccount(accountId: Long)
 
     @Query(
         """
@@ -55,7 +79,7 @@ interface AccountDao {
         WHERE closedAt IS NULL AND name = :name AND (:excludeId < 0 OR id != :excludeId)
         """,
     )
-    suspend fun countActiveAccountsByName(name: String, excludeId: Long = -1): Int
+    suspend fun countOpenAccountsByName(name: String, excludeId: Long = -1): Int
 
     @Query("SELECT COALESCE(MAX(displayOrder), -1) + 1 FROM accounts WHERE closedAt IS NULL")
     suspend fun nextDisplayOrder(): Int

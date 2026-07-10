@@ -21,16 +21,28 @@ import kotlinx.coroutines.flow.Flow
  * extracting a focused port interface in `domain/repository/` and implementing it against the same
  * DAO layer, rather than reviving the sub-interface hierarchy.
  */
-interface TransactionRepository {
+interface TransactionRepository : DatabaseTransactionRunner {
     // === Change observation / transactions ===
     fun observeChangeVersion(): Flow<Long>
-    suspend fun <T> runInTransaction(block: suspend () -> T): T
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T
 
     // === Cash flow records ===
     suspend fun insertCashFlowRecord(record: CashFlowRecord): LedgerInsertResult
     suspend fun updateCashFlowRecord(record: CashFlowRecord, expectedUpdatedAt: Long): Boolean
-    suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long)
+    suspend fun softDeleteCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean
+    suspend fun restoreCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean
     suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord?
+    suspend fun queryStoredCashFlowRecordById(id: Long): CashFlowRecord?
     suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord?
     suspend fun queryAllCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
@@ -53,8 +65,20 @@ interface TransactionRepository {
     // === Transfer records ===
     suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult
     suspend fun updateTransferRecord(record: TransferRecord, expectedUpdatedAt: Long): Boolean
-    suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long)
+    suspend fun softDeleteTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean
+    suspend fun restoreTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean
     suspend fun queryTransferRecordById(id: Long): TransferRecord?
+    suspend fun queryStoredTransferRecordById(id: Long): TransferRecord?
     suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord?
     suspend fun queryAllTransferRecords(): List<TransferRecord>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecord>
@@ -65,8 +89,20 @@ interface TransactionRepository {
     // === Balance update records ===
     suspend fun insertBalanceUpdateRecord(record: BalanceUpdateRecord): LedgerInsertResult
     suspend fun updateBalanceUpdateRecord(record: BalanceUpdateRecord, expectedUpdatedAt: Long): Boolean
-    suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long)
+    suspend fun softDeleteBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean
+    suspend fun restoreBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
+    suspend fun queryStoredBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
     suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecord>
@@ -76,8 +112,20 @@ interface TransactionRepository {
     // === Balance adjustment records ===
     suspend fun insertBalanceAdjustmentRecord(record: BalanceAdjustmentRecord): LedgerInsertResult
     suspend fun updateBalanceAdjustmentRecord(record: BalanceAdjustmentRecord, expectedUpdatedAt: Long): Boolean
-    suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long)
+    suspend fun softDeleteBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean
+    suspend fun restoreBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
+    suspend fun queryStoredBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
     suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecord>

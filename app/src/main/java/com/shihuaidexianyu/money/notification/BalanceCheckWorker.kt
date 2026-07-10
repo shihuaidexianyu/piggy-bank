@@ -30,7 +30,7 @@ class BalanceCheckWorker(
         val accountRepo = container.accountRepository
         val reminderSettingsRepo = container.accountReminderSettingsRepository
 
-        val accounts = runCatching { accountRepo.queryActiveAccounts() }.getOrElse { return Result.retry() }
+        val accounts = runCatching { accountRepo.queryOpenAccounts() }.getOrElse { return Result.retry() }
         if (accounts.isEmpty()) return Result.success()
 
         val now = System.currentTimeMillis()

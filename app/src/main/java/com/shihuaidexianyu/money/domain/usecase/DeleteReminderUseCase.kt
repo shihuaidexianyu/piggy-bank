@@ -10,7 +10,7 @@ class DeleteReminderUseCase(
     suspend operator fun invoke(reminderId: Long) {
         val reminder = reminderRepository.getReminderById(reminderId) ?: return
         val account = requireNotNull(accountRepository.getAccountById(reminder.accountId)) { "账户不存在" }
-        account.requireActiveForMutation("删除提醒")
+        account.requireOpenForMutation("删除提醒")
         reminderRepository.deleteReminder(reminderId)
     }
 }

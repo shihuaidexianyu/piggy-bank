@@ -70,7 +70,7 @@ class EditTransferViewModel(
                 originalFromAccountId = record.fromAccountId
                 originalToAccountId = record.toAccountId
                 originalAmount = record.amount
-                val accounts = accountRepository.queryActiveAccounts()
+                val accounts = accountRepository.queryOpenAccounts()
                 val nextState = EditTransferUiState(
                     isLoading = false,
                     accounts = accounts.map { account ->

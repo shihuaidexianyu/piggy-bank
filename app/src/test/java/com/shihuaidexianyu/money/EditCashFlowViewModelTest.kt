@@ -162,7 +162,7 @@ class EditCashFlowViewModelTest {
             refreshUseCase,
             testClockProvider,
         )
-        val deleteUseCase = DeleteCashFlowRecordUseCase(accountRepo, txnRepo, refreshUseCase)
+        val deleteUseCase = DeleteCashFlowRecordUseCase(accountRepo, txnRepo, refreshUseCase, testClockProvider)
         return EditCashFlowViewModel(
             recordId = recordId,
             accountRepository = accountRepo,

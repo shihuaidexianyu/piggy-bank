@@ -26,7 +26,7 @@ data class HomeDashboardSnapshot(
     val periodBreakdown: PeriodAssetBreakdown,
     val periodRecordCount: Int,
     val staleAccountCount: Int,
-    val activeAccounts: List<Account>,
+    val openAccounts: List<Account>,
     val staleAccounts: List<Account>,
     val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminder>,
@@ -66,8 +66,12 @@ class ObserveHomeDashboardUseCase(
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
+        val accountSources = combine(
+            accountRepository.observeAllAccounts(),
+            accountRepository.observeOpenAccounts(),
+        ) { allAccounts, openAccounts -> allAccounts to openAccounts }
         return combine(
-            accountRepository.observeActiveAccounts(),
+            accountSources,
             accountReminderSettingsRepository.observeReminderConfigs(),
             settingsRepository.observeSettings(),
             transactionRepository.observeChangeVersion(),
@@ -76,12 +80,13 @@ class ObserveHomeDashboardUseCase(
             Triple(accounts, reminderConfigs, settings) to dueReminders
         }.mapLatest { (triple, dueReminders) ->
             val (accounts, reminderConfigs, settings) = triple
-            buildSnapshot(accounts, reminderConfigs, settings, dueReminders)
+            buildSnapshot(accounts.first, accounts.second, reminderConfigs, settings, dueReminders)
         }.flowOn(Dispatchers.Default)
     }
 
     private suspend fun buildSnapshot(
-        accounts: List<Account>,
+        allAccounts: List<Account>,
+        openAccounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: AppSettings,
         dueReminders: List<RecurringReminder>,
@@ -93,13 +98,13 @@ class ObserveHomeDashboardUseCase(
             zoneId = zoneId,
             nowMillis = snapshotTimeMillis,
         )
-        val balanceJob = async { calculateAccountBalancesUseCase(accounts, snapshotTimeMillis) }
-        val openingBalanceJobs = accounts
+        val balanceJob = async { calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis) }
+        val openingBalanceJobs = allAccounts
             .filter { LedgerBalanceCalculator.openingAt(it) < range.startInclusive }
             .map { account ->
                 account.id to async { calculateCurrentBalanceUseCase.before(account.id, range.startInclusive) }
             }
-        val newAccountOpeningAssets = accounts
+        val newAccountOpeningAssets = allAccounts
             .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startInclusive, range.endExclusive) }
             .sumOf(Account::initialBalance)
         val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive) }
@@ -130,7 +135,8 @@ class ObserveHomeDashboardUseCase(
         val openingBalanceByAccount = openingBalanceJobs.toMap().mapValues { it.value.await() }
 
         HomeProjector.project(
-            accounts = accounts,
+            accounts = allAccounts,
+            openAccounts = openAccounts,
             reminderConfigs = reminderConfigs,
             settings = settings,
             dueReminders = dueReminders,

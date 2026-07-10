@@ -99,7 +99,7 @@ class HistoryRepositoryPagingTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        repository.softDeleteCashFlowRecord(deletedId, 1_001L)
+        repository.softDeleteCurrentCashFlowRecord(deletedId, 1_001L)
         repository.insertCashFlowRecord(
             CashFlowRecord(
                 accountId = 1L,

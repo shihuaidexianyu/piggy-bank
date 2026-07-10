@@ -97,19 +97,45 @@ class InMemoryTransactionRepository : TransactionRepository {
         true
     }
 
-    override suspend fun softDeleteCashFlowRecord(id: Long, updatedAt: Long) {
-        synchronized(ledgerLock) {
-            val index = cashFlowRecords.indexOfFirst { it.id == id && it.deletedAt == null }
-            if (index >= 0) {
-                cashFlowRecords[index] = cashFlowRecords[index].copy(deletedAt = updatedAt, updatedAt = updatedAt)
-                bumpVersion()
-            }
+    override suspend fun softDeleteCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = cashFlowRecords.indexOfFirst {
+            it.id == id &&
+                it.operationId == operationId &&
+                it.updatedAt == expectedUpdatedAt &&
+                it.deletedAt == null
         }
+        if (index < 0) return@synchronized false
+        cashFlowRecords[index] = cashFlowRecords[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+        bumpVersion()
+        true
+    }
+
+    override suspend fun restoreCashFlowRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = cashFlowRecords.indexOfFirst {
+            it.id == id && it.operationId == operationId && it.deletedAt == expectedDeletedAt
+        }
+        if (index < 0) return@synchronized false
+        cashFlowRecords[index] = cashFlowRecords[index].copy(deletedAt = null, updatedAt = restoredAt)
+        bumpVersion()
+        true
     }
 
     override suspend fun queryCashFlowRecordById(id: Long): CashFlowRecord? {
         return cashFlowRecords.firstOrNull { it.id == id && it.deletedAt == null }
     }
+
+    override suspend fun queryStoredCashFlowRecordById(id: Long): CashFlowRecord? =
+        synchronized(ledgerLock) { cashFlowRecords.firstOrNull { it.id == id } }
 
     override suspend fun queryCashFlowRecordByOperationId(operationId: String): CashFlowRecord? {
         return cashFlowRecords.firstOrNull { it.operationId == operationId }
@@ -196,19 +222,45 @@ class InMemoryTransactionRepository : TransactionRepository {
         true
     }
 
-    override suspend fun softDeleteTransferRecord(id: Long, updatedAt: Long) {
-        synchronized(ledgerLock) {
-            val index = transferRecords.indexOfFirst { it.id == id && it.deletedAt == null }
-            if (index >= 0) {
-                transferRecords[index] = transferRecords[index].copy(deletedAt = updatedAt, updatedAt = updatedAt)
-                bumpVersion()
-            }
+    override suspend fun softDeleteTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = transferRecords.indexOfFirst {
+            it.id == id &&
+                it.operationId == operationId &&
+                it.updatedAt == expectedUpdatedAt &&
+                it.deletedAt == null
         }
+        if (index < 0) return@synchronized false
+        transferRecords[index] = transferRecords[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+        bumpVersion()
+        true
+    }
+
+    override suspend fun restoreTransferRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = transferRecords.indexOfFirst {
+            it.id == id && it.operationId == operationId && it.deletedAt == expectedDeletedAt
+        }
+        if (index < 0) return@synchronized false
+        transferRecords[index] = transferRecords[index].copy(deletedAt = null, updatedAt = restoredAt)
+        bumpVersion()
+        true
     }
 
     override suspend fun queryTransferRecordById(id: Long): TransferRecord? {
         return transferRecords.firstOrNull { it.id == id && it.deletedAt == null }
     }
+
+    override suspend fun queryStoredTransferRecordById(id: Long): TransferRecord? =
+        synchronized(ledgerLock) { transferRecords.firstOrNull { it.id == id } }
 
     override suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord? {
         return transferRecords.firstOrNull { it.operationId == operationId }
@@ -294,19 +346,45 @@ class InMemoryTransactionRepository : TransactionRepository {
         true
     }
 
-    override suspend fun deleteBalanceUpdateRecord(id: Long, deletedAt: Long) {
-        synchronized(ledgerLock) {
-            val index = balanceUpdates.indexOfFirst { it.id == id && it.deletedAt == null }
-            if (index >= 0) {
-                balanceUpdates[index] = balanceUpdates[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
-                bumpVersion()
-            }
+    override suspend fun softDeleteBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = balanceUpdates.indexOfFirst {
+            it.id == id &&
+                it.operationId == operationId &&
+                it.updatedAt == expectedUpdatedAt &&
+                it.deletedAt == null
         }
+        if (index < 0) return@synchronized false
+        balanceUpdates[index] = balanceUpdates[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+        bumpVersion()
+        true
+    }
+
+    override suspend fun restoreBalanceUpdateRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = balanceUpdates.indexOfFirst {
+            it.id == id && it.operationId == operationId && it.deletedAt == expectedDeletedAt
+        }
+        if (index < 0) return@synchronized false
+        balanceUpdates[index] = balanceUpdates[index].copy(deletedAt = null, updatedAt = restoredAt)
+        bumpVersion()
+        true
     }
 
     override suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? {
         return balanceUpdates.firstOrNull { it.id == id && it.deletedAt == null }
     }
+
+    override suspend fun queryStoredBalanceUpdateRecordById(id: Long): BalanceUpdateRecord? =
+        synchronized(ledgerLock) { balanceUpdates.firstOrNull { it.id == id } }
 
     override suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord? {
         return balanceUpdates.firstOrNull { it.operationId == operationId }
@@ -381,19 +459,45 @@ class InMemoryTransactionRepository : TransactionRepository {
         true
     }
 
-    override suspend fun deleteBalanceAdjustmentRecord(id: Long, deletedAt: Long) {
-        synchronized(ledgerLock) {
-            val index = adjustments.indexOfFirst { it.id == id && it.deletedAt == null }
-            if (index >= 0) {
-                adjustments[index] = adjustments[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
-                bumpVersion()
-            }
+    override suspend fun softDeleteBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = adjustments.indexOfFirst {
+            it.id == id &&
+                it.operationId == operationId &&
+                it.updatedAt == expectedUpdatedAt &&
+                it.deletedAt == null
         }
+        if (index < 0) return@synchronized false
+        adjustments[index] = adjustments[index].copy(deletedAt = deletedAt, updatedAt = deletedAt)
+        bumpVersion()
+        true
+    }
+
+    override suspend fun restoreBalanceAdjustmentRecord(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Boolean = synchronized(ledgerLock) {
+        val index = adjustments.indexOfFirst {
+            it.id == id && it.operationId == operationId && it.deletedAt == expectedDeletedAt
+        }
+        if (index < 0) return@synchronized false
+        adjustments[index] = adjustments[index].copy(deletedAt = null, updatedAt = restoredAt)
+        bumpVersion()
+        true
     }
 
     override suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? {
         return adjustments.firstOrNull { it.id == id && it.deletedAt == null }
     }
+
+    override suspend fun queryStoredBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord? =
+        synchronized(ledgerLock) { adjustments.firstOrNull { it.id == id } }
 
     override suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord? {
         return adjustments.firstOrNull { it.operationId == operationId }

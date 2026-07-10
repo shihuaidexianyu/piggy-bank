@@ -227,7 +227,7 @@ class ObserveHomeDashboardUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteCashFlowRecord(deletedCashFlowId, now)
+        transactionRepository.softDeleteCurrentCashFlowRecord(deletedCashFlowId, now)
         transactionRepository.insertTransferRecord(
             TransferRecord(
                 fromAccountId = fromAccountId,
@@ -252,7 +252,7 @@ class ObserveHomeDashboardUseCaseTest {
                 operationId = testOperationId(),
             ),
         ).recordId
-        transactionRepository.softDeleteTransferRecord(deletedTransferId, now)
+        transactionRepository.softDeleteCurrentTransferRecord(deletedTransferId, now)
         transactionRepository.insertBalanceAdjustmentRecord(
             BalanceAdjustmentRecord(
                 accountId = fromAccountId,
@@ -323,6 +323,7 @@ class ObserveHomeDashboardUseCaseTest {
                 lastBalanceUpdateAt = oldTime,
             ),
         )
+        accountRepository.setHidden(stalePaymentId, hidden = true)
         val freshId = accountRepository.createAccount(
             Account(
                 name = "新账户",
@@ -331,15 +332,15 @@ class ObserveHomeDashboardUseCaseTest {
                 lastBalanceUpdateAt = now,
             ),
         )
-        val archivedId = accountRepository.createAccount(
+        val closedId = accountRepository.createAccount(
             Account(
-                name = "归档账户",
+                name = "关闭账户",
                 initialBalance = 4_000,
                 createdAt = oldTime,
                 lastBalanceUpdateAt = oldTime,
             ),
         )
-        accountRepository.archiveAccount(archivedId, now)
+        accountRepository.closeAccount(closedId, now)
         reminderSettingsRepository.updateReminderConfig(
             freshId,
             BalanceUpdateReminderConfig(
@@ -367,5 +368,7 @@ class ObserveHomeDashboardUseCaseTest {
         assertEquals(setOf(staleBankId, stalePaymentId), snapshot.staleAccounts.map { it.id }.toSet())
         assertEquals(10_000, snapshot.accountBalances[staleBankId])
         assertEquals(2_000, snapshot.accountBalances[stalePaymentId])
+        assertEquals(4_000, snapshot.accountBalances[closedId])
+        assertEquals(19_000, snapshot.totalAssets)
     }
 }

@@ -109,8 +109,8 @@ class LedgerOperationIdUseCaseTest {
         assertEquals("balance-id", transactionRepository.queryAllBalanceUpdateRecords().single().operationId)
         assertEquals("adjustment-id", transactionRepository.queryAllBalanceAdjustmentRecords().single().operationId)
 
-        accountRepository.archiveAccount(firstAccountId, archivedAt = 900)
-        accountRepository.archiveAccount(secondAccountId, archivedAt = 900)
+        accountRepository.closeAccount(firstAccountId, closedAt = 900)
+        accountRepository.closeAccount(secondAccountId, closedAt = 900)
 
         assertFalse(createCash(firstAccountId, CashFlowDirection.INFLOW, 100, "工资", 1, "cash-id").inserted)
         assertFalse(createTransfer(firstAccountId, secondAccountId, 20, "转账", 2, "transfer-id").inserted)

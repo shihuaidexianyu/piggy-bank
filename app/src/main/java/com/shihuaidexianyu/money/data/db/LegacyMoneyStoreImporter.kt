@@ -10,8 +10,7 @@ object LegacyMoneyStoreImporter {
         context: Context,
         database: MoneyDatabase,
     ) {
-        val hasDatabaseData = database.accountDao().queryActiveAccounts().isNotEmpty() ||
-            database.accountDao().queryArchivedAccounts().isNotEmpty()
+        val hasDatabaseData = database.accountDao().queryAllAccounts().isNotEmpty()
         if (hasDatabaseData) return
 
         val legacyStore = PersistentMoneyStore(context)

@@ -44,6 +44,9 @@ interface BalanceAdjustmentRecordDao {
     @Query("SELECT * FROM balance_adjustment_records WHERE id = :id AND deletedAt IS NULL LIMIT 1")
     suspend fun queryById(id: Long): BalanceAdjustmentRecordEntity?
 
+    @Query("SELECT * FROM balance_adjustment_records WHERE id = :id LIMIT 1")
+    suspend fun queryStoredById(id: Long): BalanceAdjustmentRecordEntity?
+
     @Query("SELECT * FROM balance_adjustment_records WHERE operationId = :operationId LIMIT 1")
     suspend fun queryByOperationId(operationId: String): BalanceAdjustmentRecordEntity?
 
@@ -123,10 +126,34 @@ interface BalanceAdjustmentRecordDao {
         """
         UPDATE balance_adjustment_records
         SET deletedAt = :deletedAt, updatedAt = :deletedAt
-        WHERE id = :id AND deletedAt IS NULL
+        WHERE id = :id
+            AND operationId = :operationId
+            AND updatedAt = :expectedUpdatedAt
+            AND deletedAt IS NULL
         """,
     )
-    suspend fun softDelete(id: Long, deletedAt: Long)
+    suspend fun softDelete(
+        id: Long,
+        operationId: String,
+        expectedUpdatedAt: Long,
+        deletedAt: Long,
+    ): Int
+
+    @Query(
+        """
+        UPDATE balance_adjustment_records
+        SET deletedAt = NULL, updatedAt = :restoredAt
+        WHERE id = :id
+            AND operationId = :operationId
+            AND deletedAt = :expectedDeletedAt
+        """,
+    )
+    suspend fun restore(
+        id: Long,
+        operationId: String,
+        expectedDeletedAt: Long,
+        restoredAt: Long,
+    ): Int
 
     @Query("DELETE FROM balance_adjustment_records")
     suspend fun deleteAll()

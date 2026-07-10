@@ -46,9 +46,9 @@ sealed interface FormError {
         override val message: String = "已存在同名账户"
     }
 
-    /** The account is archived and cannot be mutated. */
-    data class ArchivedAccount(val action: String) : FormError {
-        override val message: String = "归档账户不能$action"
+    /** The account is closed and cannot be mutated. */
+    data class ClosedAccount(val action: String) : FormError {
+        override val message: String = "关闭账户不能$action"
     }
 
     /** The referenced entity (account, record, reminder) does not exist. */
@@ -85,7 +85,7 @@ fun Throwable.toFormError(): FormError {
         msg == "时间不能晚于当前时间" -> FormError.FutureTimestamp
         msg == "时间不能早于账户创建时间" -> FormError.BeforeAccountCreation(null)
         msg == "已存在同名账户" -> FormError.DuplicateName
-        msg.startsWith("归档账户不能") -> FormError.ArchivedAccount(msg.removePrefix("归档账户不能"))
+        msg.startsWith("关闭账户不能") -> FormError.ClosedAccount(msg.removePrefix("关闭账户不能"))
         msg == "请选择不同的转出和转入账户" -> FormError.SameTransferAccounts
         msg.endsWith("不存在") -> FormError.NotFound(msg.removeSuffix("不存在"))
         else -> FormError.Unknown(msg.ifEmpty { "操作失败" })

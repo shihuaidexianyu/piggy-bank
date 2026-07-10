@@ -48,7 +48,7 @@ class ReorderAccountsViewModel(
     init {
         viewModelScope.launch {
             try {
-                val accounts = accountRepository.queryActiveAccounts()
+                val accounts = accountRepository.queryOpenAccounts()
                     .sortedBy { it.displayOrder }
                     .map {
                         ReorderAccountItemUiModel(

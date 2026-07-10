@@ -54,6 +54,7 @@ class DeleteCashFlowBalanceTest {
             accountRepository = accountRepository,
             transactionRepository = transactionRepository,
             refreshAccountActivityStateUseCase = refreshActivity,
+            clockProvider = testClockProvider,
         )
         delete(outflowId)
         delete(outflowId)

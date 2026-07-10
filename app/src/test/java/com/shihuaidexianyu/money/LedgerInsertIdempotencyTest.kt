@@ -77,7 +77,7 @@ class LedgerInsertIdempotencyTest {
         assertTrue(distinct.inserted)
         assertEquals(2, repository.queryAllCashFlowRecords().size)
 
-        repository.softDeleteCashFlowRecord(first.recordId, updatedAt = 500)
+        repository.softDeleteCurrentCashFlowRecord(first.recordId, updatedAt = 500)
         val tombstoneReplay = repository.insertCashFlowRecord(original.copy(note = "工资"))
         assertFalse(tombstoneReplay.inserted)
         assertEquals(first.recordId, tombstoneReplay.recordId)
@@ -105,7 +105,7 @@ class LedgerInsertIdempotencyTest {
         assertEquals(first.recordId, conflict.existingRecordId)
 
         assertTrue(repository.insertTransferRecord(original.copy(operationId = "transfer-command-2")).inserted)
-        repository.softDeleteTransferRecord(first.recordId, updatedAt = 500)
+        repository.softDeleteCurrentTransferRecord(first.recordId, updatedAt = 500)
         val tombstoneReplay = repository.insertTransferRecord(original.copy(note = "调拨"))
         assertFalse(tombstoneReplay.inserted)
         assertEquals(500, repository.queryTransferRecordByOperationId(original.operationId)?.deletedAt)
@@ -139,7 +139,7 @@ class LedgerInsertIdempotencyTest {
         assertEquals(LedgerRecordKind.BALANCE_UPDATE, conflict.kind)
 
         assertTrue(repository.insertBalanceUpdateRecord(original.copy(operationId = "balance-command-2")).inserted)
-        repository.deleteBalanceUpdateRecord(first.recordId, deletedAt = 500)
+        repository.softDeleteCurrentBalanceUpdateRecord(first.recordId, deletedAt = 500)
         val tombstoneReplay = repository.insertBalanceUpdateRecord(original.copy(delta = 123_456))
         assertFalse(tombstoneReplay.inserted)
         assertEquals(500, repository.queryBalanceUpdateRecordByOperationId(original.operationId)?.deletedAt)
@@ -165,7 +165,7 @@ class LedgerInsertIdempotencyTest {
         assertEquals(LedgerRecordKind.BALANCE_ADJUSTMENT, conflict.kind)
 
         assertTrue(repository.insertBalanceAdjustmentRecord(original.copy(operationId = "adjustment-command-2")).inserted)
-        repository.deleteBalanceAdjustmentRecord(first.recordId, deletedAt = 500)
+        repository.softDeleteCurrentBalanceAdjustmentRecord(first.recordId, deletedAt = 500)
         val tombstoneReplay = repository.insertBalanceAdjustmentRecord(original)
         assertFalse(tombstoneReplay.inserted)
         assertEquals(500, repository.queryBalanceAdjustmentRecordByOperationId(original.operationId)?.deletedAt)

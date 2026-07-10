@@ -104,7 +104,7 @@ class HomeProjectorTest {
 
         assertEquals(listOf(staleAccount), snapshot.staleAccounts)
         assertEquals(1, snapshot.staleAccountCount)
-        assertEquals(accounts, snapshot.activeAccounts)
+        assertEquals(accounts, snapshot.openAccounts)
     }
 
     @Test

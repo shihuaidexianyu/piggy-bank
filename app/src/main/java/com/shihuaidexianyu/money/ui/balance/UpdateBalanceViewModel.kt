@@ -67,7 +67,7 @@ class UpdateBalanceViewModel(
     init {
         viewModelScope.launch {
             try {
-                val accounts = accountRepository.queryActiveAccounts()
+                val accounts = accountRepository.queryOpenAccounts()
                 val selected = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.toAccountOptionUiModels(),

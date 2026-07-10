@@ -1,26 +1,45 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
+import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
+import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.time.ClockProvider
 
 class DeleteTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
+    private val clockProvider: ClockProvider,
 ) {
-    suspend operator fun invoke(recordId: Long) {
-        val existing = transactionRepository.queryTransferRecordById(recordId) ?: return
+    suspend operator fun invoke(recordId: Long): LedgerUndoToken? = transactionRepository.runInTransaction {
+        val existing = transactionRepository.queryStoredTransferRecordById(recordId) ?: return@runInTransaction null
+        if (existing.deletedAt != null) return@runInTransaction null
         val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户不存在" }
         val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户不存在" }
-        fromAccount.requireActiveForMutation("删除转账记录")
-        toAccount.requireActiveForMutation("删除转账记录")
+        fromAccount.requireOpenForMutation("删除转账记录")
+        toAccount.requireOpenForMutation("删除转账记录")
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId)
-        transactionRepository.runInTransaction {
-            transactionRepository.softDeleteTransferRecord(recordId, System.currentTimeMillis())
-            affectedAccountIds.forEach {
-                refreshAccountActivityStateUseCase(it)
-            }
+        val deletedAt = nextLedgerMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
+        if (!transactionRepository.softDeleteTransferRecord(
+                id = recordId,
+                operationId = existing.operationId,
+                expectedUpdatedAt = existing.updatedAt,
+                deletedAt = deletedAt,
+            )
+        ) {
+            throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
         }
+        affectedAccountIds.forEach {
+            refreshAccountActivityStateUseCase(it)
+        }
+        LedgerUndoToken(
+            kind = LedgerRecordKind.TRANSFER,
+            recordId = recordId,
+            operationId = existing.operationId,
+            deletedAt = deletedAt,
+        )
     }
 }
 
