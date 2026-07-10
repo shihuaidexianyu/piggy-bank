@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.di
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -47,6 +48,8 @@ import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 internal class UseCaseGraph(
     private val data: DataGraph,
 ) {
+    private val accountLifecycleCoordinator = AccountLifecycleCoordinator()
+
     val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
@@ -205,6 +208,7 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
         transactionRunner = data.transactionRepository,
+        accountLifecycleCoordinator = accountLifecycleCoordinator,
     )
 
     val closeAccountUseCase = CloseAccountUseCase(
@@ -213,6 +217,7 @@ internal class UseCaseGraph(
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         transactionRunner = data.transactionRepository,
         clockProvider = SystemClockProvider,
+        accountLifecycleCoordinator = accountLifecycleCoordinator,
     )
 
     val setAccountHiddenUseCase = SetAccountHiddenUseCase(

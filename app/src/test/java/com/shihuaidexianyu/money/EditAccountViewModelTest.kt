@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
 import com.shihuaidexianyu.money.ui.accounts.EditAccountEffect
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
@@ -146,6 +147,7 @@ class EditAccountViewModelTest {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
         val reminderRepo = InMemoryRecurringReminderRepository()
         val txnRepo = InMemoryTransactionRepository()
+        val accountLifecycleCoordinator = AccountLifecycleCoordinator()
         val closeUseCase = CloseAccountUseCase(
             accountRepository = accountRepo,
             reminderRepository = reminderRepo,
@@ -156,8 +158,14 @@ class EditAccountViewModelTest {
             ),
             transactionRunner = txnRepo,
             clockProvider = testClockProvider,
+            accountLifecycleCoordinator = accountLifecycleCoordinator,
         )
-        val updateUseCase = UpdateAccountUseCase(accountRepo, reminderSettingsRepo, txnRepo)
+        val updateUseCase = UpdateAccountUseCase(
+            accountRepo,
+            reminderSettingsRepo,
+            txnRepo,
+            accountLifecycleCoordinator,
+        )
         return EditAccountViewModel(
             accountId = accountId,
             accountRepository = accountRepo,

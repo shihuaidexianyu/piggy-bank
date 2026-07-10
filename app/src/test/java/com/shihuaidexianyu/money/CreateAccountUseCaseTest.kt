@@ -44,7 +44,7 @@ class CreateAccountUseCaseTest {
     }
 
     @Test
-    fun `duplicate active name is rejected`() = runBlocking {
+    fun `duplicate open account name is rejected`() = runBlocking {
         val repository = InMemoryAccountRepository()
         val reminderRepository = InMemoryAccountReminderSettingsRepository()
         val useCase = CreateAccountUseCase(

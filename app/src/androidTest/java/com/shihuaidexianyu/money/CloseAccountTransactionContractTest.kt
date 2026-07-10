@@ -15,6 +15,7 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -97,6 +98,7 @@ class CloseAccountTransactionContractTest {
             ),
             transactionRunner = transactionRepository,
             clockProvider = clock,
+            accountLifecycleCoordinator = AccountLifecycleCoordinator(),
         )
 
         var failure: Throwable? = null

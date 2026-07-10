@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCase
@@ -58,6 +59,7 @@ class AccountLifecycleUseCaseTest {
             CalculateCurrentBalanceUseCase(accounts, transactions, clock),
             transactionRunner,
             clock,
+            AccountLifecycleCoordinator(),
         )
 
         val error = assertFailsWith<IllegalArgumentException> { close(accountId) }
@@ -217,6 +219,7 @@ class AccountLifecycleUseCaseTest {
             calculateBalance,
             transactions,
             clock,
+            AccountLifecycleCoordinator(),
         )
 
         suspend fun createAccount(name: String, initialBalance: Long): Long = accounts.createAccount(
