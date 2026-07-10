@@ -9,6 +9,8 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +46,8 @@ class ObserveAccountDetailUseCase(
     private val settingsRepository: SettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<AccountDetailSnapshot> {
@@ -82,9 +86,12 @@ class ObserveAccountDetailUseCase(
         val reminderConfig = reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()
 
         // This month's inflow/outflow for the account.
-        val monthRange = TimeRangeCalculator.currentMonthRange()
-        val inflow = transactionRepository.sumInflowBetween(account.id, monthRange.startAtMillis, monthRange.endAtMillis)
-        val outflow = transactionRepository.sumOutflowBetween(account.id, monthRange.startAtMillis, monthRange.endAtMillis)
+        val monthRange = TimeRangeCalculator.currentMonthRange(
+            zoneId = zoneIdProvider.zoneId(),
+            nowMillis = clockProvider.nowMillis(),
+        )
+        val inflow = transactionRepository.sumInflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
+        val outflow = transactionRepository.sumOutflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
 
         // Recent 5 records (cash flow + transfer) for this account, newest first.
         val recentCashFlows = transactionRepository.queryCashFlowRecordsByAccountId(account.id).take(5)

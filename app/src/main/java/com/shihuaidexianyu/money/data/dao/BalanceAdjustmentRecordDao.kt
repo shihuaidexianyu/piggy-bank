@@ -28,11 +28,12 @@ interface BalanceAdjustmentRecordDao {
     @Query(
         """
         SELECT * FROM balance_adjustment_records
-        WHERE occurredAt BETWEEN :startAt AND :endAt
+        WHERE occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
         """,
     )
-    suspend fun queryBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecordEntity>
+    suspend fun queryBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecordEntity>
 
     @Query("SELECT COUNT(*) FROM balance_adjustment_records")
     fun observeCount(): Flow<Int>
@@ -50,40 +51,40 @@ interface BalanceAdjustmentRecordDao {
         """
         SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
         WHERE accountId = :accountId
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
+    suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
         WHERE delta > 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumPositiveManualAdjustmentBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumPositiveManualAdjustmentBetween(startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COALESCE(SUM(-delta), 0) FROM balance_adjustment_records
         WHERE delta < 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumNegativeManualAdjustmentBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumNegativeManualAdjustmentBetween(startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COUNT(*) FROM balance_adjustment_records
-        WHERE occurredAt > :startAt
-            AND occurredAt <= :endAt
+        WHERE occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """
     )
-    suspend fun countBetween(startAt: Long, endAt: Long): Int
+    suspend fun countBetween(startInclusive: Long, endExclusive: Long): Int
 
     @Query("DELETE FROM balance_adjustment_records WHERE id = :id")
     suspend fun deleteById(id: Long)

@@ -1,10 +1,7 @@
 package com.shihuaidexianyu.money.domain.model
 
-/**
- * Half-open-closed epoch-millis range: [startAtMillis, endAtMillis].
- * `endAtMillis` is inclusive (startOfNextDay - 1).
- */
+/** Half-open epoch-millis range: [startInclusive, endExclusive). */
 data class TimeRange(
-    val startAtMillis: Long,
-    val endAtMillis: Long,
+    val startInclusive: Long,
+    val endExclusive: Long,
 )

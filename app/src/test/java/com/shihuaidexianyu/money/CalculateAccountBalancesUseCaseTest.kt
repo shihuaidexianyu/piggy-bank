@@ -16,6 +16,46 @@ import org.junit.Test
 
 class CalculateAccountBalancesUseCaseTest {
     @Test
+    fun `batch and single balances include exact current time and exclude future records`() = runBlocking {
+        val currentTime = 5_000L
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(name = "边界账户", initialBalance = 10_000, createdAt = 1_000),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 500,
+                purpose = "当前时刻",
+                occurredAt = currentTime,
+                createdAt = currentTime,
+                updatedAt = currentTime,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 9_000,
+                purpose = "未来记录",
+                occurredAt = currentTime + 1,
+                createdAt = currentTime + 1,
+                updatedAt = currentTime + 1,
+            ),
+        )
+        val account = requireNotNull(accountRepository.getAccountById(accountId))
+        val clockProvider = testClockProvider(currentTime)
+        val single = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository, clockProvider)
+        val batch = CalculateAccountBalancesUseCase(transactionRepository, clockProvider)
+
+        val expected = mapOf(accountId to 10_500L)
+        assertEquals(expected, mapOf(accountId to single(accountId)))
+        assertEquals(expected, batch(listOf(account)))
+    }
+
+    @Test
     fun `batch balances match single account balances across record types`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()

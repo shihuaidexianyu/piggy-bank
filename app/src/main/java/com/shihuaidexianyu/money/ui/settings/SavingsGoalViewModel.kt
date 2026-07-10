@@ -85,7 +85,7 @@ class SavingsGoalViewModel(
         val state = _uiState.value
         if (state.isSaving) return
 
-        val amount = AmountInputParser.parseToMinor(state.amountText)
+        val amount = AmountInputParser.parseUnsignedToMinor(state.amountText)
         if (amount == null || amount <= 0L) {
             viewModelScope.launch { _effectFlow.emit(SavingsGoalEffect.ShowMessage("请输入有效的目标金额")) }
             return

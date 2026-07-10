@@ -31,8 +31,9 @@ fun `openingAt floors createdAt to minute boundary`() {
 }
 
 @Test
-fun `startBeforeOpening is one millisecond before opening`() {
-    assertEquals(959_999L, LedgerBalanceCalculator.startBeforeOpening(account))
+fun `endExclusiveAfter increments normally and saturates at max value`() {
+    assertEquals(960_001L, LedgerBalanceCalculator.endExclusiveAfter(960_000L))
+    assertEquals(Long.MAX_VALUE, LedgerBalanceCalculator.endExclusiveAfter(Long.MAX_VALUE))
 }
 
 @Test
@@ -45,9 +46,9 @@ fun `isOpenAt returns false before opening and true from opening onward`() {
 @Test
 fun `isOpeningInRange returns true when opening falls inside the range`() {
     assertEquals(true, LedgerBalanceCalculator.isOpeningInRange(account, 0L, 2_000_000L))
-    assertEquals(true, LedgerBalanceCalculator.isOpeningInRange(account, 960_000L, 960_000L))
+    assertEquals(true, LedgerBalanceCalculator.isOpeningInRange(account, 960_000L, 960_001L))
+    assertEquals(false, LedgerBalanceCalculator.isOpeningInRange(account, 0L, 960_000L))
     assertEquals(false, LedgerBalanceCalculator.isOpeningInRange(account, 960_001L, 2_000_000L))
-    assertEquals(false, LedgerBalanceCalculator.isOpeningInRange(account, 0L, 959_999L))
 }
 
 @Test

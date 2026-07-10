@@ -83,11 +83,11 @@ class InMemoryTransactionRepository : TransactionRepository {
 
     override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
         direction: String,
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
     ): List<CashFlowRecord> {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == direction && it.occurredAt in startAt..endAt }
+            .filter { it.direction == direction && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<CashFlowRecord> { it.occurredAt }.thenBy { it.id })
     }
 
@@ -120,9 +120,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         return transferRecords.filterNot(TransferRecord::isDeleted)
     }
 
-    override suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecord> {
+    override suspend fun queryActiveTransferRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<TransferRecord> {
         return queryAllActiveTransferRecords()
-            .filter { it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<TransferRecord> { it.occurredAt }.thenBy { it.id })
     }
 
@@ -171,9 +174,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         return balanceUpdates.toList()
     }
 
-    override suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecord> {
+    override suspend fun queryBalanceUpdateRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<BalanceUpdateRecord> {
         return balanceUpdates
-            .filter { it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<BalanceUpdateRecord> { it.occurredAt }.thenBy { it.id })
     }
 
@@ -214,9 +220,12 @@ class InMemoryTransactionRepository : TransactionRepository {
         return adjustments.toList()
     }
 
-    override suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
+    override suspend fun queryBalanceAdjustmentRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<BalanceAdjustmentRecord> {
         return adjustments
-            .filter { it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedWith(compareBy<BalanceAdjustmentRecord> { it.occurredAt }.thenBy { it.id })
     }
 
@@ -226,104 +235,123 @@ class InMemoryTransactionRepository : TransactionRepository {
             .sortedWith(compareByDescending<BalanceAdjustmentRecord> { it.occurredAt }.thenByDescending { it.id })
     }
 
-    override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
+    override suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long {
         return queryCashFlowRecordsByAccountId(accountId)
-            .filter { it.direction == CashFlowDirection.INFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter {
+                it.direction == CashFlowDirection.INFLOW.value &&
+                    it.occurredAt.isInRange(startInclusive, endExclusive)
+            }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long {
+    override suspend fun sumOutflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long {
         return queryCashFlowRecordsByAccountId(accountId)
-            .filter { it.direction == CashFlowDirection.OUTFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter {
+                it.direction == CashFlowDirection.OUTFLOW.value &&
+                    it.occurredAt.isInRange(startInclusive, endExclusive)
+            }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long {
+    override suspend fun sumTransferInBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long {
         return queryTransferRecordsByAccountId(accountId)
-            .filter { it.toAccountId == accountId && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.toAccountId == accountId && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long {
+    override suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long {
         return queryTransferRecordsByAccountId(accountId)
-            .filter { it.fromAccountId == accountId && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.fromAccountId == accountId && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long {
+    override suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long {
         return queryBalanceAdjustmentRecordsByAccountId(accountId)
-            .filter { it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.delta }
     }
 
-    override suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long {
+    override suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == CashFlowDirection.INFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter {
+                it.direction == CashFlowDirection.INFLOW.value &&
+                    it.occurredAt.isInRange(startInclusive, endExclusive)
+            }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long {
+    override suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == CashFlowDirection.OUTFLOW.value && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter {
+                it.direction == CashFlowDirection.OUTFLOW.value &&
+                    it.occurredAt.isInRange(startInclusive, endExclusive)
+            }
             .sumOf { it.amount }
     }
 
-    override suspend fun sumBalanceUpdateIncreaseBetween(startAt: Long, endAt: Long): Long =
+    override suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         balanceUpdates
-            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta > 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.delta }
 
-    override suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long =
+    override suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         balanceUpdates
-            .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta < 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { -it.delta }
 
-    override suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long =
+    override suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         adjustments
-            .filter { it.delta > 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta > 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { it.delta }
 
-    override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
+    override suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
         adjustments
-            .filter { it.delta < 0 && it.occurredAt > startAt && it.occurredAt <= endAt }
+            .filter { it.delta < 0 && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sumOf { -it.delta }
 
-    override suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int {
+    override suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int {
         return queryAllActiveCashFlowRecords()
-            .count { it.occurredAt > startAt && it.occurredAt <= endAt }
+            .count { it.occurredAt.isInRange(startInclusive, endExclusive) }
     }
 
-    override suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int {
+    override suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int {
         return queryAllActiveTransferRecords()
-            .count { it.occurredAt > startAt && it.occurredAt <= endAt }
+            .count { it.occurredAt.isInRange(startInclusive, endExclusive) }
     }
 
-    override suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int {
-        return adjustments.count { it.occurredAt > startAt && it.occurredAt <= endAt }
+    override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int {
+        return adjustments.count { it.occurredAt.isInRange(startInclusive, endExclusive) }
     }
 
-    override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> {
+    override suspend fun queryActiveCashFlowRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowRecord> {
         return queryAllActiveCashFlowRecords()
-            .filter { it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .sortedBy { it.occurredAt }
     }
 
-    override suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal> {
+    override suspend fun queryPurposeTotals(
+        direction: String,
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<PurposeTotal> {
         return queryAllActiveCashFlowRecords()
-            .filter { it.direction == direction && it.occurredAt in startAt..endAt }
+            .filter { it.direction == direction && it.occurredAt.isInRange(startInclusive, endExclusive) }
             .groupBy { it.purpose.ifBlank { "未填写用途" } }
             .map { (purpose, records) -> PurposeTotal(purpose = purpose, amount = records.sumOf { it.amount }) }
             .sortedByDescending { it.amount }
     }
 
     override suspend fun queryDailyCashFlowTotals(
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
         zoneOffsetSeconds: Int,
     ): List<CashFlowDailyTotal> {
         val offset = ZoneOffset.ofTotalSeconds(zoneOffsetSeconds)
         return queryAllActiveCashFlowRecords()
-            .filter { it.occurredAt in startAt..endAt }
+            .filter { it.occurredAt.isInRange(startInclusive, endExclusive) }
             .groupBy { record ->
                 val epochDay = Instant.ofEpochMilli(record.occurredAt).atOffset(offset).toLocalDate().toEpochDay()
                 epochDay to record.direction
@@ -426,7 +454,7 @@ class InMemoryTransactionRepository : TransactionRepository {
             accountId == filters.accountId ||
             relatedAccountId == filters.accountId
         val startOk = filters.dateStartAt == null || occurredAt >= filters.dateStartAt
-        val endOk = filters.dateEndAt == null || occurredAt <= filters.dateEndAt
+        val endOk = filters.dateEndAt == null || occurredAt < filters.dateEndAt
         val amountAbs = abs(amount)
         val minOk = filters.minAmount == null || amountAbs >= filters.minAmount
         val maxOk = filters.maxAmount == null || amountAbs <= filters.maxAmount
@@ -449,6 +477,9 @@ class InMemoryTransactionRepository : TransactionRepository {
         val index = cashFlowRecords.indexOfFirst { it.id == id }
         if (index >= 0) cashFlowRecords[index] = replacement
     }
+
+    private fun Long.isInRange(startInclusive: Long, endExclusive: Long): Boolean =
+        this >= startInclusive && this < endExclusive
 
     private fun replaceTransferById(id: Long, replacement: TransferRecord) {
         val index = transferRecords.indexOfFirst { it.id == id }

@@ -22,7 +22,7 @@ class StatsProjectorTest {
         // Range = 2024-01-01 to 2024-01-03 (3 days).
         val startMillis = LocalDate.of(2024, 1, 1).atStartOfDay(utc).toInstant().toEpochMilli()
         val endMillisExclusive = LocalDate.of(2024, 1, 4).atStartOfDay(utc).toInstant().toEpochMilli()
-        val range = TimeRange(startMillis, endMillisExclusive - 1)
+        val range = TimeRange(startMillis, endMillisExclusive)
         val dailyTotals = listOf(
             CashFlowDailyTotal(epochDay = LocalDate.of(2024, 1, 1).toEpochDay(), direction = CashFlowDirection.INFLOW.value, amount = 500),
             CashFlowDailyTotal(epochDay = LocalDate.of(2024, 1, 1).toEpochDay(), direction = CashFlowDirection.OUTFLOW.value, amount = 100),

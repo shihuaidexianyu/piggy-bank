@@ -37,7 +37,7 @@ class ObserveHomeDashboardUseCaseTest {
             Account(
                 name = "主账户",
                 initialBalance = 10_000,
-                createdAt = range.startAtMillis - 60_000,
+                createdAt = range.startInclusive - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -46,7 +46,7 @@ class ObserveHomeDashboardUseCaseTest {
                 direction = "inflow",
                 amount = 2_000,
                 purpose = "工资",
-                occurredAt = range.startAtMillis + 1_000,
+                occurredAt = range.startInclusive + 1_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -57,7 +57,7 @@ class ObserveHomeDashboardUseCaseTest {
                 direction = "outflow",
                 amount = 500,
                 purpose = "午饭",
-                occurredAt = range.startAtMillis + 2_000,
+                occurredAt = range.startInclusive + 2_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -68,7 +68,7 @@ class ObserveHomeDashboardUseCaseTest {
                 actualBalance = 11_800,
                 systemBalanceBeforeUpdate = 11_500,
                 delta = 300,
-                occurredAt = range.startAtMillis + 3_000,
+                occurredAt = range.startInclusive + 3_000,
                 createdAt = now,
             ),
         )
@@ -78,7 +78,7 @@ class ObserveHomeDashboardUseCaseTest {
                 actualBalance = 11_100,
                 systemBalanceBeforeUpdate = 11_800,
                 delta = -700,
-                occurredAt = range.startAtMillis + 4_000,
+                occurredAt = range.startInclusive + 4_000,
                 createdAt = now,
             ),
         )
@@ -93,6 +93,8 @@ class ObserveHomeDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            clockProvider = testClockProvider(now),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase().first()
@@ -104,7 +106,7 @@ class ObserveHomeDashboardUseCaseTest {
     }
 
     @Test
-    fun `home dashboard counts period records excluding reconciliation deleted and start boundary`() = runBlocking {
+    fun `home dashboard includes start excludes end and ignores reconciliation and deleted records`() = runBlocking {
         val now = System.currentTimeMillis()
         val range = TimeRangeUtils.currentWeekRange(nowMillis = now)
         val accountRepository = InMemoryAccountRepository()
@@ -113,14 +115,14 @@ class ObserveHomeDashboardUseCaseTest {
             Account(
                 name = "主账户",
                 initialBalance = 10_000,
-                createdAt = range.startAtMillis - 60_000,
+                createdAt = range.startInclusive - 60_000,
             ),
         )
         val toAccountId = accountRepository.createAccount(
             Account(
                 name = "备用账户",
                 initialBalance = 5_000,
-                createdAt = range.startAtMillis - 60_000,
+                createdAt = range.startInclusive - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -128,8 +130,8 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 100,
-                purpose = "边界外",
-                occurredAt = range.startAtMillis,
+                purpose = "周期起点",
+                occurredAt = range.startInclusive,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -140,7 +142,7 @@ class ObserveHomeDashboardUseCaseTest {
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 200,
                 purpose = "入账",
-                occurredAt = range.startAtMillis + 1_000,
+                occurredAt = range.startInclusive + 1_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -150,8 +152,8 @@ class ObserveHomeDashboardUseCaseTest {
                 accountId = fromAccountId,
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 300,
-                purpose = "出账",
-                occurredAt = range.endAtMillis,
+                purpose = "下一周期起点",
+                occurredAt = range.endExclusive,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -162,7 +164,7 @@ class ObserveHomeDashboardUseCaseTest {
                 direction = CashFlowDirection.OUTFLOW.value,
                 amount = 400,
                 purpose = "已删除",
-                occurredAt = range.startAtMillis + 2_000,
+                occurredAt = range.startInclusive + 2_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -174,7 +176,7 @@ class ObserveHomeDashboardUseCaseTest {
                 toAccountId = toAccountId,
                 amount = 500,
                 note = "转账",
-                occurredAt = range.startAtMillis + 3_000,
+                occurredAt = range.startInclusive + 3_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -185,7 +187,7 @@ class ObserveHomeDashboardUseCaseTest {
                 toAccountId = fromAccountId,
                 amount = 600,
                 note = "已删除转账",
-                occurredAt = range.startAtMillis + 4_000,
+                occurredAt = range.startInclusive + 4_000,
                 createdAt = now,
                 updatedAt = now,
             ),
@@ -195,7 +197,7 @@ class ObserveHomeDashboardUseCaseTest {
             BalanceAdjustmentRecord(
                 accountId = fromAccountId,
                 delta = 700,
-                occurredAt = range.startAtMillis + 5_000,
+                occurredAt = range.startInclusive + 5_000,
                 createdAt = now,
             ),
         )
@@ -205,7 +207,7 @@ class ObserveHomeDashboardUseCaseTest {
                 actualBalance = 10_800,
                 systemBalanceBeforeUpdate = 10_100,
                 delta = 700,
-                occurredAt = range.startAtMillis + 6_000,
+                occurredAt = range.startInclusive + 6_000,
                 createdAt = now,
             ),
         )
@@ -220,10 +222,14 @@ class ObserveHomeDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            clockProvider = testClockProvider(now),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase().first()
 
+        assertEquals(300L, snapshot.periodBreakdown.cashInflow)
+        assertEquals(0L, snapshot.periodBreakdown.cashOutflow)
         assertEquals(4, snapshot.periodRecordCount)
     }
 
@@ -286,6 +292,8 @@ class ObserveHomeDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            clockProvider = testClockProvider(),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase().first()

@@ -148,9 +148,9 @@ class StatsViewModel(
 
 private fun isCurrentRange(snapshot: StatsDashboardSnapshot): Boolean {
     val now = Instant.now()
-    val start = Instant.ofEpochMilli(snapshot.range.startAtMillis)
-    val end = Instant.ofEpochMilli(snapshot.range.endAtMillis)
-    return !now.isBefore(start) && !now.isAfter(end)
+    val start = Instant.ofEpochMilli(snapshot.range.startInclusive)
+    val end = Instant.ofEpochMilli(snapshot.range.endExclusive)
+    return !now.isBefore(start) && now.isBefore(end)
 }
 
 private fun formatSignedAmount(amount: Long, settings: AppSettings): String {
@@ -172,8 +172,8 @@ private fun formatFlowAmount(amount: Long): String {
 
 private fun formatRangeText(snapshot: StatsDashboardSnapshot): String {
     val zoneId = java.time.ZoneId.systemDefault()
-    val start = java.time.Instant.ofEpochMilli(snapshot.range.startAtMillis).atZone(zoneId).toLocalDate()
-    val end = java.time.Instant.ofEpochMilli(snapshot.range.endAtMillis).atZone(zoneId).toLocalDate()
+    val start = java.time.Instant.ofEpochMilli(snapshot.range.startInclusive).atZone(zoneId).toLocalDate()
+    val end = java.time.Instant.ofEpochMilli(snapshot.range.endExclusive).atZone(zoneId).toLocalDate().minusDays(1)
     val currentYear = java.time.LocalDate.now(zoneId).year
     return when (snapshot.period) {
         StatsPeriod.YEAR -> "${start.year}年"

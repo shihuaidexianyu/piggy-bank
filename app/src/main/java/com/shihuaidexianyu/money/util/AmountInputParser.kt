@@ -4,7 +4,11 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 object AmountInputParser {
-    fun parseToMinor(text: String): Long? {
+    fun parseUnsignedToMinor(text: String): Long? {
+        return parseSignedToMinor(text)?.takeIf { it >= 0L }
+    }
+
+    fun parseSignedToMinor(text: String): Long? {
         val normalized = text
             .trim()
             .replace(",", "")
@@ -14,7 +18,6 @@ object AmountInputParser {
             .filterNot(Char::isWhitespace)
         if (normalized.isEmpty()) return null
         val decimal = parseExpression(normalized) ?: return null
-        if (decimal.signum() < 0) return null
 
         return runCatching {
             decimal
@@ -23,6 +26,12 @@ object AmountInputParser {
                 .longValueExact()
         }.getOrNull()
     }
+
+    @Deprecated(
+        message = "Use parseUnsignedToMinor or parseSignedToMinor explicitly",
+        replaceWith = ReplaceWith("parseUnsignedToMinor(text)"),
+    )
+    fun parseToMinor(text: String): Long? = parseUnsignedToMinor(text)
 
     private fun parseExpression(text: String): BigDecimal? {
         var index = 0

@@ -77,13 +77,8 @@ object DateTimeTextFormatter {
             .toEpochMilli()
     }
 
-    /**
-     * Returns the last millisecond of the day containing [timeMillis] in [zoneId].
-     *
-     * Implemented as `startOfNextDay - 1L` to keep the inclusive-end convention. Centralized here
-     * so the `… - 1L` idiom isn't duplicated across the codebase.
-     */
-    fun endOfDayMillis(
+    /** Returns the first instant of the day after [timeMillis]'s local date. */
+    fun endExclusiveOfDayMillis(
         timeMillis: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): Long {
@@ -93,7 +88,27 @@ object DateTimeTextFormatter {
             .plusDays(1)
             .atStartOfDay(zoneId)
             .toInstant()
-            .toEpochMilli() - 1L
+            .toEpochMilli()
+    }
+
+    fun startOfDisplayedEndDateMillis(
+        endExclusive: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Long {
+        val endDateTime = Instant.ofEpochMilli(endExclusive).atZone(zoneId)
+        val endDate = endDateTime.toLocalDate()
+        val endDateStart = endDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val displayedDate = if (endExclusive == endDateStart) endDate.minusDays(1) else endDate
+        return displayedDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    }
+
+    fun formatDisplayedEndDate(
+        endExclusive: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        return Instant.ofEpochMilli(startOfDisplayedEndDateMillis(endExclusive, zoneId))
+            .atZone(zoneId)
+            .format(dateFormatter)
     }
 }
 

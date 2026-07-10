@@ -23,17 +23,18 @@ class ResolveBalanceUpdateContextUseCase(
             )
         }
 
-        val startAt = LedgerBalanceCalculator.startBeforeOpening(account)
+        val startInclusive = LedgerBalanceCalculator.openingAt(account)
+        val endExclusive = LedgerBalanceCalculator.endExclusiveAfter(occurredAt)
 
-        val inflow = transactionRepository.sumInflowBetween(accountId, startAt, occurredAt)
-        val outflow = transactionRepository.sumOutflowBetween(accountId, startAt, occurredAt)
-        val transferIn = transactionRepository.sumTransferInBetween(accountId, startAt, occurredAt)
-        val transferOut = transactionRepository.sumTransferOutBetween(accountId, startAt, occurredAt)
-        val adjustment = transactionRepository.sumAdjustmentBetween(accountId, startAt, occurredAt)
-        val reconciliation = LedgerBalanceCalculator.reconciliationDeltaFromRecords(
+        val inflow = transactionRepository.sumInflowBetween(accountId, startInclusive, endExclusive)
+        val outflow = transactionRepository.sumOutflowBetween(accountId, startInclusive, endExclusive)
+        val transferIn = transactionRepository.sumTransferInBetween(accountId, startInclusive, endExclusive)
+        val transferOut = transactionRepository.sumTransferOutBetween(accountId, startInclusive, endExclusive)
+        val adjustment = transactionRepository.sumAdjustmentBetween(accountId, startInclusive, endExclusive)
+        val reconciliation = LedgerBalanceCalculator.reconciliationDeltaFromRecordsBefore(
             account = account,
             balanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(accountId),
-            atTimeMillis = occurredAt,
+            endExclusive = endExclusive,
             excludingBalanceUpdateId = excludingRecordId,
         )
 

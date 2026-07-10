@@ -83,7 +83,7 @@ class EditBalanceUpdateViewModel(
     }
 
     fun updateActualBalance(value: String) {
-        val actualBalance = AmountInputParser.parseToMinor(value)
+        val actualBalance = AmountInputParser.parseSignedToMinor(value)
         _uiState.value = _uiState.value.copy(
             actualBalanceText = value,
             actualBalancePreview = actualBalance,
@@ -103,7 +103,7 @@ class EditBalanceUpdateViewModel(
                 occurredAt = occurredAt,
                 excludingRecordId = recordId,
             )
-            val actualBalance = AmountInputParser.parseToMinor(actualBalanceText)
+            val actualBalance = AmountInputParser.parseSignedToMinor(actualBalanceText)
             _uiState.value = _uiState.value.copy(
                 systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
                 actualBalancePreview = actualBalance,
@@ -123,7 +123,7 @@ class EditBalanceUpdateViewModel(
     fun save() {
         val state = _uiState.value
         viewModelScope.launch {
-            val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
+            val actualBalance = runCatching { RecordValidator.requireSignedAmount(state.actualBalanceText) }
                 .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
                 .getOrElse { error -> effects.emit(EditBalanceUpdateEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }

@@ -14,6 +14,50 @@ import org.junit.Test
 
 class CalculateCurrentBalanceUseCaseTest {
     @Test
+    fun `current balance includes record at current time and excludes future record`() = runBlocking {
+        val currentTime = 5_000L
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "边界账户",
+                initialBalance = 10_000,
+                createdAt = 1_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = "inflow",
+                amount = 500,
+                purpose = "当前时刻",
+                occurredAt = currentTime,
+                createdAt = currentTime,
+                updatedAt = currentTime,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = "inflow",
+                amount = 9_000,
+                purpose = "未来记录",
+                occurredAt = currentTime + 1,
+                createdAt = currentTime + 1,
+                updatedAt = currentTime + 1,
+            ),
+        )
+
+        val useCase = CalculateCurrentBalanceUseCase(
+            accountRepository = accountRepository,
+            transactionRepository = transactionRepository,
+            clockProvider = testClockProvider(currentTime),
+        )
+
+        assertEquals(10_500, useCase(accountId))
+    }
+
+    @Test
     fun `balance without update uses initial balance and records`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()

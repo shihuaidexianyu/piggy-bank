@@ -144,4 +144,28 @@ class HistoryRepositoryPagingTest {
             ).map { it.type },
         )
     }
+
+    @Test
+    fun `history date range includes start and excludes end`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        listOf(1_000L, 2_000L).forEach { occurredAt ->
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = occurredAt,
+                    purpose = "边界记录",
+                    occurredAt = occurredAt,
+                    createdAt = occurredAt,
+                    updatedAt = occurredAt,
+                ),
+            )
+        }
+
+        val filters = HistoryRecordFilters(dateStartAt = 1_000L, dateEndAt = 2_000L)
+        val records = repository.queryHistoryRecords(filters = filters, cursor = null, limit = 10)
+
+        assertEquals(listOf(1_000L), records.map { it.occurredAt })
+        assertEquals(1, repository.countHistoryRecords(filters))
+    }
 }

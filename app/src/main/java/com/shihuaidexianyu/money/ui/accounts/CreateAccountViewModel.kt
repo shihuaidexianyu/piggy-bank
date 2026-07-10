@@ -86,7 +86,7 @@ class CreateAccountViewModel(
 
     fun save() {
         viewModelScope.launch {
-            val amount = AmountInputParser.parseToMinor(_uiState.value.amountText)
+            val amount = AmountInputParser.parseSignedToMinor(_uiState.value.amountText)
             if (amount == null) {
                 effects.emit(CreateAccountEffect.ShowMessage("金额不能为空"))
                 return@launch

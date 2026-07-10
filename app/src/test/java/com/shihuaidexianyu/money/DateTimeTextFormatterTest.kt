@@ -70,14 +70,12 @@ class DateTimeTextFormatterTest {
     }
 
     @Test
-    fun `endOfDayMillis returns one millisecond before next midnight`() {
+    fun `day end returns the exclusive next midnight`() {
         val millis = 1712140200000L // 2024-04-03 10:30 UTC
-        val end = DateTimeTextFormatter.endOfDayMillis(millis, utc)
+        val end = DateTimeTextFormatter.endExclusiveOfDayMillis(millis, utc)
         val start = DateTimeTextFormatter.startOfDayMillis(millis, utc)
-        // end should be in the same day
         assertTrue(end > start)
-        // next day start is end + 1
         val nextDay = start + 86_400_000L
-        assertEquals(nextDay - 1, end)
+        assertEquals(nextDay, end)
     }
 }

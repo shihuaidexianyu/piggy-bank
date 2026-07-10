@@ -81,7 +81,7 @@ internal fun MoneyAmountKeypadSheet(
     onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val previewAmount = remember(value) { AmountInputParser.parseToMinor(value) }
+    val previewAmount = remember(value) { AmountInputParser.parseUnsignedToMinor(value) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(

@@ -9,6 +9,8 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.repository.SettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -59,6 +61,8 @@ class ObserveHomeDashboardUseCase(
     private val transactionRepository: TransactionRepository,
     private val calculateCurrentBalanceUseCase: CalculateCurrentBalanceUseCase,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
@@ -82,39 +86,42 @@ class ObserveHomeDashboardUseCase(
         settings: AppSettings,
         dueReminders: List<RecurringReminder>,
     ): HomeDashboardSnapshot = coroutineScope {
-        val range = TimeRangeCalculator.currentRange(settings.homePeriod)
-        val periodStartBaselineAt = (range.startAtMillis - 1L).coerceAtLeast(0L)
+        val range = TimeRangeCalculator.currentRange(
+            period = settings.homePeriod,
+            zoneId = zoneIdProvider.zoneId(),
+            nowMillis = clockProvider.nowMillis(),
+        )
         val balanceJob = async { calculateAccountBalancesUseCase(accounts) }
         val openingBalanceJobs = accounts
-            .filter { LedgerBalanceCalculator.isOpenAt(it, periodStartBaselineAt) }
+            .filter { LedgerBalanceCalculator.openingAt(it) < range.startInclusive }
             .map { account ->
-                account.id to async { calculateCurrentBalanceUseCase(account.id, periodStartBaselineAt) }
+                account.id to async { calculateCurrentBalanceUseCase.before(account.id, range.startInclusive) }
             }
         val newAccountOpeningAssets = accounts
-            .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startAtMillis, range.endAtMillis) }
+            .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startInclusive, range.endExclusive) }
             .sumOf(Account::initialBalance)
-        val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startAtMillis, range.endAtMillis) }
-        val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startAtMillis, range.endAtMillis) }
+        val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive) }
+        val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive) }
         val reconciliationIncreaseJob = async {
-            transactionRepository.sumBalanceUpdateIncreaseBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.sumBalanceUpdateIncreaseBetween(range.startInclusive, range.endExclusive)
         }
         val reconciliationDecreaseJob = async {
-            transactionRepository.sumBalanceUpdateDecreaseBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.sumBalanceUpdateDecreaseBetween(range.startInclusive, range.endExclusive)
         }
         val manualAdjustmentIncreaseJob = async {
-            transactionRepository.sumManualAdjustmentIncreaseBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.sumManualAdjustmentIncreaseBetween(range.startInclusive, range.endExclusive)
         }
         val manualAdjustmentDecreaseJob = async {
-            transactionRepository.sumManualAdjustmentDecreaseBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.sumManualAdjustmentDecreaseBetween(range.startInclusive, range.endExclusive)
         }
         val cashFlowRecordCountJob = async {
-            transactionRepository.countActiveCashFlowRecordsBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.countActiveCashFlowRecordsBetween(range.startInclusive, range.endExclusive)
         }
         val transferRecordCountJob = async {
-            transactionRepository.countActiveTransferRecordsBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.countActiveTransferRecordsBetween(range.startInclusive, range.endExclusive)
         }
         val manualAdjustmentRecordCountJob = async {
-            transactionRepository.countManualAdjustmentRecordsBetween(range.startAtMillis, range.endAtMillis)
+            transactionRepository.countManualAdjustmentRecordsBetween(range.startInclusive, range.endExclusive)
         }
 
         val balances = balanceJob.await()

@@ -83,8 +83,8 @@ internal object StatsProjector {
         range: TimeRange,
         zoneId: ZoneId,
     ): List<StatsDailyPoint> {
-        val startDate = Instant.ofEpochMilli(range.startAtMillis).atZone(zoneId).toLocalDate()
-        val endDate = Instant.ofEpochMilli(range.endAtMillis).atZone(zoneId).toLocalDate()
+        val startDate = Instant.ofEpochMilli(range.startInclusive).atZone(zoneId).toLocalDate()
+        val endDate = Instant.ofEpochMilli(range.endExclusive).atZone(zoneId).toLocalDate().minusDays(1)
         val inflowByDate = dailyTotals
             .filter { it.direction == CashFlowDirection.INFLOW.value }
             .associate { LocalDate.ofEpochDay(it.epochDay) to it.amount }

@@ -38,11 +38,12 @@ interface TransferRecordDao {
         """
         SELECT * FROM transfer_records
         WHERE isDeleted = 0
-            AND occurredAt BETWEEN :startAt AND :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
         """,
     )
-    suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<TransferRecordEntity>
+    suspend fun queryActiveBetween(startInclusive: Long, endExclusive: Long): List<TransferRecordEntity>
 
     @Query(
         """
@@ -73,32 +74,32 @@ interface TransferRecordDao {
         SELECT COALESCE(SUM(amount), 0) FROM transfer_records
         WHERE toAccountId = :accountId
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long
+    suspend fun sumTransferInBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COALESCE(SUM(amount), 0) FROM transfer_records
         WHERE fromAccountId = :accountId
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
+    suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COUNT(*) FROM transfer_records
         WHERE isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun countActiveBetween(startAt: Long, endAt: Long): Int
+    suspend fun countActiveBetween(startInclusive: Long, endExclusive: Long): Int
 
     @Query("DELETE FROM transfer_records")
     suspend fun deleteAll()

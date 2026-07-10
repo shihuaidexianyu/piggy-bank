@@ -91,7 +91,7 @@ class HomeStatsSemanticsTest {
     }
 
     @Test
-    fun `period record counts use open start closed end and ignore deleted records`() = runBlocking {
+    fun `period queries include start exclude end and ignore deleted records`() = runBlocking {
         val repository = InMemoryTransactionRepository()
         val startAt = 1_000L
         val endAt = 10_000L
@@ -134,7 +134,18 @@ class HomeStatsSemanticsTest {
                 fromAccountId = 1L,
                 toAccountId = 2L,
                 amount = 400,
-                note = "转账",
+                note = "起点转账",
+                occurredAt = startAt,
+                createdAt = startAt,
+                updatedAt = startAt,
+            ),
+        )
+        repository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = 1L,
+                toAccountId = 2L,
+                amount = 500,
+                note = "终点转账",
                 occurredAt = endAt,
                 createdAt = endAt,
                 updatedAt = endAt,
@@ -144,7 +155,7 @@ class HomeStatsSemanticsTest {
             TransferRecord(
                 fromAccountId = 2L,
                 toAccountId = 1L,
-                amount = 500,
+                amount = 550,
                 note = "已删除",
                 occurredAt = 5_000,
                 createdAt = 5_000,
@@ -156,6 +167,14 @@ class HomeStatsSemanticsTest {
             BalanceAdjustmentRecord(
                 accountId = 1L,
                 delta = 600,
+                occurredAt = startAt,
+                createdAt = startAt,
+            ),
+        )
+        repository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = 1L,
+                delta = 700,
                 occurredAt = endAt,
                 createdAt = endAt,
             ),
@@ -163,14 +182,28 @@ class HomeStatsSemanticsTest {
         repository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(
                 accountId = 1L,
-                actualBalance = 700,
+                actualBalance = 800,
                 systemBalanceBeforeUpdate = 100,
-                delta = 600,
+                delta = 700,
+                occurredAt = startAt,
+                createdAt = startAt,
+            ),
+        )
+        repository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = 1L,
+                actualBalance = 1_000,
+                systemBalanceBeforeUpdate = 100,
+                delta = 900,
                 occurredAt = endAt,
                 createdAt = endAt,
             ),
         )
 
+        assertEquals(100L, repository.sumCashInflowBetween(startAt, endAt))
+        assertEquals(listOf(400L), repository.queryActiveTransferRecordsBetween(startAt, endAt).map { it.amount })
+        assertEquals(600L, repository.sumManualAdjustmentIncreaseBetween(startAt, endAt))
+        assertEquals(700L, repository.sumBalanceUpdateIncreaseBetween(startAt, endAt))
         assertEquals(1, repository.countActiveCashFlowRecordsBetween(startAt, endAt))
         assertEquals(1, repository.countActiveTransferRecordsBetween(startAt, endAt))
         assertEquals(1, repository.countManualAdjustmentRecordsBetween(startAt, endAt))

@@ -27,14 +27,14 @@ class ObserveStatsDashboardUseCaseTest {
     @Test
     fun `stats dashboard exposes asset flow reconciliation`() = runBlocking {
         val range = TimeRangeUtils.currentMonthRange()
-        val now = range.startAtMillis + 1_000
+        val now = range.startInclusive + 1_000
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
             Account(
                 name = "主账户",
                 initialBalance = 10_000,
-                createdAt = range.startAtMillis - 60_000,
+                createdAt = range.startInclusive - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -84,6 +84,7 @@ class ObserveStatsDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase(
@@ -124,7 +125,7 @@ class ObserveStatsDashboardUseCaseTest {
             Account(
                 name = "主账户",
                 initialBalance = 10_000,
-                createdAt = januaryRange.startAtMillis - 60_000,
+                createdAt = januaryRange.startInclusive - 60_000,
             ),
         )
         transactionRepository.insertCashFlowRecord(
@@ -133,9 +134,9 @@ class ObserveStatsDashboardUseCaseTest {
                 direction = CashFlowDirection.INFLOW.value,
                 amount = 3_000,
                 purpose = "一月工资",
-                occurredAt = januaryRange.startAtMillis + 1_000,
-                createdAt = januaryRange.startAtMillis + 1_000,
-                updatedAt = januaryRange.startAtMillis + 1_000,
+                occurredAt = januaryRange.startInclusive + 1_000,
+                createdAt = januaryRange.startInclusive + 1_000,
+                updatedAt = januaryRange.startInclusive + 1_000,
             ),
         )
 
@@ -145,6 +146,7 @@ class ObserveStatsDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase(
@@ -164,7 +166,7 @@ class ObserveStatsDashboardUseCaseTest {
     @Test
     fun `stats dashboard treats in-range account initial balance as opening assets`() = runBlocking {
         val range = TimeRangeUtils.currentMonthRange()
-        val now = range.startAtMillis + 1_000
+        val now = range.startInclusive + 1_000
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -192,6 +194,7 @@ class ObserveStatsDashboardUseCaseTest {
             transactionRepository = transactionRepository,
             calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            zoneIdProvider = testZoneIdProvider(),
         )
 
         val snapshot = useCase(

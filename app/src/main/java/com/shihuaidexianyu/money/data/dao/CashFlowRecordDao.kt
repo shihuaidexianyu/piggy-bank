@@ -62,12 +62,16 @@ interface CashFlowRecordDao {
         SELECT * FROM cash_flow_records
         WHERE direction = :direction
             AND isDeleted = 0
-            AND occurredAt >= :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC, id ASC
         """,
     )
-    suspend fun queryActiveByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecordEntity>
+    suspend fun queryActiveByDirectionBetween(
+        direction: String,
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowRecordEntity>
 
     @Query(
         """
@@ -75,11 +79,11 @@ interface CashFlowRecordDao {
         WHERE accountId = :accountId
             AND direction = 'inflow'
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
+    suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
@@ -87,52 +91,54 @@ interface CashFlowRecordDao {
         WHERE accountId = :accountId
             AND direction = 'outflow'
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
+    suspend fun sumOutflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE direction = 'inflow'
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COALESCE(SUM(amount), 0) FROM cash_flow_records
         WHERE direction = 'outflow'
             AND isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long
+    suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long
 
     @Query(
         """
         SELECT COUNT(*) FROM cash_flow_records
         WHERE isDeleted = 0
-            AND occurredAt > :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         """,
     )
-    suspend fun countActiveBetween(startAt: Long, endAt: Long): Int
+    suspend fun countActiveBetween(startInclusive: Long, endExclusive: Long): Int
 
     @Query(
         """
         SELECT * FROM cash_flow_records
-        WHERE isDeleted = 0 AND occurredAt >= :startAt AND occurredAt <= :endAt
+        WHERE isDeleted = 0
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         ORDER BY occurredAt ASC
         """,
     )
-    suspend fun queryActiveBetween(startAt: Long, endAt: Long): List<CashFlowRecordEntity>
+    suspend fun queryActiveBetween(startInclusive: Long, endExclusive: Long): List<CashFlowRecordEntity>
 
     @Query(
         """
@@ -142,16 +148,16 @@ interface CashFlowRecordDao {
         FROM cash_flow_records
         WHERE direction = :direction
             AND isDeleted = 0
-            AND occurredAt >= :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         GROUP BY CASE WHEN TRIM(purpose) = '' THEN '未填写用途' ELSE purpose END
         ORDER BY amount DESC
         """,
     )
     suspend fun queryPurposeTotals(
         direction: String,
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
     ): List<PurposeTotalRow>
 
     @Query(
@@ -162,15 +168,15 @@ interface CashFlowRecordDao {
             COALESCE(SUM(amount), 0) AS amount
         FROM cash_flow_records
         WHERE isDeleted = 0
-            AND occurredAt >= :startAt
-            AND occurredAt <= :endAt
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
         GROUP BY epochDay, direction
         ORDER BY epochDay ASC
         """,
     )
     suspend fun queryDailyTotals(
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
         zoneOffsetSeconds: Int,
     ): List<CashFlowDailyTotalRow>
 

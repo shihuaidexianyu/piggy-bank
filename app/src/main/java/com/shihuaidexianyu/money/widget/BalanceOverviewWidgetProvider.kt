@@ -18,6 +18,8 @@ import com.shihuaidexianyu.money.domain.model.AppSettings
 import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
+import com.shihuaidexianyu.money.di.SystemClockProvider
+import com.shihuaidexianyu.money.di.SystemZoneIdProvider
 import com.shihuaidexianyu.money.notification.MoneyAppContainerProvider
 import com.shihuaidexianyu.money.util.AmountFormatter
 import java.util.concurrent.TimeUnit
@@ -62,9 +64,12 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                         val balances = container.calculateAccountBalancesUseCase(accounts)
                         val totalAssets = balances.values.sum()
 
-                        val range = TimeRangeCalculator.currentMonthRange()
-                        val inflow = container.transactionRepository.sumCashInflowBetween(range.startAtMillis, range.endAtMillis)
-                        val outflow = container.transactionRepository.sumCashOutflowBetween(range.startAtMillis, range.endAtMillis)
+                        val range = TimeRangeCalculator.currentMonthRange(
+                            zoneId = SystemZoneIdProvider.zoneId(),
+                            nowMillis = SystemClockProvider.nowMillis(),
+                        )
+                        val inflow = container.transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive)
+                        val outflow = container.transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive)
 
                         val settings = AppSettings()
                         views.setTextViewText(R.id.widget_total_assets, AmountFormatter.format(totalAssets, settings))

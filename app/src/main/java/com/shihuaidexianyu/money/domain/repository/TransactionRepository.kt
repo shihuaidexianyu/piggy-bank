@@ -34,10 +34,19 @@ interface TransactionRepository {
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord>
     suspend fun queryRecentCashFlowPurposes(direction: String, accountId: Long?, limit: Int): List<String>
-    suspend fun queryActiveCashFlowRecordsByDirectionBetween(direction: String, startAt: Long, endAt: Long): List<CashFlowRecord>
-    suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord>
-    suspend fun queryPurposeTotals(direction: String, startAt: Long, endAt: Long): List<PurposeTotal>
-    suspend fun queryDailyCashFlowTotals(startAt: Long, endAt: Long, zoneOffsetSeconds: Int): List<CashFlowDailyTotal>
+    suspend fun queryActiveCashFlowRecordsByDirectionBetween(
+        direction: String,
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowRecord>
+
+    suspend fun queryActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): List<CashFlowRecord>
+    suspend fun queryPurposeTotals(direction: String, startInclusive: Long, endExclusive: Long): List<PurposeTotal>
+    suspend fun queryDailyCashFlowTotals(
+        startInclusive: Long,
+        endExclusive: Long,
+        zoneOffsetSeconds: Int,
+    ): List<CashFlowDailyTotal>
 
     // === Transfer records ===
     suspend fun insertTransferRecord(record: TransferRecord): Long
@@ -46,7 +55,7 @@ interface TransactionRepository {
     suspend fun queryTransferRecordById(id: Long): TransferRecord?
     suspend fun queryAllTransferRecords(): List<TransferRecord>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecord>
-    suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecord>
+    suspend fun queryActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): List<TransferRecord>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord>
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
 
@@ -56,7 +65,7 @@ interface TransactionRepository {
     suspend fun deleteBalanceUpdateRecord(id: Long)
     suspend fun getBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord>
-    suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecord>
+    suspend fun queryBalanceUpdateRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
 
@@ -66,24 +75,24 @@ interface TransactionRepository {
     suspend fun deleteBalanceAdjustmentRecord(id: Long)
     suspend fun getBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
-    suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord>
+    suspend fun queryBalanceAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>
 
     // === Aggregated stats ===
-    suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
-    suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long
-    suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long
-    suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long
-    suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long
-    suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long
-    suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long
-    suspend fun sumBalanceUpdateIncreaseBetween(startAt: Long, endAt: Long): Long
-    suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long
-    suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long
-    suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long
-    suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int
-    suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int
-    suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int
+    suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumOutflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumTransferInBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long
+    suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int
+    suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int
+    suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int
 
     // === Unified history ===
     suspend fun queryHistoryRecords(

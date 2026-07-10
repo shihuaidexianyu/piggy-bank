@@ -362,8 +362,8 @@ private fun HistoryFilterState.toHistoryRecordFilters(): HistoryRecordFilters {
         accountId = selectedAccountId,
         dateStartAt = dateStartAt,
         dateEndAt = dateEndAt,
-        minAmount = AmountInputParser.parseToMinor(minAmountText),
-        maxAmount = AmountInputParser.parseToMinor(maxAmountText),
+        minAmount = AmountInputParser.parseUnsignedToMinor(minAmountText),
+        maxAmount = AmountInputParser.parseUnsignedToMinor(maxAmountText),
         amountDirection = when (amountDirectionFilter) {
             AmountDirectionFilter.ALL -> HistoryAmountDirection.ALL
             AmountDirectionFilter.INCREASE -> HistoryAmountDirection.INCREASE
@@ -389,15 +389,15 @@ internal fun filterHistoryRecords(
     val excludeKeyword = filters.excludeKeyword.trim().lowercase()
     val startAt = filters.dateStartAt
     val endAt = filters.dateEndAt
-    val minAmount = AmountInputParser.parseToMinor(filters.minAmountText)
-    val maxAmount = AmountInputParser.parseToMinor(filters.maxAmountText)
+    val minAmount = AmountInputParser.parseUnsignedToMinor(filters.minAmountText)
+    val maxAmount = AmountInputParser.parseUnsignedToMinor(filters.maxAmountText)
 
     return source.filter { record ->
         val keywordOk = keyword.isBlank() || record.keywordSource.lowercase().contains(keyword)
         val excludeOk = excludeKeyword.isBlank() || !record.keywordSource.lowercase().contains(excludeKeyword)
         val accountOk = filters.selectedAccountId == null || filters.selectedAccountId in record.accountIds
         val startOk = startAt == null || record.occurredAt >= startAt
-        val endOk = endAt == null || record.occurredAt <= endAt
+        val endOk = endAt == null || record.occurredAt < endAt
         val amountAbs = abs(record.amount)
         val minOk = minAmount == null || amountAbs >= minAmount
         val maxOk = maxAmount == null || amountAbs <= maxAmount

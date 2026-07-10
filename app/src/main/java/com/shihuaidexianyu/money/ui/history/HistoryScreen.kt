@@ -136,7 +136,9 @@ fun HistoryScreen(
     dateField?.let { currentField ->
         val initialSelection = when (currentField) {
             HistoryDateField.START -> state.dateStartAt ?: state.dateEndAt
-            HistoryDateField.END -> state.dateEndAt ?: state.dateStartAt
+            HistoryDateField.END -> state.dateEndAt
+                ?.let(DateTimeTextFormatter::startOfDisplayedEndDateMillis)
+                ?: state.dateStartAt
         }
         MoneyDatePickerDialogHost(
             initialSelectedDateMillis = initialSelection,
@@ -152,7 +154,7 @@ fun HistoryScreen(
                     HistoryDateField.END -> {
                         onDateRangeChange(
                             state.dateStartAt,
-                            selected?.let { DateTimeTextFormatter.endOfDayMillis(it) },
+                            selected?.let { DateTimeTextFormatter.endExclusiveOfDayMillis(it) },
                         )
                     }
                 }
@@ -209,7 +211,7 @@ fun HistoryScreen(
                             label = "今天",
                             onClick = {
                                 val todayStart = DateTimeTextFormatter.startOfDayMillis(System.currentTimeMillis())
-                                val todayEnd = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
+                                val todayEnd = DateTimeTextFormatter.endExclusiveOfDayMillis(System.currentTimeMillis())
                                 onDateRangeChange(todayStart, todayEnd)
                             },
                         )
@@ -218,7 +220,7 @@ fun HistoryScreen(
                             onClick = {
                                 val today = LocalDate.now()
                                 val start = today.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                                val end = DateTimeTextFormatter.endOfDayMillis(System.currentTimeMillis())
+                                val end = DateTimeTextFormatter.endExclusiveOfDayMillis(System.currentTimeMillis())
                                 onDateRangeChange(start, end)
                             },
                         )
@@ -226,7 +228,7 @@ fun HistoryScreen(
                             label = "本月",
                             onClick = {
                                 val range = TimeRangeUtils.currentMonthRange()
-                                onDateRangeChange(range.startAtMillis, range.endAtMillis)
+                                onDateRangeChange(range.startInclusive, range.endExclusive)
                             },
                         )
                         QuickDateChip(
@@ -501,11 +503,11 @@ private fun dateSheetSummary(state: HistoryUiState): String {
     return if (start == null && end == null) {
         "不限"
     } else if (start != null && end != null) {
-        "${DateTimeTextFormatter.formatDateOnly(start)} 至 ${DateTimeTextFormatter.formatDateOnly(end)}"
+        "${DateTimeTextFormatter.formatDateOnly(start)} 至 ${DateTimeTextFormatter.formatDisplayedEndDate(end)}"
     } else if (start != null) {
         "${DateTimeTextFormatter.formatDateOnly(start)} 起"
     } else {
-        "截至 ${DateTimeTextFormatter.formatDateOnly(requireNotNull(end))}"
+        "截至 ${DateTimeTextFormatter.formatDisplayedEndDate(requireNotNull(end))}"
     }
 }
 

@@ -197,7 +197,7 @@ class TransactionRepositoryContractTest {
         roomRepo.insertCashFlowRecord(record)
         memoryRepo.insertCashFlowRecord(record)
 
-        val startAt = noonLocalMillis - 1
+        val startAt = noonLocalMillis
         val endAt = noonLocalMillis + 1
         val roomTotals = roomRepo.queryDailyCashFlowTotals(startAt, endAt, zoneOffsetSeconds)
         val memoryTotals = memoryRepo.queryDailyCashFlowTotals(startAt, endAt, zoneOffsetSeconds)
@@ -281,6 +281,117 @@ class TransactionRepositoryContractTest {
         )
         assertEquals(memoryPurposes, roomPurposes)
         assertEquals(listOf("打车", "吃饭"), roomPurposes)
+    }
+
+    @Test
+    fun periodQueries_includeStartAndExcludeEndInBothImplementations() = runBlocking {
+        seedAccount()
+        val startInclusive = 10_000L
+        val endExclusive = 20_000L
+        listOf(roomRepo, memoryRepo).forEach { repository ->
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = 100,
+                    purpose = "起点",
+                    occurredAt = startInclusive,
+                    createdAt = startInclusive,
+                    updatedAt = startInclusive,
+                ),
+            )
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = 200,
+                    purpose = "终点",
+                    occurredAt = endExclusive,
+                    createdAt = endExclusive,
+                    updatedAt = endExclusive,
+                ),
+            )
+            repository.insertTransferRecord(
+                TransferRecord(
+                    fromAccountId = 1L,
+                    toAccountId = 1L,
+                    amount = 300,
+                    note = "起点",
+                    occurredAt = startInclusive,
+                    createdAt = startInclusive,
+                    updatedAt = startInclusive,
+                ),
+            )
+            repository.insertTransferRecord(
+                TransferRecord(
+                    fromAccountId = 1L,
+                    toAccountId = 1L,
+                    amount = 400,
+                    note = "终点",
+                    occurredAt = endExclusive,
+                    createdAt = endExclusive,
+                    updatedAt = endExclusive,
+                ),
+            )
+            repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 1L,
+                    actualBalance = 500,
+                    systemBalanceBeforeUpdate = 0,
+                    delta = 500,
+                    occurredAt = startInclusive,
+                    createdAt = startInclusive,
+                ),
+            )
+            repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 1L,
+                    actualBalance = 600,
+                    systemBalanceBeforeUpdate = 0,
+                    delta = 600,
+                    occurredAt = endExclusive,
+                    createdAt = endExclusive,
+                ),
+            )
+            repository.insertBalanceAdjustmentRecord(
+                BalanceAdjustmentRecord(
+                    accountId = 1L,
+                    delta = 700,
+                    occurredAt = startInclusive,
+                    createdAt = startInclusive,
+                ),
+            )
+            repository.insertBalanceAdjustmentRecord(
+                BalanceAdjustmentRecord(
+                    accountId = 1L,
+                    delta = 800,
+                    occurredAt = endExclusive,
+                    createdAt = endExclusive,
+                ),
+            )
+        }
+
+        assertEquals(100L, roomRepo.sumCashInflowBetween(startInclusive, endExclusive))
+        assertEquals(
+            memoryRepo.queryActiveTransferRecordsBetween(startInclusive, endExclusive),
+            roomRepo.queryActiveTransferRecordsBetween(startInclusive, endExclusive),
+        )
+        assertEquals(
+            memoryRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
+            roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
+        )
+        assertEquals(
+            memoryRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
+            roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
+        )
+        val filters = HistoryRecordFilters(dateStartAt = startInclusive, dateEndAt = endExclusive)
+        assertEquals(
+            memoryRepo.queryHistoryRecords(filters, cursor = null, limit = 20),
+            roomRepo.queryHistoryRecords(filters, cursor = null, limit = 20),
+        )
+        assertTrue(roomRepo.queryHistoryRecords(filters, cursor = null, limit = 20).all {
+            it.occurredAt == startInclusive
+        })
     }
 
     private suspend fun seedAccount() {

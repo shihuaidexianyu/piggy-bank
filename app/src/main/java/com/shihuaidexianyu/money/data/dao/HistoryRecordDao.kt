@@ -86,7 +86,7 @@ internal const val HISTORY_FILTER_FRAGMENT = """
         AND (:excludeKeyword = '' OR LOWER(keywordSource) NOT LIKE '%' || :excludeKeyword || '%' ESCAPE '\')
         AND (:accountId IS NULL OR accountId = :accountId OR relatedAccountId = :accountId)
         AND (:dateStartAt IS NULL OR occurredAt >= :dateStartAt)
-        AND (:dateEndAt IS NULL OR occurredAt <= :dateEndAt)
+        AND (:dateEndAt IS NULL OR occurredAt < :dateEndAt)
         AND (:minAmount IS NULL OR ABS(amount) >= :minAmount)
         AND (:maxAmount IS NULL OR ABS(amount) <= :maxAmount)
         AND (

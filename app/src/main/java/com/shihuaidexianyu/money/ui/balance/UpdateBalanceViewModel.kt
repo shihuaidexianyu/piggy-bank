@@ -79,7 +79,7 @@ class UpdateBalanceViewModel(
     }
 
     fun updateActualBalance(value: String) {
-        val actual = AmountInputParser.parseToMinor(value)
+        val actual = AmountInputParser.parseSignedToMinor(value)
         val systemBalance = _uiState.value.systemBalanceBeforeUpdate
         _uiState.value = _uiState.value.copy(
             actualBalanceText = value,
@@ -112,7 +112,7 @@ class UpdateBalanceViewModel(
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
                 .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请选择账户"))); return@launch }
-            val actualBalance = runCatching { RecordValidator.requireNonNegativeAmount(state.actualBalanceText) }
+            val actualBalance = runCatching { RecordValidator.requireSignedAmount(state.actualBalanceText) }
                 .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请输入有效金额"))); return@launch }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
                 .getOrElse { error -> effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("时间不能晚于当前时间"))); return@launch }
@@ -164,7 +164,7 @@ class UpdateBalanceViewModel(
             val actualBalancePreview = if (resetActualBalanceToSystem) {
                 systemBalance
             } else {
-                AmountInputParser.parseToMinor(actualBalanceText)
+                AmountInputParser.parseSignedToMinor(actualBalanceText)
             }
 
             _uiState.value = current.copy(

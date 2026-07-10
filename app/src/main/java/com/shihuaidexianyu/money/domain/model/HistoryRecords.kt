@@ -17,8 +17,8 @@ data class HistoryRecordFilters(
     val keyword: String = "",
     val excludeKeyword: String = "",
     val accountId: Long? = null,
-    val dateStartAt: Long? = null,
-    val dateEndAt: Long? = null,
+    val dateStartAt: Long? = null, // Inclusive when present.
+    val dateEndAt: Long? = null, // Exclusive when present.
     val minAmount: Long? = null,
     val maxAmount: Long? = null,
     val amountDirection: HistoryAmountDirection = HistoryAmountDirection.ALL,

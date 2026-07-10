@@ -46,10 +46,12 @@ internal class UseCaseGraph(
     val calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
         accountRepository = data.accountRepository,
         transactionRepository = data.transactionRepository,
+        clockProvider = SystemClockProvider,
     )
 
     val calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(
         transactionRepository = data.transactionRepository,
+        clockProvider = SystemClockProvider,
     )
 
     val resolveBalanceUpdateContextUseCase = ResolveBalanceUpdateContextUseCase(
@@ -70,6 +72,8 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
+        clockProvider = SystemClockProvider,
+        zoneIdProvider = SystemZoneIdProvider,
     )
 
     val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
@@ -78,6 +82,7 @@ internal class UseCaseGraph(
         transactionRepository = data.transactionRepository,
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
+        zoneIdProvider = SystemZoneIdProvider,
     )
 
     fun observeAccountDetailUseCase(accountId: Long): ObserveAccountDetailUseCase {
@@ -88,6 +93,8 @@ internal class UseCaseGraph(
             settingsRepository = data.settingsRepository,
             transactionRepository = data.transactionRepository,
             calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
+            clockProvider = SystemClockProvider,
+            zoneIdProvider = SystemZoneIdProvider,
         )
     }
 

@@ -2,7 +2,7 @@ package com.shihuaidexianyu.money.util
 
 object RecordValidator {
     fun requireAmount(amountText: String): Long {
-        val amount = AmountInputParser.parseToMinor(amountText)
+        val amount = AmountInputParser.parseUnsignedToMinor(amountText)
             ?: throw ValidationException(invalidAmountMessage(amountText))
         if (amount <= 0) {
             throw ValidationException("金额必须大于 0")
@@ -10,8 +10,8 @@ object RecordValidator {
         return amount
     }
 
-    fun requireNonNegativeAmount(amountText: String): Long {
-        return AmountInputParser.parseToMinor(amountText)
+    fun requireSignedAmount(amountText: String): Long {
+        return AmountInputParser.parseSignedToMinor(amountText)
             ?: throw ValidationException(invalidAmountMessage(amountText))
     }
 

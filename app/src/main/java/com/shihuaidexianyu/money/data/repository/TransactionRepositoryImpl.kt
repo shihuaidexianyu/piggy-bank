@@ -78,10 +78,10 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
         direction: String,
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
     ): List<CashFlowRecord> {
-        return cashFlowRecordDao.queryActiveByDirectionBetween(direction, startAt, endAt).map { it.toDomain() }
+        return cashFlowRecordDao.queryActiveByDirectionBetween(direction, startInclusive, endExclusive).map { it.toDomain() }
     }
 
     override suspend fun insertTransferRecord(record: TransferRecord): Long {
@@ -104,8 +104,11 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllActiveTransferRecords(): List<TransferRecord> = transferRecordDao.queryAllActive().map { it.toDomain() }
 
-    override suspend fun queryActiveTransferRecordsBetween(startAt: Long, endAt: Long): List<TransferRecord> {
-        return transferRecordDao.queryActiveBetween(startAt, endAt).map { it.toDomain() }
+    override suspend fun queryActiveTransferRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<TransferRecord> {
+        return transferRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
     }
 
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord> = transferRecordDao.queryByAccountId(accountId).map { it.toDomain() }
@@ -136,8 +139,11 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryAllActive().map { it.toDomain() }
 
-    override suspend fun queryBalanceUpdateRecordsBetween(startAt: Long, endAt: Long): List<BalanceUpdateRecord> {
-        return balanceUpdateRecordDao.queryBetween(startAt, endAt).map { it.toDomain() }
+    override suspend fun queryBalanceUpdateRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<BalanceUpdateRecord> {
+        return balanceUpdateRecordDao.queryBetween(startInclusive, endExclusive).map { it.toDomain() }
     }
 
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryByAccountId(accountId).map { it.toDomain() }
@@ -162,65 +168,76 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAllActive().map { it.toDomain() }
 
-    override suspend fun queryBalanceAdjustmentRecordsBetween(startAt: Long, endAt: Long): List<BalanceAdjustmentRecord> {
-        return balanceAdjustmentRecordDao.queryBetween(startAt, endAt).map { it.toDomain() }
+    override suspend fun queryBalanceAdjustmentRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<BalanceAdjustmentRecord> {
+        return balanceAdjustmentRecordDao.queryBetween(startInclusive, endExclusive).map { it.toDomain() }
     }
 
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
-    override suspend fun sumInflowBetween(accountId: Long, startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumInflowBetween(accountId, startAt, endAt)
+    override suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
+        cashFlowRecordDao.sumInflowBetween(accountId, startInclusive, endExclusive)
 
-    override suspend fun sumOutflowBetween(accountId: Long, startAt: Long, endAt: Long): Long = cashFlowRecordDao.sumOutflowBetween(accountId, startAt, endAt)
+    override suspend fun sumOutflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
+        cashFlowRecordDao.sumOutflowBetween(accountId, startInclusive, endExclusive)
 
-    override suspend fun sumTransferInBetween(accountId: Long, startAt: Long, endAt: Long): Long = transferRecordDao.sumTransferInBetween(accountId, startAt, endAt)
+    override suspend fun sumTransferInBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
+        transferRecordDao.sumTransferInBetween(accountId, startInclusive, endExclusive)
 
-    override suspend fun sumTransferOutBetween(accountId: Long, startAt: Long, endAt: Long): Long = transferRecordDao.sumTransferOutBetween(accountId, startAt, endAt)
+    override suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
+        transferRecordDao.sumTransferOutBetween(accountId, startInclusive, endExclusive)
 
-    override suspend fun sumAdjustmentBetween(accountId: Long, startAt: Long, endAt: Long): Long = balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startAt, endAt)
+    override suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
+        balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startInclusive, endExclusive)
 
-    override suspend fun sumCashInflowBetween(startAt: Long, endAt: Long): Long =
-        cashFlowRecordDao.sumCashInflowBetween(startAt, endAt)
+    override suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long =
+        cashFlowRecordDao.sumCashInflowBetween(startInclusive, endExclusive)
 
-    override suspend fun sumCashOutflowBetween(startAt: Long, endAt: Long): Long =
-        cashFlowRecordDao.sumCashOutflowBetween(startAt, endAt)
+    override suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long =
+        cashFlowRecordDao.sumCashOutflowBetween(startInclusive, endExclusive)
 
-    override suspend fun sumBalanceUpdateIncreaseBetween(startAt: Long, endAt: Long): Long =
-        balanceUpdateRecordDao.sumPositiveDeltaBetween(startAt, endAt)
+    override suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
+        balanceUpdateRecordDao.sumPositiveDeltaBetween(startInclusive, endExclusive)
 
-    override suspend fun sumBalanceUpdateDecreaseBetween(startAt: Long, endAt: Long): Long =
-        balanceUpdateRecordDao.sumNegativeDeltaBetween(startAt, endAt)
+    override suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
+        balanceUpdateRecordDao.sumNegativeDeltaBetween(startInclusive, endExclusive)
 
-    override suspend fun sumManualAdjustmentIncreaseBetween(startAt: Long, endAt: Long): Long =
-        balanceAdjustmentRecordDao.sumPositiveManualAdjustmentBetween(startAt, endAt)
+    override suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
+        balanceAdjustmentRecordDao.sumPositiveManualAdjustmentBetween(startInclusive, endExclusive)
 
-    override suspend fun sumManualAdjustmentDecreaseBetween(startAt: Long, endAt: Long): Long =
-        balanceAdjustmentRecordDao.sumNegativeManualAdjustmentBetween(startAt, endAt)
+    override suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
+        balanceAdjustmentRecordDao.sumNegativeManualAdjustmentBetween(startInclusive, endExclusive)
 
-    override suspend fun countActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): Int =
-        cashFlowRecordDao.countActiveBetween(startAt, endAt)
+    override suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
+        cashFlowRecordDao.countActiveBetween(startInclusive, endExclusive)
 
-    override suspend fun countActiveTransferRecordsBetween(startAt: Long, endAt: Long): Int =
-        transferRecordDao.countActiveBetween(startAt, endAt)
+    override suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
+        transferRecordDao.countActiveBetween(startInclusive, endExclusive)
 
-    override suspend fun countManualAdjustmentRecordsBetween(startAt: Long, endAt: Long): Int =
-        balanceAdjustmentRecordDao.countBetween(startAt, endAt)
+    override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
+        balanceAdjustmentRecordDao.countBetween(startInclusive, endExclusive)
 
-    override suspend fun queryActiveCashFlowRecordsBetween(startAt: Long, endAt: Long): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startAt, endAt).map { it.toDomain() }
+    override suspend fun queryActiveCashFlowRecordsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
 
     override suspend fun queryPurposeTotals(
         direction: String,
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
     ): List<PurposeTotal> {
-        return cashFlowRecordDao.queryPurposeTotals(direction, startAt, endAt).map { it.toDomain() }
+        return cashFlowRecordDao.queryPurposeTotals(direction, startInclusive, endExclusive).map { it.toDomain() }
     }
 
     override suspend fun queryDailyCashFlowTotals(
-        startAt: Long,
-        endAt: Long,
+        startInclusive: Long,
+        endExclusive: Long,
         zoneOffsetSeconds: Int,
     ): List<CashFlowDailyTotal> {
-        return cashFlowRecordDao.queryDailyTotals(startAt, endAt, zoneOffsetSeconds).map { it.toDomain() }
+        return cashFlowRecordDao.queryDailyTotals(startInclusive, endExclusive, zoneOffsetSeconds).map { it.toDomain() }
     }
 
     override suspend fun queryHistoryRecords(
