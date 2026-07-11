@@ -13,7 +13,7 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 @Composable
 fun BalanceUpdateResultScreen(
@@ -33,15 +33,15 @@ fun BalanceUpdateResultScreen(
                 Text(result.accountName, style = MaterialTheme.typography.titleMedium)
                 MoneyInlineLabelValue(
                     label = "对账前账面余额",
-                    value = AmountFormatter.format(result.systemBalanceBeforeUpdate, settings),
+                    value = formatInAppAmount(result.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyInlineLabelValue(
                     label = "本次确认余额",
-                    value = AmountFormatter.format(result.actualBalance, settings),
+                    value = formatInAppAmount(result.actualBalance, settings),
                 )
                 MoneyInlineLabelValue(
                     label = "差额",
-                    value = AmountFormatter.format(result.delta, settings),
+                    value = formatInAppAmount(result.delta, settings),
                 )
                 Text(
                     if (result.delta == 0L) {

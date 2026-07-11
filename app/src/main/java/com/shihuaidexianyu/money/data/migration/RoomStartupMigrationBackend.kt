@@ -143,8 +143,12 @@ class RoomStartupMigrationBackend(
             corruptSettingsSources = corruptSettingsSources + LocalSettingsSource.APP
             return corruptSettingsError(error.message ?: "设备偏好格式损坏")
         }
-        if (isComplete(DEVICE_STEP)) return StartupStepResult.Complete
+        if (isComplete(DEVICE_STEP)) {
+            devicePreferencesRepository.migrateExternalPrivacyDefaultsIfNeeded()
+            return StartupStepResult.Complete
+        }
         devicePreferencesRepository.replace(current)
+        devicePreferencesRepository.migrateExternalPrivacyDefaultsIfNeeded()
         context.appSettingsDataStore.edit { preferences ->
             preferences.remove(LegacyKeys.HomePeriod)
             preferences.remove(LegacyKeys.CurrencySymbol)

@@ -197,6 +197,64 @@ class SyncMoneyNotificationsUseCaseTest {
     }
 
     @Test
+    fun `privacy force refresh cancels old active notification and reposts despite dedupe cursor`() =
+        runBlocking {
+            val fixture = Fixture()
+            val reminderId = fixture.addReminder(nextDueAt = NOW - 1)
+            fixture.sync()
+            assertEquals(1, fixture.publisher.active.size)
+
+            fixture.preparePrivacyRefresh()
+            assertTrue(fixture.publisher.active.isEmpty())
+            fixture.forcePrivacyRefresh()
+
+            assertTrue(MoneyNotificationKey.Recurring(reminderId) in fixture.publisher.cancelled)
+            assertEquals(2, fixture.publisher.posted.size)
+            assertEquals(1, fixture.publisher.active.size)
+        }
+
+    @Test
+    fun `privacy force refresh failure leaves old notification cancelled`() = runBlocking {
+        val fixture = Fixture()
+        fixture.addReminder(nextDueAt = NOW - 1)
+        fixture.sync()
+        fixture.publisher.result = PublishResult.Failed
+
+        fixture.forcePrivacyRefresh()
+
+        assertTrue(fixture.publisher.active.isEmpty())
+    }
+
+    @Test
+    fun `privacy force refresh only rebuilds previously active bounded keys`() = runBlocking {
+        val fixture = Fixture(maxPosts = 1)
+        fixture.addReminder(nextDueAt = NOW - 1)
+        fixture.sync()
+        fixture.addReminder(nextDueAt = NOW - 2)
+
+        fixture.forcePrivacyRefresh()
+
+        assertEquals(2, fixture.publisher.posted.size)
+        assertEquals(1, fixture.publisher.active.size)
+    }
+
+    @Test
+    fun `privacy force refresh completes every previously active key beyond normal batch size`() =
+        runBlocking {
+            val fixture = Fixture(maxPosts = 20)
+            repeat(25) { fixture.addReminder(nextDueAt = NOW - it - 1L) }
+            fixture.sync()
+            fixture.sync()
+            assertEquals(25, fixture.publisher.active.size)
+
+            fixture.preparePrivacyRefresh()
+            fixture.forcePrivacyRefresh()
+
+            assertEquals(25, fixture.publisher.active.size)
+            assertEquals(50, fixture.publisher.posted.size)
+        }
+
+    @Test
     fun `bounded successful batch requests one continuation`() = runBlocking {
         val fixture = Fixture(maxPosts = 2)
         repeat(3) { fixture.addReminder(nextDueAt = NOW - it - 1) }
@@ -245,6 +303,10 @@ class SyncMoneyNotificationsUseCaseTest {
         }
 
         suspend fun sync() = useCase()
+
+        suspend fun forcePrivacyRefresh() = useCase.forceRefreshPrivacy()
+
+        fun preparePrivacyRefresh() = useCase.preparePrivacyRefresh()
 
         suspend fun skip(reminderId: Long, expectedDueAt: Long) = SkipReminderUseCase(
             accountRepository = accounts,

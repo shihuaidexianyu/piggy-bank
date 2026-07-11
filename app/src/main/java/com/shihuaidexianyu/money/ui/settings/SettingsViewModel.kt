@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
+import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ThemeMode
@@ -74,6 +75,9 @@ class SettingsViewModel(
     private val backupFileReader: BackupFileReader,
     private val backupImportCoordinator: BackupImportCoordinator,
     private val clockProvider: ClockProvider,
+    private val forceRefreshNotificationPrivacy: suspend () -> Unit = {},
+    private val onWidgetPrivacyChanging: (Boolean) -> Unit = {},
+    private val onNotificationPrivacyChanging: (Boolean) -> Unit = {},
 ) : ViewModel() {
     private val isExporting = MutableStateFlow(false)
     private val isImporting = MutableStateFlow(false)
@@ -121,8 +125,31 @@ class SettingsViewModel(
         viewModelScope.launch { portableSettingsRepository.updateAmountColorMode(amountColorMode) }
     }
 
-    fun updateBiometricLock(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateBiometricLock(enabled) }
+    fun updateRelockDelay(delay: AppRelockDelay) {
+        viewModelScope.launch { devicePreferencesRepository.updateRelockDelay(delay) }
+    }
+
+    fun updateMaskAmountsInApp(enabled: Boolean) {
+        viewModelScope.launch { devicePreferencesRepository.updateMaskAmountsInApp(enabled) }
+    }
+
+    fun updateHideWidgetAmounts(enabled: Boolean) {
+        viewModelScope.launch {
+            onWidgetPrivacyChanging(enabled)
+            devicePreferencesRepository.updateHideWidgetAmounts(enabled)
+        }
+    }
+
+    fun updateHideNotificationAmounts(enabled: Boolean) {
+        viewModelScope.launch {
+            onNotificationPrivacyChanging(enabled)
+            devicePreferencesRepository.updateHideNotificationAmounts(enabled)
+            forceRefreshNotificationPrivacy()
+        }
+    }
+
+    fun updateHideRecentTasks(enabled: Boolean) {
+        viewModelScope.launch { devicePreferencesRepository.updateHideRecentTasks(enabled) }
     }
 
     fun exportData() {

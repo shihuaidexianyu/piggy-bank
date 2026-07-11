@@ -24,6 +24,7 @@ import com.shihuaidexianyu.money.ui.stats.StatsViewModel
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
+    onBiometricLockChange: (Boolean) -> Unit,
 ) {
     composable(MoneyDestination.Home.route) {
         val entry = navController.currentBackStackEntry
@@ -34,6 +35,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneyViewModelFactory {
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )
@@ -92,6 +94,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneyViewModelFactory {
                 StatsViewModel(
                     observeStatsDashboardUseCase = container.observeStatsDashboardUseCase,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )
@@ -138,7 +141,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onThemeModeChange = viewModel::updateThemeMode,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
-            onBiometricLockChange = viewModel::updateBiometricLock,
+            onBiometricLockChange = onBiometricLockChange,
+            onRelockDelayChange = viewModel::updateRelockDelay,
+            onMaskAmountsInAppChange = viewModel::updateMaskAmountsInApp,
+            onHideWidgetAmountsChange = viewModel::updateHideWidgetAmounts,
+            onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
+            onHideRecentTasksChange = viewModel::updateHideRecentTasks,
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onCreateSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
             onExportData = viewModel::exportData,

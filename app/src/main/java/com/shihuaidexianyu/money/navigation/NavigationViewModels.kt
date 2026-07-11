@@ -2,6 +2,8 @@ package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider
+import com.shihuaidexianyu.money.widget.WidgetPrivacyGeneration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.createSavedStateHandle
@@ -45,6 +47,21 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
                 backupFileReader = container.backupFileReader,
                 backupImportCoordinator = container.backupImportCoordinator,
                 clockProvider = SystemClockProvider,
+                forceRefreshNotificationPrivacy = {
+                    container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
+                },
+                onWidgetPrivacyChanging = { hidden ->
+                    if (hidden) {
+                        WidgetPrivacyGeneration.update(hidden = true) {
+                            BalanceOverviewWidgetProvider.renderAllSafePlaceholders(context)
+                        }
+                    }
+                },
+                onNotificationPrivacyChanging = { hidden ->
+                    if (hidden) {
+                        container.syncMoneyNotificationsUseCase.preparePrivacyRefresh()
+                    }
+                },
             )
         },
     )

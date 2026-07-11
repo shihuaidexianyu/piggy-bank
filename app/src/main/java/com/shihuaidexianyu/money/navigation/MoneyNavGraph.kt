@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -36,8 +37,11 @@ import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchDestination
-import com.shihuaidexianyu.money.domain.notification.NotificationLaunchRequest
+import com.shihuaidexianyu.money.domain.notification.NotificationLaunchIdentity
+import com.shihuaidexianyu.money.domain.launch.AppLaunchDestination
+import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 private val topLevelRoutes = MoneyDestination.topLevel.map { it.route }
 private val topLevelRouteSet = topLevelRoutes.toSet()
@@ -99,88 +103,106 @@ private fun popExitTransition(): ExitTransition {
     ) + fadeOut(animationSpec = tween(250))
 }
 
+private suspend fun resolveNotificationDestination(
+    container: MoneyAppContainer,
+    identity: NotificationLaunchIdentity,
+): NotificationLaunchDestination = try {
+    container.resolveNotificationLaunchUseCase(identity)
+} catch (error: CancellationException) {
+    throw error
+} catch (_: Throwable) {
+    NotificationLaunchDestination.ReminderCenter(stateChanged = true)
+}
+
+private suspend fun routeNotificationDestination(
+    destination: NotificationLaunchDestination,
+    navController: androidx.navigation.NavHostController,
+): Boolean {
+    return when (destination) {
+        is NotificationLaunchDestination.ProcessReminder -> {
+            val reminder = destination.reminder
+            navController.navigate(
+                MoneyDestination.recordCashFlowRoute(
+                    direction = CashFlowDirection.fromValue(reminder.direction),
+                    accountId = reminder.accountId,
+                    amount = reminder.amount,
+                    note = reminder.name,
+                    reminderId = reminder.id,
+                    expectedDueAt = reminder.nextDueAt,
+                ),
+            )
+            false
+        }
+        is NotificationLaunchDestination.ReconcileBalance -> {
+            navController.navigate(MoneyDestination.updateBalanceRoute(destination.accountId))
+            false
+        }
+        is NotificationLaunchDestination.ReminderCenter -> {
+            navController.navigate(MoneyDestination.ReminderListRoute)
+            destination.stateChanged
+        }
+    }
+}
+
 @Composable
 fun MoneyNavGraph(
     container: MoneyAppContainer,
-    shortcutAction: String? = null,
-    sharedAmount: Long? = null,
-    notificationLaunchRequest: NotificationLaunchRequest? = null,
-    onNotificationLaunchConsumed: (Long) -> Unit = {},
+    appLaunchRequest: AppLaunchRequest? = null,
+    onAppLaunchConsumed: (String) -> Unit = {},
+    onBiometricLockChange: (Boolean) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // Handle app-shortcut deep links: navigate to the target screen once on first composition.
-    LaunchedEffect(shortcutAction) {
-        when (shortcutAction) {
-            "record_outflow" -> navController.navigate(
-                MoneyDestination.recordCashFlowRoute(
-                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
-                    accountId = 0L,
-                ),
+    LaunchedEffect(appLaunchRequest?.token) {
+        val request = appLaunchRequest ?: return@LaunchedEffect
+        var showNotificationStateChanged = false
+        when (val requested = request.destination) {
+            AppLaunchDestination.Home -> navController.navigate(MoneyDestination.Home.route) {
+                launchSingleTop = true
+                popUpTo(navController.graph.startDestinationId)
+            }
+            AppLaunchDestination.BatchReconcile ->
+                navController.navigate(MoneyDestination.BatchReconcileRoute)
+            AppLaunchDestination.Transfer ->
+                navController.navigate(MoneyDestination.recordTransferRoute())
+            is AppLaunchDestination.CashFlow -> navController.navigate(
+                MoneyDestination.recordCashFlowRoute(requested.direction, accountId = 0L),
             )
-            "record_inflow" -> navController.navigate(
-                MoneyDestination.recordCashFlowRoute(
-                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW,
-                    accountId = 0L,
-                ),
-            )
-            "balance_check" -> navController.navigate(MoneyDestination.BatchReconcileRoute)
-        }
-    }
-
-    // Handle shared text with an extracted amount: default to recording an outflow with the
-    // amount pre-filled (most shared texts are payment confirmations / receipts).
-    LaunchedEffect(sharedAmount) {
-        if (sharedAmount != null && sharedAmount > 0) {
-            navController.navigate(
-                MoneyDestination.recordCashFlowRoute(
-                    direction = com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW,
-                    accountId = 0L,
-                    amount = sharedAmount,
-                    note = null,
-                    reminderId = null,
-                    expectedDueAt = null,
-                ),
-            )
-        }
-    }
-
-    LaunchedEffect(notificationLaunchRequest?.token) {
-        val request = notificationLaunchRequest ?: return@LaunchedEffect
-        val destination = try {
-            container.resolveNotificationLaunchUseCase(request.identity)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            NotificationLaunchDestination.ReminderCenter(stateChanged = true)
-        }
-        when (destination) {
-            is NotificationLaunchDestination.ProcessReminder -> {
-                val reminder = destination.reminder
-                navController.navigate(
-                    MoneyDestination.recordCashFlowRoute(
-                        direction = CashFlowDirection.fromValue(reminder.direction),
-                        accountId = reminder.accountId,
-                        amount = reminder.amount,
-                        note = reminder.name,
-                        reminderId = reminder.id,
-                        expectedDueAt = reminder.nextDueAt,
-                    ),
+            is AppLaunchDestination.SharePreview -> {
+                navController.currentBackStackEntry?.savedStateHandle?.set(
+                    "shared_text_preview",
+                    requested.originalText,
                 )
+                navController.navigate(MoneyDestination.SharePreviewRoute)
             }
-            is NotificationLaunchDestination.ReconcileBalance ->
-                navController.navigate(MoneyDestination.updateBalanceRoute(destination.accountId))
-            is NotificationLaunchDestination.ReminderCenter -> {
-                navController.navigate(MoneyDestination.ReminderListRoute)
-                if (destination.stateChanged) {
-                    snackbarHostState.showSnackbar("提醒状态已变化")
-                }
-            }
+            is AppLaunchDestination.RecurringNotification -> showNotificationStateChanged =
+                routeNotificationDestination(
+                destination = resolveNotificationDestination(
+                    container = container,
+                    identity = NotificationLaunchIdentity.Recurring(
+                        requested.reminderId,
+                        requested.expectedDueAt,
+                    ),
+                ),
+                navController = navController,
+            )
+            is AppLaunchDestination.BalanceNotification -> showNotificationStateChanged =
+                routeNotificationDestination(
+                destination = resolveNotificationDestination(
+                    container = container,
+                    identity = NotificationLaunchIdentity.Balance(requested.accountId),
+                ),
+                navController = navController,
+            )
         }
-        onNotificationLaunchConsumed(request.token)
+        onAppLaunchConsumed(request.token)
+        if (showNotificationStateChanged) {
+            scope.launch { snackbarHostState.showSnackbar("提醒状态已变化") }
+        }
     }
 
     Scaffold(
@@ -266,7 +288,11 @@ fun MoneyNavGraph(
                     }
                 },
             ) {
-                addTopLevelGraph(navController = navController, container = container)
+                addTopLevelGraph(
+                    navController = navController,
+                    container = container,
+                    onBiometricLockChange = onBiometricLockChange,
+                )
                 addAccountsGraph(navController = navController, container = container)
                 addRecordGraph(navController = navController, container = container)
                 addBalanceGraph(navController = navController, container = container)

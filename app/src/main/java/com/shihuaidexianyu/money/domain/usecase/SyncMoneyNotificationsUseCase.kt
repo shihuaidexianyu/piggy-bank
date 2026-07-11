@@ -16,6 +16,7 @@ import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 
 data class NotificationSyncResult(
     val postedCount: Int,
@@ -38,6 +39,7 @@ class SyncMoneyNotificationsUseCase(
     private val maxPostsPerRun: Int = 20,
 ) {
     private val mutex = Mutex()
+    private val preparedPrivacyKeys = mutableSetOf<MoneyNotificationKey>()
 
     init {
         require(maxPostsPerRun > 0)
@@ -163,6 +165,73 @@ class SyncMoneyNotificationsUseCase(
         val hasMore = hasUnattemptedCandidates && successfulAcks > 0
         if (hasMore) request(NotificationSyncReason.CONTINUATION)
         NotificationSyncResult(postedCount = postedCount, hasMore = hasMore)
+    }
+
+    fun preparePrivacyRefresh() {
+        val active = publisher.activeKeys()
+        synchronized(preparedPrivacyKeys) { preparedPrivacyKeys += active }
+        active.forEach(publisher::cancel)
+    }
+
+    suspend fun forceRefreshPrivacy(): NotificationSyncResult = mutex.withLock {
+        val prepared = synchronized(preparedPrivacyKeys) {
+            preparedPrivacyKeys.toSet().also { preparedPrivacyKeys.clear() }
+        }
+        val previouslyActive = prepared + publisher.activeKeys()
+        previouslyActive.forEach(publisher::cancel)
+        try {
+            val now = clockProvider.nowMillis()
+            val zoneId = zoneIdProvider.zoneId()
+            val accounts = accountRepository.queryAllAccounts().associateBy(Account::id)
+            val configs = accountReminderSettingsRepository.queryReminderConfigs()
+            val recurringKeys = previouslyActive.filterIsInstance<MoneyNotificationKey.Recurring>()
+            val balanceKeys = previouslyActive.filterIsInstance<MoneyNotificationKey.Balance>()
+            val staleAccounts = balanceKeys.mapNotNull { accounts[it.accountId] }
+            val balances = if (staleAccounts.isEmpty()) {
+                emptyMap()
+            } else {
+                accountBalanceProvider.balances(staleAccounts)
+            }
+            var posted = 0
+            recurringKeys.forEach { key ->
+                val reminder = reminderRepository.getReminderById(key.reminderId) ?: return@forEach
+                val account = accounts[reminder.accountId] ?: return@forEach
+                if (!reminder.isEnabled || reminder.nextDueAt > now || account.isClosed) return@forEach
+                if (publisher.post(
+                    MoneyNotificationCommand.Recurring(
+                        reminderId = reminder.id,
+                        expectedDueAt = reminder.nextDueAt,
+                        reminderName = reminder.name,
+                        accountName = account.name,
+                        amount = reminder.amount,
+                    ),
+                ) == PublishResult.Posted
+                ) posted++
+            }
+            balanceKeys.forEach { key ->
+                val account = accounts[key.accountId] ?: return@forEach
+                val config = configs[account.id] ?: return@forEach
+                if (account.isClosed || !config.isEnabled) return@forEach
+                val boundary = AccountStatusCalculator.latestReminderBoundaryAt(now, config, zoneId)
+                if ((account.lastBalanceUpdateAt ?: account.createdAt) >= boundary) return@forEach
+                val balance = balances[account.id] ?: return@forEach
+                if (publisher.post(
+                    MoneyNotificationCommand.Balance(
+                        accountId = account.id,
+                        expectedBoundaryAt = boundary,
+                        accountName = account.name,
+                        balance = balance,
+                        scheduleText = config.displayText,
+                    ),
+                ) == PublishResult.Posted
+                ) posted++
+            }
+            NotificationSyncResult(postedCount = posted, hasMore = false)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            NotificationSyncResult(postedCount = 0, hasMore = false)
+        }
     }
 
     private suspend fun cancelObsolete(now: Long) {

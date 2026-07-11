@@ -26,7 +26,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -118,7 +118,7 @@ fun EditBalanceUpdateScreen(
                     MoneyInlineLabelValue(label = "账户", value = state.accountName)
                     MoneyInlineLabelValue(
                         label = "系统余额",
-                        value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
+                        value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                     )
                     MoneyAmountField(
                         value = state.actualBalanceText,
@@ -139,11 +139,11 @@ fun EditBalanceUpdateScreen(
                 )
                 MoneyInlineLabelValue(
                     label = "实际余额",
-                    value = state.actualBalancePreview?.let { AmountFormatter.format(it, settings) } ?: "-",
+                    value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneyInlineLabelValue(
                     label = "差额",
-                    value = state.deltaPreview?.let { AmountFormatter.format(it, settings) } ?: "-",
+                    value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading, label = "保存修改")
             }

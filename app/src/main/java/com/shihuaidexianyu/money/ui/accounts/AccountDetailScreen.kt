@@ -36,7 +36,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -81,7 +81,7 @@ fun AccountDetailScreen(
                     isClosed = state.isClosed,
                 )
                 Text(
-                    text = AmountFormatter.format(state.currentBalance, state.settings),
+                    text = formatInAppAmount(state.currentBalance, state.settings),
                     style = MaterialTheme.typography.displayLarge,
                 )
                 Text(
@@ -132,7 +132,7 @@ fun AccountDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = AmountFormatter.format(state.monthInflow, state.settings),
+                            text = formatInAppAmount(state.monthInflow, state.settings),
                             style = MaterialTheme.typography.titleLarge,
                             color = moneyColors.income,
                         )
@@ -144,7 +144,7 @@ fun AccountDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = AmountFormatter.format(state.monthOutflow, state.settings),
+                            text = formatInAppAmount(state.monthOutflow, state.settings),
                             style = MaterialTheme.typography.titleLarge,
                             color = moneyColors.expense,
                         )
@@ -184,7 +184,7 @@ private fun RecentRecordRow(
         AccountDetailRecordKind.BALANCE_UPDATE, AccountDetailRecordKind.BALANCE_ADJUSTMENT ->
             moneyColors.current
     }
-    val amountText = AmountFormatter.format(record.amount, settings)
+    val amountText = formatInAppAmount(record.amount, settings)
     val kindLabel = when (record.kind) {
         AccountDetailRecordKind.CASH_FLOW -> "收支"
         AccountDetailRecordKind.TRANSFER -> "转账"

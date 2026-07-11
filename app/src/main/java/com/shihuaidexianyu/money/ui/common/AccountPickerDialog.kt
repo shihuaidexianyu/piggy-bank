@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.util.AmountFormatter
 
 data class AccountOptionUiModel(
     val id: Long,
@@ -150,9 +149,10 @@ private fun AccountPickerList(
     }
 }
 
+@Composable
 private fun AccountOptionUiModel.pickerSubtitle(
     settings: PortableSettings,
 ): String? {
-    return balance?.let { "余额 ${AmountFormatter.format(it, settings)}" }
+    return balance?.let { "余额 ${formatInAppAmount(it, settings)}" }
 }
 

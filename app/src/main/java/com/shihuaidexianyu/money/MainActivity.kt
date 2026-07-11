@@ -1,70 +1,121 @@
 package com.shihuaidexianyu.money
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
+import android.os.SystemClock
+import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.ui.common.BiometricGatekeeper
+import com.shihuaidexianyu.money.domain.model.AmountPrivacy
+import com.shihuaidexianyu.money.domain.model.failClosedDevicePreferences
+import com.shihuaidexianyu.money.ui.lock.AppLockScreen
+import com.shihuaidexianyu.money.ui.lock.AppLockViewModel
+import com.shihuaidexianyu.money.ui.lock.AppRootSurface
+import com.shihuaidexianyu.money.ui.lock.ElapsedRealtimeClock
+import com.shihuaidexianyu.money.ui.lock.resolveAppRootSurface
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
-import com.shihuaidexianyu.money.util.SharedTextAmountExtractor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.catch
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import com.shihuaidexianyu.money.domain.notification.MoneyNotificationKey
 import com.shihuaidexianyu.money.domain.notification.NotificationCapability
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
-import com.shihuaidexianyu.money.domain.notification.NotificationLaunchRequest
-import com.shihuaidexianyu.money.notification.NotificationLaunchIntentConsumer
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.shihuaidexianyu.money.ui.launch.AndroidAppLaunchIntentParser
+import com.shihuaidexianyu.money.ui.launch.AppLaunchQueueViewModel
+import java.util.UUID
 
 class MainActivity : FragmentActivity() {
     private var notificationsWereAllowed: Boolean? = null
-    private val notificationLaunchRequest = MutableStateFlow<NotificationLaunchRequest?>(null)
-    private var nextLaunchToken = 0L
+    private val appLaunchQueueViewModel: AppLaunchQueueViewModel by viewModels()
+    private val appLockViewModel: AppLockViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                val container = (application as MoneyApplication).container
+                AppLockViewModel(
+                    preferencesRepository = container.devicePreferencesRepository,
+                    biometricGateway = (application as MoneyApplication).biometricAuthenticationGateway,
+                    elapsedRealtimeClock = ElapsedRealtimeClock(SystemClock::elapsedRealtime),
+                    onPrivacyDefaultsEnabled = {
+                        (application as MoneyApplication).forceRefreshNotificationPrivacy()
+                    },
+                    onPrivacyDefaultsEnabling = {
+                        (application as MoneyApplication).prepareExternalPrivacyEnable()
+                    },
+                    onPrivacyDefaultsEnableFailed = {
+                        (application as MoneyApplication).recoverExternalPrivacyEnableFailure()
+                    },
+                )
+            }
+        }
+    }
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) appLockViewModel.onScreenOff()
+        }
+    }
+    private var screenOffReceiverRegistered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val container = (application as MoneyApplication).container
-        val shortcutAction = intent?.getStringExtra("shortcut_action")
-        val sharedAmount = extractSharedAmount(intent)
-        publishNotificationLaunch(intent)
+        val moneyApplication = application as MoneyApplication
+        moneyApplication.biometricAuthenticationGateway.attachHost(this)
+        val container = moneyApplication.container
+        publishAppLaunch(intent)
+        ContextCompat.registerReceiver(
+            this,
+            screenOffReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        screenOffReceiverRegistered = true
+        // Fail closed until the persisted task-snapshot preference has been loaded.
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContent {
+            val startupState by container.startupMigrationCoordinator.state.collectAsStateWithLifecycle()
+            val lockState by appLockViewModel.state.collectAsStateWithLifecycle()
             val portableSettings by produceState(initialValue = PortableSettings()) {
                 container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
                 container.portableSettingsRepository.observe().collect { value = it }
             }
             val devicePreferencesFlow = remember(container) {
-                container.devicePreferencesRepository.observe().catch { emit(DevicePreferences()) }
+                container.devicePreferencesRepository.observe().catch {
+                    emit(failClosedDevicePreferences())
+                }
             }
-            val devicePreferences by devicePreferencesFlow.collectAsStateWithLifecycle(
-                initialValue = DevicePreferences(),
-            )
-            val notificationRequest by notificationLaunchRequest.collectAsStateWithLifecycle()
-
-            // Detect when the real DataStore value has loaded. We can't use `collectAsStateWithLifecycle`'s
-            // initial value as a sentinel (the user might genuinely have all-default settings), so we
-            // use a separate `produceState` that reads the first emission synchronously.
-            val settingsLoaded by produceState(initialValue = false) {
-                // A corrupt preference file is surfaced by the startup coordinator. Marking this
-                // read as finished lets the recoverable error page render without exposing ledger UI.
-                try {
-                    devicePreferencesFlow.first()
-                } finally {
-                    value = true
+            val loadedDevicePreferences by produceState<DevicePreferences?>(initialValue = null) {
+                devicePreferencesFlow.collect { value = it }
+            }
+            val devicePreferences = loadedDevicePreferences ?: DevicePreferences()
+            val pendingLaunchRequests by appLaunchQueueViewModel.pending.collectAsStateWithLifecycle()
+            LaunchedEffect(devicePreferences.relockDelay) {
+                appLockViewModel.onRelockDelayChanged(devicePreferences.relockDelay)
+            }
+            SideEffect {
+                if (loadedDevicePreferences?.hideRecentTasks == false) {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 }
             }
 
@@ -72,38 +123,63 @@ class MainActivity : FragmentActivity() {
                 themeMode = devicePreferences.themeMode,
                 amountColorMode = portableSettings.amountColorMode,
             ) {
-                BiometricGatekeeper(
-                    enabled = devicePreferences.biometricLock,
-                    settingsLoaded = settingsLoaded,
-                    onUnlocked = {},
-                ) {
-                    MoneyApp(
-                        container = container,
-                        shortcutAction = shortcutAction,
-                        sharedAmount = sharedAmount,
-                        notificationLaunchRequest = notificationRequest,
-                        onNotificationLaunchConsumed = { token ->
-                            notificationLaunchRequest.compareAndSet(
-                                notificationLaunchRequest.value?.takeIf { it.token == token },
-                                null,
-                            )
+                val effectiveLockState = if (loadedDevicePreferences == null) {
+                    com.shihuaidexianyu.money.ui.lock.AppLockState.Loading
+                } else {
+                    lockState
+                }
+                when (resolveAppRootSurface(startupState, effectiveLockState)) {
+                    AppRootSurface.LOCK -> AppLockScreen(
+                        state = effectiveLockState,
+                        onAuthenticate = appLockViewModel::authenticate,
+                        onOpenSecuritySettings = {
+                            startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
                         },
+                    )
+                    AppRootSurface.STARTUP -> StartupMigrationSurface(
+                        container = container,
+                        state = startupState,
+                    )
+                    AppRootSurface.LEDGER -> MoneyApp(
+                        container = container,
+                        appLaunchRequest = pendingLaunchRequests.firstOrNull(),
+                        onAppLaunchConsumed = appLaunchQueueViewModel::acknowledge,
+                        onBiometricLockChange = { enabled ->
+                            if (enabled) {
+                                appLockViewModel.enableBiometricLock()
+                            } else {
+                                appLockViewModel.disableBiometricLock()
+                            }
+                        },
+                        amountPrivacy = AmountPrivacy.from(devicePreferences),
                     )
                 }
             }
         }
     }
 
-    private fun extractSharedAmount(intent: Intent?): Long? {
-        if (intent?.action != Intent.ACTION_SEND) return null
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return null
-        return SharedTextAmountExtractor.extractAmountMillis(text)
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)
-        publishNotificationLaunch(intent)
+        publishAppLaunch(intent)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        appLockViewModel.onForegrounded()
+    }
+
+    override fun onStop() {
+        appLockViewModel.onBackgrounded()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        (application as? MoneyApplication)?.biometricAuthenticationGateway?.detachHost(this)
+        if (screenOffReceiverRegistered) {
+            runCatching { unregisterReceiver(screenOffReceiver) }
+            screenOffReceiverRegistered = false
+        }
+        super.onDestroy()
     }
 
     override fun onResume() {
@@ -118,10 +194,19 @@ class MainActivity : FragmentActivity() {
         notificationsWereAllowed = allowed
     }
 
-    private fun publishNotificationLaunch(intent: Intent?) {
-        val token = nextLaunchToken + 1
-        val request = NotificationLaunchIntentConsumer.consume(intent, token) ?: return
-        nextLaunchToken = token
-        notificationLaunchRequest.value = request
+    private fun publishAppLaunch(sourceIntent: Intent?) {
+        val request = AndroidAppLaunchIntentParser.parse(
+            intent = sourceIntent,
+            token = UUID.randomUUID().toString(),
+        )
+        request?.let(appLaunchQueueViewModel::offer)
+        // SavedState owns the durable queue. Keep Activity's source Intent free of share text,
+        // shortcut extras and notification identity so recreation cannot enqueue it twice.
+        setIntent(
+            Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            },
+        )
     }
 }

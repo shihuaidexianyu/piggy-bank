@@ -49,6 +49,13 @@ data class DevicePreferences(
     val recentAccountIds: List<Long> = emptyList(),
 )
 
+fun failClosedDevicePreferences(): DevicePreferences = DevicePreferences(
+    maskAmountsInApp = true,
+    hideWidgetAmounts = true,
+    hideNotificationAmounts = true,
+    hideRecentTasks = true,
+)
+
 fun normalizeRecentAccountIds(accountIds: List<Long>): List<Long> =
     accountIds.asSequence()
         .filter { it > 0L }

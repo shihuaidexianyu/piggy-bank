@@ -17,7 +17,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -72,7 +72,7 @@ fun BalanceAdjustmentDetailScreen(
                     )
                     MoneyInlineLabelValue(
                         label = "矫正差额",
-                        value = AmountFormatter.format(state.delta, settings),
+                        value = formatInAppAmount(state.delta, settings),
                     )
                 }
             }

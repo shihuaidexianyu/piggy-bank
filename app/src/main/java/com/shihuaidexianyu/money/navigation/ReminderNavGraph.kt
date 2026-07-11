@@ -45,6 +45,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                     clockProvider = SystemClockProvider,
                     zoneIdProvider = SystemZoneIdProvider,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )

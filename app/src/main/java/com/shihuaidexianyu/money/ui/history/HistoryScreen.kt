@@ -56,7 +56,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import java.time.LocalDate
@@ -414,7 +414,7 @@ private fun HistoryRow(
         HistoryRecordKind.BALANCE_ADJUSTMENT,
         -> moneyColors.current
     }
-    val amountText = AmountFormatter.format(record.amount, settings)
+    val amountText = formatInAppAmount(record.amount, settings)
     val amountColor = when (record.kind) {
         HistoryRecordKind.TRANSFER -> moneyColors.transfer
         else -> when {

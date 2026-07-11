@@ -3,6 +3,10 @@ package com.shihuaidexianyu.money.ui.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.AmountPrivacy
+import com.shihuaidexianyu.money.domain.model.AmountSurface
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
@@ -16,6 +20,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 data class StatsUiState(
@@ -54,6 +59,7 @@ data class StatsUiState(
 
 class StatsViewModel(
     private val observeStatsDashboardUseCase: ObserveStatsDashboardUseCase,
+    private val devicePreferencesRepository: DevicePreferencesRepository,
 ) : ViewModel() {
     private val selectedRange = MutableStateFlow(
         StatsRangeSelection(
@@ -67,8 +73,14 @@ class StatsViewModel(
     init {
         viewModelScope.launch {
             try {
-                observeStatsDashboardUseCase(selectedRange).collect { snapshot ->
-                    _uiState.value = snapshot.toUiState()
+                combine(
+                    observeStatsDashboardUseCase(selectedRange),
+                    devicePreferencesRepository.observe(),
+                ) { snapshot, devicePreferences -> snapshot to devicePreferences }
+                    .collect { (snapshot, devicePreferences) ->
+                    val visibility = AmountPrivacy.from(devicePreferences)
+                        .visibilityFor(AmountSurface.IN_APP)
+                    _uiState.value = snapshot.toUiState(visibility)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("StatsViewModel", "Failed to observe stats", e)
@@ -109,7 +121,7 @@ class StatsViewModel(
         selectedRange.value = current.copy(anchorMillis = shifted.toInstant().toEpochMilli())
     }
 
-    private fun StatsDashboardSnapshot.toUiState(): StatsUiState {
+    private fun StatsDashboardSnapshot.toUiState(visibility: AmountVisibility): StatsUiState {
         return StatsUiState(
             isLoading = false,
             settings = settings,
@@ -125,23 +137,23 @@ class StatsViewModel(
             assetAdjustment = assetAdjustment,
             manualAdjustmentNet = manualAdjustmentNet,
             reconciliationNet = reconciliationNet,
-            openingAssetsText = AmountFormatter.format(openingAssets, settings),
-            closingAssetsText = AmountFormatter.format(closingAssets, settings),
-            totalInflowText = AmountFormatter.format(totalInflow, settings),
-            totalOutflowText = AmountFormatter.format(totalOutflow, settings),
-            netCashFlowText = formatSignedAmount(netCashFlow, settings),
-            assetChangeText = formatSignedAmount(assetChange, settings),
-            assetAdjustmentText = formatSignedAmount(assetAdjustment, settings),
-            manualAdjustmentText = formatSignedAmount(manualAdjustmentNet, settings),
-            reconciliationText = formatSignedAmount(reconciliationNet, settings),
-            openingAssetsFlowText = formatFlowAmount(openingAssets),
-            closingAssetsFlowText = formatFlowAmount(closingAssets),
-            totalInflowFlowText = formatFlowAmount(totalInflow),
-            totalOutflowFlowText = formatFlowAmount(totalOutflow),
-            netCashFlowFlowText = formatFlowAmount(netCashFlow),
-            assetAdjustmentFlowText = formatFlowAmount(assetAdjustment),
-            manualAdjustmentFlowText = formatFlowAmount(manualAdjustmentNet),
-            reconciliationFlowText = formatFlowAmount(reconciliationNet),
+            openingAssetsText = AmountFormatter.format(openingAssets, settings, visibility),
+            closingAssetsText = AmountFormatter.format(closingAssets, settings, visibility),
+            totalInflowText = AmountFormatter.format(totalInflow, settings, visibility),
+            totalOutflowText = AmountFormatter.format(totalOutflow, settings, visibility),
+            netCashFlowText = formatSignedAmount(netCashFlow, settings, visibility),
+            assetChangeText = formatSignedAmount(assetChange, settings, visibility),
+            assetAdjustmentText = formatSignedAmount(assetAdjustment, settings, visibility),
+            manualAdjustmentText = formatSignedAmount(manualAdjustmentNet, settings, visibility),
+            reconciliationText = formatSignedAmount(reconciliationNet, settings, visibility),
+            openingAssetsFlowText = formatFlowAmount(openingAssets, visibility),
+            closingAssetsFlowText = formatFlowAmount(closingAssets, visibility),
+            totalInflowFlowText = formatFlowAmount(totalInflow, visibility),
+            totalOutflowFlowText = formatFlowAmount(totalOutflow, visibility),
+            netCashFlowFlowText = formatFlowAmount(netCashFlow, visibility),
+            assetAdjustmentFlowText = formatFlowAmount(assetAdjustment, visibility),
+            manualAdjustmentFlowText = formatFlowAmount(manualAdjustmentNet, visibility),
+            reconciliationFlowText = formatFlowAmount(reconciliationNet, visibility),
         )
     }
 }
@@ -153,14 +165,20 @@ private fun isCurrentRange(snapshot: StatsDashboardSnapshot): Boolean {
     return !now.isBefore(start) && now.isBefore(end)
 }
 
-private fun formatSignedAmount(amount: Long, settings: PortableSettings): String {
+private fun formatSignedAmount(
+    amount: Long,
+    settings: PortableSettings,
+    visibility: AmountVisibility,
+): String {
+    if (visibility == AmountVisibility.MASKED) return AmountFormatter.format(amount, settings, visibility)
     return when {
-        amount > 0L -> "+${AmountFormatter.format(amount, settings)}"
-        else -> AmountFormatter.format(amount, settings)
+        amount > 0L -> "+${AmountFormatter.format(amount, settings, visibility)}"
+        else -> AmountFormatter.format(amount, settings, visibility)
     }
 }
 
-private fun formatFlowAmount(amount: Long): String {
+private fun formatFlowAmount(amount: Long, visibility: AmountVisibility): String {
+    if (visibility == AmountVisibility.MASKED) return "••••"
     val sign = if (amount < 0L) "-" else ""
     val absolute = BigDecimal.valueOf(amount)
         .movePointLeft(2)

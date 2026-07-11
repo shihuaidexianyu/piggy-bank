@@ -54,7 +54,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 internal fun shouldShowAccountOverview(state: AccountsUiState): Boolean =
     state.openAccounts.isNotEmpty() || state.closedAccounts.isNotEmpty()
@@ -186,7 +186,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
         0L
     }
     val goalText = if (goal != null) {
-        if (goal.isAchieved) "已达成目标" else "目标 ${AmountFormatter.format(goal.targetAmount, state.settings)} · $goalPercentage%"
+        if (goal.isAchieved) "已达成目标" else "目标 ${formatInAppAmount(goal.targetAmount, state.settings)} · $goalPercentage%"
     } else {
         null
     }
@@ -210,7 +210,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = AmountFormatter.format(totalAssets, state.settings),
+                    text = formatInAppAmount(totalAssets, state.settings),
                     style = when {
                         totalAssets.toString().length > 10 -> MaterialTheme.typography.titleLarge
                         else -> MaterialTheme.typography.headlineSmall
@@ -273,7 +273,7 @@ private fun AccountCard(
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
-    val balanceText = AmountFormatter.format(account.balance, currencySettings)
+    val balanceText = formatInAppAmount(account.balance, currencySettings)
     val showAssetShare = !account.isClosed && account.balance > 0 && positiveAssetsTotal > 0
     // Fraction is for UI layout only (a horizontal rectangle width). Compose draw APIs take Float,
     // so we divide as Float *after* the rule-of-money check. The amount itself is never stored as Float.

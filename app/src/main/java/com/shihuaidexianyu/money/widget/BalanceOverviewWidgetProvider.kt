@@ -8,85 +8,102 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.shihuaidexianyu.money.MainActivity
-import com.shihuaidexianyu.money.MoneyAppContainer
-import com.shihuaidexianyu.money.MoneyApplication
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.ledgerSumExact
-import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
-import com.shihuaidexianyu.money.di.SystemClockProvider
-import com.shihuaidexianyu.money.di.SystemZoneIdProvider
-import com.shihuaidexianyu.money.notification.MoneyAppContainerProvider
 import com.shihuaidexianyu.money.util.AmountFormatter
 import java.util.concurrent.TimeUnit
 
-/**
- * Home-screen widget showing total assets + this month's income and expense. Read-only; tapping
- * the widget opens the app to the home dashboard.
- *
- * Updated on a 30-minute periodic [WidgetUpdateWorker] (the minimum allowed by the system for
- * `updatePeriodMillis` is 30 min). [updateAll] can also be called manually after data mutations
- * to refresh immediately.
- */
 class BalanceOverviewWidgetProvider : AppWidgetProvider() {
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
         appWidgetIds.forEach { widgetId ->
-            updateWidget(context, appWidgetManager, widgetId)
+            renderSafePlaceholder(context, appWidgetManager, widgetId)
         }
+        WidgetUpdateRequester.requestImmediate(context)
     }
 
     companion object {
-        fun updateAll(context: Context) {
-            val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, BalanceOverviewWidgetProvider::class.java))
-            if (ids.isNotEmpty()) {
-                ids.forEach { updateWidget(context, manager, it) }
+        const val ACTION_OPEN_WIDGET_HOME = "com.shihuaidexianyu.money.OPEN_WIDGET_HOME"
+
+        fun widgetIds(context: Context): IntArray = AppWidgetManager.getInstance(context)
+            .getAppWidgetIds(ComponentName(context, BalanceOverviewWidgetProvider::class.java))
+
+        fun renderSnapshot(
+            context: Context,
+            manager: AppWidgetManager,
+            widgetId: Int,
+            snapshot: WidgetBalanceSnapshot,
+        ) {
+            val total = AmountFormatter.format(
+                snapshot.totalAssets,
+                snapshot.settings,
+                snapshot.visibility,
+            )
+            val income = AmountFormatter.format(
+                snapshot.monthInflow,
+                snapshot.settings,
+                snapshot.visibility,
+            )
+            val expense = AmountFormatter.format(
+                snapshot.monthOutflow,
+                snapshot.settings,
+                snapshot.visibility,
+            )
+            val views = baseViews(context, widgetId).apply {
+                setTextViewText(R.id.widget_total_assets, total)
+                setTextViewText(R.id.widget_month_income, income)
+                setTextViewText(R.id.widget_month_expense, expense)
+                setContentDescription(R.id.widget_total_assets, "总资产 $total")
+                setContentDescription(R.id.widget_month_income, "本月收入 $income")
+                setContentDescription(R.id.widget_month_expense, "本月支出 $expense")
             }
+            manager.updateAppWidget(widgetId, views)
         }
 
-        private fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
-            val container = (context.applicationContext as? MoneyAppContainerProvider)?.moneyAppContainer
-            val views = RemoteViews(context.packageName, R.layout.widget_balance_overview)
+        fun renderSafePlaceholder(
+            context: Context,
+            manager: AppWidgetManager,
+            widgetId: Int,
+        ) {
+            manager.updateAppWidget(widgetId, placeholderViews(context, widgetId))
+        }
 
-            // Default placeholder while data loads.
-            views.setTextViewText(R.id.widget_total_assets, "—")
-            views.setTextViewText(R.id.widget_month_income, "—")
-            views.setTextViewText(R.id.widget_month_expense, "—")
+        fun renderAllSafePlaceholders(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            widgetIds(context).forEach { renderSafePlaceholder(context, manager, it) }
+        }
 
-            if (container != null) {
-                if (container.startupMigrationCoordinator.withReadyLedgerAccess { true } == null) {
-                    manager.updateAppWidget(widgetId, views)
-                    return
-                }
-                kotlinx.coroutines.runBlocking {
-                    runCatching {
-                        val accounts = container.accountRepository.queryAllAccounts()
-                        val balances = container.calculateAccountBalancesUseCase(accounts)
-                        val totalAssets = balances.values.ledgerSumExact()
+        fun scheduleUpdate(context: Context) {
+            val request = PeriodicWorkRequestBuilder<WidgetUpdateWorker>(30, TimeUnit.MINUTES).build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WidgetUpdateRequester.PERIODIC_WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request,
+            )
+        }
 
-                        val range = TimeRangeCalculator.currentMonthRange(
-                            zoneId = SystemZoneIdProvider.zoneId(),
-                            nowMillis = SystemClockProvider.nowMillis(),
-                        )
-                        val inflow = container.transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive)
-                        val outflow = container.transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive)
-
-                        val settings = container.portableSettingsRepository.query()
-                        views.setTextViewText(R.id.widget_total_assets, AmountFormatter.format(totalAssets, settings))
-                        views.setTextViewText(R.id.widget_month_income, AmountFormatter.format(inflow, settings))
-                        views.setTextViewText(R.id.widget_month_expense, AmountFormatter.format(outflow, settings))
-                    }
-                }
+        private fun placeholderViews(context: Context, widgetId: Int): RemoteViews =
+            baseViews(context, widgetId).apply {
+                setTextViewText(R.id.widget_total_assets, "—")
+                setTextViewText(R.id.widget_month_income, "—")
+                setTextViewText(R.id.widget_month_expense, "—")
+                setContentDescription(R.id.widget_total_assets, "总资产已隐藏，正在刷新")
+                setContentDescription(R.id.widget_month_income, "本月收入已隐藏，正在刷新")
+                setContentDescription(R.id.widget_month_expense, "本月支出已隐藏，正在刷新")
             }
 
-            // Tap → open app
+        private fun baseViews(context: Context, widgetId: Int): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_balance_overview)
             val openIntent = Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_MAIN
-                addCategory(Intent.CATEGORY_LAUNCHER)
+                action = ACTION_OPEN_WIDGET_HOME
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
             val pendingIntent = PendingIntent.getActivity(
                 context,
@@ -95,17 +112,28 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
-
-            manager.updateAppWidget(widgetId, views)
+            return views
         }
+    }
+}
 
-        fun scheduleUpdate(context: Context) {
-            val request = PeriodicWorkRequestBuilder<WidgetUpdateWorker>(30, TimeUnit.MINUTES).build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                "widget-balance-update",
-                ExistingPeriodicWorkPolicy.KEEP,
-                request,
-            )
-        }
+object WidgetUpdateRequester {
+    const val DEBOUNCE_MILLIS = 750L
+    const val ONE_TIME_WORK_NAME = "widget-balance-refresh"
+    const val PERIODIC_WORK_NAME = "widget-balance-update"
+
+    fun requestDebounced(context: Context) = enqueue(context, DEBOUNCE_MILLIS)
+
+    fun requestImmediate(context: Context) = enqueue(context, 0L)
+
+    private fun enqueue(context: Context, delayMillis: Long) {
+        val request = OneTimeWorkRequestBuilder<WidgetUpdateWorker>()
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            ONE_TIME_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
     }
 }

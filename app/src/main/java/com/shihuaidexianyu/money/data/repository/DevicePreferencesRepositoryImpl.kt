@@ -30,8 +30,36 @@ class DevicePreferencesRepositoryImpl(
         context.appSettingsDataStore.edit { DevicePreferencesMapper.write(it, preferences) }
     }
 
+    override suspend fun migrateExternalPrivacyDefaultsIfNeeded() {
+        context.appSettingsDataStore.edit { mutable ->
+            if (mutable[DevicePreferencesMapper.Keys.ExternalPrivacyDefaultsMigrated] == true) {
+                return@edit
+            }
+            val current = DevicePreferencesMapper.fromPreferences(mutable)
+            val migrated = if (current.biometricLock) {
+                current.copy(
+                    hideWidgetAmounts = true,
+                    hideNotificationAmounts = true,
+                    hideRecentTasks = true,
+                )
+            } else {
+                current
+            }
+            DevicePreferencesMapper.write(mutable, migrated)
+            mutable[DevicePreferencesMapper.Keys.ExternalPrivacyDefaultsMigrated] = true
+        }
+    }
+
     override suspend fun updateThemeMode(mode: ThemeMode) = edit { copy(themeMode = mode) }
     override suspend fun updateBiometricLock(enabled: Boolean) = edit { copy(biometricLock = enabled) }
+    override suspend fun enableBiometricLockWithPrivacyDefaults() = edit {
+        copy(
+            biometricLock = true,
+            hideWidgetAmounts = true,
+            hideNotificationAmounts = true,
+            hideRecentTasks = true,
+        )
+    }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = edit { copy(relockDelay = delay) }
     override suspend fun updateMaskAmountsInApp(enabled: Boolean) = edit { copy(maskAmountsInApp = enabled) }
     override suspend fun updateHideWidgetAmounts(enabled: Boolean) = edit { copy(hideWidgetAmounts = enabled) }
@@ -117,6 +145,7 @@ object DevicePreferencesMapper {
         val HideNotificationAmounts = booleanPreferencesKey("hide_notification_amounts")
         val HideRecentTasks = booleanPreferencesKey("hide_recent_tasks")
         val NotificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")
+        val ExternalPrivacyDefaultsMigrated = booleanPreferencesKey("external_privacy_defaults_migrated_v1")
         val HistoryKeyword = stringPreferencesKey("last_history_keyword")
         val HistoryExcludeKeyword = stringPreferencesKey("last_history_exclude_keyword")
         val HistoryAccountId = longPreferencesKey("last_history_account_id")

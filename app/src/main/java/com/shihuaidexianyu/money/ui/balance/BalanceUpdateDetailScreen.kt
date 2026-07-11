@@ -18,7 +18,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -74,15 +74,15 @@ fun BalanceUpdateDetailScreen(
                     )
                     MoneyInlineLabelValue(
                         label = "对账前账面余额",
-                        value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
+                        value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                     )
                     MoneyInlineLabelValue(
                         label = "本次确认余额",
-                        value = AmountFormatter.format(state.actualBalance, settings),
+                        value = formatInAppAmount(state.actualBalance, settings),
                     )
                     MoneyInlineLabelValue(
                         label = "差额",
-                        value = AmountFormatter.format(state.delta, settings),
+                        value = formatInAppAmount(state.delta, settings),
                     )
                 }
             }

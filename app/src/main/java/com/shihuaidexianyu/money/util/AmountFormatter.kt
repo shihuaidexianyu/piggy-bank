@@ -1,11 +1,17 @@
 package com.shihuaidexianyu.money.util
 
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 object AmountFormatter {
-    fun format(amountInMinor: Long, settings: PortableSettings): String {
+    fun format(
+        amountInMinor: Long,
+        settings: PortableSettings,
+        visibility: AmountVisibility = AmountVisibility.VISIBLE,
+    ): String {
+        if (visibility == AmountVisibility.MASKED) return "${settings.currencySymbol}••••"
         val absolute = BigDecimal.valueOf(amountInMinor)
             .movePointLeft(2)
             .abs()

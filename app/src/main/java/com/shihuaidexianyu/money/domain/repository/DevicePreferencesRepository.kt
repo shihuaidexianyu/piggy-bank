@@ -10,8 +10,10 @@ interface DevicePreferencesRepository {
     fun observe(): Flow<DevicePreferences>
     suspend fun query(): DevicePreferences
     suspend fun replace(preferences: DevicePreferences)
+    suspend fun migrateExternalPrivacyDefaultsIfNeeded()
     suspend fun updateThemeMode(mode: ThemeMode)
     suspend fun updateBiometricLock(enabled: Boolean)
+    suspend fun enableBiometricLockWithPrivacyDefaults()
     suspend fun updateRelockDelay(delay: AppRelockDelay)
     suspend fun updateMaskAmountsInApp(enabled: Boolean)
     suspend fun updateHideWidgetAmounts(enabled: Boolean)

@@ -24,17 +24,29 @@ import com.shihuaidexianyu.money.domain.notification.MoneyNotificationPublisher
 import com.shihuaidexianyu.money.domain.notification.NotificationCapability
 import com.shihuaidexianyu.money.domain.notification.PublishResult
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.model.AmountPrivacy
+import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.util.AmountFormatter
 import kotlinx.coroutines.CancellationException
 
 class DefaultMoneyNotificationContentPolicy(
     private val portableSettingsRepository: PortableSettingsRepository,
+    private val devicePreferencesRepository: DevicePreferencesRepository? = null,
 ) : MoneyNotificationContentPolicy {
     override suspend fun content(command: MoneyNotificationCommand): MoneyNotificationContent {
         val settings = portableSettingsRepository.query()
+        val visibility = devicePreferencesRepository
+            ?.query()
+            ?.let(AmountPrivacy::from)
+            ?.visibilityFor(AmountSurface.NOTIFICATION)
         return when (command) {
             is MoneyNotificationCommand.Recurring -> {
-                val amount = AmountFormatter.format(command.amount, settings)
+                val amount = AmountFormatter.format(
+                    command.amount,
+                    settings,
+                    visibility ?: com.shihuaidexianyu.money.domain.model.AmountVisibility.VISIBLE,
+                )
                 MoneyNotificationContent(
                     title = "${command.reminderName} · ${command.accountName}",
                     text = "待处理金额 $amount",
@@ -44,7 +56,11 @@ class DefaultMoneyNotificationContentPolicy(
                 )
             }
             is MoneyNotificationCommand.Balance -> {
-                val amount = AmountFormatter.format(command.balance, settings)
+                val amount = AmountFormatter.format(
+                    command.balance,
+                    settings,
+                    visibility ?: com.shihuaidexianyu.money.domain.model.AmountVisibility.VISIBLE,
+                )
                 MoneyNotificationContent(
                     title = "${command.accountName} 余额待核对",
                     text = "当前余额 $amount（${command.scheduleText}）",

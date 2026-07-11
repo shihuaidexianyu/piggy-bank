@@ -28,7 +28,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -181,7 +181,7 @@ private fun BatchReconcileAccountRow(
             )
         }
         Text(
-            text = AmountFormatter.format(account.systemBalance, state.settings),
+            text = formatInAppAmount(account.systemBalance, state.settings),
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
         )

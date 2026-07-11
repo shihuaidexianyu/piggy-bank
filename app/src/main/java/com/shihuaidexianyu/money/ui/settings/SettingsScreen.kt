@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
+import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
@@ -38,6 +39,7 @@ private sealed interface SettingsDialog {
     data object ThemeMode : SettingsDialog
     data object AmountColorMode : SettingsDialog
     data object CurrencySymbol : SettingsDialog
+    data object RelockDelay : SettingsDialog
     data class ImportConfirm(
         val preview: BackupValidationResult,
         val stageId: String,
@@ -53,6 +55,11 @@ fun SettingsScreen(
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
+    onRelockDelayChange: (AppRelockDelay) -> Unit,
+    onMaskAmountsInAppChange: (Boolean) -> Unit,
+    onHideWidgetAmountsChange: (Boolean) -> Unit,
+    onHideNotificationAmountsChange: (Boolean) -> Unit,
+    onHideRecentTasksChange: (Boolean) -> Unit,
     onManageAccountOrder: () -> Unit,
     onCreateSavingsGoal: () -> Unit,
     onExportData: () -> Unit,
@@ -175,6 +182,20 @@ fun SettingsScreen(
                 )
             }
 
+            SettingsDialog.RelockDelay -> {
+                MoneyChoiceDialog(
+                    title = "离开后重新锁定",
+                    options = AppRelockDelay.entries,
+                    selected = devicePreferences.relockDelay,
+                    label = { it.displayName() },
+                    onSelect = {
+                        onRelockDelayChange(it)
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                )
+            }
+
             is SettingsDialog.ImportSuccess -> {
                 MoneyConfirmDialog(
                     title = "导入完成",
@@ -233,6 +254,42 @@ fun SettingsScreen(
                             onCheckedChange = onBiometricLockChange,
                         )
                     },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "重新锁定时间",
+                    subtitle = "使用单调计时，熄屏会立即锁定",
+                    trailing = devicePreferences.relockDelay.displayName(),
+                    modifier = Modifier.clickable { dialog = SettingsDialog.RelockDelay },
+                )
+            }
+        }
+
+        item { MoneySectionHeader(title = "隐私") }
+        item {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                PrivacySwitchRow(
+                    title = "应用内隐藏金额",
+                    checked = devicePreferences.maskAmountsInApp,
+                    onCheckedChange = onMaskAmountsInAppChange,
+                )
+                MoneySectionDivider()
+                PrivacySwitchRow(
+                    title = "隐藏最近任务内容",
+                    checked = devicePreferences.hideRecentTasks,
+                    onCheckedChange = onHideRecentTasksChange,
+                )
+                MoneySectionDivider()
+                PrivacySwitchRow(
+                    title = "隐藏桌面小组件金额",
+                    checked = devicePreferences.hideWidgetAmounts,
+                    onCheckedChange = onHideWidgetAmountsChange,
+                )
+                MoneySectionDivider()
+                PrivacySwitchRow(
+                    title = "隐藏通知金额",
+                    checked = devicePreferences.hideNotificationAmounts,
+                    onCheckedChange = onHideNotificationAmountsChange,
                 )
             }
         }
@@ -295,6 +352,31 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun PrivacySwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    MoneyListRow(
+        title = title,
+        showChevron = false,
+        accessory = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+            )
+        },
+    )
+}
+
+private fun AppRelockDelay.displayName(): String = when (this) {
+    AppRelockDelay.IMMEDIATELY -> "立即"
+    AppRelockDelay.THIRTY_SECONDS -> "30 秒"
+    AppRelockDelay.ONE_MINUTE -> "1 分钟"
+    AppRelockDelay.FIVE_MINUTES -> "5 分钟"
 }
 
 private fun BackupValidationResult.confirmMessage(): String {

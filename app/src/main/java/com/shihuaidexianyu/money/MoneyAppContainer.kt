@@ -14,6 +14,8 @@ class MoneyAppContainer(context: Context) {
 
     val accountRepository get() = dataGraph.accountRepository
 
+    val moneyDatabase get() = dataGraph.moneyDatabase
+
     val transactionRepository get() = dataGraph.transactionRepository
 
     val portableSettingsRepository get() = dataGraph.portableSettingsRepository

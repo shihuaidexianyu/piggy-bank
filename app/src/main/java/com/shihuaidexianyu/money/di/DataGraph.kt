@@ -85,7 +85,10 @@ internal class DataGraph(context: Context) {
 
     val moneyNotificationPublisher = AndroidMoneyNotificationPublisher(
         context = appContext,
-        contentPolicy = DefaultMoneyNotificationContentPolicy(portableSettingsRepository),
+        contentPolicy = DefaultMoneyNotificationContentPolicy(
+            portableSettingsRepository = portableSettingsRepository,
+            devicePreferencesRepository = devicePreferencesRepository,
+        ),
     )
 
     val savingsGoalRepository: SavingsGoalRepository =

@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.di.SystemClockProvider
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.UuidLedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.record.EditCashFlowScreen
@@ -17,11 +18,60 @@ import com.shihuaidexianyu.money.ui.record.RecordCashFlowScreen
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
 import com.shihuaidexianyu.money.ui.record.RecordTransferScreen
 import com.shihuaidexianyu.money.ui.record.RecordTransferViewModel
+import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
+import com.shihuaidexianyu.money.ui.share.SharePreviewAccountLoader
+import com.shihuaidexianyu.money.ui.share.SharePreviewScreen
+import com.shihuaidexianyu.money.ui.share.SharePreviewSubmitter
+import com.shihuaidexianyu.money.ui.share.SharePreviewViewModel
 
 internal fun NavGraphBuilder.addRecordGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
 ) {
+    composable(MoneyDestination.SharePreviewRoute) { entry ->
+        val originalText = entry.savedStateHandle
+            .get<String>(SharePreviewViewModel.ORIGINAL_TEXT_STATE_KEY)
+            ?: navController.previousBackStackEntry
+                ?.savedStateHandle
+                ?.remove<String>("shared_text_preview")
+                .orEmpty()
+        entry.savedStateHandle[SharePreviewViewModel.ORIGINAL_TEXT_STATE_KEY] = originalText
+        val viewModel = viewModel<SharePreviewViewModel>(
+            key = "share_preview",
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
+                SharePreviewViewModel(
+                    originalText = originalText,
+                    savedStateHandle = savedStateHandle,
+                    accountLoader = SharePreviewAccountLoader {
+                        val accounts = container.accountRepository.queryOpenAccounts()
+                        val balances = container.calculateAccountBalancesUseCase(accounts)
+                        accounts.map { account ->
+                            account.toAccountOptionUiModel(balance = balances[account.id] ?: 0L)
+                        }
+                    },
+                    submitter = SharePreviewSubmitter { payload ->
+                        container.createCashFlowRecordUseCase(
+                            accountId = payload.accountId,
+                            direction = payload.direction,
+                            amount = payload.amount,
+                            note = payload.note,
+                            occurredAt = payload.occurredAt,
+                            operationId = payload.operationId,
+                        )
+                    },
+                    operationIdFactory = UuidLedgerOperationIdFactory,
+                    clockProvider = SystemClockProvider,
+                )
+            },
+        )
+        SharePreviewScreen(
+            viewModel = viewModel,
+            onBack = { navController.popBackStack() },
+            onSaved = { navController.popBackStack() },
+            onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
+        )
+    }
+
     val closeHistoryEditFlow = {
         if (!navController.popBackStack()) {
             navController.navigate(MoneyDestination.History.route) {

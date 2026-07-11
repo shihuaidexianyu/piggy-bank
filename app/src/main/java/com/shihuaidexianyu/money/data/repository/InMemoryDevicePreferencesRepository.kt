@@ -12,8 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class InMemoryDevicePreferencesRepository(
     initial: DevicePreferences = DevicePreferences(),
+    private val beforeEnableBiometricLock: suspend () -> Unit = {},
 ) : DevicePreferencesRepository {
     private val state = MutableStateFlow(initial.normalized())
+    private var externalPrivacyDefaultsMigrated = false
 
     override fun observe(): Flow<DevicePreferences> = state.asStateFlow()
     override suspend fun query(): DevicePreferences = state.value
@@ -22,8 +24,31 @@ class InMemoryDevicePreferencesRepository(
         state.value = preferences.normalized()
     }
 
+    override suspend fun migrateExternalPrivacyDefaultsIfNeeded() {
+        if (externalPrivacyDefaultsMigrated) return
+        if (state.value.biometricLock) {
+            state.value = state.value.copy(
+                hideWidgetAmounts = true,
+                hideNotificationAmounts = true,
+                hideRecentTasks = true,
+            )
+        }
+        externalPrivacyDefaultsMigrated = true
+    }
+
     override suspend fun updateThemeMode(mode: ThemeMode) = update { copy(themeMode = mode) }
     override suspend fun updateBiometricLock(enabled: Boolean) = update { copy(biometricLock = enabled) }
+    override suspend fun enableBiometricLockWithPrivacyDefaults() {
+        beforeEnableBiometricLock()
+        update {
+        copy(
+            biometricLock = true,
+            hideWidgetAmounts = true,
+            hideNotificationAmounts = true,
+            hideRecentTasks = true,
+        )
+        }
+    }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = update { copy(relockDelay = delay) }
     override suspend fun updateMaskAmountsInApp(enabled: Boolean) = update { copy(maskAmountsInApp = enabled) }
     override suspend fun updateHideWidgetAmounts(enabled: Boolean) = update { copy(hideWidgetAmounts = enabled) }

@@ -49,7 +49,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 @Composable
 fun HomeScreen(
@@ -234,19 +234,19 @@ private fun PeriodOverviewBlock(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PeriodMetricRow(
                     label = "入账",
-                    value = AmountFormatter.format(cashInflow, settings),
+                    value = formatInAppAmount(cashInflow, settings),
                     color = moneyColors.income,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 PeriodMetricRow(
                     label = "出账",
-                    value = AmountFormatter.format(cashOutflow, settings),
+                    value = formatInAppAmount(cashOutflow, settings),
                     color = moneyColors.expense,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 PeriodMetricRow(
                     label = "收支结余",
-                    value = AmountFormatter.format(cashNet, settings),
+                    value = formatInAppAmount(cashNet, settings),
                     color = netColor,
                 )
             }

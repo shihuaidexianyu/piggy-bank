@@ -31,7 +31,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlin.math.abs
 
@@ -121,7 +121,7 @@ fun UpdateBalanceScreen(
                 )
                 MoneyInlineLabelValue(
                     label = "系统余额",
-                    value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
+                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyAmountField(
                     value = state.actualBalanceText,
@@ -150,15 +150,15 @@ fun UpdateBalanceScreen(
             MoneyCard {
                 MoneyInlineLabelValue(
                     label = "系统余额",
-                    value = AmountFormatter.format(state.systemBalanceBeforeUpdate, settings),
+                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyInlineLabelValue(
                     label = "实际余额",
-                    value = state.actualBalancePreview?.let { AmountFormatter.format(it, settings) } ?: "-",
+                    value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneyInlineLabelValue(
                     label = "差额",
-                    value = state.deltaPreview?.let { AmountFormatter.format(it, settings) } ?: "-",
+                    value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 state.deltaPreview?.let {
                     Text(
