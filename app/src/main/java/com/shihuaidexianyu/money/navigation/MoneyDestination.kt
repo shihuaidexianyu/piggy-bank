@@ -14,13 +14,13 @@ sealed class MoneyDestination(
     val icon: ImageVector,
 ) {
     data object Home : MoneyDestination("home", "首页", Icons.Rounded.Home)
-    data object History : MoneyDestination("history", "历史", Icons.Rounded.History)
-    data object Stats : MoneyDestination("stats", "统计", Icons.Rounded.BarChart)
+    data object History : MoneyDestination("history", "明细", Icons.Rounded.History)
+    data object Stats : MoneyDestination("stats", "分析", Icons.Rounded.BarChart)
     data object Accounts : MoneyDestination("accounts", "账户", Icons.Rounded.AccountBalanceWallet)
     data object Settings : MoneyDestination("settings", "设置", Icons.Rounded.Settings)
 
     companion object {
-        val topLevel = listOf(Home, History, Stats, Accounts, Settings)
+        val topLevel = listOf(Home, History, Stats, Accounts)
         const val CreateAccountRoute = "accounts/create"
         const val ReorderAccountsRoute = "accounts/reorder"
         const val EditAccountRoute = "accounts/{accountId}/edit"

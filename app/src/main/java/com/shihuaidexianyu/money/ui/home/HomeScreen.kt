@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Sync
@@ -25,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -45,7 +48,11 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
@@ -56,34 +63,23 @@ fun HomeScreen(
     state: HomeUiState,
     snackbarMessage: String? = null,
     onSnackbarMessageShown: () -> Unit = {},
-    onStartCashFlow: (CashFlowDirection, Long) -> Unit,
+    onStartCashFlow: (CashFlowDirection) -> Unit,
     onStartTransfer: () -> Unit,
     onStartUpdateBalance: (Long) -> Unit,
     onAllRemindersClick: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onCreateAccount: () -> Unit = {},
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var pickerDirection by remember { mutableStateOf<CashFlowDirection?>(null) }
     var showUpdateBalancePicker by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(it, token = "home:$it"))
             onSnackbarMessageShown()
         }
-    }
-
-    pickerDirection?.let { direction ->
-        AccountPickerDialog(
-            title = "选择${direction.displayName}账户",
-            accounts = state.accountOptions,
-            settings = state.settings,
-            onDismiss = { pickerDirection = null },
-            onPick = { accountId ->
-                pickerDirection = null
-                onStartCashFlow(direction, accountId)
-            },
-        )
     }
 
     if (showUpdateBalancePicker) {
@@ -98,40 +94,90 @@ fun HomeScreen(
         )
     }
     Column(modifier = modifier) {
-        SnackbarHost(hostState = snackbarHostState)
         MoneyPageTitle(
             title = "首页",
             trailing = {
-                ReminderHeaderButton(
+                HomeHeaderActions(
                     dueCount = state.dueReminders.size + state.staleAccountCount,
-                    onClick = onAllRemindersClick,
+                    onOpenSettings = onOpenSettings,
+                    onOpenReminders = onAllRemindersClick,
                 )
             },
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
-        Column(
+        AsyncContentRenderer(
+            content = state.toAsyncContent(),
+            onRetry = onRetry,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .fillMaxSize(),
+            empty = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    MoneyEmptyStateCard(
+                        title = "创建第一个账户",
+                        subtitle = "创建账户后，就能开始记录收入、支出和转账。",
+                    ) {
+                        OutlinedButton(onClick = onCreateAccount) {
+                            Text("立即创建")
+                        }
+                    }
+                }
+            },
+            data = { renderedState, _ ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    PeriodOverviewBlock(
+                        recordCount = renderedState.periodRecordCount,
+                        periodLabel = "本月",
+                        cashInflow = renderedState.periodCashInflow,
+                        cashOutflow = renderedState.periodCashOutflow,
+                        settings = renderedState.settings,
+                    )
+                    MoneySectionHeader(title = "快速记录")
+                    ActionGrid(
+                        onInflow = { onStartCashFlow(CashFlowDirection.INFLOW) },
+                        onOutflow = { onStartCashFlow(CashFlowDirection.OUTFLOW) },
+                        onTransfer = onStartTransfer,
+                        onUpdateBalance = { showUpdateBalancePicker = true },
+                        enabled = true,
+                        transferEnabled = renderedState.accountOptions.size >= 2,
+                    )
+                }
+            },
+        )
+    }
+}
+
+@Composable
+fun HomeHeaderActions(
+    dueCount: Int,
+    onOpenSettings: () -> Unit,
+    onOpenReminders: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.size(44.dp),
         ) {
-            PeriodOverviewBlock(
-                recordCount = state.periodRecordCount,
-                periodLabel = "本月",
-                cashInflow = state.periodCashInflow,
-                cashOutflow = state.periodCashOutflow,
-                settings = state.settings,
-            )
-            MoneySectionHeader(title = "快速记录")
-            ActionGrid(
-                onInflow = { pickerDirection = CashFlowDirection.INFLOW },
-                onOutflow = { pickerDirection = CashFlowDirection.OUTFLOW },
-                onTransfer = onStartTransfer,
-                onUpdateBalance = { showUpdateBalancePicker = true },
-                enabled = state.accountOptions.isNotEmpty(),
-                transferEnabled = state.accountOptions.size >= 2,
+            Icon(
+                imageVector = Icons.Rounded.Settings,
+                contentDescription = "设置",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
             )
         }
+        ReminderHeaderButton(
+            dueCount = dueCount,
+            onClick = onOpenReminders,
+        )
     }
 }
 

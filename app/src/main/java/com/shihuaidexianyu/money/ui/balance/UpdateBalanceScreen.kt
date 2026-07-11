@@ -4,11 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,7 +21,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
@@ -30,6 +35,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -49,9 +55,14 @@ fun UpdateBalanceScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        if (effect is UpdateBalanceEffect.Saved) onShowResult()
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            if (terminal.kind == FormTerminalKind.SAVED) onShowResult()
+            viewModel.ackTerminal(terminal.token)
+        }
     }
 
     if (showAccountPicker) {
@@ -110,14 +121,27 @@ fun UpdateBalanceScreen(
         title = "核对余额",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "update-balance"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item {
             MoneyCard {
                 MoneySelectionField(
                     label = "账户",
                     value = selectedAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { showAccountPicker = true },
+                    isError = state.accountError != null,
+                    supportingText = state.accountError,
                 )
                 MoneyInlineLabelValue(
                     label = "系统余额",
@@ -128,6 +152,8 @@ fun UpdateBalanceScreen(
                     onValueChange = viewModel::updateActualBalance,
                     label = "实际余额",
                     allowSigned = true,
+                    isError = state.actualBalanceError != null,
+                    supportingText = state.actualBalanceError,
                 )
                 if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
                     OutlinedButton(
@@ -143,6 +169,7 @@ fun UpdateBalanceScreen(
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     timeSubtitle = "默认当前时间",
+                    errorText = state.occurredAtError,
                 )
             }
         }
@@ -221,6 +248,7 @@ fun UpdateBalanceScreen(
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
+                    enabled = state.pendingTerminal == null,
                     label = if (state.deltaPreview == 0L) "确认无变化" else "保存余额核对",
                 )
             }

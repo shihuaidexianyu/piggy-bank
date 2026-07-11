@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
@@ -25,6 +26,8 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.io.Serializable
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,10 +70,15 @@ data class ReminderListUiState(
     val dueReminders: List<ReminderUiModel> = emptyList(),
     val upcomingReminders: List<ReminderUiModel> = emptyList(),
     val pausedReminders: List<ReminderUiModel> = emptyList(),
+    val pendingSkip: PendingReminderSkipEffect? = null,
 )
 
+data class PendingReminderSkipEffect(
+    val token: String,
+    val undoToken: ReminderSkipUndoToken,
+) : Serializable
+
 sealed interface ReminderListEffect {
-    data class Skipped(val token: ReminderSkipUndoToken) : ReminderListEffect
     data class ShowMessage(override val message: String) : ReminderListEffect, UiEffect.HasMessage
 }
 
@@ -83,12 +91,14 @@ class ReminderListViewModel(
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ReminderListUiState())
+    private val _uiState = MutableStateFlow(ReminderListUiState(pendingSkip = savedStateHandle[PENDING_SKIP_KEY]))
     val uiState: StateFlow<ReminderListUiState> = _uiState.asStateFlow()
 
     private val effects = MutableSharedFlow<ReminderListEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private val skipInFlight = mutableSetOf<Pair<Long, Long>>()
 
     init {
         viewModelScope.launch {
@@ -126,6 +136,7 @@ class ReminderListViewModel(
                         dueReminders = projection.due,
                         upcomingReminders = projection.upcoming,
                         pausedReminders = projection.paused,
+                        pendingSkip = savedStateHandle[PENDING_SKIP_KEY],
                     )
                 }
         }
@@ -136,17 +147,25 @@ class ReminderListViewModel(
     }
 
     fun skipReminder(id: Long, expectedDueAt: Long) {
+        val key = id to expectedDueAt
+        if (_uiState.value.pendingSkip != null || skipInFlight.isNotEmpty()) return
+        if (!skipInFlight.add(key)) return
         viewModelScope.launch {
             runCatching { skipReminderUseCase(id, expectedDueAt) }
-                .onSuccess { effects.emit(ReminderListEffect.Skipped(it)) }
+                .onSuccess { undoToken ->
+                    val pending = PendingReminderSkipEffect(UUID.randomUUID().toString(), undoToken)
+                    savedStateHandle[PENDING_SKIP_KEY] = pending
+                    _uiState.value = _uiState.value.copy(pendingSkip = pending)
+                }
                 .onFailure { effects.emit(ReminderListEffect.ShowMessage(it.message ?: "跳过失败，请刷新后重试")) }
+            skipInFlight.remove(key)
         }
     }
 
     fun undoSkip(token: ReminderSkipUndoToken) {
         viewModelScope.launch {
             when (undoSkipReminderUseCase(token)) {
-                UndoReminderSkipResult.RESTORED -> Unit
+                UndoReminderSkipResult.RESTORED, UndoReminderSkipResult.ALREADY_RESTORED -> Unit
                 UndoReminderSkipResult.STALE -> effects.emit(
                     ReminderListEffect.ShowMessage("提醒已发生变化，无法撤销"),
                 )
@@ -155,6 +174,16 @@ class ReminderListViewModel(
                 )
             }
         }
+    }
+
+    fun ackPendingSkip(token: String) {
+        if (_uiState.value.pendingSkip?.token != token) return
+        savedStateHandle.remove<PendingReminderSkipEffect>(PENDING_SKIP_KEY)
+        _uiState.value = _uiState.value.copy(pendingSkip = null)
+    }
+
+    private companion object {
+        const val PENDING_SKIP_KEY = "pending_reminder_skip"
     }
 }
 

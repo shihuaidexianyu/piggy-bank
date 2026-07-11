@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
@@ -14,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -22,6 +24,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -29,6 +34,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -40,11 +46,13 @@ fun BatchReconcileScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        when (effect) {
-            is BatchReconcileEffect.Saved -> onSaved(effect.count)
-            else -> {}
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            if (terminal.kind == FormTerminalKind.SAVED) onSaved(requireNotNull(terminal.count))
+            viewModel.ackTerminal(terminal.token)
         }
     }
 
@@ -52,13 +60,16 @@ fun BatchReconcileScreen(
         title = "账户核对",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
-        if (state.isLoading) {
+        if (state.isLoading || state.loadErrorMessage != null) {
             item {
-                MoneyCard {
-                    Text("加载中...", style = MaterialTheme.typography.bodyMedium)
-                }
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "batch-reconcile"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
             }
             return@MoneyFormPage
         }
@@ -70,7 +81,7 @@ fun BatchReconcileScreen(
                     subtitle = "所有账户余额都已在提醒周期内确认。",
                     action = {
                         Button(
-                            onClick = onBack,
+                            onClick = guardedBack,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("返回首页")
@@ -120,7 +131,7 @@ fun BatchReconcileScreen(
                 MoneySaveButton(
                     onClick = viewModel::saveSelected,
                     isSaving = state.isSaving,
-                    enabled = state.selectedCount > 0,
+                    enabled = state.selectedCount > 0 && state.pendingTerminal == null,
                     label = "确认无变化",
                 )
             }

@@ -23,6 +23,7 @@ data class ReorderAccountItemUiModel(
 
 data class ReorderAccountsUiState(
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val isSaving: Boolean = false,
     val accounts: List<ReorderAccountItemUiModel> = emptyList(),
 )
@@ -46,6 +47,15 @@ class ReorderAccountsViewModel(
     val effectFlow = effects.asSharedFlow()
 
     init {
+        loadAccounts()
+    }
+
+    fun retryLoad() {
+        loadAccounts()
+    }
+
+    private fun loadAccounts() {
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts().sortedBy { it.displayOrder }
@@ -64,9 +74,14 @@ class ReorderAccountsViewModel(
                     isLoading = false,
                     accounts = items,
                 )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                runCatching { android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loadErrorMessage = "账户顺序加载失败，请重试",
+                )
             }
         }
     }

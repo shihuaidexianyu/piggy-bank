@@ -1,11 +1,12 @@
 package com.shihuaidexianyu.money.domain.model
 
+import java.io.Serializable as JavaSerializable
 import kotlinx.serialization.Serializable
 
 data class LedgerInsertResult(
     val recordId: Long,
     val inserted: Boolean,
-)
+) : JavaSerializable
 
 @Serializable
 enum class LedgerRecordKind {
@@ -22,7 +23,7 @@ data class LedgerUndoToken(
     val recordId: Long,
     val operationId: String,
     val deletedAt: Long,
-)
+) : JavaSerializable
 
 enum class RestoreLedgerResult {
     RESTORED,

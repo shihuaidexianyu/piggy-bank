@@ -14,10 +14,16 @@ class DeleteBalanceAdjustmentUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
 ) {
-    suspend operator fun invoke(recordId: Long): LedgerUndoToken? = transactionRepository.runInTransaction {
+    suspend operator fun invoke(
+        recordId: Long,
+        expectedUpdatedAt: Long? = null,
+    ): LedgerUndoToken? = transactionRepository.runInTransaction {
         val existing = transactionRepository.queryStoredBalanceAdjustmentRecordById(recordId)
             ?: return@runInTransaction null
         if (existing.deletedAt != null) return@runInTransaction null
+        if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+            throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_ADJUSTMENT, recordId)
+        }
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("删除余额调整")
         val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)

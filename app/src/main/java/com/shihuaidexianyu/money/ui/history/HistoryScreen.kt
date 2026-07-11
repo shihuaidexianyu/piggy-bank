@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -45,6 +47,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
@@ -89,13 +94,18 @@ fun HistoryScreen(
     onMaxAmountChange: (String) -> Unit,
     onAmountDirectionChange: (AmountDirectionFilter) -> Unit,
     onLoadMore: () -> Unit,
+    onRetryLoadMore: () -> Unit = onLoadMore,
+    onRetry: () -> Unit = {},
     onRecordClick: (HistoryRecordUiModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
     val listState = rememberLazyListState()
-    val canPrefetch = state.hasMoreRecords && !state.isLoading && !state.isLoadingMore
+    val canPrefetch = state.hasMoreRecords &&
+        !state.isLoading &&
+        !state.isLoadingMore &&
+        state.loadMoreErrorMessage == null
     val shouldPrefetch by remember(listState, canPrefetch, state.records.size) {
         derivedStateOf {
             if (!canPrefetch) {
@@ -328,20 +338,53 @@ fun HistoryScreen(
                 }
             }
         }
-        if (state.records.isEmpty() && !state.isLoading) {
-            item {
-                MoneyEmptyStateCard(
-                    title = "还没有记录",
-                    subtitle = "记下第一笔入账、出账或转账后，这里会按时间线展示。",
+        when (val content = state.toAsyncContent()) {
+            AsyncContent.Loading,
+            is AsyncContent.Error,
+            -> item {
+                AsyncContentRenderer(
+                    content = content,
+                    onRetry = onRetry,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 240.dp),
+                    data = { _, _ -> },
                 )
             }
-        } else {
-            itemsIndexed(state.records, key = { _, record -> record.id }) { index, record ->
-                HistoryRow(
-                    record = record,
-                    settings = state.settings,
-                    onClick = { onRecordClick(record) },
+            is AsyncContent.Empty -> item {
+                MoneyEmptyStateCard(
+                    title = when (content.kind) {
+                        EmptyKind.COMPLETELY_EMPTY -> "还没有记录"
+                        EmptyKind.FILTERED_EMPTY -> "没有符合筛选条件的记录"
+                    },
+                    subtitle = when (content.kind) {
+                        EmptyKind.COMPLETELY_EMPTY -> "记下第一笔入账、出账或转账后，这里会按时间线展示。"
+                        EmptyKind.FILTERED_EMPTY -> "筛选条件会继续保留，可以调整或清除后重试。"
+                    },
                 )
+            }
+            is AsyncContent.Data,
+            is AsyncContent.Refreshing,
+            -> {
+                itemsIndexed(state.records, key = { _, record -> record.id }) { _, record ->
+                    HistoryRow(
+                        record = record,
+                        settings = state.settings,
+                        onClick = { onRecordClick(record) },
+                    )
+                }
+                state.loadMoreErrorMessage?.let { message ->
+                item {
+                    MoneyEmptyStateCard(
+                        title = message,
+                        subtitle = "已加载的记录会继续保留。",
+                    ) {
+                        OutlinedButton(onClick = onRetryLoadMore) {
+                            Text("重试")
+                        }
+                    }
+                }
+            }
             }
         }
     }

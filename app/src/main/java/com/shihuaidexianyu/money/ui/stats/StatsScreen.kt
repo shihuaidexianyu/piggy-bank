@@ -45,6 +45,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.EmptyKind
+import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
@@ -58,6 +62,7 @@ fun StatsScreen(
     onPreviousRange: () -> Unit,
     onNextRange: () -> Unit,
     onResetRange: () -> Unit,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -84,8 +89,28 @@ fun StatsScreen(
                     onResetRange = onResetRange,
                 )
             }
-            item {
-                AssetFlowCard(state = state)
+            when (val content = state.toAsyncContent()) {
+                AsyncContent.Loading,
+                is AsyncContent.Error,
+                -> item {
+                    AsyncContentRenderer(
+                        content = content,
+                        onRetry = onRetry,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 240.dp),
+                        data = { _, _ -> },
+                    )
+                }
+                is AsyncContent.Empty -> item {
+                    MoneyEmptyStateCard(
+                        title = "暂无可分析数据",
+                        subtitle = "创建账户并记录流水后，这里会显示分析结果。",
+                    )
+                }
+                is AsyncContent.Data,
+                is AsyncContent.Refreshing,
+                -> item { AssetFlowCard(state = state) }
             }
         }
     }

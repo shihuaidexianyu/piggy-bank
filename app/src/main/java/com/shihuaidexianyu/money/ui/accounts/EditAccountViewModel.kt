@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 
 data class EditAccountUiState(
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
@@ -55,6 +56,15 @@ class EditAccountViewModel(
     private var closed = false
 
     init {
+        loadAccount()
+    }
+
+    fun retryLoad() {
+        loadAccount()
+    }
+
+    private fun loadAccount() {
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
         viewModelScope.launch {
             try {
                 val account = accountRepository.getAccountById(accountId)
@@ -70,9 +80,14 @@ class EditAccountViewModel(
                     isClosed = account.isClosed,
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("EditAccountViewModel", "Failed to load account", e)
-                emitClosedOnce()
+                runCatching { android.util.Log.e("EditAccountViewModel", "Failed to load account", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loadErrorMessage = "账户加载失败，请重试",
+                )
             }
         }
     }
@@ -132,7 +147,8 @@ class EditAccountViewModel(
             }.onSuccess {
                 effects.emit(EditAccountEffect.Saved)
             }.onFailure { error ->
-                if (accountRepository.getAccountById(accountId) == null) {
+                val lookup = runCatching { accountRepository.getAccountById(accountId) }
+                if (lookup.isSuccess && lookup.getOrNull() == null) {
                     emitClosedOnce()
                     return@onFailure
                 }
@@ -151,7 +167,8 @@ class EditAccountViewModel(
             runCatching { closeAccountUseCase(accountId) }.onSuccess {
                 effects.emit(EditAccountEffect.AccountClosed)
             }.onFailure { error ->
-                if (accountRepository.getAccountById(accountId) == null) {
+                val lookup = runCatching { accountRepository.getAccountById(accountId) }
+                if (lookup.isSuccess && lookup.getOrNull() == null) {
                     emitClosedOnce()
                     return@onFailure
                 }

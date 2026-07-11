@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -15,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -54,6 +57,17 @@ fun SavingsGoalScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "savings-goal"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         if (!state.isLoading) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

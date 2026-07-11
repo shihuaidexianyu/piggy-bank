@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -65,6 +68,7 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
@@ -98,6 +102,20 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val asyncContent = state.toAsyncContent()
+            if (asyncContent is AsyncContent.Loading || asyncContent is AsyncContent.Error) {
+                item {
+                    AsyncContentRenderer(
+                        content = asyncContent,
+                        onRetry = onRetry,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 240.dp),
+                        data = { _, _ -> },
+                    )
+                }
+                return@LazyColumn
+            }
             if (shouldShowAccountOverview(state)) {
                 item {
                     AccountOverviewCard(state = state)

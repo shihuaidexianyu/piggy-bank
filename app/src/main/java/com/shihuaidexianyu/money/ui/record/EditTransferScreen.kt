@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,7 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -37,6 +45,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private enum class EditTransferPickerTarget {
@@ -57,12 +66,29 @@ fun EditTransferScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        when (effect) {
-            EditTransferEffect.Saved -> onBack()
-            EditTransferEffect.Deleted -> onDeleted()
-            else -> {}
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            when (terminal.kind) {
+                FormTerminalKind.SAVED -> onBack()
+                FormTerminalKind.DELETED -> {
+                    terminal.ledgerUndoToken?.let { undoToken ->
+                        rootSnackbarDispatcher?.dispatch(
+                            rootSnackbarEffect(
+                                "记录已删除",
+                                "撤销",
+                                RootSnackbarAction.RestoreLedger(undoToken),
+                                terminal.token,
+                            ),
+                        )
+                    }
+                    onDeleted()
+                }
+            }
+            viewModel.ackTerminal(terminal.token)
         }
     }
 
@@ -140,8 +166,19 @@ fun EditTransferScreen(
         title = "编辑转账",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, state.loadRetryToken),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item {
             MoneyCard {
                 Text(
@@ -152,6 +189,8 @@ fun EditTransferScreen(
                 MoneyAmountField(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
+                    isError = state.amountError != null,
+                    supportingText = state.amountError,
                 )
                 if (state.allFromAccountAmount > 0L) {
                     LazyRow(
@@ -169,6 +208,8 @@ fun EditTransferScreen(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.FROM },
+                    isError = state.fromAccountError != null,
+                    supportingText = state.fromAccountError,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -184,6 +225,8 @@ fun EditTransferScreen(
                     label = "转入账户",
                     value = toAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.TO },
+                    isError = state.toAccountError != null,
+                    supportingText = state.toAccountError,
                 )
             }
         }
@@ -192,15 +235,31 @@ fun EditTransferScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注",
+                    label = "备注（可选）",
+                    isError = state.noteError != null,
+                    supportingText = state.noteError,
                 )
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     timeSubtitle = "修改记录发生时间",
+                    errorText = state.occurredAtError,
                 )
-                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "保存修改")
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
+                    label = "保存修改",
+                )
+                if (state.hasConflict) {
+                    OutlinedButton(
+                        onClick = viewModel::reload,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("重新加载最新记录")
+                    }
+                }
             }
         }
         item {
@@ -208,6 +267,7 @@ fun EditTransferScreen(
                 OutlinedButton(
                     onClick = viewModel::showDeleteConfirm,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
                 ) {
                     Text("删除记录")
                 }

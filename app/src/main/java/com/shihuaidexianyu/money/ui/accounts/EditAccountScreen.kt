@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -13,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
+import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -98,6 +102,17 @@ fun EditAccountScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "edit-account"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item { MoneySectionHeader(title = "账户信息") }
         item {
             MoneyListSection {

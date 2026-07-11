@@ -36,7 +36,7 @@ internal fun NavGraphBuilder.addReminderGraph(
             notificationSyncRequester = container.notificationSyncRequester,
         )
         val viewModel = viewModel<ReminderListViewModel>(
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 ReminderListViewModel(
                     reminderRepository = container.recurringReminderRepository,
                     deleteReminderUseCase = container.deleteReminderUseCase,
@@ -46,6 +46,7 @@ internal fun NavGraphBuilder.addReminderGraph(
                     clockProvider = SystemClockProvider,
                     zoneIdProvider = SystemZoneIdProvider,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -59,7 +60,7 @@ internal fun NavGraphBuilder.addReminderGraph(
             },
             onDeleteReminder = viewModel::deleteReminder,
             onSkipReminder = viewModel::skipReminder,
-            onUndoSkip = viewModel::undoSkip,
+            onPendingSkipEnqueued = viewModel::ackPendingSkip,
             effects = viewModel.effectFlow,
             notificationPermissionState = permissionGateway.state,
             onRequestNotificationPermission = { permissionGateway.requestContextually() },

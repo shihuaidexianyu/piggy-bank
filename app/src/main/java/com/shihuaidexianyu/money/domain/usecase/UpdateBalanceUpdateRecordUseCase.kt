@@ -22,6 +22,7 @@ class UpdateBalanceUpdateRecordUseCase(
         recordId: Long,
         actualBalance: Long,
         occurredAt: Long,
+        expectedUpdatedAt: Long? = null,
     ) {
         val now = clockProvider.nowMillis()
         require(occurredAt <= now) { "时间不能晚于当前时间" }
@@ -29,6 +30,9 @@ class UpdateBalanceUpdateRecordUseCase(
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.getBalanceUpdateRecordById(recordId)) {
                 "余额核对记录不存在"
+            }
+            if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+                throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)
             }
             val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
             account.requireOpenForMutation("修改余额核对")

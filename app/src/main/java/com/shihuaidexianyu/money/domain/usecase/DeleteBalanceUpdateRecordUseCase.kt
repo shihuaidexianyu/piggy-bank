@@ -18,11 +18,17 @@ class DeleteBalanceUpdateRecordUseCase(
     private val clockProvider: ClockProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
-    suspend operator fun invoke(recordId: Long): LedgerUndoToken? {
+    suspend operator fun invoke(
+        recordId: Long,
+        expectedUpdatedAt: Long? = null,
+    ): LedgerUndoToken? {
         val token = transactionRepository.runInTransaction {
             val existing = transactionRepository.queryStoredBalanceUpdateRecordById(recordId)
                 ?: return@runInTransaction null
             if (existing.deletedAt != null) return@runInTransaction null
+            if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+                throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)
+            }
             val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
             account.requireOpenForMutation("删除余额核对")
             val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)

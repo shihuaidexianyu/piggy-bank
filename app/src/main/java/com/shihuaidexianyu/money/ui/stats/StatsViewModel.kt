@@ -12,6 +12,8 @@ import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.StatsDashboardSnapshot
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.EmptyKind
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -21,10 +23,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class StatsUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val hasCommittedContent: Boolean = false,
+    val hasSourceAccounts: Boolean = false,
+    val errorMessage: String? = null,
+    val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val selectedPeriod: StatsPeriod = StatsPeriod.MONTH,
     val isCurrentRange: Boolean = true,
@@ -57,6 +66,14 @@ data class StatsUiState(
     val reconciliationFlowText: String = "",
 )
 
+internal fun StatsUiState.toAsyncContent(): AsyncContent<StatsUiState> {
+    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+    if (!hasCommittedContent) return AsyncContent.Loading
+    if (isRefreshing) return AsyncContent.Refreshing(this)
+    if (!hasSourceAccounts) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
+    return AsyncContent.Data(this)
+}
+
 class StatsViewModel(
     private val observeStatsDashboardUseCase: ObserveStatsDashboardUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
@@ -69,9 +86,27 @@ class StatsViewModel(
     )
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
+    private var observationJob: Job? = null
+    private var retryGeneration = 0
 
     init {
-        viewModelScope.launch {
+        observeStats()
+    }
+
+    fun retry() {
+        observeStats()
+    }
+
+    private fun observeStats() {
+        observationJob?.cancel()
+        val hasCommittedContent = _uiState.value.hasCommittedContent
+        _uiState.value = _uiState.value.copy(
+            isLoading = !hasCommittedContent,
+            isRefreshing = hasCommittedContent,
+            errorMessage = null,
+            retryToken = null,
+        )
+        observationJob = viewModelScope.launch {
             try {
                 combine(
                     observeStatsDashboardUseCase(selectedRange),
@@ -82,9 +117,17 @@ class StatsViewModel(
                         .visibilityFor(AmountSurface.IN_APP)
                     _uiState.value = snapshot.toUiState(visibility)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("StatsViewModel", "Failed to observe stats", e)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                runCatching { android.util.Log.e("StatsViewModel", "Failed to observe stats", e) }
+                retryGeneration += 1
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isRefreshing = false,
+                    errorMessage = "分析加载失败，请重试",
+                    retryToken = "stats:$retryGeneration",
+                )
             }
         }
     }
@@ -124,6 +167,8 @@ class StatsViewModel(
     private fun StatsDashboardSnapshot.toUiState(visibility: AmountVisibility): StatsUiState {
         return StatsUiState(
             isLoading = false,
+            hasCommittedContent = true,
+            hasSourceAccounts = accountBalances.isNotEmpty(),
             settings = settings,
             selectedPeriod = period,
             isCurrentRange = isCurrentRange(this),

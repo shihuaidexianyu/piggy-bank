@@ -61,7 +61,6 @@ fun MoneyFormPage(
     val resolvedListState = listState ?: defaultListState
 
     Column(modifier = modifier) {
-        snackbarHostState?.let { SnackbarHost(hostState = it) }
         MoneyPageTitle(
             title = title,
             leading = onBack?.let { { MoneyBackButton(onClick = it) } },
@@ -265,6 +264,7 @@ fun MoneyDateTimeFields(
     dateLabel: String = "日期",
     timeLabel: String = "时间",
     timeSubtitle: String? = null,
+    errorText: String? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -274,12 +274,21 @@ fun MoneyDateTimeFields(
             label = dateLabel,
             value = DateTimeTextFormatter.formatDateOnly(valueMillis),
             modifier = Modifier.clickable(onClick = onDateClick),
+            isError = errorText != null,
         )
+        errorText?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         MoneySelectionField(
             label = timeLabel,
             value = DateTimeTextFormatter.formatTimeOnly(valueMillis),
             subtitle = timeSubtitle,
             modifier = Modifier.clickable(onClick = onTimeClick),
+            isError = errorText != null,
         )
     }
 }
@@ -291,6 +300,8 @@ fun MoneyAmountField(
     modifier: Modifier = Modifier,
     label: String = "金额",
     allowSigned: Boolean = false,
+    isError: Boolean = false,
+    supportingText: String? = null,
 ) {
     var showKeypad by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -322,6 +333,8 @@ fun MoneyAmountField(
         readOnly = true,
         textStyle = MaterialTheme.typography.displayMedium,
         interactionSource = interactionSource,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,

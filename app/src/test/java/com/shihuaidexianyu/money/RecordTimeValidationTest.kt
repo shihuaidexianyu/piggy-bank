@@ -15,6 +15,65 @@ import org.junit.Test
 
 class RecordTimeValidationTest {
     @Test
+    fun `cash flow cannot be created for a closed account`() {
+        runBlocking {
+            val accountRepository = InMemoryAccountRepository()
+            val transactionRepository = InMemoryTransactionRepository()
+            val accountId = accountRepository.createAccount(
+                Account(name = "关闭账户", initialBalance = 0, createdAt = 1_000),
+            )
+            accountRepository.closeAccount(accountId, closedAt = 120_000)
+            val useCase = CreateCashFlowRecordUseCase(
+                accountRepository = accountRepository,
+                transactionRepository = transactionRepository,
+                refreshAccountActivityStateUseCase =
+                    RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+                clockProvider = testClockProvider,
+            )
+
+            assertFailsWith<IllegalArgumentException> {
+                useCase(
+                    accountId = accountId,
+                    direction = CashFlowDirection.INFLOW,
+                    amount = 100,
+                    note = "不应写入",
+                    occurredAt = 60_000,
+                    operationId = testOperationId(),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `transfer cannot use the same source and destination`() {
+        runBlocking {
+            val accountRepository = InMemoryAccountRepository()
+            val transactionRepository = InMemoryTransactionRepository()
+            val accountId = accountRepository.createAccount(
+                Account(name = "现金", initialBalance = 0, createdAt = 1_000),
+            )
+            val useCase = CreateTransferRecordUseCase(
+                accountRepository = accountRepository,
+                transactionRepository = transactionRepository,
+                refreshAccountActivityStateUseCase =
+                    RefreshAccountActivityStateUseCase(accountRepository, transactionRepository),
+                clockProvider = testClockProvider,
+            )
+
+            assertFailsWith<IllegalArgumentException> {
+                useCase(
+                    fromAccountId = accountId,
+                    toAccountId = accountId,
+                    amount = 100,
+                    note = "自转账",
+                    occurredAt = 60_000,
+                    operationId = testOperationId(),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `cash flow cannot be created before account start minute`() {
         runBlocking {
             val accountRepository = InMemoryAccountRepository()

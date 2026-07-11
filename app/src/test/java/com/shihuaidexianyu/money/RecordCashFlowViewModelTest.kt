@@ -19,6 +19,7 @@ import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowEffect
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -53,85 +54,53 @@ class RecordCashFlowViewModelTest {
     }
 
     @Test
-    fun `save with no account emits ShowMessage asking to select account`() = runTest(dispatcher) {
+    fun `save with no account shows account field error`() = runTest(dispatcher) {
         // Use an empty account repository so init finds no accounts and selectedAccountId stays null.
         val accountRepo = InMemoryAccountRepository()
         val txnRepo = InMemoryTransactionRepository()
         val vm = buildViewModel(accountRepo, txnRepo)
         advanceUntilIdle()
-        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is RecordCashFlowEffect.ShowMessage)
-            assertEquals("请选择账户", effect.message)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("请选择账户", vm.uiState.value.accountError)
     }
 
     @Test
-    fun `save with blank amount emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with blank amount shows amount field error`() = runTest(dispatcher) {
         val vm = buildViewModel()
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("")
-        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is RecordCashFlowEffect.ShowMessage)
-            assertEquals("金额不能为空", effect.message)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("金额不能为空", vm.uiState.value.amountError)
     }
 
     @Test
-    fun `save with zero amount emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with zero amount shows amount field error`() = runTest(dispatcher) {
         val vm = buildViewModel()
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("0")
-        vm.updateNote("测试") // avoid showNoteConfirm short-circuit
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is RecordCashFlowEffect.ShowMessage)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("金额必须大于 0", vm.uiState.value.amountError)
     }
 
     @Test
-    fun `save with blank note triggers showNoteConfirm instead of saving`() = runTest(dispatcher) {
-        val vm = buildViewModel()
+    fun `save with blank note succeeds without confirmation`() = runTest(dispatcher) {
+        val repository = InMemoryTransactionRepository()
+        val vm = buildViewModel(txnRepo = repository)
         advanceUntilIdle()
         vm.updateAccount(accountId = 1L)
         vm.updateAmount("100")
+        vm.updateNote("")
         vm.save()
         advanceUntilIdle()
-        assertTrue(vm.uiState.value.showNoteConfirm)
-    }
-
-    @Test
-    fun `save with confirmBlankNote emits Saved and creates record`() = runTest(dispatcher) {
-        val accountRepo = InMemoryAccountRepository()
-        val txnRepo = InMemoryTransactionRepository()
-        accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
-        val vm = buildViewModel(accountRepo, txnRepo)
-        advanceUntilIdle()
-
-        vm.updateAccount(accountId = 1L)
-        vm.updateAmount("100.50")
-        vm.updateNote("")
-        vm.effectFlow.test {
-            vm.save(confirmBlankNote = true)
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertEquals(RecordCashFlowEffect.Saved, effect)
-        }
-        val records = txnRepo.queryAllActiveCashFlowRecords()
+        assertEquals(FormTerminalKind.SAVED, vm.uiState.value.pendingTerminal?.kind)
+        val records = repository.queryAllActiveCashFlowRecords()
         assertEquals(1, records.size)
-        assertEquals(10_050L, records[0].amount)
-        assertEquals(CashFlowDirection.INFLOW.value, records[0].direction)
+        assertEquals("", records.single().note)
     }
 
     @Test
@@ -238,11 +207,9 @@ class RecordCashFlowViewModelTest {
         advanceUntilIdle()
         vm.updateAccount(selectedAccountId)
 
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            assertEquals(RecordCashFlowEffect.Saved, awaitItem())
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(FormTerminalKind.SAVED, vm.uiState.value.pendingTerminal?.kind)
 
         val stored = txnRepo.queryAllCashFlowRecords().single()
         assertEquals(selectedAccountId, stored.accountId)

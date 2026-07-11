@@ -119,12 +119,20 @@ internal fun NavGraphBuilder.addRecordGraph(
                     processDueReminderUseCase = container.processDueReminderUseCase,
                     savedStateHandle = savedStateHandle,
                     operationIdFactory = UuidLedgerOperationIdFactory,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )
         RecordCashFlowScreen(
             viewModel = viewModel,
             onBack = { navController.popBackStack() },
+            onSaved = {
+                navController.previousBackStackEntry
+                    ?.takeIf { it.destination.route == MoneyDestination.UpdateBalanceRoute }
+                    ?.savedStateHandle
+                    ?.set(SupplementalEntrySavedTokenKey, System.nanoTime())
+                navController.popBackStack()
+            },
         )
     }
 
@@ -144,6 +152,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     createTransferRecordUseCase = container.createTransferRecordUseCase,
                     savedStateHandle = savedStateHandle,
                     operationIdFactory = UuidLedgerOperationIdFactory,
+                    devicePreferencesRepository = container.devicePreferencesRepository,
                 )
             },
         )
@@ -160,7 +169,7 @@ internal fun NavGraphBuilder.addRecordGraph(
         val recordId = entry.arguments?.getLong("recordId") ?: return@composable
         val viewModel = viewModel<EditCashFlowViewModel>(
             key = "edit_cash_$recordId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 EditCashFlowViewModel(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
@@ -168,6 +177,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     updateCashFlowRecordUseCase = container.updateCashFlowRecordUseCase,
                     deleteCashFlowRecordUseCase = container.deleteCashFlowRecordUseCase,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -185,7 +195,7 @@ internal fun NavGraphBuilder.addRecordGraph(
         val recordId = entry.arguments?.getLong("recordId") ?: return@composable
         val viewModel = viewModel<EditTransferViewModel>(
             key = "edit_transfer_$recordId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 EditTransferViewModel(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
@@ -193,6 +203,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     updateTransferRecordUseCase = container.updateTransferRecordUseCase,
                     deleteTransferRecordUseCase = container.deleteTransferRecordUseCase,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )

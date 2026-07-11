@@ -28,7 +28,9 @@ class RestoreLedgerRecordUseCase(
                 LedgerRecordKind.BALANCE_ADJUSTMENT -> restoreBalanceAdjustment(token)
             }
         }
-        if (token.kind == LedgerRecordKind.BALANCE_UPDATE && result == RestoreLedgerResult.RESTORED) {
+        if (token.kind == LedgerRecordKind.BALANCE_UPDATE &&
+            result in setOf(RestoreLedgerResult.RESTORED, RestoreLedgerResult.ALREADY_ACTIVE)
+        ) {
             runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }
         }
         return result

@@ -28,6 +28,7 @@ import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
 import com.shihuaidexianyu.money.ui.record.RecordTransferViewModel
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -81,13 +82,141 @@ class LedgerFormSavedStateTest {
 
         val recreated = cashViewModel(accountRepository, repository, handle, ids)
         advanceUntilIdle()
-        configureCash(recreated)
         recreated.save()
         advanceUntilIdle()
 
-        assertEquals(listOf("form-op-1", "form-op-1", "form-op-1"), repository.cashCalls.map { it.operationId })
+        assertEquals(listOf("form-op-1", "form-op-1"), repository.cashCalls.map { it.operationId })
         assertEquals(1, ids.createCount)
         assertEquals(1, delegate.queryAllCashFlowRecords().size)
+        val terminal = requireNotNull(recreated.uiState.value.pendingTerminal)
+        assertEquals(FormTerminalKind.SAVED, terminal.kind)
+        recreated.ackTerminal("wrong-token")
+        assertEquals(terminal, recreated.uiState.value.pendingTerminal)
+        recreated.ackTerminal(terminal.token)
+        assertEquals(null, recreated.uiState.value.pendingTerminal)
+        val afterAck = cashViewModel(accountRepository, repository, handle, ids)
+        advanceUntilIdle()
+        assertEquals(null, afterAck.uiState.value.pendingTerminal)
+    }
+
+    @Test
+    fun `cash transfer and balance drafts survive recreation`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val firstId = accounts.createAccount(Account(name = "现金", initialBalance = 100, createdAt = 1))
+        val secondId = accounts.createAccount(Account(name = "银行卡", initialBalance = 0, createdAt = 1))
+        val ids = SequenceOperationIdFactory()
+
+        val cashHandle = SavedStateHandle()
+        val cash = cashViewModel(accounts, transactions, cashHandle, ids)
+        advanceUntilIdle()
+        cash.updateAccount(secondId)
+        cash.updateAmount("12.34")
+        cash.updateNote("  午餐  ")
+        cash.updateOccurredAt(120_000)
+        val recreatedCash = cashViewModel(accounts, transactions, cashHandle, ids)
+        advanceUntilIdle()
+        assertEquals(secondId, recreatedCash.uiState.value.selectedAccountId)
+        assertEquals("12.34", recreatedCash.uiState.value.amountText)
+        assertEquals("  午餐  ", recreatedCash.uiState.value.note)
+        assertEquals(120_000, recreatedCash.uiState.value.occurredAtMillis)
+        assertTrue(recreatedCash.uiState.value.isDirty)
+
+        val transferHandle = SavedStateHandle()
+        val transfer = transferViewModel(accounts, transactions, transferHandle, ids, firstId)
+        advanceUntilIdle()
+        transfer.updateFromAccount(secondId)
+        transfer.updateToAccount(firstId)
+        transfer.updateAmount("5.67")
+        transfer.updateNote("调拨")
+        transfer.updateOccurredAt(180_000)
+        val recreatedTransfer = transferViewModel(accounts, transactions, transferHandle, ids, firstId)
+        advanceUntilIdle()
+        assertEquals(secondId, recreatedTransfer.uiState.value.fromAccountId)
+        assertEquals(firstId, recreatedTransfer.uiState.value.toAccountId)
+        assertEquals("5.67", recreatedTransfer.uiState.value.amountText)
+        assertEquals("调拨", recreatedTransfer.uiState.value.note)
+        assertEquals(180_000, recreatedTransfer.uiState.value.occurredAtMillis)
+        assertTrue(recreatedTransfer.uiState.value.isDirty)
+
+        val balanceHandle = SavedStateHandle()
+        val balance = balanceViewModel(
+            accounts,
+            transactions,
+            balanceHandle,
+            ids,
+            testClockProvider(),
+            firstId,
+        )
+        advanceUntilIdle()
+        balance.updateActualBalance("-3.21")
+        balance.updateOccurredAt(240_000)
+        val recreatedBalance = balanceViewModel(
+            accounts,
+            transactions,
+            balanceHandle,
+            ids,
+            testClockProvider(),
+            firstId,
+        )
+        advanceUntilIdle()
+        assertEquals("-3.21", recreatedBalance.uiState.value.actualBalanceText)
+        assertEquals(240_000, recreatedBalance.uiState.value.occurredAtMillis)
+        assertTrue(recreatedBalance.uiState.value.isDirty)
+    }
+
+    @Test
+    fun `create form field errors survive recreation`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val firstId = accounts.createAccount(Account(name = "现金", initialBalance = 100, createdAt = 1))
+        val secondId = accounts.createAccount(Account(name = "银行卡", initialBalance = 0, createdAt = 1))
+        val ids = SequenceOperationIdFactory()
+
+        val cashHandle = SavedStateHandle()
+        val cash = cashViewModel(accounts, transactions, cashHandle, ids)
+        advanceUntilIdle()
+        cash.updateAmount("")
+        cash.save()
+        advanceUntilIdle()
+        val recreatedCash = cashViewModel(accounts, transactions, cashHandle, ids)
+        advanceUntilIdle()
+        assertEquals("金额不能为空", recreatedCash.uiState.value.amountError)
+
+        val transferHandle = SavedStateHandle()
+        val transfer = transferViewModel(accounts, transactions, transferHandle, ids, firstId)
+        advanceUntilIdle()
+        transfer.updateToAccount(secondId)
+        transfer.updateAmount("")
+        transfer.save()
+        advanceUntilIdle()
+        val recreatedTransfer = transferViewModel(accounts, transactions, transferHandle, ids, firstId)
+        advanceUntilIdle()
+        assertEquals("金额不能为空", recreatedTransfer.uiState.value.amountError)
+
+        val balanceHandle = SavedStateHandle()
+        val balance = balanceViewModel(
+            accounts,
+            transactions,
+            balanceHandle,
+            ids,
+            testClockProvider(),
+            firstId,
+        )
+        advanceUntilIdle()
+        balance.updateActualBalance("")
+        balance.save()
+        advanceUntilIdle()
+        val recreatedBalance = balanceViewModel(
+            accounts,
+            transactions,
+            balanceHandle,
+            ids,
+            testClockProvider(),
+            firstId,
+        )
+        advanceUntilIdle()
+        assertEquals("金额不能为空", recreatedBalance.uiState.value.actualBalanceError)
     }
 
     @Test
@@ -111,13 +240,16 @@ class LedgerFormSavedStateTest {
 
         val recreated = transferViewModel(accountRepository, repository, handle, ids, fromId)
         advanceUntilIdle()
-        configureTransfer(recreated, fromId, toId)
         recreated.save()
         advanceUntilIdle()
 
-        assertEquals(listOf("form-op-1", "form-op-1", "form-op-1"), repository.transferCalls.map { it.operationId })
+        assertEquals(listOf("form-op-1", "form-op-1"), repository.transferCalls.map { it.operationId })
         assertEquals(1, ids.createCount)
         assertEquals(1, delegate.queryAllTransferRecords().size)
+        val terminal = requireNotNull(recreated.uiState.value.pendingTerminal)
+        assertEquals(FormTerminalKind.SAVED, terminal.kind)
+        recreated.ackTerminal(terminal.token)
+        assertEquals(null, recreated.uiState.value.pendingTerminal)
     }
 
     @Test
@@ -169,13 +301,20 @@ class LedgerFormSavedStateTest {
 
         val recreated = balanceViewModel(accountRepository, repository, handle, ids, clock, accountId)
         advanceUntilIdle()
-        configureBalance(recreated)
         recreated.save()
         advanceUntilIdle()
 
-        assertEquals(listOf("form-op-1", "form-op-1", "form-op-1"), repository.balanceCalls.map { it.operationId })
+        assertEquals(listOf("form-op-1", "form-op-1"), repository.balanceCalls.map { it.operationId })
         assertEquals(1, ids.createCount)
         assertEquals(1, delegate.queryAllBalanceUpdateRecords().size)
+        val terminal = requireNotNull(recreated.uiState.value.pendingTerminal)
+        assertEquals(FormTerminalKind.SAVED, terminal.kind)
+        assertEquals(terminal.balanceResult, recreated.uiState.value.latestResult)
+        recreated.ackTerminal(terminal.token)
+        assertEquals(null, recreated.uiState.value.pendingTerminal)
+        val resultRecreated = balanceViewModel(accountRepository, repository, handle, ids, clock, accountId)
+        advanceUntilIdle()
+        assertEquals(terminal.balanceResult, resultRecreated.uiState.value.latestResult)
     }
 
     @Test
@@ -239,6 +378,76 @@ class LedgerFormSavedStateTest {
         assertEquals(listOf(200L, 200L), secondCalls.map { it.actualBalance })
         assertEquals(2, ids.createCount)
         assertEquals(2, delegate.queryAllBalanceUpdateRecords().size)
+    }
+
+    @Test
+    fun `batch selection and dirty state survive recreation`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val firstId = accounts.createAccount(Account(name = "一号", initialBalance = 100, createdAt = 1))
+        val secondId = accounts.createAccount(Account(name = "二号", initialBalance = 200, createdAt = 1))
+        val handle = SavedStateHandle()
+        val ids = SequenceOperationIdFactory()
+        val clock = MutableClock(System.currentTimeMillis())
+        val first = batchViewModel(accounts, transactions, handle, ids, clock)
+        var attempts = 0
+        while (first.uiState.value.isLoading && attempts < 100) {
+            advanceUntilIdle()
+            Thread.sleep(2)
+            attempts += 1
+        }
+        first.toggleAccount(firstId)
+        assertTrue(first.uiState.value.isDirty)
+
+        val recreated = batchViewModel(accounts, transactions, handle, ids, clock)
+        attempts = 0
+        while (recreated.uiState.value.isLoading && attempts < 100) {
+            advanceUntilIdle()
+            Thread.sleep(2)
+            attempts += 1
+        }
+
+        assertEquals(false, recreated.uiState.value.accounts.single { it.accountId == firstId }.isSelected)
+        assertEquals(true, recreated.uiState.value.accounts.single { it.accountId == secondId }.isSelected)
+        assertTrue(recreated.uiState.value.isDirty)
+    }
+
+    @Test
+    fun `batch terminal count survives recreation until acknowledged`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        accounts.createAccount(Account(name = "一号", initialBalance = 100, createdAt = 1))
+        accounts.createAccount(Account(name = "二号", initialBalance = 200, createdAt = 1))
+        val handle = SavedStateHandle()
+        val ids = SequenceOperationIdFactory()
+        val clock = MutableClock(System.currentTimeMillis())
+        val first = batchViewModel(accounts, transactions, handle, ids, clock)
+        var attempts = 0
+        while (first.uiState.value.isLoading && attempts < 100) {
+            advanceUntilIdle()
+            Thread.sleep(2)
+            attempts += 1
+        }
+
+        first.saveSelected()
+        advanceUntilIdle()
+        val terminal = requireNotNull(first.uiState.value.pendingTerminal)
+        assertEquals(FormTerminalKind.SAVED, terminal.kind)
+        assertEquals(2, terminal.count)
+
+        val recreated = batchViewModel(accounts, transactions, handle, ids, clock)
+        attempts = 0
+        while (recreated.uiState.value.isLoading && attempts < 100) {
+            advanceUntilIdle()
+            Thread.sleep(2)
+            attempts += 1
+        }
+        assertEquals(terminal, recreated.uiState.value.pendingTerminal)
+        recreated.saveSelected()
+        advanceUntilIdle()
+        assertEquals(2, transactions.queryAllBalanceUpdateRecords().size)
+        recreated.ackTerminal(terminal.token)
+        assertEquals(null, recreated.uiState.value.pendingTerminal)
     }
 
     private fun cashViewModel(

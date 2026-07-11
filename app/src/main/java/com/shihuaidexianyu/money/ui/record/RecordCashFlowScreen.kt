@@ -9,6 +9,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,10 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
@@ -30,12 +33,14 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun RecordCashFlowScreen(
     viewModel: RecordCashFlowViewModel,
     onBack: () -> Unit,
+    onSaved: () -> Unit = onBack,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,9 +48,14 @@ fun RecordCashFlowScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        if (effect is RecordCashFlowEffect.Saved) onBack()
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            if (terminal.kind == FormTerminalKind.SAVED) onSaved()
+            viewModel.ackTerminal(terminal.token)
+        }
     }
 
     if (showAccountPicker) {
@@ -100,33 +110,37 @@ fun RecordCashFlowScreen(
         }
     }
 
-    if (state.showNoteConfirm) {
-        MoneyConfirmDialog(
-            title = "未填写用途",
-            message = "仍要保存吗？",
-            onConfirm = { viewModel.save(confirmBlankNote = true) },
-            onDismiss = viewModel::dismissNoteConfirm,
-            confirmLabel = "保存",
-            dismissLabel = "返回",
-        )
-    }
-
     MoneyFormPage(
         title = state.direction.displayName,
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "record-cash"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item {
             MoneyCard {
                 MoneyAmountField(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
+                    isError = state.amountError != null,
+                    supportingText = state.amountError,
                 )
                 MoneySelectionField(
                     label = "账户",
                     value = selectedAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { showAccountPicker = true },
+                    isError = state.accountError != null,
+                    supportingText = state.accountError,
                 )
             }
         }
@@ -135,7 +149,9 @@ fun RecordCashFlowScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "用途",
+                    label = "备注（可选）",
+                    isError = state.noteError != null,
+                    supportingText = state.noteError,
                 )
                 if (state.noteSuggestions.isNotEmpty()) {
                     LazyRow(
@@ -155,8 +171,13 @@ fun RecordCashFlowScreen(
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     timeSubtitle = "默认当前时间",
+                    errorText = state.occurredAtError,
                 )
-                MoneySaveButton(onClick = { viewModel.save() }, isSaving = state.isSaving)
+                MoneySaveButton(
+                    onClick = { viewModel.save() },
+                    isSaving = state.isSaving,
+                    enabled = state.pendingTerminal == null,
+                )
             }
         }
     }

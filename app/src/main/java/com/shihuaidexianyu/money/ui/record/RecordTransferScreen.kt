@@ -15,6 +15,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,7 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
@@ -35,6 +39,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private enum class TransferPickerTarget {
@@ -54,9 +59,14 @@ fun RecordTransferScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        if (effect is RecordTransferEffect.Saved) onBack()
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            if (terminal.kind == FormTerminalKind.SAVED) onBack()
+            viewModel.ackTerminal(terminal.token)
+        }
     }
 
     pickerTarget?.let { target ->
@@ -121,13 +131,26 @@ fun RecordTransferScreen(
         title = "转账",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "record-transfer"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item {
             MoneyCard {
                 MoneyAmountField(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
+                    isError = state.amountError != null,
+                    supportingText = state.amountError,
                 )
                 if ((fromAccount?.balance ?: 0L) > 0L) {
                     LazyRow(
@@ -146,6 +169,8 @@ fun RecordTransferScreen(
                     label = "转出账户",
                     value = fromAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.FROM },
+                    isError = state.fromAccountError != null,
+                    supportingText = state.fromAccountError,
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -161,6 +186,8 @@ fun RecordTransferScreen(
                     label = "转入账户",
                     value = toAccount?.name ?: "请选择",
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.TO },
+                    isError = state.toAccountError != null,
+                    supportingText = state.toAccountError,
                 )
             }
         }
@@ -169,7 +196,9 @@ fun RecordTransferScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注",
+                    label = "备注（可选）",
+                    isError = state.noteError != null,
+                    supportingText = state.noteError,
                 )
                 if (state.noteSuggestions.isNotEmpty()) {
                     LazyRow(
@@ -189,8 +218,13 @@ fun RecordTransferScreen(
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     timeSubtitle = "默认当前时间",
+                    errorText = state.occurredAtError,
                 )
-                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = state.pendingTerminal == null,
+                )
             }
         }
     }

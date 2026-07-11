@@ -101,7 +101,7 @@ class TransactionRepositoryImpl(
             accountId = record.accountId,
             direction = record.direction,
             amount = record.amount,
-            note = record.note.trim(),
+            note = record.note,
             occurredAt = record.occurredAt,
             updatedAt = record.updatedAt,
         ).changed()
@@ -238,7 +238,7 @@ class TransactionRepositoryImpl(
             fromAccountId = record.fromAccountId,
             toAccountId = record.toAccountId,
             amount = record.amount,
-            note = record.note.trim(),
+            note = record.note,
             occurredAt = record.occurredAt,
             updatedAt = record.updatedAt,
         ).changed()

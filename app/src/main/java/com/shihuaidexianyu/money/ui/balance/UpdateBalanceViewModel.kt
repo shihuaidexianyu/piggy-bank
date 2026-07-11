@@ -10,6 +10,10 @@ import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
+import com.shihuaidexianyu.money.ui.common.PendingFormTerminal
+import com.shihuaidexianyu.money.ui.common.PENDING_FORM_TERMINAL_KEY
+import com.shihuaidexianyu.money.ui.common.pendingFormTerminal
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.ui.common.userMessage
 import com.shihuaidexianyu.money.util.AmountFormatter
@@ -25,6 +29,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 data class UpdateBalanceUiState(
+    val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val selectedAccountId: Long? = null,
     val actualBalanceText: String = "",
@@ -33,12 +39,16 @@ data class UpdateBalanceUiState(
     val actualBalancePreview: Long? = null,
     val deltaPreview: Long? = null,
     val actualBalanceEdited: Boolean = false,
+    val accountError: String? = null,
+    val actualBalanceError: String? = null,
+    val occurredAtError: String? = null,
+    val isDirty: Boolean = false,
     val isSaving: Boolean = false,
     val latestResult: UpdateBalanceResult? = null,
+    val pendingTerminal: PendingFormTerminal? = null,
 )
 
 sealed interface UpdateBalanceEffect {
-    data object Saved : UpdateBalanceEffect
     data class ShowMessage(
         override val message: String,
     ) : UpdateBalanceEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
@@ -52,12 +62,34 @@ class UpdateBalanceViewModel(
     private val savedStateHandle: SavedStateHandle,
     operationIdFactory: LedgerOperationIdFactory,
 ) : ViewModel() {
+    private val restoredDraft = savedStateHandle.get<BalanceFormDraft>(DRAFT_KEY)
+    private val restoredTerminal = savedStateHandle.get<PendingFormTerminal>(PENDING_FORM_TERMINAL_KEY)
+    private val restoredResult = savedStateHandle.get<UpdateBalanceResult>(LATEST_RESULT_KEY)
     private val operationId = savedOperationId(
-        existing = savedStateHandle[OPERATION_ID_KEY],
+        existing = restoredDraft?.operationId ?: savedStateHandle[OPERATION_ID_KEY],
         factory = operationIdFactory,
     ).also { savedStateHandle[OPERATION_ID_KEY] = it }
     private var saveInFlight = false
-    private val _uiState = MutableStateFlow(UpdateBalanceUiState(selectedAccountId = initialAccountId))
+    private val _uiState = MutableStateFlow(
+        restoredDraft?.let { draft ->
+            UpdateBalanceUiState(
+                selectedAccountId = draft.selectedAccountId,
+                actualBalanceText = draft.actualBalanceText,
+                occurredAtMillis = draft.occurredAtMillis,
+                actualBalanceEdited = draft.actualBalanceEdited,
+                accountError = draft.accountError,
+                actualBalanceError = draft.actualBalanceError,
+                occurredAtError = draft.occurredAtError,
+                isDirty = draft.isDirty,
+                latestResult = restoredResult ?: restoredTerminal?.balanceResult,
+                pendingTerminal = restoredTerminal,
+            )
+        } ?: UpdateBalanceUiState(
+            selectedAccountId = initialAccountId,
+            latestResult = restoredResult ?: restoredTerminal?.balanceResult,
+            pendingTerminal = restoredTerminal,
+        ),
+    )
     val uiState: StateFlow<UpdateBalanceUiState> = _uiState.asStateFlow()
 
     private val effects = MutableSharedFlow<UpdateBalanceEffect>(extraBufferCapacity = 1)
@@ -65,6 +97,15 @@ class UpdateBalanceViewModel(
     private var previewJob: Job? = null
 
     init {
+        loadDependencies()
+    }
+
+    fun retryLoad() {
+        loadDependencies()
+    }
+
+    private fun loadDependencies() {
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
@@ -72,72 +113,96 @@ class UpdateBalanceViewModel(
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.toAccountOptionUiModels(),
                     selectedAccountId = selected,
+                    isLoading = false,
+                    loadErrorMessage = null,
                 )
-                refreshPreview(resetActualBalanceToSystem = true)
+                refreshPreview(resetActualBalanceToSystem = !_uiState.value.actualBalanceEdited)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("UpdateBalanceViewModel", "Failed to load accounts", e)
+                runCatching { android.util.Log.e("UpdateBalanceViewModel", "Failed to load accounts", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loadErrorMessage = "开放账户加载失败，请重试",
+                )
             }
         }
     }
 
     fun updateAccount(accountId: Long) {
-        _uiState.value = _uiState.value.copy(
-            selectedAccountId = accountId,
-            actualBalanceEdited = false,
-        )
+        updateDraft {
+            copy(
+                selectedAccountId = accountId,
+                accountError = null,
+                actualBalanceEdited = false,
+                isDirty = true,
+            )
+        }
         refreshPreview(resetActualBalanceToSystem = true)
     }
 
     fun updateActualBalance(value: String) {
         val actual = AmountInputParser.parseSignedToMinor(value)
         val systemBalance = _uiState.value.systemBalanceBeforeUpdate
-        _uiState.value = _uiState.value.copy(
-            actualBalanceText = value,
-            actualBalancePreview = actual,
-            deltaPreview = actual?.minus(systemBalance),
-            actualBalanceEdited = true,
-        )
+        updateDraft {
+            copy(
+                actualBalanceText = value,
+                actualBalancePreview = actual,
+                deltaPreview = actual?.minus(systemBalance),
+                actualBalanceEdited = true,
+                actualBalanceError = null,
+                isDirty = true,
+            )
+        }
     }
 
     fun updateOccurredAt(value: Long) {
         val shouldResetActualBalance = !_uiState.value.actualBalanceEdited
-        _uiState.value = _uiState.value.copy(
-            occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
-        )
+        updateDraft {
+            copy(
+                occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+                occurredAtError = null,
+                isDirty = true,
+            )
+        }
         refreshPreview(resetActualBalanceToSystem = shouldResetActualBalance)
     }
 
     fun resetActualBalanceToSystem() {
         val systemBalance = _uiState.value.systemBalanceBeforeUpdate
-        _uiState.value = _uiState.value.copy(
-            actualBalanceText = AmountFormatter.formatPlain(systemBalance),
-            actualBalancePreview = systemBalance,
-            deltaPreview = 0,
-            actualBalanceEdited = false,
-        )
+        updateDraft {
+            copy(
+                actualBalanceText = AmountFormatter.formatPlain(systemBalance),
+                actualBalancePreview = systemBalance,
+                deltaPreview = 0,
+                actualBalanceEdited = false,
+                actualBalanceError = null,
+                isDirty = true,
+            )
+        }
     }
 
     fun save() {
-        if (saveInFlight) return
+        if (saveInFlight || _uiState.value.pendingTerminal != null) return
         saveInFlight = true
         val state = _uiState.value
         viewModelScope.launch {
             val accountId = runCatching { RecordValidator.requireAccountId(state.selectedAccountId) }
                 .getOrElse { error ->
                     saveInFlight = false
-                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请选择账户")))
+                    updateDraft { copy(accountError = error.userMessage("请选择账户")) }
                     return@launch
                 }
             val actualBalance = runCatching { RecordValidator.requireSignedAmount(state.actualBalanceText) }
                 .getOrElse { error ->
                     saveInFlight = false
-                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("请输入有效金额")))
+                    updateDraft { copy(actualBalanceError = error.userMessage("请输入有效金额")) }
                     return@launch
                 }
             runCatching { RecordValidator.requireOccurredAt(state.occurredAtMillis) }
                 .getOrElse { error ->
                     saveInFlight = false
-                    effects.emit(UpdateBalanceEffect.ShowMessage(error.userMessage("时间不能晚于当前时间")))
+                    updateDraft { copy(occurredAtError = error.userMessage("时间不能晚于当前时间")) }
                     return@launch
                 }
 
@@ -150,6 +215,7 @@ class UpdateBalanceViewModel(
                     operationId = operationId,
                 )
             }.onSuccess { result ->
+                savedStateHandle[LATEST_RESULT_KEY] = result
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     latestResult = result,
@@ -159,17 +225,60 @@ class UpdateBalanceViewModel(
                     deltaPreview = 0,
                     actualBalanceEdited = false,
                 )
-                effects.emit(UpdateBalanceEffect.Saved)
+                setPendingTerminal(
+                    pendingFormTerminal(
+                        kind = FormTerminalKind.SAVED,
+                        balanceResult = result,
+                    ),
+                )
             }.onFailure { throwable ->
                 saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(UpdateBalanceEffect.ShowMessage(throwable.message ?: "保存失败"))
+                val message = throwable.message ?: "保存失败"
+                when {
+                    message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
+                    message.contains("账户") -> updateDraft { copy(accountError = message) }
+                    else -> effects.emit(UpdateBalanceEffect.ShowMessage(message))
+                }
             }
         }
     }
 
+    fun refreshLedgerBalanceAfterSupplementalEntry() {
+        refreshPreview(resetActualBalanceToSystem = false)
+    }
+
+    fun ackTerminal(token: String) {
+        if (_uiState.value.pendingTerminal?.token != token) return
+        savedStateHandle.remove<PendingFormTerminal>(PENDING_FORM_TERMINAL_KEY)
+        _uiState.value = _uiState.value.copy(pendingTerminal = null)
+    }
+
+    private fun setPendingTerminal(terminal: PendingFormTerminal) {
+        savedStateHandle[PENDING_FORM_TERMINAL_KEY] = terminal
+        _uiState.value = _uiState.value.copy(isSaving = false, pendingTerminal = terminal)
+    }
+
     private companion object {
         const val OPERATION_ID_KEY = "update_balance_operation_id"
+        const val DRAFT_KEY = "update_balance_draft"
+        const val LATEST_RESULT_KEY = "update_balance_latest_result"
+    }
+
+    private fun updateDraft(transform: UpdateBalanceUiState.() -> UpdateBalanceUiState) {
+        val next = _uiState.value.transform()
+        _uiState.value = next
+        savedStateHandle[DRAFT_KEY] = BalanceFormDraft(
+            selectedAccountId = next.selectedAccountId,
+            actualBalanceText = next.actualBalanceText,
+            occurredAtMillis = next.occurredAtMillis,
+            actualBalanceEdited = next.actualBalanceEdited,
+            accountError = next.accountError,
+            actualBalanceError = next.actualBalanceError,
+            occurredAtError = next.occurredAtError,
+            isDirty = next.isDirty,
+            operationId = operationId,
+        )
     }
 
     private fun refreshPreview(resetActualBalanceToSystem: Boolean) {

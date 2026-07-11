@@ -1,11 +1,13 @@
 package com.shihuaidexianyu.money.ui.balance
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,6 +15,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
+import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -31,12 +39,16 @@ fun BalanceAdjustmentDetailScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val dispatcher = LocalRootSnackbarDispatcher.current
 
-    CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
-        when (effect) {
-            BalanceAdjustmentDetailEffect.Closed -> onClosed()
-            BalanceAdjustmentDetailEffect.Deleted -> onClosed()
-            else -> {}
+    CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
+    state.pendingTerminal?.let { terminal ->
+        LaunchedEffect(terminal.token) {
+            terminal.ledgerUndoToken?.let {
+                dispatcher?.dispatch(rootSnackbarEffect("记录已删除", "撤销", RootSnackbarAction.RestoreLedger(it), terminal.token))
+            }
+            onClosed()
+            viewModel.ackTerminal(terminal.token)
         }
     }
 
@@ -60,11 +72,20 @@ fun BalanceAdjustmentDetailScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "adjustment-detail"),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         item {
             MoneyCard {
-                if (state.isLoading) {
-                    Text("加载中...", style = MaterialTheme.typography.bodyMedium)
-                } else {
+                if (!state.isLoading) {
                     Text(state.accountName, style = MaterialTheme.typography.titleMedium)
                     MoneyInlineLabelValue(
                         label = "时间",

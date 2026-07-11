@@ -9,12 +9,16 @@ import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 data class DueReminderUiModel(
@@ -37,6 +41,10 @@ data class StaleAccountUiModel(
 
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val hasCommittedContent: Boolean = false,
+    val errorMessage: String? = null,
+    val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val periodRecordCount: Int = 0,
     val periodAssetChange: Long = 0,
@@ -50,15 +58,41 @@ data class HomeUiState(
     val dueReminders: List<DueReminderUiModel> = emptyList(),
 )
 
+internal fun HomeUiState.toAsyncContent(): AsyncContent<HomeUiState> {
+    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+    if (!hasCommittedContent) return AsyncContent.Loading
+    if (isRefreshing) return AsyncContent.Refreshing(this)
+    if (accountOptions.isEmpty()) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
+    return AsyncContent.Data(this)
+}
+
 class HomeViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var observationJob: Job? = null
+    private var retryGeneration = 0
 
     init {
-        viewModelScope.launch {
+        observeDashboard()
+    }
+
+    fun retry() {
+        observeDashboard()
+    }
+
+    private fun observeDashboard() {
+        observationJob?.cancel()
+        val hasCommittedContent = _uiState.value.hasCommittedContent
+        _uiState.value = _uiState.value.copy(
+            isLoading = !hasCommittedContent,
+            isRefreshing = hasCommittedContent,
+            errorMessage = null,
+            retryToken = null,
+        )
+        observationJob = viewModelScope.launch {
             try {
                 combine(
                     observeHomeDashboardUseCase(),
@@ -70,6 +104,7 @@ class HomeViewModel(
                     val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
                     _uiState.value = HomeUiState(
                         isLoading = false,
+                        hasCommittedContent = true,
                         settings = snapshot.settings,
                         periodRecordCount = snapshot.periodRecordCount,
                         periodAssetChange = snapshot.periodBreakdown.assetChange,
@@ -110,9 +145,17 @@ class HomeViewModel(
                         },
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("HomeViewModel", "Failed to observe home dashboard", e)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                runCatching { android.util.Log.e("HomeViewModel", "Failed to observe home dashboard", e) }
+                retryGeneration += 1
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isRefreshing = false,
+                    errorMessage = "首页加载失败，请重试",
+                    retryToken = "home:$retryGeneration",
+                )
             }
         }
     }

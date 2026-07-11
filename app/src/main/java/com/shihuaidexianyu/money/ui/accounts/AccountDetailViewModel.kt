@@ -10,10 +10,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
     val isMissing: Boolean = false,
+    val loadErrorMessage: String? = null,
     val accountId: Long = 0,
     val name: String = "",
     val colorName: String = "blue",
@@ -35,9 +38,20 @@ class AccountDetailViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountDetailUiState(accountId = accountId))
     val uiState: StateFlow<AccountDetailUiState> = _uiState.asStateFlow()
+    private var observationJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        observeDetail()
+    }
+
+    fun retry() {
+        observeDetail()
+    }
+
+    private fun observeDetail() {
+        observationJob?.cancel()
+        _uiState.value = _uiState.value.copy(isLoading = true, isMissing = false, loadErrorMessage = null)
+        observationJob = viewModelScope.launch {
             try {
                 observeAccountDetailUseCase().collect { snapshot ->
                     val account = snapshot.account
@@ -67,9 +81,15 @@ class AccountDetailViewModel(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("AccountDetailViewModel", "Failed to observe account detail", e)
-                _uiState.value = _uiState.value.copy(isLoading = false, isMissing = true)
+                runCatching { android.util.Log.e("AccountDetailViewModel", "Failed to observe account detail", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isMissing = false,
+                    loadErrorMessage = "账户详情加载失败，请重试",
+                )
             }
         }
     }

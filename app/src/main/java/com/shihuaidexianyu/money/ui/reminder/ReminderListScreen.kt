@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyBackButton
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -54,7 +55,7 @@ fun ReminderListScreen(
     onProcessReminder: (ReminderUiModel) -> Unit,
     onDeleteReminder: (Long) -> Unit,
     onSkipReminder: (Long, Long) -> Unit,
-    onUndoSkip: (ReminderSkipUndoToken) -> Unit,
+    onPendingSkipEnqueued: (String) -> Unit,
     effects: Flow<ReminderListEffect>,
     notificationPermissionState: NotificationPermissionUiState,
     onRequestNotificationPermission: () -> Unit,
@@ -66,17 +67,27 @@ fun ReminderListScreen(
 ) {
     var deleteTarget by remember { mutableStateOf<Long?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val rootDispatcher = LocalRootSnackbarDispatcher.current
 
     LaunchedEffect(effects) {
         effects.collect { effect ->
-            when (effect) {
-                is ReminderListEffect.Skipped -> {
-                    if (snackbarHostState.showSnackbar("已跳过本期", "撤销") == SnackbarResult.ActionPerformed) {
-                        onUndoSkip(effect.token)
-                    }
-                }
-                is ReminderListEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+            if (effect is ReminderListEffect.ShowMessage) {
+                rootDispatcher?.dispatch(rootSnackbarEffect(effect.message))
             }
+        }
+    }
+
+    state.pendingSkip?.let { pending ->
+        LaunchedEffect(pending.token) {
+            rootDispatcher?.dispatch(
+                rootSnackbarEffect(
+                    "已跳过本期",
+                    "撤销",
+                    RootSnackbarAction.UndoReminderSkip(pending.undoToken),
+                    pending.token,
+                ),
+            )
+            onPendingSkipEnqueued(pending.token)
         }
     }
 
@@ -93,7 +104,6 @@ fun ReminderListScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
                 Icon(Icons.Rounded.Add, contentDescription = "添加提醒")

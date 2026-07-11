@@ -20,6 +20,8 @@ class UpdateTransferRecordUseCase(
         amount: Long,
         note: String,
         occurredAt: Long,
+        preserveNoteVerbatim: Boolean = false,
+        expectedUpdatedAt: Long? = null,
     ) {
         require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
         require(amount > 0) { "金额必须大于 0" }
@@ -28,6 +30,9 @@ class UpdateTransferRecordUseCase(
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.queryTransferRecordById(recordId)) {
                 "记录不存在或已删除"
+            }
+            if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+                throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
             }
             val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
             val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
@@ -46,7 +51,7 @@ class UpdateTransferRecordUseCase(
                 fromAccountId = fromAccountId,
                 toAccountId = toAccountId,
                 amount = amount,
-                note = note.trim(),
+                note = if (preserveNoteVerbatim) note else note.trim(),
                 occurredAt = occurredAt,
                 updatedAt = nextMutationTimestamp(now, existing.updatedAt),
             )

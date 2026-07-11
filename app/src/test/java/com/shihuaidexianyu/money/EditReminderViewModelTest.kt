@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderReposi
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.usecase.UpdateReminderUseCase
 import com.shihuaidexianyu.money.ui.reminder.EditReminderViewModel
 import com.shihuaidexianyu.money.ui.reminder.EditReminderEffect
@@ -109,6 +110,74 @@ class EditReminderViewModelTest {
     }
 
     @Test
+    fun `load exception is retryable and keeps saved state draft instead of closing`() = runTest(dispatcher) {
+        val now = Instant.parse("2025-01-01T00:00:00Z").toEpochMilli()
+        val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider { ZoneId.of("UTC") }
+        val accounts = InMemoryAccountRepository()
+        val delegate = InMemoryRecurringReminderRepository()
+        val accountId = accounts.createAccount(Account(name = "钱包", initialBalance = 0, createdAt = 1))
+        val reminderId = delegate.insertReminder(testReminder(accountId, now + 86_400_000L))
+        var available = false
+        val flaky = object : RecurringReminderRepository by delegate {
+            override suspend fun getReminderById(id: Long): RecurringReminder? {
+                if (!available) error("database unavailable")
+                return delegate.getReminderById(id)
+            }
+        }
+        val handle = SavedStateHandle()
+        val viewModel = EditReminderViewModel(
+            reminderId = reminderId,
+            accountRepository = accounts,
+            reminderRepository = flaky,
+            updateReminderUseCase = UpdateReminderUseCase(accounts, flaky, { now }, zone),
+            savedStateHandle = handle,
+            zoneIdProvider = zone,
+        )
+        advanceUntilIdle()
+        viewModel.updateName("新房租")
+        assertEquals("提醒加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+
+        available = true
+        viewModel.retryLoad()
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+        assertEquals("新房租", viewModel.uiState.value.name)
+    }
+
+    @Test
+    fun `save failure plus reminder lookup failure resets saving instead of escaping`() = runTest(dispatcher) {
+        val now = Instant.parse("2025-01-01T00:00:00Z").toEpochMilli()
+        val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider { ZoneId.of("UTC") }
+        val accounts = InMemoryAccountRepository()
+        val delegate = InMemoryRecurringReminderRepository()
+        val accountId = accounts.createAccount(Account(name = "钱包", initialBalance = 0, createdAt = 1))
+        val reminderId = delegate.insertReminder(testReminder(accountId, now + 86_400_000L))
+        var fail = false
+        val flaky = object : RecurringReminderRepository by delegate {
+            override suspend fun getReminderById(id: Long): RecurringReminder? {
+                if (fail) error("lookup unavailable")
+                return delegate.getReminderById(id)
+            }
+        }
+        val viewModel = EditReminderViewModel(
+            reminderId = reminderId,
+            accountRepository = accounts,
+            reminderRepository = flaky,
+            updateReminderUseCase = UpdateReminderUseCase(accounts, flaky, { now }, zone),
+            savedStateHandle = SavedStateHandle(),
+            zoneIdProvider = zone,
+        )
+        advanceUntilIdle()
+        fail = true
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertTrue(!viewModel.uiState.value.isSaving)
+    }
+
+    @Test
     fun `name only edit preserves exact legacy anchor schedule and dedupe after timezone change`() = runTest(dispatcher) {
         val now = Instant.parse("2025-01-01T00:00:00Z").toEpochMilli()
         val shanghai = ZoneId.of("Asia/Shanghai")
@@ -156,4 +225,19 @@ class EditReminderViewModelTest {
         assertEquals(anchor, stored.nextDueAt)
         assertEquals(anchor, stored.lastNotifiedDueAt)
     }
+
+    private fun testReminder(accountId: Long, anchor: Long) = RecurringReminder(
+        name = "房租",
+        type = "manual",
+        accountId = accountId,
+        direction = "outflow",
+        amount = 10_000,
+        periodType = "monthly",
+        periodValue = 1,
+        periodMonth = null,
+        nextDueAt = anchor,
+        anchorDueAt = anchor,
+        createdAt = 1,
+        updatedAt = 1,
+    )
 }

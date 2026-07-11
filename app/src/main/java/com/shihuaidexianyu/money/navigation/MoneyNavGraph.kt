@@ -9,32 +9,51 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.RootSnackbarQueueViewModel
+import com.shihuaidexianyu.money.ui.common.executeRootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
+import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
+import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchDestination
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchIdentity
@@ -153,9 +172,55 @@ fun MoneyNavGraph(
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
+    val rootSnackbarQueue: RootSnackbarQueueViewModel = viewModel(
+        factory = moneySavedStateViewModelFactory { RootSnackbarQueueViewModel(it) },
+    )
+    val rootSnackbarItems by rootSnackbarQueue.queue.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val isTopLevel = currentRoute in topLevelRoutes
+    val navigationType = adaptiveNavigationType(LocalConfiguration.current.screenWidthDp)
+    val openAccountAvailabilityFlow = remember(container) {
+        openAccountAvailability(container.accountRepository.observeOpenAccounts())
+    }
+    val openAccountAvailability by openAccountAvailabilityFlow.collectAsStateWithLifecycle(
+        initialValue = OpenAccountAvailability.Loading,
+    )
+    var fabExpanded by remember { mutableStateOf(false) }
+
+    fun navigateTopLevel(destination: MoneyDestination) {
+        navController.navigate(destination.route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+        }
+    }
+
+    fun handleFabAction(action: LedgerFabAction) {
+        val availability = openAccountAvailability as? OpenAccountAvailability.Data ?: return
+        fabExpanded = false
+        when (val decision = resolveLedgerFabAction(action, availability)) {
+            LedgerFabDecision.CreateFirstAccount -> rootSnackbarQueue.enqueue(
+                message = "记账前请先创建第一个账户",
+                actionLabel = "创建账户",
+                action = RootSnackbarAction.CreateAccount,
+            )
+            is LedgerFabDecision.OpenCashForm -> navController.navigate(
+                MoneyDestination.recordCashFlowRoute(decision.direction, accountId = 0L),
+            )
+            LedgerFabDecision.NeedSecondAccount -> rootSnackbarQueue.enqueue(
+                message = "转账至少需要两个可用账户",
+                actionLabel = "管理账户",
+                action = RootSnackbarAction.ManageAccounts,
+            )
+            LedgerFabDecision.OpenTransferForm -> navController.navigate(
+                MoneyDestination.recordTransferRoute(),
+            )
+        }
+    }
 
     LaunchedEffect(appLaunchRequest?.token) {
         val request = appLaunchRequest ?: return@LaunchedEffect
@@ -201,56 +266,108 @@ fun MoneyNavGraph(
         }
         onAppLaunchConsumed(request.token)
         if (showNotificationStateChanged) {
-            scope.launch { snackbarHostState.showSnackbar("提醒状态已变化") }
+            rootSnackbarQueue.enqueue("提醒状态已变化")
         }
     }
 
+    LaunchedEffect(rootSnackbarItems.firstOrNull()?.token) {
+        val effect = rootSnackbarItems.firstOrNull() ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = effect.message,
+            actionLabel = effect.actionLabel,
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            when (val execution = executeRootSnackbarAction(
+                action = effect.action,
+                restoreLedger = container.restoreLedgerRecordUseCase::invoke,
+                undoReminderSkip = container.undoSkipReminderUseCase::invoke,
+                createAccount = {
+                    navController.navigate(MoneyDestination.CreateAccountRoute) { launchSingleTop = true }
+                },
+                manageAccounts = { navigateTopLevel(MoneyDestination.Accounts) },
+            )) {
+                RootActionExecutionResult.Success -> rootSnackbarQueue.ack(effect.token)
+                is RootActionExecutionResult.PermanentFailure -> rootSnackbarQueue.replaceHead(
+                    effect.token,
+                    rootSnackbarEffect(execution.message),
+                )
+                is RootActionExecutionResult.RetryableFailure -> rootSnackbarQueue.replaceHead(
+                    effect.token,
+                    rootSnackbarEffect(
+                        message = execution.message,
+                        actionLabel = "重试",
+                        action = effect.action,
+                    ),
+                )
+            }
+            return@LaunchedEffect
+        }
+        rootSnackbarQueue.ack(effect.token)
+    }
+
+    CompositionLocalProvider(
+        LocalRootSnackbarDispatcher provides RootSnackbarDispatcher { effect ->
+            rootSnackbarQueue.enqueue(effect)
+        },
+    ) {
     Scaffold(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (currentRoute in topLevelRoutes) {
-                Surface(color = MaterialTheme.colorScheme.surface) {
-                    Column {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 0.dp,
-                        ) {
-                            MoneyDestination.topLevel.forEach { destination ->
-                                NavigationBarItem(
-                                    selected = currentRoute == destination.route,
-                                    onClick = {
-                                        navController.navigate(destination.route) {
-                                            launchSingleTop = true
-                                            restoreState = true
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
-                                            }
-                                        }
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    icon = { Icon(destination.icon, contentDescription = destination.label) },
-                                    label = { Text(destination.label) },
-                                )
-                            }
-                        }
+        floatingActionButton = {
+            if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
+                Box {
+                    ExtendedFloatingActionButton(
+                        onClick = { fabExpanded = true },
+                        icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                        text = { Text("记一笔") },
+                    )
+                    DropdownMenu(
+                        expanded = fabExpanded,
+                        onDismissRequest = { fabExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("收入") },
+                            onClick = { handleFabAction(LedgerFabAction.INCOME) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("支出") },
+                            onClick = { handleFabAction(LedgerFabAction.EXPENSE) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("转账") },
+                            onClick = { handleFabAction(LedgerFabAction.TRANSFER) },
+                        )
                     }
                 }
             }
         },
+        bottomBar = {
+            if (isTopLevel && navigationType == AdaptiveNavigationType.BOTTOM_BAR) {
+                AdaptiveTopLevelNavigation(
+                    type = navigationType,
+                    currentRoute = currentRoute,
+                    onDestinationClick = ::navigateTopLevel,
+                )
+            }
+        },
     ) { innerPadding ->
-        MoneyGradientBackground {
-            NavHost(
-                navController = navController,
-                startDestination = MoneyDestination.Home.route,
-                modifier = Modifier.padding(innerPadding),
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            if (isTopLevel && navigationType == AdaptiveNavigationType.NAVIGATION_RAIL) {
+                AdaptiveTopLevelNavigation(
+                    type = navigationType,
+                    currentRoute = currentRoute,
+                    onDestinationClick = ::navigateTopLevel,
+                )
+            }
+            MoneyGradientBackground(modifier = Modifier.weight(1f)) {
+                NavHost(
+                    navController = navController,
+                    startDestination = MoneyDestination.Home.route,
+                    modifier = Modifier.fillMaxSize(),
                 enterTransition = {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
@@ -287,17 +404,19 @@ fun MoneyNavGraph(
                         popExitTransition()
                     }
                 },
-            ) {
-                addTopLevelGraph(
-                    navController = navController,
-                    container = container,
-                    onBiometricLockChange = onBiometricLockChange,
-                )
-                addAccountsGraph(navController = navController, container = container)
-                addRecordGraph(navController = navController, container = container)
-                addBalanceGraph(navController = navController, container = container)
-                addReminderGraph(navController = navController, container = container)
+                ) {
+                    addTopLevelGraph(
+                        navController = navController,
+                        container = container,
+                        onBiometricLockChange = onBiometricLockChange,
+                    )
+                    addAccountsGraph(navController = navController, container = container)
+                    addRecordGraph(navController = navController, container = container)
+                    addBalanceGraph(navController = navController, container = container)
+                    addReminderGraph(navController = navController, container = container)
+                }
             }
         }
+    }
     }
 }

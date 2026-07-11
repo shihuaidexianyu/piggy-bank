@@ -14,9 +14,15 @@ class DeleteTransferRecordUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
 ) {
-    suspend operator fun invoke(recordId: Long): LedgerUndoToken? = transactionRepository.runInTransaction {
+    suspend operator fun invoke(
+        recordId: Long,
+        expectedUpdatedAt: Long? = null,
+    ): LedgerUndoToken? = transactionRepository.runInTransaction {
         val existing = transactionRepository.queryStoredTransferRecordById(recordId) ?: return@runInTransaction null
         if (existing.deletedAt != null) return@runInTransaction null
+        if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+            throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
+        }
         val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户不存在" }
         val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户不存在" }
         fromAccount.requireOpenForMutation("删除转账记录")

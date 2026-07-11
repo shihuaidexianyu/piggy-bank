@@ -15,9 +15,15 @@ import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
+import com.shihuaidexianyu.money.ui.common.PendingFormTerminal
+import com.shihuaidexianyu.money.ui.common.PENDING_FORM_TERMINAL_KEY
+import com.shihuaidexianyu.money.ui.common.pendingFormTerminal
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,16 +44,18 @@ data class BatchReconcileAccountUiModel(
 
 data class BatchReconcileUiState(
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val accounts: List<BatchReconcileAccountUiModel> = emptyList(),
+    val isDirty: Boolean = false,
     val isSaving: Boolean = false,
+    val pendingTerminal: PendingFormTerminal? = null,
 ) {
     val selectedCount: Int
         get() = accounts.count { it.isSelected }
 }
 
 sealed interface BatchReconcileEffect {
-    data class Saved(val count: Int) : BatchReconcileEffect
     data class ShowMessage(
         override val message: String,
     ) : BatchReconcileEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
@@ -64,15 +72,32 @@ class BatchReconcileViewModel(
     private val operationIdFactory: LedgerOperationIdFactory,
     private val clockProvider: ClockProvider,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(BatchReconcileUiState())
+    private var draft = savedStateHandle.get<BatchReconcileDraft>(DRAFT_KEY)
+        ?: BatchReconcileDraft()
+    private val _uiState = MutableStateFlow(
+        BatchReconcileUiState(
+            pendingTerminal = savedStateHandle[PENDING_FORM_TERMINAL_KEY],
+        ),
+    )
     val uiState: StateFlow<BatchReconcileUiState> = _uiState.asStateFlow()
 
     private val effects = MutableSharedFlow<BatchReconcileEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
     private var saveInFlight = false
+    private var observationJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        observeAccounts()
+    }
+
+    fun retryLoad() {
+        observeAccounts()
+    }
+
+    private fun observeAccounts() {
+        observationJob?.cancel()
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        observationJob = viewModelScope.launch {
             try {
                 combine(
                     accountRepository.observeOpenAccounts(),
@@ -86,18 +111,25 @@ class BatchReconcileViewModel(
                         isLoading = false,
                         settings = settings,
                         accounts = buildItems(accounts, reminderConfigs),
+                        isDirty = draft.isDirty,
+                        loadErrorMessage = null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("BatchReconcileViewModel", "Failed to load stale accounts", e)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                runCatching { android.util.Log.e("BatchReconcileViewModel", "Failed to load stale accounts", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loadErrorMessage = "批量核对加载失败，请重试",
+                )
             }
         }
     }
 
     fun toggleAccount(accountId: Long) {
         if (_uiState.value.isSaving) return
-        _uiState.value = _uiState.value.copy(
+        val next = _uiState.value.copy(
             accounts = _uiState.value.accounts.map { account ->
                 if (account.accountId == accountId) {
                     account.copy(isSelected = !account.isSelected, isFailed = false)
@@ -105,11 +137,21 @@ class BatchReconcileViewModel(
                     account
                 }
             },
+            isDirty = true,
+        )
+        _uiState.value = next
+        persistDraft(
+            draft.copy(
+                selectedAccountIds = next.accounts
+                    .filter(BatchReconcileAccountUiModel::isSelected)
+                    .map(BatchReconcileAccountUiModel::accountId),
+                isDirty = true,
+            ),
         )
     }
 
     fun saveSelected() {
-        if (saveInFlight) return
+        if (saveInFlight || _uiState.value.pendingTerminal != null) return
         saveInFlight = true
         val state = _uiState.value
         val selectedAccounts = state.accounts.filter { it.isSelected }
@@ -121,9 +163,9 @@ class BatchReconcileViewModel(
 
         _uiState.value = state.copy(isSaving = true)
         viewModelScope.launch {
-            val occurredAt = savedStateHandle.get<Long>(OCCURRED_AT_KEY)
+            val occurredAt = draft.occurredAtMillis
                 ?: DateTimeTextFormatter.floorToMinute(clockProvider.nowMillis()).also { timestamp ->
-                    savedStateHandle[OCCURRED_AT_KEY] = timestamp
+                    persistDraft(draft.copy(occurredAtMillis = timestamp))
                 }
             val failedIds = mutableSetOf<Long>()
             val selectedIds = selectedAccounts.map(BatchReconcileAccountUiModel::accountId).toSet()
@@ -151,8 +193,12 @@ class BatchReconcileViewModel(
             }
 
             if (failedIds.isEmpty()) {
-                _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(BatchReconcileEffect.Saved(savedCount))
+                setPendingTerminal(
+                    pendingFormTerminal(
+                        kind = FormTerminalKind.SAVED,
+                        count = savedCount,
+                    ),
+                )
             } else {
                 saveInFlight = false
                 _uiState.value = _uiState.value.copy(
@@ -161,29 +207,51 @@ class BatchReconcileViewModel(
                         .filterNot { it.accountId !in failedIds && it.accountId in selectedIds }
                         .map { it.copy(isFailed = it.accountId in failedIds, isSelected = it.accountId in failedIds) },
                 )
+                persistDraft(
+                    draft.copy(
+                        selectedAccountIds = failedIds.toList(),
+                        isDirty = true,
+                    ),
+                )
                 effects.emit(BatchReconcileEffect.ShowMessage("部分账户保存失败，请重试"))
             }
         }
     }
 
     private fun operationIdFor(accountId: Long): String {
-        val key = "$OPERATION_ID_KEY_PREFIX$accountId"
-        return savedOperationId(
-            existing = savedStateHandle[key],
+        return draft.operationIds[accountId] ?: savedOperationId(
+            existing = null,
             factory = operationIdFactory,
-        ).also { savedStateHandle[key] = it }
+        ).also { operationId ->
+            persistDraft(draft.copy(operationIds = draft.operationIds + (accountId to operationId)))
+        }
+    }
+
+    fun ackTerminal(token: String) {
+        if (_uiState.value.pendingTerminal?.token != token) return
+        savedStateHandle.remove<PendingFormTerminal>(PENDING_FORM_TERMINAL_KEY)
+        _uiState.value = _uiState.value.copy(pendingTerminal = null)
+    }
+
+    private fun setPendingTerminal(terminal: PendingFormTerminal) {
+        savedStateHandle[PENDING_FORM_TERMINAL_KEY] = terminal
+        _uiState.value = _uiState.value.copy(isSaving = false, pendingTerminal = terminal)
     }
 
     private fun actualBalanceFor(accountId: Long, currentBalance: Long): Long {
-        val key = "$ACTUAL_BALANCE_KEY_PREFIX$accountId"
-        return savedStateHandle.get<Long>(key)
-            ?: currentBalance.also { savedStateHandle[key] = it }
+        return draft.actualBalances[accountId]
+            ?: currentBalance.also { actualBalance ->
+                persistDraft(draft.copy(actualBalances = draft.actualBalances + (accountId to actualBalance)))
+            }
     }
 
     private companion object {
-        const val OCCURRED_AT_KEY = "batch_reconcile_occurred_at"
-        const val OPERATION_ID_KEY_PREFIX = "batch_reconcile_operation_id:"
-        const val ACTUAL_BALANCE_KEY_PREFIX = "batch_reconcile_actual_balance:"
+        const val DRAFT_KEY = "batch_reconcile_draft"
+    }
+
+    private fun persistDraft(next: BatchReconcileDraft) {
+        draft = next
+        savedStateHandle[DRAFT_KEY] = next
     }
 
     private suspend fun buildItems(
@@ -203,6 +271,7 @@ class BatchReconcileViewModel(
                 name = account.name,
                 systemBalance = balances[account.id] ?: account.initialBalance,
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
+                isSelected = !draft.isDirty || account.id in draft.selectedAccountIds,
             )
         }
     }

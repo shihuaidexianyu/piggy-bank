@@ -14,9 +14,12 @@ import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlin.math.abs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +35,12 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecord as DomainHistoryReco
 
 private const val HISTORY_PAGE_SIZE = 100
 private const val HISTORY_FILTER_DEBOUNCE_MILLIS = 250L
+
+internal fun shouldApplyHistoryLoadResult(
+    requestGeneration: Int,
+    currentGeneration: Int,
+    cancelled: Boolean,
+): Boolean = !cancelled && requestGeneration == currentGeneration
 
 enum class HistoryRecordKind {
     CASH_FLOW,
@@ -77,7 +86,12 @@ data class HistoryUiState(
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
     val records: List<HistoryRecordUiModel> = emptyList(),
     val totalRecordCount: Int = 0,
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val hasCommittedContent: Boolean = false,
+    val errorMessage: String? = null,
+    val retryToken: String? = null,
+    val loadMoreErrorMessage: String? = null,
     val isLoadingMore: Boolean = false,
     val hasMoreRecords: Boolean = false,
 )
@@ -111,14 +125,47 @@ class HistoryViewModel(
     private var reloadJob: Job? = null
     private var loadMoreJob: Job? = null
     private var loadGeneration = 0
+    private var initialized = false
+    private var initializationJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        initializeSafely()
+    }
+
+    fun retry() {
+        if (initialized) {
+            reloadFirstPage()
+        } else {
+            initializeSafely()
+        }
+    }
+
+    private fun initializeSafely() {
+        initializationJob?.cancel()
+        _uiState.update {
+            it.copy(
+                isLoading = !it.hasCommittedContent,
+                isRefreshing = it.hasCommittedContent,
+                errorMessage = null,
+                retryToken = null,
+            )
+        }
+        initializationJob = viewModelScope.launch {
             try {
                 initialize()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("HistoryViewModel", "Failed to observe history", e)
-                _uiState.update { it.copy(isLoading = false, isLoadingMore = false) }
+                runCatching { android.util.Log.e("HistoryViewModel", "Failed to observe history", e) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        isLoadingMore = false,
+                        errorMessage = "明细加载失败，请重试",
+                        retryToken = "history:init",
+                    )
+                }
             }
         }
     }
@@ -147,7 +194,7 @@ class HistoryViewModel(
         val generation = loadGeneration
         loadMoreJob?.cancel()
         loadMoreJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
+            _uiState.update { it.copy(isLoadingMore = true, loadMoreErrorMessage = null) }
             runCatching {
                 transactionRepository.queryHistoryRecords(
                     filters = filterState.value.toHistoryRecordFilters(),
@@ -155,7 +202,7 @@ class HistoryViewModel(
                     limit = HISTORY_PAGE_SIZE,
                 )
             }.onSuccess { nextRecords ->
-                if (generation != loadGeneration) return@onSuccess
+                if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
                 loadedRecords = loadedRecords + nextRecords
                 nextCursor = nextRecords.lastOrNull()?.cursor ?: nextCursor
                 val hasMore = loadedRecords.size < totalRecordCount && nextRecords.isNotEmpty()
@@ -164,12 +211,20 @@ class HistoryViewModel(
                         records = loadedRecords.toUiModels(),
                         totalRecordCount = totalRecordCount,
                         isLoadingMore = false,
+                        loadMoreErrorMessage = null,
                         hasMoreRecords = hasMore,
                     )
                 }
             }.onFailure { error ->
-                android.util.Log.e("HistoryViewModel", "Failed to load more history", error)
-                _uiState.update { it.copy(isLoadingMore = false) }
+                if (error is CancellationException) throw error
+                if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onFailure
+                runCatching { android.util.Log.e("HistoryViewModel", "Failed to load more history", error) }
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        loadMoreErrorMessage = "加载更多明细失败",
+                    )
+                }
             }
         }
     }
@@ -181,6 +236,7 @@ class HistoryViewModel(
         applySettings(initialSettings)
         applyFiltersToState(initialFilters)
         applyAccounts(observeAccounts().first())
+        initialized = true
 
         viewModelScope.launch {
             portableSettingsRepository.observe()
@@ -258,10 +314,21 @@ class HistoryViewModel(
 
     private fun reloadFirstPage(debounceMillis: Long = 0L) {
         reloadJob?.cancel()
+        loadMoreJob?.cancel()
+        loadMoreJob = null
         val generation = ++loadGeneration
         reloadJob = viewModelScope.launch {
             if (debounceMillis > 0L) delay(debounceMillis)
-            _uiState.update { it.copy(isLoading = true, isLoadingMore = false) }
+            _uiState.update {
+                it.copy(
+                    isLoading = !it.hasCommittedContent,
+                    isRefreshing = it.hasCommittedContent,
+                    isLoadingMore = false,
+                    errorMessage = null,
+                    retryToken = null,
+                    loadMoreErrorMessage = null,
+                )
+            }
             val filters = filterState.value.toHistoryRecordFilters()
             runCatching {
                 val total = transactionRepository.countHistoryRecords(filters)
@@ -272,7 +339,7 @@ class HistoryViewModel(
                 )
                 total to records
             }.onSuccess { (total, records) ->
-                if (generation != loadGeneration) return@onSuccess
+                if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
                 totalRecordCount = total
                 loadedRecords = records
                 nextCursor = records.lastOrNull()?.cursor
@@ -281,14 +348,27 @@ class HistoryViewModel(
                         records = records.toUiModels(),
                         totalRecordCount = total,
                         isLoading = false,
+                        isRefreshing = false,
+                        hasCommittedContent = true,
+                        errorMessage = null,
+                        retryToken = null,
                         isLoadingMore = false,
+                        loadMoreErrorMessage = null,
                         hasMoreRecords = records.size < total,
                     )
                 }
             }.onFailure { error ->
-                android.util.Log.e("HistoryViewModel", "Failed to load history", error)
-                if (generation == loadGeneration) {
-                    _uiState.update { it.copy(isLoading = false, isLoadingMore = false) }
+                if (error is CancellationException) throw error
+                if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onFailure
+                runCatching { android.util.Log.e("HistoryViewModel", "Failed to load history", error) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        isLoadingMore = false,
+                        errorMessage = "明细加载失败，请重试",
+                        retryToken = "history:$generation",
+                    )
                 }
             }
         }
@@ -353,6 +433,28 @@ private fun HistoryFilterState.toDeviceHistoryFilters(): HistoryFilters = Histor
     maxAmountText = maxAmountText,
     amountDirection = amountDirectionFilter.value,
 )
+
+internal fun HistoryUiState.toAsyncContent(): AsyncContent<HistoryUiState> {
+    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+    if (!hasCommittedContent) return AsyncContent.Loading
+    if (isRefreshing) return AsyncContent.Refreshing(this)
+    if (records.isEmpty()) {
+        return AsyncContent.Empty(
+            if (hasActiveFilters()) EmptyKind.FILTERED_EMPTY else EmptyKind.COMPLETELY_EMPTY,
+        )
+    }
+    return AsyncContent.Data(this)
+}
+
+private fun HistoryUiState.hasActiveFilters(): Boolean =
+    keyword.isNotBlank() ||
+        excludeKeyword.isNotBlank() ||
+        selectedAccountId != null ||
+        dateStartAt != null ||
+        dateEndAt != null ||
+        minAmountText.isNotBlank() ||
+        maxAmountText.isNotBlank() ||
+        amountDirectionFilter != AmountDirectionFilter.ALL
 
 private fun HistoryFilterState.toHistoryRecordFilters(): HistoryRecordFilters {
     return HistoryRecordFilters(

@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 
 data class EditReminderUiState(
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val name: String = "",
     val type: ReminderType = ReminderType.MANUAL,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -70,6 +71,15 @@ class EditReminderViewModel(
     private var originalUpdatedAt: Long = 0L
 
     init {
+        loadReminder()
+    }
+
+    fun retryLoad() {
+        loadReminder()
+    }
+
+    private fun loadReminder() {
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
         viewModelScope.launch {
             try {
                 val reminder = reminderRepository.getReminderById(reminderId)
@@ -125,9 +135,14 @@ class EditReminderViewModel(
                         scheduleDirty = if (restored) savedStateHandle[KEY_SCHEDULE_DIRTY] ?: false else false,
                     ),
                 )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
-                android.util.Log.e("EditReminderViewModel", "Failed to load reminder", e)
-                emitClosedOnce()
+                runCatching { android.util.Log.e("EditReminderViewModel", "Failed to load reminder", e) }
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    loadErrorMessage = "提醒加载失败，请重试",
+                )
             }
         }
     }
@@ -200,7 +215,8 @@ class EditReminderViewModel(
                     ),
                 )
             }.onFailure { throwable ->
-                if (reminderRepository.getReminderById(reminderId) == null) {
+                val lookup = runCatching { reminderRepository.getReminderById(reminderId) }
+                if (lookup.isSuccess && lookup.getOrNull() == null) {
                     emitClosedOnce()
                     return@onFailure
                 }

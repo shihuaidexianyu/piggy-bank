@@ -21,6 +21,8 @@ class UpdateCashFlowRecordUseCase(
         amount: Long,
         note: String,
         occurredAt: Long,
+        preserveNoteVerbatim: Boolean = false,
+        expectedUpdatedAt: Long? = null,
     ) {
         require(amount > 0) { "金额必须大于 0" }
         val now = clockProvider.nowMillis()
@@ -28,6 +30,9 @@ class UpdateCashFlowRecordUseCase(
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId)) {
                 "记录不存在或已删除"
+            }
+            if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+                throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
             }
             val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
             val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
@@ -38,7 +43,7 @@ class UpdateCashFlowRecordUseCase(
                 accountId = accountId,
                 direction = direction.value,
                 amount = amount,
-                note = note.trim(),
+                note = if (preserveNoteVerbatim) note else note.trim(),
                 occurredAt = occurredAt,
                 updatedAt = nextMutationTimestamp(now, existing.updatedAt),
             )

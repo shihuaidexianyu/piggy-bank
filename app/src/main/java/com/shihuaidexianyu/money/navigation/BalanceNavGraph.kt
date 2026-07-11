@@ -24,6 +24,8 @@ import com.shihuaidexianyu.money.ui.balance.EditBalanceUpdateViewModel
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceScreen
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
 
+internal const val SupplementalEntrySavedTokenKey = "supplemental_entry_saved_token"
+
 internal fun NavGraphBuilder.addBalanceGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
@@ -58,12 +60,13 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val recordId = entry.arguments?.getLong("recordId") ?: return@composable
         val viewModel = viewModel<BalanceUpdateDetailViewModel>(
             key = "balance_update_detail_$recordId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 BalanceUpdateDetailViewModel(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     deleteBalanceUpdateRecordUseCase = container.deleteBalanceUpdateRecordUseCase,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -89,7 +92,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val recordId = entry.arguments?.getLong("recordId") ?: return@composable
         val viewModel = viewModel<EditBalanceUpdateViewModel>(
             key = "edit_balance_update_$recordId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 EditBalanceUpdateViewModel(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
@@ -97,6 +100,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                     resolveBalanceUpdateContextUseCase = container.resolveBalanceUpdateContextUseCase,
                     updateBalanceUpdateRecordUseCase = container.updateBalanceUpdateRecordUseCase,
                     deleteBalanceUpdateRecordUseCase = container.deleteBalanceUpdateRecordUseCase,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -119,12 +123,13 @@ internal fun NavGraphBuilder.addBalanceGraph(
         val recordId = entry.arguments?.getLong("recordId") ?: return@composable
         val viewModel = viewModel<BalanceAdjustmentDetailViewModel>(
             key = "balance_adjustment_detail_$recordId",
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 BalanceAdjustmentDetailViewModel(
                     recordId = recordId,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     deleteBalanceAdjustmentUseCase = container.deleteBalanceAdjustmentUseCase,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -192,6 +197,15 @@ internal fun NavGraphBuilder.addBalanceGraph(
             container = container,
         )
         val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+        val supplementalToken by entry.savedStateHandle
+            .getStateFlow(SupplementalEntrySavedTokenKey, 0L)
+            .collectAsStateWithLifecycle()
+        LaunchedEffect(supplementalToken) {
+            if (supplementalToken != 0L) {
+                viewModel.refreshLedgerBalanceAfterSupplementalEntry()
+                entry.savedStateHandle.remove<Long>(SupplementalEntrySavedTokenKey)
+            }
+        }
         UpdateBalanceScreen(
             viewModel = viewModel,
             settings = settingsState.portableSettings,

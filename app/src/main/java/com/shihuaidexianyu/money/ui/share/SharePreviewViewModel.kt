@@ -49,6 +49,7 @@ data class SharePreviewUiState(
     val isUncertain: Boolean = true,
     val candidateAmounts: List<Long> = emptyList(),
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val isSaving: Boolean = false,
     val fieldError: String? = null,
 )
@@ -79,6 +80,15 @@ class SharePreviewViewModel(
 
     init {
         persist(_uiState.value)
+        loadAccounts()
+    }
+
+    fun retryLoad() {
+        loadAccounts()
+    }
+
+    private fun loadAccounts() {
+        updateState { copy(isLoading = true, loadErrorMessage = null) }
         viewModelScope.launch {
             runCatching { accountLoader.loadOpenAccounts() }
                 .onSuccess { accounts ->
@@ -90,10 +100,19 @@ class SharePreviewViewModel(
                             accounts = accounts,
                             selectedAccountId = selected,
                             isLoading = false,
+                            loadErrorMessage = null,
                         )
                     }
                 }
-                .onFailure { updateState { copy(isLoading = false, fieldError = "无法读取开放账户") } }
+                .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    updateState {
+                        copy(
+                            isLoading = false,
+                            loadErrorMessage = "无法读取开放账户",
+                        )
+                    }
+                }
         }
     }
 

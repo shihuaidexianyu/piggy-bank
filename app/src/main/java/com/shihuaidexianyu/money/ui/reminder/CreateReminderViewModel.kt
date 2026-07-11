@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class CreateReminderUiState(
+    val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val name: String = "",
     val type: ReminderType = ReminderType.MANUAL,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -76,12 +78,39 @@ class CreateReminderViewModel(
     val effectFlow = effects.asSharedFlow()
 
     init {
+        loadDependencies()
+    }
+
+    fun retryLoad() {
+        loadDependencies()
+    }
+
+    private fun loadDependencies() {
+        setState(_uiState.value.copy(isLoading = true, loadErrorMessage = null))
         viewModelScope.launch {
-            val accounts = accountRepository.queryOpenAccounts()
-            val selected = _uiState.value.selectedAccountId
-                ?.takeIf { id -> accounts.any { it.id == id } }
-                ?: accounts.firstOrNull()?.id
-            setState(_uiState.value.copy(accounts = accounts.toAccountOptionUiModels(), selectedAccountId = selected))
+            try {
+                val accounts = accountRepository.queryOpenAccounts()
+                val selected = _uiState.value.selectedAccountId
+                    ?.takeIf { id -> accounts.any { it.id == id } }
+                    ?: accounts.firstOrNull()?.id
+                setState(
+                    _uiState.value.copy(
+                        accounts = accounts.toAccountOptionUiModels(),
+                        selectedAccountId = selected,
+                        isLoading = false,
+                        loadErrorMessage = null,
+                    ),
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                setState(
+                    _uiState.value.copy(
+                        isLoading = false,
+                        loadErrorMessage = "开放账户加载失败，请重试",
+                    ),
+                )
+            }
         }
     }
 

@@ -86,6 +86,19 @@ class LedgerDeleteRestoreUseCaseTest {
     }
 
     @Test
+    fun `manual adjustment delete rejects stale expected timestamp`() = runBlocking {
+        val fixture = Fixture(now = 100)
+        val accountId = fixture.createAccount("现金")
+        val recordId = fixture.transactions.insertBalanceAdjustmentRecord(adjustment(accountId)).recordId
+
+        assertFailsWith<LedgerRecordChangedException> {
+            fixture.deleteAdjustment(recordId, expectedUpdatedAt = 999)
+        }
+        assertNotNull(fixture.transactions.getBalanceAdjustmentRecordById(recordId))
+        Unit
+    }
+
+    @Test
     fun allFourDeletesReturnTokensAndRestoresPreservePayloadAndDerivedViews() = runBlocking {
         val fixture = Fixture(now = 100)
         val sourceId = fixture.createAccount("来源")
@@ -278,7 +291,8 @@ class LedgerDeleteRestoreUseCaseTest {
         suspend fun deleteCash(recordId: Long) = deleteCash.invoke(recordId)
         suspend fun deleteTransfer(recordId: Long) = deleteTransfer.invoke(recordId)
         suspend fun deleteBalanceUpdate(recordId: Long) = deleteUpdate.invoke(recordId)
-        suspend fun deleteAdjustment(recordId: Long) = deleteAdjustment.invoke(recordId)
+        suspend fun deleteAdjustment(recordId: Long, expectedUpdatedAt: Long? = null) =
+            deleteAdjustment.invoke(recordId, expectedUpdatedAt)
         suspend fun restore(token: LedgerUndoToken) = restore.invoke(token)
         suspend fun balance(accountId: Long) = calculateBalance(accountId, clock.now)
     }

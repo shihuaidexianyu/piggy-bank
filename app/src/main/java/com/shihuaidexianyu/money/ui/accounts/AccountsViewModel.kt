@@ -13,6 +13,10 @@ import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
+import com.shihuaidexianyu.money.ui.common.AsyncContent
+import com.shihuaidexianyu.money.ui.common.EmptyKind
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,12 +44,26 @@ data class SavingsGoalUiModel(
 
 data class AccountsUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val hasCommittedContent: Boolean = false,
+    val errorMessage: String? = null,
+    val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val showClosed: Boolean = false,
     val openAccounts: List<AccountListItemUiModel> = emptyList(),
     val closedAccounts: List<AccountListItemUiModel> = emptyList(),
     val savingsGoal: SavingsGoalUiModel? = null,
 )
+
+internal fun AccountsUiState.toAsyncContent(): AsyncContent<AccountsUiState> {
+    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+    if (!hasCommittedContent) return AsyncContent.Loading
+    if (isRefreshing) return AsyncContent.Refreshing(this)
+    if (openAccounts.isEmpty() && closedAccounts.isEmpty()) {
+        return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
+    }
+    return AsyncContent.Data(this)
+}
 
 private data class AccountsSnapshot(
     val settings: PortableSettings,
@@ -65,9 +83,29 @@ class AccountsViewModel(
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
     private val showClosedFlow = MutableStateFlow(false)
+    private var observationJob: Job? = null
+    private var retryGeneration = 0
 
     init {
-        viewModelScope.launch {
+        observeAccounts()
+    }
+
+    fun retry() {
+        observeAccounts()
+    }
+
+    private fun observeAccounts() {
+        observationJob?.cancel()
+        val hasCommittedContent = _uiState.value.hasCommittedContent
+        _uiState.update {
+            it.copy(
+                isLoading = !hasCommittedContent,
+                isRefreshing = hasCommittedContent,
+                errorMessage = null,
+                retryToken = null,
+            )
+        }
+        observationJob = viewModelScope.launch {
             try {
                 val snapshotFlow = combine(
                     accountRepository.observeOpenAccounts(),
@@ -90,6 +128,7 @@ class AccountsViewModel(
                 }.combine(showClosedFlow) { snapshot, showClosed ->
                     AccountsUiState(
                         isLoading = false,
+                        hasCommittedContent = true,
                         settings = snapshot.settings,
                         showClosed = showClosed,
                         openAccounts = snapshot.openAccounts,
@@ -99,8 +138,18 @@ class AccountsViewModel(
                 }.collect { state ->
                     _uiState.value = state
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                retryGeneration += 1
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        errorMessage = "账户加载失败，请重试",
+                        retryToken = "accounts:$retryGeneration",
+                    )
+                }
             }
         }
     }

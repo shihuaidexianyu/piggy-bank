@@ -222,7 +222,7 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
         }
         cashFlowRecords[index] = record.copy(
             id = existing.id,
-            note = record.note.trim(),
+            note = record.note,
             createdAt = existing.createdAt,
             operationId = existing.operationId,
             deletedAt = null,
@@ -347,7 +347,7 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
         }
         transferRecords[index] = record.copy(
             id = existing.id,
-            note = record.note.trim(),
+            note = record.note,
             createdAt = existing.createdAt,
             operationId = existing.operationId,
             deletedAt = null,

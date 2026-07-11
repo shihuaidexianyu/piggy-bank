@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
@@ -140,9 +141,58 @@ class EditAccountViewModelTest {
         assertTrue(accountRepo.getAccountById(accountId)?.isClosed == false)
     }
 
+    @Test
+    fun `load exception is retryable and is not reported as a missing account`() = runTest(dispatcher) {
+        val delegate = InMemoryAccountRepository()
+        val accountId = delegate.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        var available = false
+        val flaky = object : AccountRepository by delegate {
+            override suspend fun getAccountById(id: Long): Account? {
+                if (!available) error("database unavailable")
+                return delegate.getAccountById(id)
+            }
+        }
+        val vm = buildViewModel(accountId = accountId, accountRepo = flaky)
+        advanceUntilIdle()
+
+        assertEquals("账户加载失败，请重试", vm.uiState.value.loadErrorMessage)
+        available = true
+        vm.retryLoad()
+        advanceUntilIdle()
+
+        assertEquals(null, vm.uiState.value.loadErrorMessage)
+        assertEquals("现金", vm.uiState.value.name)
+    }
+
+    @Test
+    fun `save failure plus lookup failure resets saving instead of escaping`() = runTest(dispatcher) {
+        val delegate = InMemoryAccountRepository()
+        val accountId = delegate.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        var fail = false
+        val flaky = object : AccountRepository by delegate {
+            override suspend fun getAccountById(id: Long): Account? {
+                if (fail) error("lookup unavailable")
+                return delegate.getAccountById(id)
+            }
+
+            override suspend fun updateAccount(account: Account) {
+                if (fail) error("write unavailable")
+                delegate.updateAccount(account)
+            }
+        }
+        val vm = buildViewModel(accountId = accountId, accountRepo = flaky)
+        advanceUntilIdle()
+        fail = true
+
+        vm.save()
+        advanceUntilIdle()
+
+        assertTrue(!vm.uiState.value.isSaving)
+    }
+
     private fun buildViewModel(
         accountId: Long,
-        accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
+        accountRepo: AccountRepository = InMemoryAccountRepository(),
     ): EditAccountViewModel {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
         val reminderRepo = InMemoryRecurringReminderRepository()

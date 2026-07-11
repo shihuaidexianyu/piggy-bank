@@ -14,9 +14,15 @@ class DeleteCashFlowRecordUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
 ) {
-    suspend operator fun invoke(recordId: Long): LedgerUndoToken? = transactionRepository.runInTransaction {
+    suspend operator fun invoke(
+        recordId: Long,
+        expectedUpdatedAt: Long? = null,
+    ): LedgerUndoToken? = transactionRepository.runInTransaction {
         val existing = transactionRepository.queryStoredCashFlowRecordById(recordId) ?: return@runInTransaction null
         if (existing.deletedAt != null) return@runInTransaction null
+        if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
+            throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
+        }
         val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
         account.requireOpenForMutation("删除收支记录")
         val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)

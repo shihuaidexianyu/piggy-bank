@@ -157,6 +157,35 @@ class SharePreviewViewModelTest {
         assertEquals("real-operation", transactionRepository.queryAllCashFlowRecords().single().operationId)
     }
 
+    @Test
+    fun `account load failure is retryable and keeps the edited draft`() = runTest(dispatcher) {
+        var loads = 0
+        val savedState = SavedStateHandle()
+        val viewModel = SharePreviewViewModel(
+            originalText = "支付 ¥12.00",
+            savedStateHandle = savedState,
+            accountLoader = SharePreviewAccountLoader {
+                loads += 1
+                if (loads == 1) error("database unavailable")
+                listOf(AccountOptionUiModel(id = 7L, name = "现金"))
+            },
+            submitter = SharePreviewSubmitter {},
+            operationIdFactory = LedgerOperationIdFactory { "fixed-operation" },
+            clockProvider = ClockProvider { 1_700_000_000_000L },
+        )
+        runCurrent()
+        viewModel.updateAmount("88.00")
+
+        assertEquals("无法读取开放账户", viewModel.uiState.value.loadErrorMessage)
+        assertTrue(viewModel.uiState.value.accounts.isEmpty())
+        viewModel.retryLoad()
+        runCurrent()
+
+        assertEquals("88.00", viewModel.uiState.value.amountText)
+        assertEquals(7L, viewModel.uiState.value.selectedAccountId)
+        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+    }
+
     private fun viewModel(
         savedStateHandle: SavedStateHandle,
         originalText: String = "微信支付支出 ￥１，２３４．５６ 元",

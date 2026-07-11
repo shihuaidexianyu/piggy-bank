@@ -7,6 +7,8 @@ import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
@@ -14,6 +16,7 @@ import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCa
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceEffect
 import com.shihuaidexianyu.money.ui.balance.UpdateBalanceViewModel
+import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -48,32 +51,25 @@ class UpdateBalanceViewModelTest {
     }
 
     @Test
-    fun `save with no account emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with no account shows account field error`() = runTest(dispatcher) {
         val vm = buildViewModel(accountRepo = InMemoryAccountRepository())
         advanceUntilIdle()
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is UpdateBalanceEffect.ShowMessage)
-            assertEquals("请选择账户", effect.message)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("请选择账户", vm.uiState.value.accountError)
     }
 
     @Test
-    fun `save with blank actual balance emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with blank actual balance shows amount field error`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         accountRepo.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1L))
         val vm = buildViewModel(accountRepo = accountRepo)
         advanceUntilIdle()
 
         vm.updateActualBalance("")
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is UpdateBalanceEffect.ShowMessage)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("金额不能为空", vm.uiState.value.actualBalanceError)
     }
 
     @Test
@@ -84,12 +80,9 @@ class UpdateBalanceViewModelTest {
         val vm = buildViewModel(accountRepo, txnRepo)
         advanceUntilIdle()
 
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val effect = awaitItem()
-            assertEquals(UpdateBalanceEffect.Saved, effect)
-        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(FormTerminalKind.SAVED, vm.uiState.value.pendingTerminal?.kind)
         val updates = txnRepo.queryAllBalanceUpdateRecords()
         assertEquals(1, updates.size)
         assertEquals(0L, updates[0].delta)
@@ -113,6 +106,35 @@ class UpdateBalanceViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf(visibleId, hiddenId), viewModel.uiState.value.accounts.map { it.id })
+    }
+
+    @Test
+    fun `returning from supplemental entry re-reads book balance and retains actual draft`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1))
+        val viewModel = buildViewModel(accounts, transactions)
+        advanceUntilIdle()
+        viewModel.updateActualBalance("200.00")
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100,
+                note = "补记",
+                occurredAt = 60_000,
+                createdAt = 60_000,
+                updatedAt = 60_000,
+                operationId = testOperationId(),
+            ),
+        )
+
+        viewModel.refreshLedgerBalanceAfterSupplementalEntry()
+        advanceUntilIdle()
+
+        assertEquals(10_100, viewModel.uiState.value.systemBalanceBeforeUpdate)
+        assertEquals("200.00", viewModel.uiState.value.actualBalanceText)
+        assertEquals(9_900, viewModel.uiState.value.deltaPreview)
     }
 
     private fun buildViewModel(

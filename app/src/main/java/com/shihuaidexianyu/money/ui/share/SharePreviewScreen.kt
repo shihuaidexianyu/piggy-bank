@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.SnackbarHostState
@@ -18,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -102,7 +105,23 @@ fun SharePreviewScreen(
                 }
             }
         }
-        item {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(
+                        value = state,
+                        isLoading = state.isLoading,
+                        errorMessage = state.loadErrorMessage,
+                        retryToken = "share-accounts",
+                    ),
+                    onRetry = viewModel::retryLoad,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+        } else item {
             MoneyCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -120,7 +139,7 @@ fun SharePreviewScreen(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
                 )
-                if (state.accounts.isEmpty() && !state.isLoading) {
+                if (state.accounts.isEmpty()) {
                     Text("没有可记账的开放账户")
                     Button(onClick = onCreateAccount) { Text("创建账户") }
                 } else {

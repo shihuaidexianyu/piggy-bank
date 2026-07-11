@@ -159,7 +159,9 @@ class NotificationMutationRequestTest {
                 closeBalance.insertResult.recordId,
             ),
         )
-        RestoreLedgerRecordUseCase(accounts, transactions, refresh, clock, requester)(undo)
+        val restore = RestoreLedgerRecordUseCase(accounts, transactions, refresh, clock, requester)
+        restore(undo)
+        restore(undo)
         CloseAccountUseCase(
             accounts,
             reminders,
@@ -174,6 +176,7 @@ class NotificationMutationRequestTest {
         assertEquals(
             listOf(
                 NotificationSyncReason.REMINDER_PROCESSED,
+                NotificationSyncReason.BALANCE_RECONCILED,
                 NotificationSyncReason.BALANCE_RECONCILED,
                 NotificationSyncReason.BALANCE_RECONCILED,
                 NotificationSyncReason.BALANCE_RECONCILED,

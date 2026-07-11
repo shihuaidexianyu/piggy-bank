@@ -363,6 +363,8 @@ fun MoneySelectionField(
     value: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    isError: Boolean = false,
+    supportingText: String? = null,
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
@@ -370,7 +372,11 @@ fun MoneySelectionField(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f),
+                color = if (isError) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)
+                },
                 shape = shape,
             ),
         color = MaterialTheme.colorScheme.surface,
@@ -402,6 +408,13 @@ fun MoneySelectionField(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                supportingText?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }

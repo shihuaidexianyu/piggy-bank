@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 
 data class SavingsGoalUiState(
     val isLoading: Boolean = true,
+    val loadErrorMessage: String? = null,
     val hasGoal: Boolean = false,
     val amountText: String = "",
     val isSaving: Boolean = false,
@@ -31,7 +32,7 @@ sealed interface SavingsGoalEffect : UiEffect {
 }
 
 class SavingsGoalViewModel(
-    savingsGoalRepository: SavingsGoalRepository,
+    private val savingsGoalRepository: SavingsGoalRepository,
     private val upsertSavingsGoalUseCase: UpsertSavingsGoalUseCase,
     private val clearSavingsGoalUseCase: ClearSavingsGoalUseCase,
 ) : ViewModel() {
@@ -40,15 +41,38 @@ class SavingsGoalViewModel(
 
     private val _effectFlow = MutableSharedFlow<SavingsGoalEffect>(extraBufferCapacity = 1)
     val effectFlow: SharedFlow<SavingsGoalEffect> = _effectFlow.asSharedFlow()
+    private var observationJob: kotlinx.coroutines.Job? = null
 
     init {
-        viewModelScope.launch {
-            savingsGoalRepository.observe().collect { goal ->
+        observeGoal()
+    }
+
+    fun retryLoad() {
+        observeGoal()
+    }
+
+    private fun observeGoal() {
+        observationJob?.cancel()
+        _uiState.update { it.copy(isLoading = true, loadErrorMessage = null) }
+        observationJob = viewModelScope.launch {
+            try {
+                savingsGoalRepository.observe().collect { goal ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            loadErrorMessage = null,
+                            hasGoal = goal != null,
+                            amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
+                        )
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        hasGoal = goal != null,
-                        amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
+                        loadErrorMessage = "储蓄目标加载失败，请重试",
                     )
                 }
             }

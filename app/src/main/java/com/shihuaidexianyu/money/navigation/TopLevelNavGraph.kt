@@ -41,19 +41,22 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         HomeScreen(
-            state = state,
-            snackbarMessage = batchReconcileMessage,
-            onSnackbarMessageShown = {
-                entry?.savedStateHandle?.remove<String>("batch_reconcile_message")
-            },
-            onStartCashFlow = { direction, accountId ->
-                navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId))
-            },
-            onStartTransfer = { navController.navigate(MoneyDestination.recordTransferRoute()) },
-            onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
-            onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
-            modifier = Modifier,
-        )
+                state = state,
+                snackbarMessage = batchReconcileMessage,
+                onSnackbarMessageShown = {
+                    entry?.savedStateHandle?.remove<String>("batch_reconcile_message")
+                },
+                onStartCashFlow = { direction ->
+                    navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId = 0L))
+                },
+                onStartTransfer = { navController.navigate(MoneyDestination.recordTransferRoute()) },
+                onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
+                onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
+                onOpenSettings = { navController.navigate(MoneyDestination.Settings.route) },
+                onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
+                onRetry = viewModel::retry,
+                modifier = Modifier,
+            )
     }
 
     composable(MoneyDestination.History.route) {
@@ -69,24 +72,26 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         HistoryScreen(
-            state = state,
-            onKeywordChange = viewModel::updateKeyword,
-            onExcludeKeywordChange = viewModel::updateExcludeKeyword,
-            onAccountChange = viewModel::updateAccount,
-            onDateRangeChange = viewModel::updateDateRange,
-            onMinAmountChange = viewModel::updateMinAmount,
-            onMaxAmountChange = viewModel::updateMaxAmount,
-            onAmountDirectionChange = viewModel::updateAmountDirectionFilter,
-            onLoadMore = viewModel::loadMore,
-            onRecordClick = { record ->
-                when (record.kind) {
-                    HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
-                    HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
-                    HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
-                    HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
-                }
-            },
-        )
+                state = state,
+                onKeywordChange = viewModel::updateKeyword,
+                onExcludeKeywordChange = viewModel::updateExcludeKeyword,
+                onAccountChange = viewModel::updateAccount,
+                onDateRangeChange = viewModel::updateDateRange,
+                onMinAmountChange = viewModel::updateMinAmount,
+                onMaxAmountChange = viewModel::updateMaxAmount,
+                onAmountDirectionChange = viewModel::updateAmountDirectionFilter,
+                onLoadMore = viewModel::loadMore,
+                onRetryLoadMore = viewModel::loadMore,
+                onRetry = viewModel::retry,
+                onRecordClick = { record ->
+                    when (record.kind) {
+                        HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
+                        HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                    }
+                },
+            )
     }
 
     composable(MoneyDestination.Stats.route) {
@@ -100,12 +105,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         StatsScreen(
-            state = state,
-            onPeriodChange = viewModel::updatePeriod,
-            onPreviousRange = viewModel::moveToPreviousRange,
-            onNextRange = viewModel::moveToNextRange,
-            onResetRange = viewModel::resetToCurrentRange,
-        )
+                state = state,
+                onPeriodChange = viewModel::updatePeriod,
+                onPreviousRange = viewModel::moveToPreviousRange,
+                onNextRange = viewModel::moveToNextRange,
+                onResetRange = viewModel::resetToCurrentRange,
+                onRetry = viewModel::retry,
+            )
     }
 
     composable(MoneyDestination.Accounts.route) {
@@ -123,11 +129,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         AccountsScreen(
-            state = state,
-            onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
-            onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
-            onToggleClosedVisibility = viewModel::toggleClosedVisibility,
-        )
+                state = state,
+                onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
+                onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
+                onToggleClosedVisibility = viewModel::toggleClosedVisibility,
+                onRetry = viewModel::retry,
+            )
     }
 
     composable(MoneyDestination.Settings.route) {

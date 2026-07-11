@@ -5,6 +5,7 @@ import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import java.io.Serializable
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
@@ -16,7 +17,7 @@ data class UpdateBalanceResult(
     val systemBalanceBeforeUpdate: Long,
     val actualBalance: Long,
     val delta: Long,
-)
+) : Serializable
 
 class UpdateBalanceUseCase(
     private val accountRepository: AccountRepository,

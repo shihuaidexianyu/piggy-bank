@@ -60,6 +60,22 @@ class ReminderSkipUndoUseCaseTest {
     }
 
     @Test
+    fun `replayed undo after crash is already restored`() = runBlocking {
+        val fixture = Fixture()
+        val token = fixture.skip(fixture.reminder().nextDueAt)
+        assertEquals(UndoReminderSkipResult.RESTORED, fixture.undo(token))
+        assertEquals(UndoReminderSkipResult.ALREADY_RESTORED, fixture.undo(token))
+        assertEquals(
+            listOf(
+                NotificationSyncReason.REMINDER_SKIPPED,
+                NotificationSyncReason.REMINDER_UNDO,
+                NotificationSyncReason.REMINDER_UNDO,
+            ),
+            fixture.requester.reasons,
+        )
+    }
+
+    @Test
     fun `process and skip racing same occurrence have one winner`() = runBlocking {
         val fixture = Fixture()
         val dueAt = fixture.reminder().nextDueAt

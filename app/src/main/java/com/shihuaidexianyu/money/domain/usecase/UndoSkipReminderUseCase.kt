@@ -14,8 +14,13 @@ class UndoSkipReminderUseCase(
     private val notificationSyncRequester: NotificationSyncRequester,
 ) {
     suspend operator fun invoke(token: ReminderSkipUndoToken): UndoReminderSkipResult {
-        if (reminderRepository.getReminderById(token.reminderId) == null) {
+        val before = reminderRepository.getReminderById(token.reminderId)
+        if (before == null) {
             return UndoReminderSkipResult.NOT_FOUND
+        }
+        if (before.isEnabled && before.nextDueAt == token.skippedDueAt && before.updatedAt != token.skippedUpdatedAt) {
+            runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_UNDO) }
+            return UndoReminderSkipResult.ALREADY_RESTORED
         }
         val restored = reminderRepository.undoSkippedOccurrence(
             reminderId = token.reminderId,
@@ -24,7 +29,16 @@ class UndoSkipReminderUseCase(
             skippedUpdatedAt = token.skippedUpdatedAt,
             restoredUpdatedAt = nextMutationTimestamp(clockProvider.nowMillis(), token.skippedUpdatedAt),
         )
-        if (!restored) return UndoReminderSkipResult.STALE
+        if (!restored) {
+            val after = reminderRepository.getReminderById(token.reminderId)
+            if (after != null && after.isEnabled && after.nextDueAt == token.skippedDueAt &&
+                after.updatedAt != token.skippedUpdatedAt
+            ) {
+                runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_UNDO) }
+                return UndoReminderSkipResult.ALREADY_RESTORED
+            }
+            return UndoReminderSkipResult.STALE
+        }
         runCatching { notificationSyncRequester.request(NotificationSyncReason.REMINDER_UNDO) }
         return UndoReminderSkipResult.RESTORED
     }

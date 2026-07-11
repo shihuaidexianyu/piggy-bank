@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecordKind
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecentRecord
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
+import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -45,16 +48,28 @@ fun AccountDetailScreen(
     onManageAccount: () -> Unit,
     onStartUpdateBalance: () -> Unit,
     onBackToAccounts: () -> Unit,
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     MoneyFormPage(
         title = state.name.ifEmpty { "账户详情" },
-        trailing = if (state.isMissing) null else {
+        trailing = if (state.isMissing || state.isLoading || state.loadErrorMessage != null) null else {
             { TextButton(onClick = onManageAccount) { Text("管理") } }
         },
         onBack = onBackToAccounts,
         modifier = modifier,
     ) {
+        if (state.isLoading || state.loadErrorMessage != null) {
+            item {
+                AsyncContentRenderer(
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "account-detail"),
+                    onRetry = onRetry,
+                    modifier = Modifier.heightIn(min = 240.dp),
+                    data = { _, _ -> },
+                )
+            }
+            return@MoneyFormPage
+        }
         if (state.isMissing) {
             item {
                 MoneyEmptyStateCard(
