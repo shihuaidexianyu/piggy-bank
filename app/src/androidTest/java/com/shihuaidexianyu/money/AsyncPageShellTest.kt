@@ -27,8 +27,6 @@ class AsyncPageShellTest {
                         isLoading = false,
                         hasCommittedContent = true,
                     ),
-                    onStartCashFlow = {},
-                    onStartTransfer = {},
                     onStartUpdateBalance = {},
                     onAllRemindersClick = {},
                     onOpenSettings = {},
@@ -57,11 +55,13 @@ class AsyncPageShellTest {
                     ),
                     onKeywordChange = {},
                     onExcludeKeywordChange = {},
+                    onRecordTypesChange = {},
                     onAccountChange = {},
                     onDateRangeChange = { _, _ -> },
                     onMinAmountChange = {},
                     onMaxAmountChange = {},
                     onAmountDirectionChange = {},
+                    onClearAllFilters = {},
                     onLoadMore = {},
                     onRecordClick = {},
                 )
@@ -71,5 +71,40 @@ class AsyncPageShellTest {
         composeRule.onNodeWithText("历史").assertIsDisplayed()
         composeRule.onNodeWithText("午餐").assertIsDisplayed()
         composeRule.onNodeWithText("没有符合筛选条件的记录").assertIsDisplayed()
+        composeRule.onNodeWithText("排除关键词").assertDoesNotExist()
+        composeRule.onNodeWithText("筛选 1").performClick()
+        composeRule.onNodeWithText("排除关键词").assertIsDisplayed()
+        composeRule.onNodeWithText("类型").assertIsDisplayed()
+    }
+
+    @Test
+    fun invalidHistoryAmountIsShownAsAFieldErrorInAdvancedFilters() {
+        composeRule.setContent {
+            MoneyTheme {
+                HistoryScreen(
+                    state = HistoryUiState(
+                        isLoading = false,
+                        hasCommittedContent = true,
+                        minAmountText = "999999999999999999999999",
+                        minAmountError = "请输入有效金额",
+                    ),
+                    onKeywordChange = {},
+                    onExcludeKeywordChange = {},
+                    onRecordTypesChange = {},
+                    onAccountChange = {},
+                    onDateRangeChange = { _, _ -> },
+                    onMinAmountChange = {},
+                    onMaxAmountChange = {},
+                    onAmountDirectionChange = {},
+                    onClearAllFilters = {},
+                    onLoadMore = {},
+                    onRecordClick = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("筛选 1").performClick()
+        composeRule.onNodeWithText("金额").performClick()
+        composeRule.onNodeWithText("请输入有效金额").assertIsDisplayed()
     }
 }

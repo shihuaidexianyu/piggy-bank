@@ -109,6 +109,20 @@ class UpdateBalanceViewModelTest {
     }
 
     @Test
+    fun `explicitly closed account is normalized to an open fallback`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val openId = accountRepo.createAccount(Account(name = "开放", initialBalance = 10L, createdAt = 1L))
+        val closedId = accountRepo.createAccount(Account(name = "关闭", initialBalance = 0L, createdAt = 1L))
+        accountRepo.closeAccount(closedId, 2L)
+
+        val viewModel = buildViewModel(accountRepo = accountRepo, initialAccountId = closedId)
+        advanceUntilIdle()
+
+        assertEquals(openId, viewModel.uiState.value.selectedAccountId)
+        assertTrue(viewModel.uiState.value.accounts.none { it.id == closedId })
+    }
+
+    @Test
     fun `returning from supplemental entry re-reads book balance and retains actual draft`() = runTest(dispatcher) {
         val accounts = InMemoryAccountRepository()
         val transactions = InMemoryTransactionRepository()
@@ -140,6 +154,7 @@ class UpdateBalanceViewModelTest {
     private fun buildViewModel(
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
+        initialAccountId: Long? = null,
     ): UpdateBalanceViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateCurrentBalanceUseCase(accountRepo, txnRepo)
@@ -152,7 +167,7 @@ class UpdateBalanceViewModelTest {
             testClockProvider,
         )
         return UpdateBalanceViewModel(
-            initialAccountId = null,
+            initialAccountId = initialAccountId,
             accountRepository = accountRepo,
             calculateCurrentBalanceUseCase = calculateUseCase,
             updateBalanceUseCase = updateBalanceUseCase,

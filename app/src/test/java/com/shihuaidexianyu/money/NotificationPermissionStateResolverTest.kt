@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.ui.reminder.resolveNotificationPermissionState
 import com.shihuaidexianyu.money.ui.reminder.handleNotificationPermissionResult
 import com.shihuaidexianyu.money.ui.reminder.handleNotificationPermissionRequestOutcome
 import com.shihuaidexianyu.money.ui.reminder.NotificationPermissionRequestOutcome
+import com.shihuaidexianyu.money.ui.reminder.notificationSettingsSyncObservation
 import com.shihuaidexianyu.money.ui.reminder.shouldLaunchRuntimeNotificationPermission
 import com.shihuaidexianyu.money.ui.reminder.shouldSyncAfterNotificationSettingsReturn
 import com.shihuaidexianyu.money.ui.reminder.shouldFinishPendingPermissionNavigation
@@ -19,6 +20,33 @@ import kotlin.test.assertEquals
 import org.junit.Test
 
 class NotificationPermissionStateResolverTest {
+    @Test
+    fun `enabling secondary balance channel changes sync observation while primary channel remains off`() {
+        val bothOff = NotificationPermissionFacts(
+            apiLevel = 36,
+            runtimePermissionGranted = true,
+            permissionRequested = true,
+            shouldShowRationale = false,
+            appNotificationsEnabled = true,
+            recurringChannelEnabled = false,
+            balanceChannelEnabled = false,
+        )
+        val balanceEnabled = bothOff.copy(balanceChannelEnabled = true)
+
+        assertEquals(resolveNotificationPermissionState(bothOff), resolveNotificationPermissionState(balanceEnabled))
+        kotlin.test.assertNotEquals(
+            notificationSettingsSyncObservation(bothOff),
+            notificationSettingsSyncObservation(balanceEnabled),
+        )
+        assertEquals(
+            true,
+            shouldSyncAfterNotificationSettingsReturn(
+                previousTarget = NotificationSettingsTarget.BALANCE_CHANNEL,
+                currentState = resolveNotificationPermissionState(balanceEnabled),
+            ),
+        )
+    }
+
     @Test
     fun `api 33 first contextual request is distinguished from retry and permanent denial`() {
         val base = NotificationPermissionFacts(

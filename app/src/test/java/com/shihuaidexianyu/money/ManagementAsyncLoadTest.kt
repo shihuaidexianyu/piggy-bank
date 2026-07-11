@@ -111,7 +111,7 @@ class ManagementAsyncLoadTest {
             ClearSavingsGoalUseCase(repository),
         )
         advanceUntilIdle()
-        assertEquals("储蓄目标加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals("净资产目标加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
         assertFalse(viewModel.uiState.value.hasGoal)
 
         repository.available = true

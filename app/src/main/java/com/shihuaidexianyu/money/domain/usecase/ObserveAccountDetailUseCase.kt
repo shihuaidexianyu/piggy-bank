@@ -23,6 +23,7 @@ data class AccountDetailSnapshot(
     val settings: PortableSettings,
     val reminderConfig: BalanceUpdateReminderConfig,
     val currentBalance: Long,
+    val openAccountCount: Int,
     val isStale: Boolean,
     val monthInflow: Long = 0L,
     val monthOutflow: Long = 0L,
@@ -61,6 +62,7 @@ class ObserveAccountDetailUseCase(
         }.mapLatest { (accounts, reminderConfigs, settings) ->
             buildSnapshot(
                 account = accounts.firstOrNull { it.id == accountId },
+                openAccountCount = accounts.count { !it.isClosed },
                 settings = settings,
                 reminderConfigs = reminderConfigs,
             )
@@ -69,6 +71,7 @@ class ObserveAccountDetailUseCase(
 
     private suspend fun buildSnapshot(
         account: Account?,
+        openAccountCount: Int,
         settings: PortableSettings,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
     ): AccountDetailSnapshot {
@@ -78,6 +81,7 @@ class ObserveAccountDetailUseCase(
                 settings = settings,
                 reminderConfig = BalanceUpdateReminderConfig(),
                 currentBalance = 0L,
+                openAccountCount = openAccountCount,
                 isStale = false,
             )
         }
@@ -106,6 +110,7 @@ class ObserveAccountDetailUseCase(
             settings = settings,
             reminderConfig = reminderConfig,
             currentBalance = calculateCurrentBalanceUseCase(account.id, snapshotTimeMillis),
+            openAccountCount = openAccountCount,
             isStale = AccountStatusCalculator.isStale(
                 account = account,
                 reminderConfig = reminderConfig,

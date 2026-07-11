@@ -62,6 +62,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.TimeRangeUtils
 import java.time.LocalDate
@@ -69,6 +70,7 @@ import java.time.ZoneId
 
 private enum class HistoryFilterSheet {
     OVERVIEW,
+    TYPE,
     ACCOUNT,
     DATE,
     AMOUNT,
@@ -88,11 +90,13 @@ fun HistoryScreen(
     state: HistoryUiState,
     onKeywordChange: (String) -> Unit,
     onExcludeKeywordChange: (String) -> Unit,
+    onRecordTypesChange: (Set<HistoryRecordType>) -> Unit,
     onAccountChange: (Long?) -> Unit,
     onDateRangeChange: (Long?, Long?) -> Unit,
     onMinAmountChange: (String) -> Unit,
     onMaxAmountChange: (String) -> Unit,
     onAmountDirectionChange: (AmountDirectionFilter) -> Unit,
+    onClearAllFilters: () -> Unit,
     onLoadMore: () -> Unit,
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
@@ -177,6 +181,7 @@ fun HistoryScreen(
         HistoryFilterSheetContent(
             title = when (current) {
                 HistoryFilterSheet.OVERVIEW -> "筛选"
+                HistoryFilterSheet.TYPE -> "类型"
                 HistoryFilterSheet.DATE -> "日期"
                 HistoryFilterSheet.AMOUNT -> "金额"
                 HistoryFilterSheet.DIRECTION -> "方向"
@@ -186,7 +191,18 @@ fun HistoryScreen(
         ) {
             when (current) {
                 HistoryFilterSheet.OVERVIEW -> {
+                    MoneySingleLineField(
+                        value = state.excludeKeyword,
+                        onValueChange = onExcludeKeywordChange,
+                        label = "排除关键词",
+                    )
                     MoneyCard(contentPadding = PaddingValues(0.dp)) {
+                        MoneyListRow(
+                            title = "类型",
+                            trailing = typeSheetSummary(state),
+                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.TYPE },
+                        )
+                        MoneySectionDivider()
                         MoneyListRow(
                             title = "账户",
                             trailing = accountSheetSummary(state),
@@ -210,6 +226,33 @@ fun HistoryScreen(
                             trailing = directionChipLabel(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.DIRECTION },
                         )
+                    }
+                }
+                HistoryFilterSheet.TYPE -> {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        HistoryRecordType.entries.forEach { option ->
+                            FilterChip(
+                                selected = option in state.selectedRecordTypes,
+                                onClick = {
+                                    onRecordTypesChange(
+                                        if (option in state.selectedRecordTypes) {
+                                            state.selectedRecordTypes - option
+                                        } else {
+                                            state.selectedRecordTypes + option
+                                        },
+                                    )
+                                },
+                                label = { Text(historyTypeLabel(option)) },
+                            )
+                        }
+                    }
+                    if (state.selectedRecordTypes.isNotEmpty()) {
+                        OutlinedButton(onClick = { onRecordTypesChange(emptySet()) }) {
+                            Text("显示全部类型")
+                        }
                     }
                 }
                 HistoryFilterSheet.DATE -> {
@@ -263,12 +306,16 @@ fun HistoryScreen(
                         onValueChange = onMinAmountChange,
                         label = "最小金额",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = state.minAmountError != null,
+                        supportingText = state.minAmountError,
                     )
                     MoneySingleLineField(
                         value = state.maxAmountText,
                         onValueChange = onMaxAmountChange,
                         label = "最大金额",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = state.maxAmountError != null,
+                        supportingText = state.maxAmountError,
                     )
                 }
                 HistoryFilterSheet.DIRECTION -> {
@@ -304,11 +351,6 @@ fun HistoryScreen(
                     onValueChange = onKeywordChange,
                     placeholder = "包含关键词",
                 )
-                SearchField(
-                    value = state.excludeKeyword,
-                    onValueChange = onExcludeKeywordChange,
-                    placeholder = "排除关键词",
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -324,15 +366,7 @@ fun HistoryScreen(
                             text = "清除",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
-                                onAccountChange(null)
-                                onKeywordChange("")
-                                onExcludeKeywordChange("")
-                                onDateRangeChange(null, null)
-                                onMinAmountChange("")
-                                onMaxAmountChange("")
-                                onAmountDirectionChange(AmountDirectionFilter.ALL)
-                            },
+                            modifier = Modifier.clickable(onClick = onClearAllFilters),
                         )
                     }
                 }
@@ -573,6 +607,19 @@ private fun directionChipLabel(state: HistoryUiState): String {
     return if (state.amountDirectionFilter == AmountDirectionFilter.ALL) "方向" else state.amountDirectionFilter.displayName
 }
 
+private fun typeSheetSummary(state: HistoryUiState): String = when (state.selectedRecordTypes.size) {
+    0 -> "全部类型"
+    1 -> historyTypeLabel(state.selectedRecordTypes.single())
+    else -> "已选 ${state.selectedRecordTypes.size} 类"
+}
+
+private fun historyTypeLabel(type: HistoryRecordType): String = when (type) {
+    HistoryRecordType.CASH_FLOW -> "收支"
+    HistoryRecordType.TRANSFER -> "转账"
+    HistoryRecordType.BALANCE_UPDATE -> "余额核对"
+    HistoryRecordType.BALANCE_ADJUSTMENT -> "余额校正"
+}
+
 private fun filterChipLabel(state: HistoryUiState): String {
     val count = activeFilterCount(state)
     return if (count == 0) "筛选" else "筛选 $count"
@@ -586,7 +633,9 @@ private fun activeFilterCount(state: HistoryUiState): Int {
     return listOf(
         state.keyword.isNotBlank(),
         state.excludeKeyword.isNotBlank(),
+        state.selectedRecordTypes.isNotEmpty(),
         state.selectedAccountId != null,
+        state.transferFromAccountId != null || state.transferToAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
         state.amountDirectionFilter != AmountDirectionFilter.ALL,

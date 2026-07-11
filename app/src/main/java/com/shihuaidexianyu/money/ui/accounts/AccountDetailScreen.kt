@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -35,28 +38,39 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import kotlinx.coroutines.flow.SharedFlow
 
 @Composable
 fun AccountDetailScreen(
     state: AccountDetailUiState,
+    effectFlow: SharedFlow<AccountDetailEffect>,
     onManageAccount: () -> Unit,
+    onRecordIncome: () -> Unit,
+    onRecordExpense: () -> Unit,
+    onRecordTransfer: () -> Unit,
     onStartUpdateBalance: () -> Unit,
+    onReopenAccount: () -> Unit,
     onBackToAccounts: () -> Unit,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    CollectUiEffects(effectFlow, snackbarHostState) { }
     MoneyFormPage(
         title = state.name.ifEmpty { "账户详情" },
-        trailing = if (state.isMissing || state.isLoading || state.loadErrorMessage != null) null else {
+        trailing = if (state.isMissing || state.isLoading || state.loadErrorMessage != null || state.isClosed) null else {
             { TextButton(onClick = onManageAccount) { Text("管理") } }
         },
         onBack = onBackToAccounts,
+        snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {
         if (state.isLoading || state.loadErrorMessage != null) {
@@ -106,8 +120,23 @@ fun AccountDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val closure = accountClosurePresentation(state.isClosed, state.currentBalance)
                 if (state.isClosed) {
-                    MoneyStatusPill(text = "已关闭", accent = MaterialTheme.colorScheme.onSurfaceVariant)
+                    MoneyStatusPill(text = closure.statusText, accent = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (state.currentBalance != 0L) {
+                        Text(
+                            text = "这个账户来自旧版本且关闭时仍有余额。请重新开启并结清，历史数据不会被改写。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    Button(
+                        onClick = onReopenAccount,
+                        enabled = !state.isReopening,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (state.isReopening) "正在重新开启…" else "重新开启账户")
+                    }
                 } else {
                     Text(
                         text = "提醒时间 ${state.reminderConfig.displayText}",
@@ -118,13 +147,42 @@ fun AccountDetailScreen(
                 if (state.isStale && !state.isClosed) {
                     MoneyStatusPill(text = "待核对", accent = MaterialTheme.colorScheme.secondary)
                 }
-                if (!state.isClosed) {
-                    Button(
-                        onClick = onStartUpdateBalance,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("核对余额")
-                    }
+            }
+        }
+        if (state.canMutateLedger()) {
+            item { MoneySectionHeader(title = "快捷记账") }
+            item {
+                MoneyListSection {
+                    MoneyListRow(
+                        title = "记录收入",
+                        subtitle = "已预选当前账户",
+                        modifier = Modifier.clickable(onClick = onRecordIncome),
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "记录支出",
+                        subtitle = "已预选当前账户",
+                        modifier = Modifier.clickable(onClick = onRecordExpense),
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "转账",
+                        subtitle = if (state.openAccountCount >= 2) {
+                            "当前账户作为转出账户"
+                        } else {
+                            "至少需要两个开放账户才能转账"
+                        },
+                        modifier = Modifier.clickable(
+                            enabled = state.openAccountCount >= 2,
+                            onClick = onRecordTransfer,
+                        ),
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "核对余额",
+                        subtitle = "按当前账面余额开始核对",
+                        modifier = Modifier.clickable(onClick = onStartUpdateBalance),
+                    )
                 }
             }
         }

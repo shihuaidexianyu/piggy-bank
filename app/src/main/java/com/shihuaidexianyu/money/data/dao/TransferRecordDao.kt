@@ -109,6 +109,19 @@ interface TransferRecordDao {
 
     @Query(
         """
+        SELECT fromAccountId, toAccountId, SUM(amount) AS amount
+        FROM transfer_records
+        WHERE deletedAt IS NULL
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
+        GROUP BY fromAccountId, toAccountId
+        ORDER BY amount DESC, fromAccountId ASC, toAccountId ASC
+        """,
+    )
+    suspend fun queryPathTotalsBetween(startInclusive: Long, endExclusive: Long): List<TransferPathTotalRow>
+
+    @Query(
+        """
         SELECT * FROM transfer_records
         WHERE (fromAccountId = :accountId OR toAccountId = :accountId)
             AND deletedAt IS NULL

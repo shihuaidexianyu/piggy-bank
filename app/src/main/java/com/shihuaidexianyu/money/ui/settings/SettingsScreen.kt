@@ -1,8 +1,11 @@
 package com.shihuaidexianyu.money.ui.settings
 
 import android.content.ClipData
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -23,6 +26,10 @@ import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
+import com.shihuaidexianyu.money.data.backup.ImportReceiptKind
+import com.shihuaidexianyu.money.data.backup.ImportReceipt
+import com.shihuaidexianyu.money.ui.reminder.NotificationPermissionUiState
+import com.shihuaidexianyu.money.ui.reminder.NotificationSettingsTarget
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
@@ -33,6 +40,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 import kotlinx.coroutines.flow.SharedFlow
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 private sealed interface SettingsDialog {
     data object ExportWarning : SettingsDialog
@@ -60,17 +68,24 @@ fun SettingsScreen(
     onHideWidgetAmountsChange: (Boolean) -> Unit,
     onHideNotificationAmountsChange: (Boolean) -> Unit,
     onHideRecentTasksChange: (Boolean) -> Unit,
-    onManageAccountOrder: () -> Unit,
-    onCreateSavingsGoal: () -> Unit,
+    notificationPermissionState: NotificationPermissionUiState,
+    recurringNotificationChannelEnabled: Boolean,
+    balanceNotificationChannelEnabled: Boolean,
+    onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
+    onManageReminders: () -> Unit,
+    onManageAccountReminderConfigs: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
     onConfirmImport: (String) -> Unit,
     onRollbackImport: (String) -> Unit,
+    onRetryImportHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = state.portableSettings
     val devicePreferences = state.devicePreferences
     val context = LocalContext.current
+    val versionText = remember(context) { context.applicationVersionText() }
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
     var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
@@ -115,7 +130,7 @@ fun SettingsScreen(
             SettingsDialog.ExportWarning -> {
                 MoneyConfirmDialog(
                     title = "导出明文备份",
-                    message = "将生成未加密 JSON，仅保存到可信位置。",
+                    message = "将生成$SETTINGS_PLAINTEXT_EXPORT_WARNING。",
                     onConfirm = {
                         onExportData()
                         dialog = null
@@ -212,12 +227,17 @@ fun SettingsScreen(
         }
     }
 
+    val notificationPresentation = notificationSettingsPresentation(notificationPermissionState)
+    val importReceiptRows = importReceiptHistoryRows(
+        receipts = state.importHistory,
+        rollbackEligibleReceiptId = state.rollbackEligibleReceiptId,
+    )
     MoneyFormPage(
         title = "设置",
         modifier = modifier,
         snackbarHostState = snackbarHostState,
     ) {
-        item { MoneySectionHeader(title = "显示") }
+        item { MoneySectionHeader(title = SETTINGS_SECTION_CONTRACTS[0].title) }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
@@ -244,6 +264,17 @@ fun SettingsScreen(
                     },
                 )
                 MoneySectionDivider()
+                PrivacySwitchRow(
+                    title = "应用内隐藏金额",
+                    checked = devicePreferences.maskAmountsInApp,
+                    onCheckedChange = onMaskAmountsInAppChange,
+                )
+            }
+        }
+
+        item { MoneySectionHeader(title = SETTINGS_SECTION_CONTRACTS[1].title) }
+        item {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
                     title = "生物识别锁定",
                     subtitle = "启动应用时需指纹或面容解锁",
@@ -261,17 +292,6 @@ fun SettingsScreen(
                     subtitle = "使用单调计时，熄屏会立即锁定",
                     trailing = devicePreferences.relockDelay.displayName(),
                     modifier = Modifier.clickable { dialog = SettingsDialog.RelockDelay },
-                )
-            }
-        }
-
-        item { MoneySectionHeader(title = "隐私") }
-        item {
-            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                PrivacySwitchRow(
-                    title = "应用内隐藏金额",
-                    checked = devicePreferences.maskAmountsInApp,
-                    onCheckedChange = onMaskAmountsInAppChange,
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
@@ -294,30 +314,78 @@ fun SettingsScreen(
             }
         }
 
-        item { MoneySectionHeader(title = "数据") }
+        item { MoneySectionHeader(title = SETTINGS_SECTION_CONTRACTS[2].title) }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
+                    title = "通知权限与渠道",
+                    subtitle = notificationPresentation.status,
+                    trailing = if (notificationPresentation.action == NotificationSettingsAction.REQUEST_PERMISSION) {
+                        "申请"
+                    } else {
+                        "设置"
+                    },
+                    modifier = Modifier.clickable {
+                        when (notificationPresentation.action) {
+                            NotificationSettingsAction.REQUEST_PERMISSION -> onRequestNotificationPermission()
+                            NotificationSettingsAction.OPEN_SETTINGS -> onOpenNotificationSettings(
+                                notificationPresentation.settingsTarget ?: NotificationSettingsTarget.APPLICATION,
+                            )
+                        }
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "提醒通知渠道",
+                    subtitle = "到期收支提醒",
+                    trailing = notificationChannelStatus(recurringNotificationChannelEnabled),
+                    modifier = Modifier.clickable {
+                        onOpenNotificationSettings(NotificationSettingsTarget.RECURRING_CHANNEL)
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "核对通知渠道",
+                    subtitle = "账户余额待核对提醒",
+                    trailing = notificationChannelStatus(balanceNotificationChannelEnabled),
+                    modifier = Modifier.clickable {
+                        onOpenNotificationSettings(NotificationSettingsTarget.BALANCE_CHANNEL)
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "收支提醒管理",
+                    subtitle = "创建、暂停或处理周期提醒",
+                    modifier = Modifier.clickable(onClick = onManageReminders),
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = "账户核对提醒配置",
+                    subtitle = "进入账户管理，为每个开放账户设置核对周期",
+                    modifier = Modifier.clickable(onClick = onManageAccountReminderConfigs),
+                )
+            }
+        }
+
+        item { MoneySectionHeader(title = SETTINGS_SECTION_CONTRACTS[3].title) }
+        item {
+            MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                MoneyListRow(
+                    title = "备份格式",
+                    subtitle = SETTINGS_PLAINTEXT_EXPORT_WARNING,
+                    trailing = "JSON",
+                    showChevron = false,
+                )
+                MoneySectionDivider()
+                MoneyListRow(
                     title = "导出数据",
-                    subtitle = "未加密 JSON，仅保存到可信位置",
+                    subtitle = SETTINGS_PLAINTEXT_EXPORT_WARNING,
                     trailing = if (state.isExporting) "导出中" else "JSON",
                     modifier = Modifier.clickable(
                         enabled = !state.isExporting && !state.isImporting,
                         onClick = { dialog = SettingsDialog.ExportWarning },
                     ),
                 )
-                state.importHistory.firstOrNull()?.let { receipt ->
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = "撤销最近一次导入",
-                        subtitle = "使用已验证的导入前安全快照恢复",
-                        trailing = "撤销",
-                        modifier = Modifier.clickable(
-                            enabled = !state.isImporting && !state.isExporting,
-                            onClick = { onRollbackImport(receipt.id) },
-                        ),
-                    )
-                }
                 MoneySectionDivider()
                 MoneyListRow(
                     title = "导入数据",
@@ -330,24 +398,58 @@ fun SettingsScreen(
                         },
                     ),
                 )
+                MoneySectionDivider()
+                if (state.isLoadingImportHistory) {
+                    MoneyListRow(
+                        title = "导入记录",
+                        subtitle = "正在校验当前账本与安全快照…",
+                        trailing = "加载中",
+                        showChevron = false,
+                    )
+                } else if (state.importHistoryErrorMessage != null) {
+                    MoneyListRow(
+                        title = "导入记录加载失败",
+                        subtitle = state.importHistoryErrorMessage,
+                        trailing = "重试",
+                        modifier = Modifier.clickable(onClick = onRetryImportHistory),
+                    )
+                } else if (importReceiptRows.isEmpty()) {
+                    MoneyListRow(
+                        title = "导入记录",
+                        subtitle = "暂无可撤销的导入或恢复记录",
+                        showChevron = false,
+                    )
+                } else {
+                    importReceiptRows.forEachIndexed { index, row ->
+                        val receipt = row.receipt
+                        MoneyListRow(
+                            title = if (receipt.kind == ImportReceiptKind.IMPORT) "导入记录" else "恢复记录",
+                            subtitle = receipt.historySubtitle(),
+                            trailing = if (row.canRollback) "撤销" else "历史",
+                            modifier = Modifier.clickable(
+                                enabled = row.canRollback && !state.isImporting && !state.isExporting,
+                                onClick = { onRollbackImport(receipt.id) },
+                            ),
+                        )
+                        if (index != importReceiptRows.lastIndex) MoneySectionDivider()
+                    }
+                }
             }
         }
 
-        item { MoneySectionHeader(title = "账户管理") }
+        item { MoneySectionHeader(title = SETTINGS_SECTION_CONTRACTS[4].title) }
         item {
             MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                 MoneyListRow(
-                    title = "账户顺序",
-                    subtitle = "调整账户页和选择器里的展示顺序",
-                    trailing = "自定义",
-                    modifier = Modifier.clickable(onClick = onManageAccountOrder),
+                    title = "版本",
+                    trailing = versionText,
+                    showChevron = false,
                 )
                 MoneySectionDivider()
                 MoneyListRow(
-                    title = "储蓄目标",
-                    subtitle = "添加或管理储蓄目标",
-                    trailing = "添加",
-                    modifier = Modifier.clickable(onClick = onCreateSavingsGoal),
+                    title = "离线与数据安全",
+                    subtitle = SETTINGS_ABOUT_DATA_SAFETY_COPY,
+                    showChevron = false,
                 )
             }
         }
@@ -378,6 +480,22 @@ private fun AppRelockDelay.displayName(): String = when (this) {
     AppRelockDelay.ONE_MINUTE -> "1 分钟"
     AppRelockDelay.FIVE_MINUTES -> "5 分钟"
 }
+
+private fun ImportReceipt.historySubtitle(): String {
+    val ledgerCount = counts.cashFlowCount + counts.transferCount +
+        counts.balanceUpdateCount + counts.balanceAdjustmentCount
+    return "${DateTimeTextFormatter.format(importedAt)} · 账户 ${counts.accountCount} · 记录 $ledgerCount · v$schemaVersion"
+}
+
+private fun Context.applicationVersionText(): String = runCatching {
+    val info = if (Build.VERSION.SDK_INT >= 33) {
+        packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0L))
+    } else {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(packageName, 0)
+    }
+    "${info.versionName ?: "未知"} (${info.longVersionCode})"
+}.getOrDefault("未知")
 
 private fun BackupValidationResult.confirmMessage(): String {
     return """

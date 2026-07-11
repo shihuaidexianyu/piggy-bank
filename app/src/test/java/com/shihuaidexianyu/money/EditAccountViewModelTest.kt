@@ -8,14 +8,18 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.SetAccountHiddenUseCase
 import com.shihuaidexianyu.money.ui.accounts.EditAccountEffect
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -131,14 +135,87 @@ class EditAccountViewModelTest {
         val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo)
         advanceUntilIdle()
 
+        assertEquals(100L, vm.uiState.value.currentBalance)
+        assertFalse(vm.uiState.value.canClose)
+
         vm.effectFlow.test {
             vm.closeAccount()
             advanceUntilIdle()
             val effect = awaitItem()
             assertTrue(effect is EditAccountEffect.ShowMessage)
-            assertEquals("账户余额必须为 0 才能关闭", effect.message)
+            assertEquals("请先结清余额，再关闭账户", effect.message)
         }
         assertTrue(accountRepo.getAccountById(accountId)?.isClosed == false)
+    }
+
+    @Test
+    fun `ledger mutation while edit page is alive immediately disables close action`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val txnRepo = InMemoryTransactionRepository()
+        val accountId = accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo, txnRepo = txnRepo)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canClose)
+
+        txnRepo.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 1L,
+                note = "外部写入",
+                occurredAt = 2L,
+                createdAt = 2L,
+                updatedAt = 2L,
+                operationId = "edit-live-balance",
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1L, vm.uiState.value.currentBalance)
+        assertFalse(vm.uiState.value.canClose)
+    }
+
+    @Test
+    fun `hiding an open account keeps it open and updates edit state`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val accountId = accountRepo.createAccount(Account(name = "备用金", initialBalance = 0, createdAt = 1L))
+        val vm = buildViewModel(accountId = accountId, accountRepo = accountRepo)
+        advanceUntilIdle()
+
+        vm.setHidden(true)
+        advanceUntilIdle()
+
+        assertTrue(requireNotNull(accountRepo.getAccountById(accountId)).isHidden)
+        assertTrue(vm.uiState.value.isHidden)
+        assertFalse(vm.uiState.value.isClosed)
+    }
+
+    @Test
+    fun `hidden switch is single-flight and rolls back after failure`() = runTest(dispatcher) {
+        val delegate = InMemoryAccountRepository()
+        val accountId = delegate.createAccount(Account(name = "备用金", initialBalance = 0, createdAt = 1L))
+        var calls = 0
+        val failing = object : AccountRepository by delegate {
+            override suspend fun setHidden(accountId: Long, hidden: Boolean) {
+                calls += 1
+                error("write unavailable")
+            }
+        }
+        val vm = buildViewModel(accountId = accountId, accountRepo = failing)
+        advanceUntilIdle()
+
+        vm.effectFlow.test {
+            vm.setHidden(true)
+            vm.setHidden(true)
+            assertTrue(vm.uiState.value.isUpdatingHidden)
+            advanceUntilIdle()
+            assertEquals("write unavailable", (awaitItem() as EditAccountEffect.ShowMessage).message)
+            expectNoEvents()
+        }
+
+        assertEquals(1, calls)
+        assertFalse(vm.uiState.value.isHidden)
+        assertFalse(vm.uiState.value.isUpdatingHidden)
     }
 
     @Test
@@ -193,10 +270,10 @@ class EditAccountViewModelTest {
     private fun buildViewModel(
         accountId: Long,
         accountRepo: AccountRepository = InMemoryAccountRepository(),
+        txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
     ): EditAccountViewModel {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
         val reminderRepo = InMemoryRecurringReminderRepository()
-        val txnRepo = InMemoryTransactionRepository()
         val accountLifecycleCoordinator = AccountLifecycleCoordinator()
         val closeUseCase = CloseAccountUseCase(
             accountRepository = accountRepo,
@@ -222,6 +299,13 @@ class EditAccountViewModelTest {
             accountRepository = accountRepo,
             accountReminderSettingsRepository = reminderSettingsRepo,
             closeAccountUseCase = closeUseCase,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(
+                accountRepo,
+                txnRepo,
+                testClockProvider,
+            ),
+            setAccountHiddenUseCase = SetAccountHiddenUseCase(accountRepo, txnRepo),
+            transactionRepository = txnRepo,
             updateAccountUseCase = updateUseCase,
         )
     }

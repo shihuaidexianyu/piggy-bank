@@ -28,11 +28,13 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
 
     override fun onCreate() {
         super.onCreate()
+        // Channel creation is ledger-independent and must finish before any Activity can render
+        // notification status. This also removes the first-launch race with the async migration.
+        AndroidMoneyNotificationPublisher.ensureChannels(this)
         container = MoneyAppContainer(this)
         appScope.launch {
             container.startupMigrationCoordinator.runMigration()
             container.startupMigrationCoordinator.state.first { it == StartupMigrationState.Ready }
-            AndroidMoneyNotificationPublisher.ensureChannels(this@MoneyApplication)
             val privacy = container.devicePreferencesRepository.query()
             if (privacy.hideNotificationAmounts) {
                 container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()

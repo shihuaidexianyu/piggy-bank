@@ -2,30 +2,56 @@ package com.shihuaidexianyu.money.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.domain.model.AmountVisibility
-import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.StatsDashboardSnapshot
-import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
-import java.math.BigDecimal
-import java.math.RoundingMode
+import com.shihuaidexianyu.money.util.AmountFormatter
 import java.time.Instant
-import java.time.ZoneId
+import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+data class StatsDailyUiModel(
+    val date: LocalDate,
+    val dateText: String,
+    val inflowText: String,
+    val outflowText: String,
+    val netFlowText: String,
+    val historyFilters: HistoryRecordFilters,
+)
+
+data class StatsAccountCashFlowUiModel(
+    val accountId: Long,
+    val name: String,
+    val inflowText: String,
+    val outflowText: String,
+    val inflowHistoryFilters: HistoryRecordFilters,
+    val outflowHistoryFilters: HistoryRecordFilters,
+)
+
+data class StatsTransferPathUiModel(
+    val label: String,
+    val amountText: String,
+    val historyFilters: HistoryRecordFilters,
+)
 
 data class StatsUiState(
     val isLoading: Boolean = true,
@@ -35,35 +61,22 @@ data class StatsUiState(
     val errorMessage: String? = null,
     val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
-    val selectedPeriod: StatsPeriod = StatsPeriod.MONTH,
-    val isCurrentRange: Boolean = true,
+    val rangeStartInclusive: Long = 0L,
+    val rangeEndExclusive: Long = 0L,
     val rangeText: String = "",
-    val openingAssets: Long = 0L,
-    val closingAssets: Long = 0L,
+    val canNavigateNext: Boolean = false,
     val totalInflow: Long = 0L,
     val totalOutflow: Long = 0L,
     val netCashFlow: Long = 0L,
-    val assetChange: Long = 0L,
-    val assetAdjustment: Long = 0L,
-    val manualAdjustmentNet: Long = 0L,
-    val reconciliationNet: Long = 0L,
-    val openingAssetsText: String = "",
-    val closingAssetsText: String = "",
     val totalInflowText: String = "",
     val totalOutflowText: String = "",
     val netCashFlowText: String = "",
-    val assetChangeText: String = "",
-    val assetAdjustmentText: String = "",
-    val manualAdjustmentText: String = "",
-    val reconciliationText: String = "",
-    val openingAssetsFlowText: String = "",
-    val closingAssetsFlowText: String = "",
-    val totalInflowFlowText: String = "",
-    val totalOutflowFlowText: String = "",
-    val netCashFlowFlowText: String = "",
-    val assetAdjustmentFlowText: String = "",
-    val manualAdjustmentFlowText: String = "",
-    val reconciliationFlowText: String = "",
+    val inflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
+    val outflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
+    val netCashFlowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
+    val dailyPoints: List<StatsDailyUiModel> = emptyList(),
+    val accountCashFlows: List<StatsAccountCashFlowUiModel> = emptyList(),
+    val transferPaths: List<StatsTransferPathUiModel> = emptyList(),
 )
 
 internal fun StatsUiState.toAsyncContent(): AsyncContent<StatsUiState> {
@@ -77,13 +90,10 @@ internal fun StatsUiState.toAsyncContent(): AsyncContent<StatsUiState> {
 class StatsViewModel(
     private val observeStatsDashboardUseCase: ObserveStatsDashboardUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val clockProvider: ClockProvider,
+    private val zoneIdProvider: ZoneIdProvider,
 ) : ViewModel() {
-    private val selectedRange = MutableStateFlow(
-        StatsRangeSelection(
-            period = StatsPeriod.MONTH,
-            anchorMillis = System.currentTimeMillis(),
-        ),
-    )
+    private val selectedRange = MutableStateFlow(currentSelection())
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
     private var observationJob: Job? = null
@@ -93,16 +103,44 @@ class StatsViewModel(
         observeStats()
     }
 
-    fun retry() {
-        observeStats()
+    fun retry() = observeStats()
+
+    fun moveToPreviousRange() = moveMonth(-1L)
+
+    fun moveToNextRange() {
+        val zoneId = zoneIdProvider.zoneId()
+        val selectedMonth = selectedMonth(zoneId)
+        val currentMonth = YearMonth.from(Instant.ofEpochMilli(clockProvider.nowMillis()).atZone(zoneId))
+        if (selectedMonth < currentMonth) moveMonth(1L)
     }
+
+    fun resetToCurrentRange() {
+        selectedRange.value = currentSelection()
+    }
+
+    private fun currentSelection(): StatsRangeSelection = StatsRangeSelection(
+        period = StatsPeriod.MONTH,
+        anchorMillis = clockProvider.nowMillis(),
+    )
+
+    private fun moveMonth(amount: Long) {
+        val zoneId = zoneIdProvider.zoneId()
+        val shifted = Instant.ofEpochMilli(selectedRange.value.anchorMillis)
+            .atZone(zoneId)
+            .plusMonths(amount)
+        selectedRange.value = StatsRangeSelection(StatsPeriod.MONTH, shifted.toInstant().toEpochMilli())
+    }
+
+    private fun selectedMonth(zoneId: java.time.ZoneId): YearMonth = YearMonth.from(
+        Instant.ofEpochMilli(selectedRange.value.anchorMillis).atZone(zoneId),
+    )
 
     private fun observeStats() {
         observationJob?.cancel()
-        val hasCommittedContent = _uiState.value.hasCommittedContent
+        val committed = _uiState.value.hasCommittedContent
         _uiState.value = _uiState.value.copy(
-            isLoading = !hasCommittedContent,
-            isRefreshing = hasCommittedContent,
+            isLoading = !committed,
+            isRefreshing = committed,
             errorMessage = null,
             retryToken = null,
         )
@@ -111,16 +149,12 @@ class StatsViewModel(
                 combine(
                     observeStatsDashboardUseCase(selectedRange),
                     devicePreferencesRepository.observe(),
-                ) { snapshot, devicePreferences -> snapshot to devicePreferences }
-                    .collect { (snapshot, devicePreferences) ->
-                    val visibility = AmountPrivacy.from(devicePreferences)
-                        .visibilityFor(AmountSurface.IN_APP)
-                    _uiState.value = snapshot.toUiState(visibility)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                runCatching { android.util.Log.e("StatsViewModel", "Failed to observe stats", e) }
+                ) { snapshot, preferences -> snapshot to AmountPrivacy.from(preferences).visibilityFor(AmountSurface.IN_APP) }
+                    .collect { (snapshot, visibility) -> _uiState.value = snapshot.toUiState(visibility) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                runCatching { android.util.Log.e("StatsViewModel", "Failed to observe stats", error) }
                 retryGeneration += 1
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -132,128 +166,56 @@ class StatsViewModel(
         }
     }
 
-    fun updatePeriod(period: StatsPeriod) {
-        selectedRange.value = StatsRangeSelection(
-            period = period,
-            anchorMillis = System.currentTimeMillis(),
-        )
-    }
-
-    fun moveToPreviousRange() {
-        moveRange(-1)
-    }
-
-    fun moveToNextRange() {
-        moveRange(1)
-    }
-
-    fun resetToCurrentRange() {
-        val current = selectedRange.value
-        selectedRange.value = current.copy(anchorMillis = System.currentTimeMillis())
-    }
-
-    private fun moveRange(amount: Long) {
-        val current = selectedRange.value
-        val zoneId = ZoneId.systemDefault()
-        val anchor = Instant.ofEpochMilli(current.anchorMillis).atZone(zoneId)
-        val shifted = when (current.period) {
-            StatsPeriod.WEEK -> anchor.plusWeeks(amount)
-            StatsPeriod.MONTH -> anchor.plusMonths(amount)
-            StatsPeriod.YEAR -> anchor.plusYears(amount)
-        }
-        selectedRange.value = current.copy(anchorMillis = shifted.toInstant().toEpochMilli())
-    }
-
     private fun StatsDashboardSnapshot.toUiState(visibility: AmountVisibility): StatsUiState {
+        val selectedMonth = YearMonth.from(Instant.ofEpochMilli(range.startInclusive).atZone(zoneId))
+        val currentMonth = YearMonth.from(Instant.ofEpochMilli(clockProvider.nowMillis()).atZone(zoneId))
+        fun amount(value: Long): String = AmountFormatter.format(value, settings, visibility)
+        fun signed(value: Long): String = if (value > 0L && visibility != AmountVisibility.MASKED) "+${amount(value)}" else amount(value)
         return StatsUiState(
             isLoading = false,
             hasCommittedContent = true,
-            hasSourceAccounts = accountBalances.isNotEmpty(),
+            hasSourceAccounts = hasSourceAccounts,
             settings = settings,
-            selectedPeriod = period,
-            isCurrentRange = isCurrentRange(this),
-            rangeText = formatRangeText(this),
-            openingAssets = openingAssets,
-            closingAssets = closingAssets,
+            rangeStartInclusive = range.startInclusive,
+            rangeEndExclusive = range.endExclusive,
+            rangeText = DateTimeFormatter.ofPattern("yyyy年M月").format(selectedMonth),
+            canNavigateNext = selectedMonth < currentMonth,
             totalInflow = totalInflow,
             totalOutflow = totalOutflow,
             netCashFlow = netCashFlow,
-            assetChange = assetChange,
-            assetAdjustment = assetAdjustment,
-            manualAdjustmentNet = manualAdjustmentNet,
-            reconciliationNet = reconciliationNet,
-            openingAssetsText = AmountFormatter.format(openingAssets, settings, visibility),
-            closingAssetsText = AmountFormatter.format(closingAssets, settings, visibility),
-            totalInflowText = AmountFormatter.format(totalInflow, settings, visibility),
-            totalOutflowText = AmountFormatter.format(totalOutflow, settings, visibility),
-            netCashFlowText = formatSignedAmount(netCashFlow, settings, visibility),
-            assetChangeText = formatSignedAmount(assetChange, settings, visibility),
-            assetAdjustmentText = formatSignedAmount(assetAdjustment, settings, visibility),
-            manualAdjustmentText = formatSignedAmount(manualAdjustmentNet, settings, visibility),
-            reconciliationText = formatSignedAmount(reconciliationNet, settings, visibility),
-            openingAssetsFlowText = formatFlowAmount(openingAssets, visibility),
-            closingAssetsFlowText = formatFlowAmount(closingAssets, visibility),
-            totalInflowFlowText = formatFlowAmount(totalInflow, visibility),
-            totalOutflowFlowText = formatFlowAmount(totalOutflow, visibility),
-            netCashFlowFlowText = formatFlowAmount(netCashFlow, visibility),
-            assetAdjustmentFlowText = formatFlowAmount(assetAdjustment, visibility),
-            manualAdjustmentFlowText = formatFlowAmount(manualAdjustmentNet, visibility),
-            reconciliationFlowText = formatFlowAmount(reconciliationNet, visibility),
+            totalInflowText = amount(totalInflow),
+            totalOutflowText = amount(totalOutflow),
+            netCashFlowText = signed(netCashFlow),
+            inflowHistoryFilters = inflowHistoryFilters,
+            outflowHistoryFilters = outflowHistoryFilters,
+            netCashFlowHistoryFilters = netCashFlowHistoryFilters,
+            dailyPoints = dailyPoints.map { point ->
+                StatsDailyUiModel(
+                    date = point.date,
+                    dateText = DateTimeFormatter.ofPattern("M月d日").format(point.date),
+                    inflowText = amount(point.inflow),
+                    outflowText = amount(point.outflow),
+                    netFlowText = signed(point.netFlow),
+                    historyFilters = point.historyFilters,
+                )
+            },
+            accountCashFlows = accountCashFlows.map { flow ->
+                StatsAccountCashFlowUiModel(
+                    accountId = flow.accountId,
+                    name = flow.name,
+                    inflowText = amount(flow.inflow),
+                    outflowText = amount(flow.outflow),
+                    inflowHistoryFilters = flow.inflowHistoryFilters,
+                    outflowHistoryFilters = flow.outflowHistoryFilters,
+                )
+            },
+            transferPaths = transferPaths.map { path ->
+                StatsTransferPathUiModel(
+                    label = "${path.fromAccountName} → ${path.toAccountName}",
+                    amountText = amount(path.amount),
+                    historyFilters = path.historyFilters,
+                )
+            },
         )
-    }
-}
-
-private fun isCurrentRange(snapshot: StatsDashboardSnapshot): Boolean {
-    val now = Instant.now()
-    val start = Instant.ofEpochMilli(snapshot.range.startInclusive)
-    val end = Instant.ofEpochMilli(snapshot.range.endExclusive)
-    return !now.isBefore(start) && now.isBefore(end)
-}
-
-private fun formatSignedAmount(
-    amount: Long,
-    settings: PortableSettings,
-    visibility: AmountVisibility,
-): String {
-    if (visibility == AmountVisibility.MASKED) return AmountFormatter.format(amount, settings, visibility)
-    return when {
-        amount > 0L -> "+${AmountFormatter.format(amount, settings, visibility)}"
-        else -> AmountFormatter.format(amount, settings, visibility)
-    }
-}
-
-private fun formatFlowAmount(amount: Long, visibility: AmountVisibility): String {
-    if (visibility == AmountVisibility.MASKED) return "••••"
-    val sign = if (amount < 0L) "-" else ""
-    val absolute = BigDecimal.valueOf(amount)
-        .movePointLeft(2)
-        .abs()
-        .setScale(2, RoundingMode.HALF_UP)
-        .toPlainString()
-    return "$sign$absolute"
-}
-
-private fun formatRangeText(snapshot: StatsDashboardSnapshot): String {
-    val zoneId = java.time.ZoneId.systemDefault()
-    val start = java.time.Instant.ofEpochMilli(snapshot.range.startInclusive).atZone(zoneId).toLocalDate()
-    val end = java.time.Instant.ofEpochMilli(snapshot.range.endExclusive).atZone(zoneId).toLocalDate().minusDays(1)
-    val currentYear = java.time.LocalDate.now(zoneId).year
-    return when (snapshot.period) {
-        StatsPeriod.YEAR -> "${start.year}年"
-        StatsPeriod.MONTH -> {
-            if (start.year == currentYear) {
-                DateTimeFormatter.ofPattern("M月").format(start)
-            } else {
-                DateTimeFormatter.ofPattern("yyyy年M月").format(start)
-            }
-        }
-        else -> {
-            val formatter = if (start.year == currentYear && end.year == currentYear) {
-                DateTimeFormatter.ofPattern("M月d日")
-            } else {
-                DateTimeFormatter.ofPattern("yyyy/M/d")
-            }
-            "${start.format(formatter)} - ${end.format(formatter)}"
-        }
     }
 }

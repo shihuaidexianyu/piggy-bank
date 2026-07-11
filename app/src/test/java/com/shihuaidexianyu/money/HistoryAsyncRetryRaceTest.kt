@@ -11,7 +11,11 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import kotlin.test.assertEquals
@@ -24,6 +28,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -33,6 +40,8 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import androidx.lifecycle.SavedStateHandle
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryAsyncRetryRaceTest {
@@ -112,6 +121,281 @@ class HistoryAsyncRetryRaceTest {
         assertTrue(viewModel.uiState.value.records.isEmpty())
         assertNull(viewModel.uiState.value.loadMoreErrorMessage)
         assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `account rename reloads search corpus so old name disappears and new name appears`() = runTest(dispatcher) {
+        val names = mutableMapOf<Long, String>()
+        val accounts = InMemoryAccountRepository()
+        val accountId = accounts.createAccount(Account(name = "旧工资卡", initialBalance = 0L, createdAt = 1L))
+        names[accountId] = "旧工资卡"
+        val transactions = InMemoryTransactionRepository(names::get)
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100L,
+                note = "工资",
+                occurredAt = 2L,
+                createdAt = 2L,
+                updatedAt = 2L,
+                operationId = "history-account-rename",
+            ),
+        )
+        val viewModel = HistoryViewModel(
+            accountRepository = accounts,
+            transactionRepository = transactions,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(
+                DevicePreferences(historyFilters = HistoryFilters(keyword = "旧工资卡")),
+            ),
+        )
+        runCurrent()
+        assertEquals(1, viewModel.uiState.value.records.size)
+
+        names[accountId] = "新工资卡"
+        accounts.updateAccount(requireNotNull(accounts.getAccountById(accountId)).copy(name = "新工资卡"))
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.records.isEmpty())
+        viewModel.updateKeyword("新工资卡")
+        advanceTimeBy(300L)
+        runCurrent()
+        assertEquals(1, viewModel.uiState.value.records.size)
+    }
+
+    @Test
+    fun `invalid or overflowing amount text shows field error and never runs broadened query`() = runTest(dispatcher) {
+        val delegate = InMemoryTransactionRepository()
+        delegate.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = 1L,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100L,
+                note = "不应在非法筛选下显示",
+                occurredAt = 1L,
+                createdAt = 1L,
+                updatedAt = 1L,
+                operationId = "history-invalid-filter",
+            ),
+        )
+        val repository = CountingHistoryRepository(delegate)
+        val viewModel = HistoryViewModel(
+            accountRepository = InMemoryAccountRepository(),
+            transactionRepository = repository,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+        )
+        runCurrent()
+        val initialQueries = repository.queryCount
+        val initialCounts = repository.countCount
+        assertEquals(1, viewModel.uiState.value.records.size)
+
+        viewModel.updateMinAmount("999999999999999999999999999999")
+        advanceTimeBy(300L)
+        runCurrent()
+
+        assertEquals("请输入有效金额", viewModel.uiState.value.minAmountError)
+        assertTrue(viewModel.uiState.value.records.isEmpty())
+        assertEquals(initialQueries, repository.queryCount)
+        assertEquals(initialCounts, repository.countCount)
+
+        viewModel.updateMinAmount("")
+        viewModel.updateMaxAmount("not-an-amount")
+        advanceTimeBy(300L)
+        runCurrent()
+        assertEquals("请输入有效金额", viewModel.uiState.value.maxAmountError)
+        assertEquals(initialQueries, repository.queryCount)
+        assertEquals(initialCounts, repository.countCount)
+
+        viewModel.updateMaxAmount("")
+        viewModel.updateMinAmount("1.00")
+        advanceTimeBy(300L)
+        runCurrent()
+        assertNull(viewModel.uiState.value.minAmountError)
+        assertNull(viewModel.uiState.value.maxAmountError)
+        assertTrue(repository.queryCount > initialQueries)
+    }
+
+    @Test
+    fun `invalid amount clears an earlier repository error and retry token`() = runTest(dispatcher) {
+        val viewModel = HistoryViewModel(
+            accountRepository = InMemoryAccountRepository(),
+            transactionRepository = AlwaysFailingHistoryRepository(InMemoryTransactionRepository()),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+        )
+        runCurrent()
+        assertEquals("明细加载失败，请重试", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.retryToken != null)
+
+        viewModel.updateMinAmount("overflow-overflow")
+        advanceTimeBy(300L)
+        runCurrent()
+
+        assertNull(viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.retryToken)
+        assertEquals("请输入有效金额", viewModel.uiState.value.minAmountError)
+    }
+
+    @Test
+    fun `single account flow subscription cannot lose an emission between first value and collection`() =
+        runTest(dispatcher) {
+            val old = Account(id = 1L, name = "旧名称", initialBalance = 0L, createdAt = 1L)
+            val renamed = old.copy(name = "新名称")
+            val viewModel = HistoryViewModel(
+                accountRepository = GapEmittingAccountRepository(old, renamed),
+                transactionRepository = InMemoryTransactionRepository(),
+                portableSettingsRepository = InMemoryPortableSettingsRepository(),
+                devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+            )
+
+            runCurrent()
+
+            assertEquals("新名称", viewModel.uiState.value.accountOptions.single().name)
+        }
+
+    @Test
+    fun `exact transfer path survives view model recreation without broadening`() = runTest(dispatcher) {
+        val handle = SavedStateHandle()
+        val firstRepository = CapturingHistoryRepository(InMemoryTransactionRepository())
+        val exact = HistoryRecordFilters(
+            recordTypes = setOf(HistoryRecordType.TRANSFER),
+            transferFromAccountId = 1L,
+            transferToAccountId = 2L,
+            dateStartAt = 1_000L,
+            dateEndAt = 2_000L,
+        )
+        val first = HistoryViewModel(
+            accountRepository = InMemoryAccountRepository(),
+            transactionRepository = firstRepository,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+            savedStateHandle = handle,
+        )
+        runCurrent()
+        first.applyExternalFilters(exact)
+        runCurrent()
+        assertEquals(exact, firstRepository.lastFilters)
+
+        val recreatedRepository = CapturingHistoryRepository(InMemoryTransactionRepository())
+        HistoryViewModel(
+            accountRepository = InMemoryAccountRepository(),
+            transactionRepository = recreatedRepository,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(
+                DevicePreferences(historyFilters = HistoryFilters(keyword = "会放宽的设备筛选")),
+            ),
+            savedStateHandle = handle,
+        )
+        runCurrent()
+
+        assertEquals(exact, recreatedRepository.lastFilters)
+    }
+
+    @Test
+    fun `external drill-down received during suspended initialization wins over device filters`() =
+        runTest(dispatcher) {
+            val handle = SavedStateHandle()
+            val devicePreferences = BlockingDevicePreferencesRepository(
+                InMemoryDevicePreferencesRepository(
+                    DevicePreferences(historyFilters = HistoryFilters(keyword = "旧设备筛选")),
+                ),
+            )
+            val repository = CapturingHistoryRepository(InMemoryTransactionRepository())
+            val viewModel = HistoryViewModel(
+                accountRepository = InMemoryAccountRepository(),
+                transactionRepository = repository,
+                portableSettingsRepository = InMemoryPortableSettingsRepository(),
+                devicePreferencesRepository = devicePreferences,
+                savedStateHandle = handle,
+            )
+            runCurrent()
+            assertTrue(devicePreferences.queryStarted.isCompleted)
+            val exact = HistoryRecordFilters(
+                recordTypes = setOf(HistoryRecordType.TRANSFER),
+                transferFromAccountId = 1L,
+                transferToAccountId = 2L,
+                dateStartAt = 100L,
+                dateEndAt = 200L,
+            )
+            // Deliver through the same ViewModel instance while DataStore query is suspended.
+            viewModel.applyExternalFilters(exact)
+            runCurrent()
+            devicePreferences.releaseQuery.complete(Unit)
+            runCurrent()
+
+            assertEquals(exact, repository.lastFilters)
+        }
+}
+
+private class BlockingDevicePreferencesRepository(
+    private val delegate: DevicePreferencesRepository,
+) : DevicePreferencesRepository by delegate {
+    val queryStarted = CompletableDeferred<Unit>()
+    val releaseQuery = CompletableDeferred<Unit>()
+
+    override suspend fun query(): DevicePreferences {
+        queryStarted.complete(Unit)
+        releaseQuery.await()
+        return delegate.query()
+    }
+}
+
+private class CapturingHistoryRepository(
+    private val delegate: TransactionRepository,
+) : TransactionRepository by delegate {
+    var lastFilters: HistoryRecordFilters? = null
+
+    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        lastFilters = filters
+        return delegate.countHistoryRecords(filters)
+    }
+}
+
+private class AlwaysFailingHistoryRepository(
+    private val delegate: TransactionRepository,
+) : TransactionRepository by delegate {
+    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int = error("history failure")
+}
+
+private class GapEmittingAccountRepository(
+    private val old: Account,
+    private val renamed: Account,
+    private val delegate: InMemoryAccountRepository = InMemoryAccountRepository(),
+) : AccountRepository by delegate {
+    private var subscriptions = 0
+
+    override fun observeAllAccounts(): Flow<List<Account>> = flow {
+        subscriptions += 1
+        if (subscriptions == 1) {
+            emit(listOf(old))
+            yield()
+            emit(listOf(renamed))
+        } else {
+            emit(listOf(renamed))
+        }
+    }
+}
+
+private class CountingHistoryRepository(
+    private val delegate: TransactionRepository,
+) : TransactionRepository by delegate {
+    var queryCount = 0
+    var countCount = 0
+
+    override suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord> {
+        queryCount += 1
+        return delegate.queryHistoryRecords(filters, cursor, limit)
+    }
+
+    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        countCount += 1
+        return delegate.countHistoryRecords(filters)
     }
 }
 

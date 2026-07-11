@@ -1,18 +1,23 @@
 package com.shihuaidexianyu.money.ui.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.util.AmountInputParser
+import java.math.BigDecimal
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +51,10 @@ data class HomeUiState(
     val errorMessage: String? = null,
     val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
+    val totalAssets: Long = 0L,
+    val hasAnyAccounts: Boolean = false,
+    val allAccountCount: Int = 0,
+    val monthlyBudget: MonthlyBudgetStatus? = null,
     val periodRecordCount: Int = 0,
     val periodAssetChange: Long = 0,
     val periodCashInflow: Long = 0,
@@ -56,21 +65,35 @@ data class HomeUiState(
     val staleAccounts: List<StaleAccountUiModel> = emptyList(),
     val accountOptions: List<AccountOptionUiModel> = emptyList(),
     val dueReminders: List<DueReminderUiModel> = emptyList(),
+    val showMonthlyBudgetEditor: Boolean = false,
+    val monthlyBudgetInput: String = "",
+    val monthlyBudgetInputError: String? = null,
+    val monthlyBudgetSaveError: String? = null,
+    val isMonthlyBudgetSaving: Boolean = false,
 )
 
 internal fun HomeUiState.toAsyncContent(): AsyncContent<HomeUiState> {
     errorMessage?.let { return AsyncContent.Error(it, retryToken) }
     if (!hasCommittedContent) return AsyncContent.Loading
     if (isRefreshing) return AsyncContent.Refreshing(this)
-    if (accountOptions.isEmpty()) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
+    if (!hasAnyAccounts) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
     return AsyncContent.Data(this)
 }
 
 class HomeViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val portableSettingsRepository: PortableSettingsRepository,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            showMonthlyBudgetEditor = savedStateHandle[KEY_BUDGET_EDITOR_OPEN] ?: false,
+            monthlyBudgetInput = savedStateHandle.get<String>(KEY_BUDGET_INPUT).orEmpty(),
+            monthlyBudgetInputError = savedStateHandle.get<String>(KEY_BUDGET_INPUT_ERROR),
+            monthlyBudgetSaveError = savedStateHandle.get<String>(KEY_BUDGET_SAVE_ERROR),
+        ),
+    )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private var observationJob: Job? = null
     private var retryGeneration = 0
@@ -102,10 +125,15 @@ class HomeViewModel(
                     val visibility = AmountPrivacy.from(devicePreferences)
                         .visibilityFor(AmountSurface.IN_APP)
                     val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
+                    val editorState = _uiState.value
                     _uiState.value = HomeUiState(
                         isLoading = false,
                         hasCommittedContent = true,
                         settings = snapshot.settings,
+                        totalAssets = snapshot.totalAssets,
+                        hasAnyAccounts = snapshot.hasAnyAccounts,
+                        allAccountCount = snapshot.allAccountCount,
+                        monthlyBudget = snapshot.monthlyBudget,
                         periodRecordCount = snapshot.periodRecordCount,
                         periodAssetChange = snapshot.periodBreakdown.assetChange,
                         periodCashInflow = snapshot.periodBreakdown.cashInflow,
@@ -143,6 +171,11 @@ class HomeViewModel(
                                 amount = reminder.amount,
                             )
                         },
+                        showMonthlyBudgetEditor = editorState.showMonthlyBudgetEditor,
+                        monthlyBudgetInput = editorState.monthlyBudgetInput,
+                        monthlyBudgetInputError = editorState.monthlyBudgetInputError,
+                        monthlyBudgetSaveError = editorState.monthlyBudgetSaveError,
+                        isMonthlyBudgetSaving = editorState.isMonthlyBudgetSaving,
                     )
                 }
             } catch (e: CancellationException) {
@@ -158,5 +191,149 @@ class HomeViewModel(
                 )
             }
         }
+    }
+
+    fun openMonthlyBudgetEditor() {
+        clearPendingBudgetAction()
+        val input = _uiState.value.settings.monthlyBudgetAmount?.toEditableAmount().orEmpty()
+        updateBudgetEditor(
+            show = true,
+            input = input,
+            inputError = null,
+            saveError = null,
+        )
+    }
+
+    fun dismissMonthlyBudgetEditor() {
+        if (_uiState.value.isMonthlyBudgetSaving) return
+        updateBudgetEditor(show = false)
+    }
+
+    fun updateMonthlyBudgetInput(value: String) {
+        if (_uiState.value.isMonthlyBudgetSaving) return
+        clearPendingBudgetAction()
+        updateBudgetEditor(
+            input = value,
+            inputError = null,
+            saveError = null,
+        )
+    }
+
+    fun saveMonthlyBudget() {
+        val current = _uiState.value
+        if (current.isMonthlyBudgetSaving) return
+        val amount = AmountInputParser.parseUnsignedToMinor(current.monthlyBudgetInput)
+        if (amount == null || amount <= 0L) {
+            clearPendingBudgetAction()
+            updateBudgetEditor(inputError = "月预算必须大于 0", saveError = null)
+            return
+        }
+        persistMonthlyBudget(BudgetPendingAction.SET, amount)
+    }
+
+    fun retryMonthlyBudgetSave() {
+        if (_uiState.value.isMonthlyBudgetSaving) return
+        val pendingAction = savedStateHandle.get<String>(KEY_BUDGET_PENDING_ACTION)?.let { value ->
+            runCatching { BudgetPendingAction.valueOf(value) }.getOrNull()
+        }
+        when (pendingAction) {
+            BudgetPendingAction.SET -> {
+                val amount = savedStateHandle.get<Long>(KEY_BUDGET_PENDING_AMOUNT)
+                    ?: return saveMonthlyBudget()
+                persistMonthlyBudget(BudgetPendingAction.SET, amount)
+            }
+            BudgetPendingAction.CLOSE -> persistMonthlyBudget(BudgetPendingAction.CLOSE, null)
+            null -> saveMonthlyBudget()
+        }
+    }
+
+    fun closeMonthlyBudget() {
+        if (_uiState.value.isMonthlyBudgetSaving) return
+        persistMonthlyBudget(BudgetPendingAction.CLOSE, null)
+    }
+
+    private fun persistMonthlyBudget(action: BudgetPendingAction, amount: Long?) {
+        savedStateHandle[KEY_BUDGET_PENDING_ACTION] = action.name
+        if (amount == null) {
+            savedStateHandle.remove<Long>(KEY_BUDGET_PENDING_AMOUNT)
+        } else {
+            savedStateHandle[KEY_BUDGET_PENDING_AMOUNT] = amount
+        }
+        savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
+        _uiState.value = _uiState.value.copy(
+            isMonthlyBudgetSaving = true,
+            monthlyBudgetInputError = null,
+            monthlyBudgetSaveError = null,
+        )
+        savedStateHandle[KEY_BUDGET_INPUT_ERROR] = null
+        viewModelScope.launch {
+            try {
+                portableSettingsRepository.updateMonthlyBudgetAmount(amount)
+                clearPendingBudgetAction()
+                updateBudgetEditor(
+                    show = false,
+                    input = "",
+                    inputError = null,
+                    saveError = null,
+                    saving = false,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                updateBudgetEditor(
+                    show = true,
+                    saveError = "月预算保存失败，请重试",
+                    saving = false,
+                )
+            }
+        }
+    }
+
+    private fun updateBudgetEditor(
+        show: Boolean = _uiState.value.showMonthlyBudgetEditor,
+        input: String = _uiState.value.monthlyBudgetInput,
+        inputError: String? = _uiState.value.monthlyBudgetInputError,
+        saveError: String? = _uiState.value.monthlyBudgetSaveError,
+        saving: Boolean = _uiState.value.isMonthlyBudgetSaving,
+    ) {
+        savedStateHandle[KEY_BUDGET_EDITOR_OPEN] = show
+        savedStateHandle[KEY_BUDGET_INPUT] = input
+        savedStateHandle[KEY_BUDGET_INPUT_ERROR] = inputError
+        if (saveError == null) {
+            savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
+        } else {
+            savedStateHandle[KEY_BUDGET_SAVE_ERROR] = saveError
+        }
+        _uiState.value = _uiState.value.copy(
+            showMonthlyBudgetEditor = show,
+            monthlyBudgetInput = input,
+            monthlyBudgetInputError = inputError,
+            monthlyBudgetSaveError = saveError,
+            isMonthlyBudgetSaving = saving,
+        )
+    }
+
+    private fun Long.toEditableAmount(): String = BigDecimal.valueOf(this, 2)
+        .stripTrailingZeros()
+        .toPlainString()
+
+    private fun clearPendingBudgetAction() {
+        savedStateHandle.remove<String>(KEY_BUDGET_PENDING_ACTION)
+        savedStateHandle.remove<Long>(KEY_BUDGET_PENDING_AMOUNT)
+        savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
+    }
+
+    private enum class BudgetPendingAction {
+        SET,
+        CLOSE,
+    }
+
+    private companion object {
+        const val KEY_BUDGET_EDITOR_OPEN = "home_budget_editor_open"
+        const val KEY_BUDGET_INPUT = "home_budget_input"
+        const val KEY_BUDGET_INPUT_ERROR = "home_budget_input_error"
+        const val KEY_BUDGET_SAVE_ERROR = "home_budget_save_error"
+        const val KEY_BUDGET_PENDING_ACTION = "home_budget_pending_action"
+        const val KEY_BUDGET_PENDING_AMOUNT = "home_budget_pending_amount"
     }
 }

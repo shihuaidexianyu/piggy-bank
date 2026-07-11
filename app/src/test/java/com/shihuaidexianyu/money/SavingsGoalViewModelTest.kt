@@ -74,7 +74,7 @@ class SavingsGoalViewModelTest {
 
         val remove = createViewModel()
         advanceUntilIdle()
-        remove.showDeleteConfirm()
+        remove.showClearConfirm()
         remove.effectFlow.test {
             remove.clear()
             advanceUntilIdle()

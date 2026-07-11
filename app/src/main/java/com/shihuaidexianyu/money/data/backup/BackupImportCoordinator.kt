@@ -21,6 +21,11 @@ data class StagedImportPreview(
     val validation: BackupValidationResult,
 )
 
+data class ImportHistoryWithRollbackEligibility(
+    val receipts: List<ImportReceipt>,
+    val rollbackEligibleReceiptId: String?,
+)
+
 class BackupImportCoordinator(
     private val stagedStore: StagedBackupStore,
     private val safetyStore: SafetySnapshotStore,
@@ -85,6 +90,22 @@ class BackupImportCoordinator(
     }
 
     fun history(): List<ImportReceipt> = receiptStore.history()
+
+    suspend fun historyWithRollbackEligibility(): ImportHistoryWithRollbackEligibility {
+        val receipts = receiptStore.history()
+        if (receipts.isEmpty()) {
+            return ImportHistoryWithRollbackEligibility(emptyList(), rollbackEligibleReceiptId = null)
+        }
+        val now = clockProvider.nowMillis()
+        val current = BackupSnapshotNormalizer.normalizeForPersistence(currentSnapshotSource.build(now))
+        validator(current)
+        val currentContentSha256 = BackupContentHasher.sha256(current)
+        val latest = receipts.first()
+        return ImportHistoryWithRollbackEligibility(
+            receipts = receipts,
+            rollbackEligibleReceiptId = latest.id.takeIf { latest.targetContentSha256 == currentContentSha256 },
+        )
+    }
 
     suspend fun recoverPendingReceipts() {
         val recoveredSafetySnapshots = mutableSetOf<String>()

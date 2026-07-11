@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
 
 private sealed interface EditAccountDialog {
@@ -132,6 +134,19 @@ fun EditAccountScreen(
                         onColorClick = { picker = AccountSettingsPicker.COLOR },
                         onIconClick = { picker = AccountSettingsPicker.ICON },
                     )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "隐藏账户",
+                        subtitle = "仍计入净资产和分析，可在选择器中展开使用",
+                        showChevron = false,
+                        accessory = {
+                            Switch(
+                                checked = state.isHidden,
+                                onCheckedChange = viewModel::setHidden,
+                                enabled = !state.isUpdatingHidden && !state.isSaving,
+                            )
+                        },
+                    )
                 }
             }
         }
@@ -165,9 +180,15 @@ fun EditAccountScreen(
                 MoneyListSection {
                     MoneyListRow(
                         title = "关闭账户",
-                        subtitle = "余额为 0 时关闭并保留历史",
+                        subtitle = if (state.canClose) {
+                            "关闭后只读并保留历史"
+                        } else {
+                            "请先结清余额（当前余额不为 0）"
+                        },
                         showChevron = false,
-                        modifier = Modifier.clickable { dialog = EditAccountDialog.CloseConfirm },
+                        modifier = Modifier.clickable(enabled = state.canClose) {
+                            dialog = EditAccountDialog.CloseConfirm
+                        },
                     )
                 }
             }

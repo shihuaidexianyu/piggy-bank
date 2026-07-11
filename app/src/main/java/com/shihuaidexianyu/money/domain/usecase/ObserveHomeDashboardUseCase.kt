@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
+import com.shihuaidexianyu.money.domain.time.clockMinuteTickerFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -32,6 +33,9 @@ data class HomeDashboardSnapshot(
     val staleAccounts: List<Account>,
     val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminder>,
+    val monthlyBudget: MonthlyBudgetStatus?,
+    val hasAnyAccounts: Boolean,
+    val allAccountCount: Int,
 )
 
 data class PeriodAssetBreakdown(
@@ -65,6 +69,7 @@ class ObserveHomeDashboardUseCase(
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
+    private val timeSignal: Flow<Long> = clockMinuteTickerFlow(clockProvider),
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
@@ -72,7 +77,7 @@ class ObserveHomeDashboardUseCase(
             accountRepository.observeAllAccounts(),
             accountRepository.observeOpenAccounts(),
         ) { allAccounts, openAccounts -> allAccounts to openAccounts }
-        return combine(
+        val dashboardSources = combine(
             accountSources,
             accountReminderSettingsRepository.observeReminderConfigs(),
             portableSettingsRepository.observe(),
@@ -80,9 +85,20 @@ class ObserveHomeDashboardUseCase(
             recurringReminderRepository.observeDueReminders(),
         ) { accounts, reminderConfigs, settings, _, dueReminders ->
             Triple(accounts, reminderConfigs, settings) to dueReminders
-        }.mapLatest { (triple, dueReminders) ->
+        }
+        return combine(dashboardSources, timeSignal) { source, snapshotTimeMillis ->
+            source to snapshotTimeMillis
+        }.mapLatest { (source, snapshotTimeMillis) ->
+            val (triple, dueReminders) = source
             val (accounts, reminderConfigs, settings) = triple
-            buildSnapshot(accounts.first, accounts.second, reminderConfigs, settings, dueReminders)
+            buildSnapshot(
+                accounts.first,
+                accounts.second,
+                reminderConfigs,
+                settings,
+                dueReminders,
+                snapshotTimeMillis,
+            )
         }.flowOn(Dispatchers.Default)
     }
 
@@ -92,8 +108,8 @@ class ObserveHomeDashboardUseCase(
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         settings: PortableSettings,
         dueReminders: List<RecurringReminder>,
+        snapshotTimeMillis: Long,
     ): HomeDashboardSnapshot = coroutineScope {
-        val snapshotTimeMillis = clockProvider.nowMillis()
         val zoneId = zoneIdProvider.zoneId()
         val range = TimeRangeCalculator.currentMonthRange(zoneId, snapshotTimeMillis)
         val balanceJob = async { calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis) }

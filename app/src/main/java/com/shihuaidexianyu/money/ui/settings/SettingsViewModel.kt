@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.backup.BackupFileReader
+import com.shihuaidexianyu.money.data.backup.ImportHistoryWithRollbackEligibility
 import com.shihuaidexianyu.money.data.backup.ImportReceipt
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
@@ -29,6 +30,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 
 data class SettingsUiState(
     val portableSettings: PortableSettings = PortableSettings(),
@@ -36,7 +39,62 @@ data class SettingsUiState(
     val isExporting: Boolean = false,
     val isImporting: Boolean = false,
     val importHistory: List<ImportReceipt> = emptyList(),
+    val rollbackEligibleReceiptId: String? = null,
+    val isLoadingImportHistory: Boolean = true,
+    val importHistoryErrorMessage: String? = null,
 )
+
+internal data class ImportHistoryLoadState(
+    val receipts: List<ImportReceipt> = emptyList(),
+    val rollbackEligibleReceiptId: String? = null,
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null,
+)
+
+internal suspend fun loadImportHistoryState(
+    load: suspend () -> ImportHistoryWithRollbackEligibility,
+): ImportHistoryLoadState = try {
+    val result = load()
+    ImportHistoryLoadState(
+        receipts = result.receipts,
+        rollbackEligibleReceiptId = result.rollbackEligibleReceiptId,
+        isLoading = false,
+    )
+} catch (error: CancellationException) {
+    throw error
+} catch (error: Exception) {
+    ImportHistoryLoadState(
+        isLoading = false,
+        errorMessage = error.userMessage("导入记录加载失败，请重试"),
+    )
+}
+
+internal suspend fun commitPortableSettingsMutation(
+    mutation: suspend () -> Unit,
+    refreshImportHistory: () -> Unit,
+): Result<Unit> = try {
+    mutation()
+    refreshImportHistory()
+    Result.success(Unit)
+} catch (error: CancellationException) {
+    throw error
+} catch (error: Exception) {
+    Result.failure(error)
+}
+
+internal suspend fun <T> rollbackAndRefreshImportHistory(
+    rollback: suspend () -> T,
+    refreshImportHistory: () -> Unit,
+): Result<T> = try {
+    val result = rollback()
+    refreshImportHistory()
+    Result.success(result)
+} catch (error: CancellationException) {
+    throw error
+} catch (error: Exception) {
+    refreshImportHistory()
+    Result.failure(error)
+}
 
 sealed interface SettingsEffect {
     data class ExportReady(
@@ -81,9 +139,10 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val isExporting = MutableStateFlow(false)
     private val isImporting = MutableStateFlow(false)
-    private val importHistory = MutableStateFlow<List<ImportReceipt>>(emptyList())
+    private val importHistoryState = MutableStateFlow(ImportHistoryLoadState())
     private val effects = MutableSharedFlow<SettingsEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private var importHistoryLoadJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> =
         combine(
@@ -91,14 +150,17 @@ class SettingsViewModel(
             devicePreferencesRepository.observe(),
             isExporting,
             isImporting,
-            importHistory,
+            importHistoryState,
         ) { portable, device, exporting, importing, history ->
             SettingsUiState(
                 portableSettings = portable,
                 devicePreferences = device,
                 isExporting = exporting,
                 isImporting = importing,
-                importHistory = history,
+                importHistory = history.receipts,
+                rollbackEligibleReceiptId = history.rollbackEligibleReceiptId,
+                isLoadingImportHistory = history.isLoading,
+                importHistoryErrorMessage = history.errorMessage,
             )
         }
             .stateIn(
@@ -108,13 +170,33 @@ class SettingsViewModel(
             )
 
     init {
-        viewModelScope.launch {
-            importHistory.value = withContext(Dispatchers.IO) { backupImportCoordinator.history() }
+        refreshImportHistory()
+    }
+
+    fun retryImportHistory() {
+        refreshImportHistory()
+    }
+
+    private fun refreshImportHistory() {
+        importHistoryLoadJob?.cancel()
+        importHistoryState.value = importHistoryState.value.copy(
+            isLoading = true,
+            errorMessage = null,
+            rollbackEligibleReceiptId = null,
+        )
+        importHistoryLoadJob = viewModelScope.launch {
+            importHistoryState.value = withContext(Dispatchers.IO) {
+                loadImportHistoryState {
+                    backupImportCoordinator.historyWithRollbackEligibility()
+                }
+            }
         }
     }
 
     fun updateCurrencySymbol(symbol: String) {
-        viewModelScope.launch { portableSettingsRepository.updateCurrencySymbol(symbol) }
+        commitPortableSettingsChange {
+            portableSettingsRepository.updateCurrencySymbol(symbol)
+        }
     }
 
     fun updateThemeMode(themeMode: ThemeMode) {
@@ -122,7 +204,9 @@ class SettingsViewModel(
     }
 
     fun updateAmountColorMode(amountColorMode: AmountColorMode) {
-        viewModelScope.launch { portableSettingsRepository.updateAmountColorMode(amountColorMode) }
+        commitPortableSettingsChange {
+            portableSettingsRepository.updateAmountColorMode(amountColorMode)
+        }
     }
 
     fun updateRelockDelay(delay: AppRelockDelay) {
@@ -206,12 +290,11 @@ class SettingsViewModel(
             isImporting.value = true
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val receipt = backupImportCoordinator.confirm(stageId)
-                    receipt to backupImportCoordinator.history()
+                    backupImportCoordinator.confirm(stageId)
                 }
-            }.onSuccess { (receipt, history) ->
-                importHistory.value = history
+            }.onSuccess { receipt ->
                 effects.emit(SettingsEffect.ImportFinished(receipt))
+                refreshImportHistory()
             }.onFailure { error ->
                 effects.emit(SettingsEffect.ShowMessage(error.userMessage("导入失败")))
             }
@@ -223,20 +306,34 @@ class SettingsViewModel(
         if (isImporting.value || isExporting.value) return
         viewModelScope.launch {
             isImporting.value = true
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val receipt = backupImportCoordinator.rollback(receiptId)
-                    receipt to backupImportCoordinator.history()
-                }
-            }
-                .onSuccess { (receipt, history) ->
-                    importHistory.value = history
+            rollbackAndRefreshImportHistory(
+                rollback = {
+                    withContext(Dispatchers.IO) {
+                        backupImportCoordinator.rollback(receiptId)
+                    }
+                },
+                refreshImportHistory = ::refreshImportHistory,
+            )
+                .onSuccess { receipt ->
                     effects.emit(SettingsEffect.RollbackFinished(receipt))
                 }
                 .onFailure { error ->
                     effects.emit(SettingsEffect.ShowMessage(error.userMessage("撤销导入失败")))
                 }
             isImporting.value = false
+        }
+    }
+
+    private fun commitPortableSettingsChange(mutation: suspend () -> Unit) {
+        viewModelScope.launch {
+            commitPortableSettingsMutation(
+                mutation = {
+                    withContext(Dispatchers.IO) { mutation() }
+                },
+                refreshImportHistory = ::refreshImportHistory,
+            ).onFailure { error ->
+                effects.emit(SettingsEffect.ShowMessage(error.userMessage("设置保存失败")))
+            }
         }
     }
 }

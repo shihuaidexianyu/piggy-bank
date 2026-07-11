@@ -15,6 +15,33 @@ import org.junit.Test
 
 class HistoryRepositoryPagingTest {
     @Test
+    fun `same timestamp keyset has no duplicate or gap when next-page row is tombstoned`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        val ids = (1L..6L).map { amount ->
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.INFLOW.value,
+                    amount = amount,
+                    note = "记录$amount",
+                    occurredAt = 1_000L,
+                    createdAt = 1_000L,
+                    updatedAt = 1_000L,
+                    operationId = testOperationId(),
+                ),
+            ).recordId
+        }
+        val first = repository.queryHistoryRecords(HistoryRecordFilters(), null, 2)
+        repository.softDeleteCurrentCashFlowRecord(ids[3], 2_000L)
+        val second = repository.queryHistoryRecords(HistoryRecordFilters(), first.last().cursor, 2)
+        val third = repository.queryHistoryRecords(HistoryRecordFilters(), second.last().cursor, 2)
+
+        val combined = first + second + third
+        assertEquals(combined.map { it.recordId }.distinct(), combined.map { it.recordId })
+        assertEquals(ids.filterNot { it == ids[3] }.toSet(), combined.map { it.recordId }.toSet())
+    }
+
+    @Test
     fun `history query pages across record types with stable cursor order`() = runBlocking {
         val repository = InMemoryTransactionRepository()
         val occurredAt = 1_000L

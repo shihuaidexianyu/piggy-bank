@@ -60,6 +60,7 @@ class PortableAndDeviceSettingsRepositoryTest {
             historyFilters = HistoryFilters(
                 keyword = "咖啡",
                 excludeKeyword = "公司",
+                recordTypes = setOf("CASH_FLOW", "TRANSFER"),
                 accountId = 9L,
                 dateStartAt = 100L,
                 dateEndAt = 200L,
@@ -84,6 +85,7 @@ class PortableAndDeviceSettingsRepositoryTest {
         val preferences = mutablePreferencesOf(
             stringPreferencesKey("theme_mode") to "unknown",
             stringPreferencesKey("relock_delay") to "corrupt",
+            stringPreferencesKey("last_history_record_types") to "CASH_FLOW,INVALID,TRANSFER",
             longPreferencesKey("last_history_account_id") to -9L,
             longPreferencesKey("last_history_date_start_at") to -1L,
             longPreferencesKey("last_history_date_end_at") to 20L,
@@ -99,6 +101,29 @@ class PortableAndDeviceSettingsRepositoryTest {
         assertEquals(null, result.historyFilters.accountId)
         assertEquals(null, result.historyFilters.dateStartAt)
         assertEquals(20L, result.historyFilters.dateEndAt)
+        assertEquals(setOf("CASH_FLOW", "TRANSFER"), result.historyFilters.recordTypes)
         assertEquals(listOf(3L, 2L, 1L, 4L, 5L), result.recentAccountIds)
+    }
+
+    @Test
+    fun `device preference mapper persists advanced history record types`() {
+        val preferences = mutablePreferencesOf()
+        val expected = DevicePreferences(
+            historyFilters = HistoryFilters(
+                keyword = "工资",
+                excludeKeyword = "内部",
+                recordTypes = setOf("TRANSFER", "CASH_FLOW"),
+                accountId = 7L,
+                dateStartAt = 100L,
+                dateEndAt = 200L,
+                minAmountText = "1.00",
+                maxAmountText = "9.00",
+                amountDirection = "increase",
+            ),
+        )
+
+        DevicePreferencesMapper.write(preferences, expected)
+
+        assertEquals(expected, DevicePreferencesMapper.fromPreferences(preferences))
     }
 }

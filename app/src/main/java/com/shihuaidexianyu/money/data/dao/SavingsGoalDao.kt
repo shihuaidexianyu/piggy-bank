@@ -21,7 +21,7 @@ interface SavingsGoalDao {
 
     @Transaction
     suspend fun upsert(targetAmount: Long, now: Long) {
-        require(targetAmount > 0L) { "储蓄目标金额必须大于零" }
+        require(targetAmount > 0L) { "净资产目标金额必须大于零" }
         val existing = query()
         if (existing == null) {
             insert(

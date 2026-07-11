@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.history.HistoryUiState
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.ui.history.toAsyncContent
 import com.shihuaidexianyu.money.ui.home.HomeUiState
 import com.shihuaidexianyu.money.ui.home.toAsyncContent
@@ -53,11 +54,23 @@ class AsyncContentAdapterTest {
         val complete = HistoryUiState(hasCommittedContent = true).toAsyncContent()
         val filtered = HistoryUiState(
             hasCommittedContent = true,
-            keyword = "午餐",
+            selectedRecordTypes = setOf(HistoryRecordType.TRANSFER),
         ).toAsyncContent()
 
         assertEquals(EmptyKind.COMPLETELY_EMPTY, (complete as AsyncContent.Empty).kind)
         assertEquals(EmptyKind.FILTERED_EMPTY, (filtered as AsyncContent.Empty).kind)
+    }
+
+    @Test
+    fun `history load failure is error rather than either empty state`() {
+        val content = HistoryUiState(
+            hasCommittedContent = true,
+            errorMessage = "加载失败",
+            retryToken = "history:failed",
+        ).toAsyncContent()
+
+        assertIs<AsyncContent.Error>(content)
+        assertEquals("history:failed", content.retryToken)
     }
 
     @Test

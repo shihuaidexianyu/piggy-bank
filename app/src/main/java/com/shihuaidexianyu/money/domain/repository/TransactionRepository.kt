@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.domain.repository
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
+import com.shihuaidexianyu.money.domain.model.TransferPathTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
@@ -55,6 +57,10 @@ interface TransactionRepository : DatabaseTransactionRunner {
     ): List<CashFlowRecord>
 
     suspend fun queryActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): List<CashFlowRecord>
+    suspend fun queryCashFlowAnalysisEntriesBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowAnalysisEntry>
     suspend fun queryPurposeTotals(direction: String, startInclusive: Long, endExclusive: Long): List<PurposeTotal>
     suspend fun queryDailyCashFlowTotals(
         startInclusive: Long,
@@ -83,6 +89,7 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun queryAllTransferRecords(): List<TransferRecord>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecord>
     suspend fun queryActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): List<TransferRecord>
+    suspend fun queryTransferPathTotalsBetween(startInclusive: Long, endExclusive: Long): List<TransferPathTotal>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord>
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
 

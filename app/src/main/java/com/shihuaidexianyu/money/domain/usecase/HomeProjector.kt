@@ -71,6 +71,12 @@ internal object HomeProjector {
             staleAccounts = staleAccounts,
             accountBalances = balances,
             dueReminders = dueReminders,
+            monthlyBudget = calculateMonthlyBudgetStatus(
+                targetAmount = settings.monthlyBudgetAmount,
+                spentAmount = cashOutflow,
+            ),
+            hasAnyAccounts = accounts.isNotEmpty(),
+            allAccountCount = accounts.size,
         )
     }
 }

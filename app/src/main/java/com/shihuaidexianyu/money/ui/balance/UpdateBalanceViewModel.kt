@@ -109,10 +109,14 @@ class UpdateBalanceViewModel(
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
-                val selected = _uiState.value.selectedAccountId ?: accounts.firstOrNull()?.id
+                val openAccountIds = accounts.mapTo(mutableSetOf()) { it.id }
+                val selected = _uiState.value.selectedAccountId
+                    ?.takeIf(openAccountIds::contains)
+                    ?: accounts.firstOrNull()?.id
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.toAccountOptionUiModels(),
                     selectedAccountId = selected,
+                    accountError = if (selected != null) null else _uiState.value.accountError,
                     isLoading = false,
                     loadErrorMessage = null,
                 )

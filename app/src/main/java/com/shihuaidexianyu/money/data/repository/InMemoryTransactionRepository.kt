@@ -6,8 +6,12 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AccountActivityMaxima
 import com.shihuaidexianyu.money.domain.model.AccountLedgerAggregate
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.model.TransferPathTotal
+import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
+import com.shihuaidexianyu.money.domain.model.requireValidAmountBounds
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
@@ -31,9 +35,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.math.abs
 
-class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepository {
+class InMemoryTransactionRepository(
+    private val accountNameLookup: (Long) -> String? = { null },
+) : TransactionRepository, LedgerAggregateRepository {
     private var nextCashFlowId = 1L
     private var nextTransferId = 1L
     private var nextBalanceUpdateId = 1L
@@ -417,6 +422,20 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
             .sortedWith(compareBy<TransferRecord> { it.occurredAt }.thenBy { it.id })
     }
 
+    override suspend fun queryTransferPathTotalsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<TransferPathTotal> = queryActiveTransferRecordsBetween(startInclusive, endExclusive)
+        .groupBy { it.fromAccountId to it.toAccountId }
+        .map { (path, records) ->
+            TransferPathTotal(path.first, path.second, records.map(TransferRecord::amount).ledgerSumExact())
+        }
+        .sortedWith(
+            compareByDescending<TransferPathTotal> { it.amount }
+                .thenBy { it.fromAccountId }
+                .thenBy { it.toAccountId },
+        )
+
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord> {
         return queryAllActiveTransferRecords().filter {
             it.fromAccountId == accountId || it.toAccountId == accountId
@@ -769,6 +788,12 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
             .sortedBy { it.occurredAt }
     }
 
+    override suspend fun queryCashFlowAnalysisEntriesBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowAnalysisEntry> = queryActiveCashFlowRecordsBetween(startInclusive, endExclusive)
+        .map { CashFlowAnalysisEntry(it.accountId, it.direction, it.amount, it.occurredAt) }
+
     override suspend fun queryPurposeTotals(
         direction: String,
         startInclusive: Long,
@@ -813,6 +838,7 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
         cursor: HistoryPageCursor?,
         limit: Int,
     ): List<HistoryRecord> {
+        filters.requireValidAmountBounds()
         return buildHistoryRecords()
             .asSequence()
             .filter { it.matches(filters) }
@@ -822,60 +848,71 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
     }
 
     override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        filters.requireValidAmountBounds()
         return buildHistoryRecords().count { it.matches(filters) }
     }
 
     private fun buildHistoryRecords(): List<HistoryRecord> {
         val cashRecords = cashFlowRecords.filter { it.deletedAt == null }.map { record ->
+            val title = record.note.ifBlank { "未填写备注" }
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.CASH_FLOW,
                 sourceOrder = 4,
                 accountId = record.accountId,
                 relatedAccountId = null,
-                title = record.note.ifBlank { "未填写用途" },
+                title = title,
                 amount = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
                 occurredAt = record.occurredAt,
-                keywordSource = record.note,
+                keywordSource = listOfNotNull(record.note, title, accountNameLookup(record.accountId)).joinToString(" "),
             )
         }
         val transferHistoryRecords = transferRecords.filter { it.deletedAt == null }.map { record ->
+            val title = record.note.ifBlank { "账户间转移" }
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.TRANSFER,
                 sourceOrder = 3,
                 accountId = record.fromAccountId,
                 relatedAccountId = record.toAccountId,
-                title = record.note.ifBlank { "账户间转移" },
+                title = title,
                 amount = record.amount,
                 occurredAt = record.occurredAt,
-                keywordSource = record.note,
+                keywordSource = listOfNotNull(
+                    record.note,
+                    title,
+                    "转账",
+                    accountNameLookup(record.fromAccountId),
+                    accountNameLookup(record.toAccountId),
+                ).joinToString(" "),
             )
         }
         val updateHistoryRecords = balanceUpdates.filter { it.deletedAt == null }.map { record ->
+            val title = if (record.delta == 0L) "余额核对" else "对账调整"
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_UPDATE,
                 sourceOrder = 2,
                 accountId = record.accountId,
                 relatedAccountId = null,
-                title = if (record.delta == 0L) "余额核对" else "对账调整",
+                title = title,
                 amount = record.delta,
                 occurredAt = record.occurredAt,
-                keywordSource = "",
+                keywordSource = listOfNotNull(title, accountNameLookup(record.accountId)).joinToString(" "),
             )
         }
         val adjustmentHistoryRecords = adjustments.filter { it.deletedAt == null }.map { record ->
+            val title = "余额矫正"
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_ADJUSTMENT,
                 sourceOrder = 1,
                 accountId = record.accountId,
                 relatedAccountId = null,
-                title = "余额矫正",
+                title = title,
                 amount = record.delta,
                 occurredAt = record.occurredAt,
-                keywordSource = "",
+                keywordSource = listOfNotNull(title, "余额校正", accountNameLookup(record.accountId)).joinToString(" "),
             )
         }
         return (cashRecords + transferHistoryRecords + updateHistoryRecords + adjustmentHistoryRecords)
@@ -887,25 +924,30 @@ class InMemoryTransactionRepository : TransactionRepository, LedgerAggregateRepo
     }
 
     private fun HistoryRecord.matches(filters: HistoryRecordFilters): Boolean {
-        val keyword = filters.keyword.trim().lowercase()
-        val excludeKeyword = filters.excludeKeyword.trim().lowercase()
-        val source = keywordSource.lowercase()
+        val keyword = normalizeHistorySearchText(filters.keyword.trim())
+        val excludeKeyword = normalizeHistorySearchText(filters.excludeKeyword.trim())
+        val source = normalizeHistorySearchText(keywordSource)
         val keywordOk = keyword.isBlank() || source.contains(keyword)
         val excludeOk = excludeKeyword.isBlank() || !source.contains(excludeKeyword)
         val accountOk = filters.accountId == null ||
             accountId == filters.accountId ||
             relatedAccountId == filters.accountId
+        val transferFromOk = filters.transferFromAccountId == null ||
+            (type == HistoryRecordType.TRANSFER && accountId == filters.transferFromAccountId)
+        val transferToOk = filters.transferToAccountId == null ||
+            (type == HistoryRecordType.TRANSFER && relatedAccountId == filters.transferToAccountId)
         val startOk = filters.dateStartAt == null || occurredAt >= filters.dateStartAt
         val endOk = filters.dateEndAt == null || occurredAt < filters.dateEndAt
-        val amountAbs = abs(amount)
-        val minOk = filters.minAmount == null || amountAbs >= filters.minAmount
-        val maxOk = filters.maxAmount == null || amountAbs <= filters.maxAmount
+        val minOk = filters.minAmount == null || amount >= filters.minAmount || amount <= -filters.minAmount
+        val maxOk = filters.maxAmount == null || (amount >= -filters.maxAmount && amount <= filters.maxAmount)
         val directionOk = when (filters.amountDirection) {
             HistoryAmountDirection.ALL -> true
             HistoryAmountDirection.INCREASE -> amount > 0 && type != HistoryRecordType.TRANSFER
             HistoryAmountDirection.DECREASE -> amount < 0 && type != HistoryRecordType.TRANSFER
         }
-        return keywordOk && excludeOk && accountOk && startOk && endOk && minOk && maxOk && directionOk
+        val typeOk = filters.recordTypes.isEmpty() || type in filters.recordTypes
+        return keywordOk && excludeOk && typeOk && accountOk && transferFromOk && transferToOk &&
+            startOk && endOk && minOk && maxOk && directionOk
     }
 
     private fun HistoryRecord.isAfterCursor(cursor: HistoryPageCursor?): Boolean {

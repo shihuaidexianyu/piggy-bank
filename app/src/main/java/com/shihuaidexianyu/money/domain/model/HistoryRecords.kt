@@ -16,13 +16,35 @@ enum class HistoryAmountDirection {
 data class HistoryRecordFilters(
     val keyword: String = "",
     val excludeKeyword: String = "",
+    val recordTypes: Set<HistoryRecordType> = emptySet(),
     val accountId: Long? = null,
+    val transferFromAccountId: Long? = null,
+    val transferToAccountId: Long? = null,
     val dateStartAt: Long? = null, // Inclusive when present.
     val dateEndAt: Long? = null, // Exclusive when present.
     val minAmount: Long? = null,
     val maxAmount: Long? = null,
     val amountDirection: HistoryAmountDirection = HistoryAmountDirection.ALL,
 )
+
+/**
+ * Matches SQLite's built-in LOWER behavior used by the Room history query: ASCII letters are
+ * case-insensitive, while non-ASCII scripts remain literal. Keeping this normalization shared
+ * prevents the in-memory repository and UI specification from applying broader Unicode folding.
+ */
+fun normalizeHistorySearchText(value: String): String = buildString(value.length) {
+    value.forEach { character ->
+        append(if (character in 'A'..'Z') character.lowercaseChar() else character)
+    }
+}
+
+fun HistoryRecordFilters.requireValidAmountBounds() {
+    require(minAmount == null || minAmount >= 0L) { "History minimum amount must be non-negative" }
+    require(maxAmount == null || maxAmount >= 0L) { "History maximum amount must be non-negative" }
+    require(minAmount == null || maxAmount == null || minAmount <= maxAmount) {
+        "History minimum amount must not exceed maximum amount"
+    }
+}
 
 data class HistoryPageCursor(
     val occurredAt: Long,

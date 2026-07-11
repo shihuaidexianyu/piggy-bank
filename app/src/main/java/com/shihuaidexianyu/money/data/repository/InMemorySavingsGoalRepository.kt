@@ -19,7 +19,7 @@ class InMemorySavingsGoalRepository : SavingsGoalRepository {
     override suspend fun query(): SavingsGoal? = mutex.withLock { goal.value }
 
     override suspend fun upsert(targetAmount: Long, now: Long) {
-        require(targetAmount > 0L) { "储蓄目标金额必须大于零" }
+        require(targetAmount > 0L) { "净资产目标金额必须大于零" }
         mutex.withLock {
             val existing = goal.value
             goal.value = when {

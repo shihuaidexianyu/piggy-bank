@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.data.db.appSettingsDataStore
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.model.normalizeRecentAccountIds
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
@@ -85,6 +86,11 @@ object DevicePreferencesMapper {
         val history = HistoryFilters(
             keyword = preferences[Keys.HistoryKeyword] ?: "",
             excludeKeyword = preferences[Keys.HistoryExcludeKeyword] ?: "",
+            recordTypes = preferences[Keys.HistoryRecordTypes]
+                ?.split(',')
+                .orEmpty()
+                .filter { stored -> HistoryRecordType.entries.any { it.name == stored } }
+                .toSet(),
             accountId = preferences[Keys.HistoryAccountId]?.takeIf { it >= 0L },
             dateStartAt = preferences[Keys.HistoryDateStartAt]?.takeIf { it >= 0L },
             dateEndAt = preferences[Keys.HistoryDateEndAt]?.takeIf { it >= 0L },
@@ -126,6 +132,7 @@ object DevicePreferencesMapper {
         writeNullableLong(preferences, Keys.HistoryDateEndAt, value.historyFilters.dateEndAt)
         preferences[Keys.HistoryKeyword] = value.historyFilters.keyword
         preferences[Keys.HistoryExcludeKeyword] = value.historyFilters.excludeKeyword
+        preferences[Keys.HistoryRecordTypes] = value.historyFilters.recordTypes.sorted().joinToString(",")
         preferences[Keys.HistoryMinAmountText] = value.historyFilters.minAmountText
         preferences[Keys.HistoryMaxAmountText] = value.historyFilters.maxAmountText
         preferences[Keys.HistoryAmountDirection] = value.historyFilters.amountDirection
@@ -148,6 +155,7 @@ object DevicePreferencesMapper {
         val ExternalPrivacyDefaultsMigrated = booleanPreferencesKey("external_privacy_defaults_migrated_v1")
         val HistoryKeyword = stringPreferencesKey("last_history_keyword")
         val HistoryExcludeKeyword = stringPreferencesKey("last_history_exclude_keyword")
+        val HistoryRecordTypes = stringPreferencesKey("last_history_record_types")
         val HistoryAccountId = longPreferencesKey("last_history_account_id")
         val HistoryDateStartAt = longPreferencesKey("last_history_date_start_at")
         val HistoryDateEndAt = longPreferencesKey("last_history_date_end_at")

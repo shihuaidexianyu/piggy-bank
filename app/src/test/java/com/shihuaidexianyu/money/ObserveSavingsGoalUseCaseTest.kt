@@ -80,6 +80,24 @@ class ObserveSavingsGoalUseCaseTest {
     }
 
     @Test
+    fun `progress preserves a negative net worth`() = runBlocking {
+        val accounts = InMemoryAccountRepository()
+        accounts.createAccount(Account(name = "负债", initialBalance = -500L, createdAt = 0L))
+        val ledger = InMemoryTransactionRepository()
+        val goals = InMemorySavingsGoalRepository().also { it.upsert(1_000L, 1L) }
+        val useCase = ObserveSavingsGoalUseCase(
+            accounts,
+            goals,
+            ledger,
+            CalculateAccountBalancesUseCase(ledger, testClockProvider(1L)),
+        )
+
+        val progress = requireNotNull(useCase().first())
+        assertEquals(-500L, progress.currentAmount)
+        assertFalse(progress.isAchieved)
+    }
+
+    @Test
     fun `progress cross account overflow uses ledger domain failure`() = runBlocking {
         val accounts = InMemoryAccountRepository()
         accounts.createAccount(Account(name = "最大", initialBalance = Long.MAX_VALUE, createdAt = 0L))
@@ -107,6 +125,18 @@ class ObserveSavingsGoalUseCaseTest {
 
         assertEquals(1, clock.calls)
         assertEquals(123L, repository.query()?.createdAt)
+    }
+
+    @Test
+    fun `upsert use case rejects zero and negative target before reading clock`() = runBlocking {
+        val repository = InMemorySavingsGoalRepository()
+        val clock = CountingClockProvider(123L)
+        val useCase = UpsertSavingsGoalUseCase(repository, clock)
+
+        assertFailsWith<IllegalArgumentException> { useCase(0L) }
+        assertFailsWith<IllegalArgumentException> { useCase(-1L) }
+        assertEquals(0, clock.calls)
+        assertNull(repository.query())
     }
 
     private class CountingClockProvider(private val now: Long) : ClockProvider {

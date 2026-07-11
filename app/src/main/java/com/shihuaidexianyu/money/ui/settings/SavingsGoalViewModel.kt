@@ -22,7 +22,7 @@ data class SavingsGoalUiState(
     val hasGoal: Boolean = false,
     val amountText: String = "",
     val isSaving: Boolean = false,
-    val showDeleteConfirm: Boolean = false,
+    val showClearConfirm: Boolean = false,
 )
 
 sealed interface SavingsGoalEffect : UiEffect {
@@ -72,7 +72,7 @@ class SavingsGoalViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        loadErrorMessage = "储蓄目标加载失败，请重试",
+                        loadErrorMessage = "净资产目标加载失败，请重试",
                     )
                 }
             }
@@ -83,12 +83,12 @@ class SavingsGoalViewModel(
         _uiState.update { it.copy(amountText = value) }
     }
 
-    fun showDeleteConfirm() {
-        _uiState.update { it.copy(showDeleteConfirm = true) }
+    fun showClearConfirm() {
+        _uiState.update { it.copy(showClearConfirm = true) }
     }
 
-    fun dismissDeleteConfirm() {
-        _uiState.update { it.copy(showDeleteConfirm = false) }
+    fun dismissClearConfirm() {
+        _uiState.update { it.copy(showClearConfirm = false) }
     }
 
     fun save() {
@@ -106,20 +106,24 @@ class SavingsGoalViewModel(
                 .onSuccess { _effectFlow.emit(SavingsGoalEffect.Saved) }
                 .onFailure { error ->
                     _uiState.update { it.copy(isSaving = false) }
-                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "保存失败"))
+                    _effectFlow.emit(
+                        SavingsGoalEffect.ShowMessage(
+                            error.message ?: if (state.hasGoal) "修改失败" else "设置失败",
+                        ),
+                    )
                 }
         }
     }
 
     fun clear() {
-        if (!_uiState.value.hasGoal) return
-        _uiState.update { it.copy(showDeleteConfirm = false, isSaving = true) }
+        if (!_uiState.value.hasGoal || _uiState.value.isSaving) return
+        _uiState.update { it.copy(showClearConfirm = false, isSaving = true) }
         viewModelScope.launch {
             runCatching { clearSavingsGoalUseCase() }
                 .onSuccess { _effectFlow.emit(SavingsGoalEffect.Cleared) }
                 .onFailure { error ->
                     _uiState.update { it.copy(isSaving = false) }
-                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "删除失败"))
+                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "清除失败"))
                 }
         }
     }

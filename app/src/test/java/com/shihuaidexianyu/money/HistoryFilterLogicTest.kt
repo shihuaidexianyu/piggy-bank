@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.ui.history.HistoryFilterState
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.history.HistoryRecordUiModel
 import com.shihuaidexianyu.money.ui.history.filterHistoryRecords
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import kotlin.test.assertEquals
 import org.junit.Test
 
@@ -43,17 +44,39 @@ class HistoryFilterLogicTest {
         assertEquals(listOf("cash_1", "transfer_1"), filtered.map { it.id })
     }
 
+    @Test
+    fun `primary keyword searches localized title and account subtitle while type remains advanced`() {
+        val records = listOf(
+            record(id = "cash_1", title = "余额核对", subtitle = "工资卡", source = ""),
+            record(id = "transfer_1", kind = HistoryRecordKind.TRANSFER, title = "转账", subtitle = "现金 → 储蓄", source = ""),
+        )
+
+        assertEquals(
+            listOf("cash_1"),
+            filterHistoryRecords(records, HistoryFilterState(keyword = "工资卡")).map { it.id },
+        )
+        assertEquals(
+            listOf("transfer_1"),
+            filterHistoryRecords(
+                records,
+                HistoryFilterState(selectedRecordTypes = setOf(HistoryRecordType.TRANSFER)),
+            ).map { it.id },
+        )
+    }
+
     private fun record(
         id: String,
         kind: HistoryRecordKind = HistoryRecordKind.CASH_FLOW,
+        title: String = id,
+        subtitle: String = "",
         source: String,
     ): HistoryRecordUiModel {
         return HistoryRecordUiModel(
             id = id,
             recordId = 1L,
             kind = kind,
-            title = id,
-            subtitle = "",
+            title = title,
+            subtitle = subtitle,
             amount = 100L,
             occurredAt = 1_000L,
             accountIds = setOf(1L),

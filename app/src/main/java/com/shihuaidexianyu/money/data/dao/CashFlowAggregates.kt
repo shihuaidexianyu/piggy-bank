@@ -10,3 +10,16 @@ data class CashFlowDailyTotalRow(
     val direction: String,
     val amount: Long,
 )
+
+data class CashFlowAnalysisEntryRow(
+    val accountId: Long,
+    val direction: String,
+    val amount: Long,
+    val occurredAt: Long,
+)
+
+data class TransferPathTotalRow(
+    val fromAccountId: Long,
+    val toAccountId: Long,
+    val amount: Long,
+)

@@ -14,6 +14,20 @@ data class NotificationPermissionFacts(
     val balanceChannelEnabled: Boolean,
 )
 
+internal data class NotificationSettingsSyncObservation(
+    val state: NotificationPermissionUiState,
+    val recurringChannelEnabled: Boolean,
+    val balanceChannelEnabled: Boolean,
+)
+
+internal fun notificationSettingsSyncObservation(
+    facts: NotificationPermissionFacts,
+): NotificationSettingsSyncObservation = NotificationSettingsSyncObservation(
+    state = resolveNotificationPermissionState(facts),
+    recurringChannelEnabled = facts.recurringChannelEnabled,
+    balanceChannelEnabled = facts.balanceChannelEnabled,
+)
+
 enum class NotificationSettingsTarget {
     APPLICATION,
     RECURRING_CHANNEL,

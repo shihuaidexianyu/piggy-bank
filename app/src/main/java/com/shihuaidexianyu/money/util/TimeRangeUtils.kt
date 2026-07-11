@@ -13,12 +13,6 @@ typealias TimeRange = DomainTimeRange
  * Kept for UI/test callers; new domain code should use the calculator directly.
  */
 object TimeRangeUtils {
-    fun currentRange(
-        period: com.shihuaidexianyu.money.domain.model.HomePeriod,
-        zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault(),
-        nowMillis: Long = System.currentTimeMillis(),
-    ): TimeRange = com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator.currentRange(period, zoneId, nowMillis)
-
     fun currentWeekRange(
         zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault(),
         nowMillis: Long = System.currentTimeMillis(),

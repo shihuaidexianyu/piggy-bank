@@ -1,7 +1,9 @@
 package com.shihuaidexianyu.money.navigation
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -20,6 +22,11 @@ import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.stats.StatsScreen
 import com.shihuaidexianyu.money.ui.stats.StatsViewModel
+import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
+import com.shihuaidexianyu.money.di.SystemClockProvider
+import com.shihuaidexianyu.money.di.SystemZoneIdProvider
+
+private const val HISTORY_FILTER_REQUEST_KEY = "history_filter_request"
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -32,10 +39,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             ?.savedStateHandle
             ?.get<String>("batch_reconcile_message")
         val viewModel = viewModel<HomeViewModel>(
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    portableSettingsRepository = container.portableSettingsRepository,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -46,40 +55,57 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onSnackbarMessageShown = {
                     entry?.savedStateHandle?.remove<String>("batch_reconcile_message")
                 },
-                onStartCashFlow = { direction ->
-                    navController.navigate(MoneyDestination.recordCashFlowRoute(direction, accountId = 0L))
-                },
-                onStartTransfer = { navController.navigate(MoneyDestination.recordTransferRoute()) },
                 onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
                 onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
                 onOpenSettings = { navController.navigate(MoneyDestination.Settings.route) },
+                onManageAccounts = {
+                    navController.navigate(MoneyDestination.Accounts.route) { launchSingleTop = true }
+                },
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
+                onOpenMonthlyBudgetEditor = viewModel::openMonthlyBudgetEditor,
+                onDismissMonthlyBudgetEditor = viewModel::dismissMonthlyBudgetEditor,
+                onMonthlyBudgetInputChange = viewModel::updateMonthlyBudgetInput,
+                onSaveMonthlyBudget = viewModel::saveMonthlyBudget,
+                onRetryMonthlyBudgetSave = viewModel::retryMonthlyBudgetSave,
+                onCloseMonthlyBudget = viewModel::closeMonthlyBudget,
                 modifier = Modifier,
             )
     }
 
-    composable(MoneyDestination.History.route) {
+    composable(MoneyDestination.History.route) { entry ->
         val viewModel = viewModel<HistoryViewModel>(
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HistoryViewModel(
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
+        val filterRequest by entry.savedStateHandle
+            .getStateFlow<String?>(HISTORY_FILTER_REQUEST_KEY, null)
+            .collectAsStateWithLifecycle()
+        LaunchedEffect(filterRequest) {
+            val encoded = filterRequest ?: return@LaunchedEffect
+            runCatching { HistoryFilterNavigationRequest.decode(encoded) }
+                .onSuccess(viewModel::applyExternalFilters)
+            entry.savedStateHandle.remove<String>(HISTORY_FILTER_REQUEST_KEY)
+        }
         HistoryScreen(
                 state = state,
                 onKeywordChange = viewModel::updateKeyword,
                 onExcludeKeywordChange = viewModel::updateExcludeKeyword,
+                onRecordTypesChange = viewModel::updateRecordTypes,
                 onAccountChange = viewModel::updateAccount,
                 onDateRangeChange = viewModel::updateDateRange,
                 onMinAmountChange = viewModel::updateMinAmount,
                 onMaxAmountChange = viewModel::updateMaxAmount,
                 onAmountDirectionChange = viewModel::updateAmountDirectionFilter,
+                onClearAllFilters = viewModel::clearFilters,
                 onLoadMore = viewModel::loadMore,
                 onRetryLoadMore = viewModel::loadMore,
                 onRetry = viewModel::retry,
@@ -100,16 +126,22 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 StatsViewModel(
                     observeStatsDashboardUseCase = container.observeStatsDashboardUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    clockProvider = SystemClockProvider,
+                    zoneIdProvider = SystemZoneIdProvider,
                 )
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         StatsScreen(
                 state = state,
-                onPeriodChange = viewModel::updatePeriod,
                 onPreviousRange = viewModel::moveToPreviousRange,
                 onNextRange = viewModel::moveToNextRange,
                 onResetRange = viewModel::resetToCurrentRange,
+                onOpenHistory = { filters ->
+                    navController.navigate(MoneyDestination.History.route) { launchSingleTop = true }
+                    navController.getBackStackEntry(MoneyDestination.History.route)
+                        .savedStateHandle[HISTORY_FILTER_REQUEST_KEY] = HistoryFilterNavigationRequest.create(filters)
+                },
                 onRetry = viewModel::retry,
             )
     }
@@ -124,6 +156,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                     observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
+                    observeAccountClosureIssuesUseCase = container.observeAccountClosureIssuesUseCase,
                 )
             },
         )
@@ -133,14 +166,26 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
+                onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
+                onManageSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
                 onRetry = viewModel::retry,
             )
     }
 
     composable(MoneyDestination.Settings.route) {
+        val notificationPermissionGateway = rememberNotificationPermissionGateway(
+            devicePreferencesRepository = container.devicePreferencesRepository,
+            notificationSyncRequester = container.notificationSyncRequester,
+        )
         val viewModel = rememberSettingsViewModel(
             container = container,
         )
+        // SettingsViewModel is Activity-scoped; recompute the current canonical content hash on
+        // every Settings entry so rollback eligibility cannot survive an intervening mutation.
+        LifecycleResumeEffect(viewModel) {
+            viewModel.retryImportHistory()
+            onPauseOrDispose { }
+        }
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         SettingsScreen(
             state = state,
@@ -154,12 +199,20 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onHideWidgetAmountsChange = viewModel::updateHideWidgetAmounts,
             onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
             onHideRecentTasksChange = viewModel::updateHideRecentTasks,
-            onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
-            onCreateSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
+            notificationPermissionState = notificationPermissionGateway.state,
+            recurringNotificationChannelEnabled = notificationPermissionGateway.recurringChannelEnabled,
+            balanceNotificationChannelEnabled = notificationPermissionGateway.balanceChannelEnabled,
+            onRequestNotificationPermission = { notificationPermissionGateway.requestContextually() },
+            onOpenNotificationSettings = notificationPermissionGateway.openSettings,
+            onManageReminders = { navController.navigate(MoneyDestination.ReminderListRoute) },
+            onManageAccountReminderConfigs = {
+                navController.navigate(MoneyDestination.Accounts.route) { launchSingleTop = true }
+            },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
             onRollbackImport = viewModel::rollbackImport,
+            onRetryImportHistory = viewModel::retryImportHistory,
         )
     }
 

@@ -36,6 +36,7 @@ data class ImportReceipt(
     val schemaVersion: Int,
     val counts: ImportReceiptCounts,
     val rolledBackReceiptId: String? = null,
+    val commitSequence: Long = 0L,
 )
 
 @Serializable
@@ -51,8 +52,15 @@ class ImportReceiptStore(
 
     @Synchronized
     fun put(receipt: ImportReceipt) {
-        validate(receipt)
-        val receipts = readAll().filterNot { it.id == receipt.id } + receipt
+        val current = readAll()
+        val prepared = if (receipt.status == ImportReceiptStatus.COMMITTED && receipt.commitSequence == 0L) {
+            receipt.copy(commitSequence = nextCommitSequence(current))
+        } else {
+            receipt
+        }
+        validate(prepared)
+        val receipts = current.filterNot { it.id == prepared.id } + prepared
+        validateIndex(receipts)
         writeAll(receipts)
     }
 
@@ -60,7 +68,12 @@ class ImportReceiptStore(
     fun markCommitted(id: String): ImportReceipt {
         val all = readAll()
         val existing = requireNotNull(all.firstOrNull { it.id == id }) { "导入收据不存在" }
-        val committed = existing.copy(status = ImportReceiptStatus.COMMITTED)
+        if (existing.status == ImportReceiptStatus.COMMITTED) return existing
+        val committed = existing.copy(
+            status = ImportReceiptStatus.COMMITTED,
+            commitSequence = nextCommitSequence(all),
+        )
+        validate(committed)
         writeAll(all.map { if (it.id == id) committed else it })
         return committed
     }
@@ -78,7 +91,7 @@ class ImportReceiptStore(
     @Synchronized
     fun history(): List<ImportReceipt> = readAll()
         .filter { it.status == ImportReceiptStatus.COMMITTED }
-        .sortedByDescending { it.importedAt }
+        .sortedByDescending { it.commitSequence }
 
     @Synchronized
     fun findCommitted(id: String): ImportReceipt? = history().firstOrNull { it.id == id }
@@ -88,9 +101,17 @@ class ImportReceiptStore(
 
     private fun readAll(): List<ImportReceipt> {
         if (!indexFile.isFile) return emptyList()
-        return runCatching {
-            BackupJsonCodec.json.decodeFromString<ReceiptIndex>(indexFile.readText(Charsets.UTF_8)).receipts
-        }.getOrElse { throw IllegalStateException("导入收据索引损坏", it) }
+        return try {
+            val decoded = BackupJsonCodec.json
+                .decodeFromString<ReceiptIndex>(indexFile.readText(Charsets.UTF_8))
+                .receipts
+            val migrated = migrateLegacyCommitSequence(decoded)
+            validateIndex(migrated)
+            if (migrated != decoded) writeAll(migrated)
+            migrated
+        } catch (error: Exception) {
+            throw IllegalStateException("导入收据索引损坏：${error.message ?: "未知错误"}", error)
+        }
     }
 
     private fun writeAll(receipts: List<ImportReceipt>) {
@@ -106,6 +127,49 @@ class ImportReceiptStore(
         require(receipt.targetContentSha256.matches(SHA_256)) { "目标内容 SHA-256 无效" }
         require(receipt.safetySnapshotSha256.matches(SHA_256)) { "安全快照 SHA-256 无效" }
         require(receipt.safetySnapshotFileName.matches(SAFE_FILE)) { "安全快照文件名无效" }
+        require(receipt.commitSequence >= 0L) { "导入收据提交顺序无效" }
+        require(receipt.status != ImportReceiptStatus.PENDING || receipt.commitSequence == 0L) {
+            "待提交收据不能包含提交顺序"
+        }
+        require(receipt.status != ImportReceiptStatus.COMMITTED || receipt.commitSequence > 0L) {
+            "已提交收据缺少提交顺序"
+        }
+    }
+
+    private fun migrateLegacyCommitSequence(receipts: List<ImportReceipt>): List<ImportReceipt> {
+        val committed = receipts.filter { it.status == ImportReceiptStatus.COMMITTED }
+        val hasLegacy = committed.any { it.commitSequence == 0L }
+        val hasSequenced = committed.any { it.commitSequence > 0L }
+        require(!(hasLegacy && hasSequenced)) { "导入收据提交顺序损坏：新旧格式混用" }
+        if (!hasLegacy) return receipts
+        var sequence = 0L
+        return receipts.map { receipt ->
+            if (receipt.status == ImportReceiptStatus.COMMITTED) {
+                sequence = Math.addExact(sequence, 1L)
+                receipt.copy(commitSequence = sequence)
+            } else {
+                receipt
+            }
+        }
+    }
+
+    private fun validateIndex(receipts: List<ImportReceipt>) {
+        receipts.forEach(::validate)
+        val committedSequences = receipts
+            .filter { it.status == ImportReceiptStatus.COMMITTED }
+            .map(ImportReceipt::commitSequence)
+        require(committedSequences.size == committedSequences.toSet().size) {
+            "导入收据提交顺序损坏：存在重复序号"
+        }
+    }
+
+    private fun nextCommitSequence(receipts: List<ImportReceipt>): Long {
+        val current = receipts.maxOfOrNull(ImportReceipt::commitSequence) ?: 0L
+        return try {
+            Math.addExact(current, 1L)
+        } catch (error: ArithmeticException) {
+            throw IllegalStateException("导入收据提交顺序已耗尽", error)
+        }
     }
 
     private companion object {

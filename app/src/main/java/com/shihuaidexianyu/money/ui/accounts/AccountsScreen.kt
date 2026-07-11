@@ -52,15 +52,59 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import java.math.BigInteger
 
 internal fun shouldShowAccountOverview(state: AccountsUiState): Boolean =
     state.openAccounts.isNotEmpty() || state.closedAccounts.isNotEmpty()
+
+data class AccountGroups(
+    val normal: List<AccountListItemUiModel>,
+    val hidden: List<AccountListItemUiModel>,
+    val closed: List<AccountListItemUiModel>,
+) {
+    val all: List<AccountListItemUiModel> get() = normal + hidden + closed
+}
+
+fun accountGroups(
+    openAccounts: List<AccountListItemUiModel>,
+    closedAccounts: List<AccountListItemUiModel>,
+): AccountGroups = AccountGroups(
+    normal = openAccounts.filterNot(AccountListItemUiModel::isHidden),
+    hidden = openAccounts.filter(AccountListItemUiModel::isHidden),
+    closed = closedAccounts,
+)
+
+data class NetWorthGoalProgressPresentation(
+    val geometryPercent: Int,
+    val percentageText: String,
+)
+
+fun netWorthGoalProgressPresentation(
+    currentAmount: Long,
+    targetAmount: Long,
+): NetWorthGoalProgressPresentation {
+    require(targetAmount > 0L) { "净资产目标必须大于 0" }
+    val percentage = BigInteger.valueOf(currentAmount)
+        .multiply(BigInteger.valueOf(100L))
+        .divide(BigInteger.valueOf(targetAmount))
+    val geometryPercent = when {
+        percentage.signum() <= 0 -> 0
+        percentage >= BigInteger.valueOf(100L) -> 100
+        else -> percentage.toInt()
+    }
+    return NetWorthGoalProgressPresentation(
+        geometryPercent = geometryPercent,
+        percentageText = "$percentage%",
+    )
+}
 
 @Composable
 fun AccountsScreen(
@@ -68,9 +112,12 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
+    onManageAccountOrder: () -> Unit,
+    onManageSavingsGoal: () -> Unit,
     onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
     val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
         .mapNotNull { account -> account.balance.takeIf { it > 0L } }
@@ -121,6 +168,24 @@ fun AccountsScreen(
                     AccountOverviewCard(state = state)
                 }
             }
+            item {
+                MoneySectionHeader(title = "管理")
+            }
+            item {
+                MoneyListSection {
+                    MoneyListRow(
+                        title = "账户顺序",
+                        subtitle = "调整正常与隐藏账户的显示顺序",
+                        modifier = Modifier.clickable(onClick = onManageAccountOrder),
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = "净资产目标",
+                        subtitle = if (state.savingsGoal == null) "设置单一净资产目标" else "查看或修改净资产目标",
+                        modifier = Modifier.clickable(onClick = onManageSavingsGoal),
+                    )
+                }
+            }
             if (state.openAccounts.isEmpty()) {
                 item {
                     MoneyEmptyStateCard(
@@ -137,20 +202,33 @@ fun AccountsScreen(
                     }
                 }
             } else {
-                val staleCount = state.openAccounts.count { it.isStale }
-                item {
-                    MoneySectionHeader(
-                        title = "开放账户",
-                        trailing = if (staleCount > 0) "$staleCount 个待核对" else "${state.openAccounts.size} 个",
-                    )
+                if (groups.normal.isNotEmpty()) {
+                    val staleCount = groups.normal.count { it.isStale }
+                    item {
+                        MoneySectionHeader(
+                            title = "正常账户",
+                            trailing = if (staleCount > 0) "$staleCount 个待核对" else "${groups.normal.size} 个",
+                        )
+                    }
+                    itemsIndexed(groups.normal, key = { _, account -> account.id }) { _, account ->
+                        AccountCard(
+                            account = account,
+                            currencySettings = state.settings,
+                            positiveAssetsTotal = positiveAssetsTotal,
+                            onClick = { onAccountClick(account.id) },
+                        )
+                    }
                 }
-                itemsIndexed(state.openAccounts, key = { _, account -> account.id }) { _, account ->
-                    AccountCard(
-                        account = account,
-                        currencySettings = state.settings,
-                        positiveAssetsTotal = positiveAssetsTotal,
-                        onClick = { onAccountClick(account.id) },
-                    )
+                if (groups.hidden.isNotEmpty()) {
+                    item { MoneySectionHeader(title = "隐藏账户", trailing = "${groups.hidden.size} 个") }
+                    itemsIndexed(groups.hidden, key = { _, account -> account.id }) { _, account ->
+                        AccountCard(
+                            account = account,
+                            currencySettings = state.settings,
+                            positiveAssetsTotal = positiveAssetsTotal,
+                            onClick = { onAccountClick(account.id) },
+                        )
+                    }
                 }
             }
             if (hasClosedAccounts) {
@@ -175,7 +253,7 @@ fun AccountsScreen(
             }
             if (state.showClosed) {
                 item {
-                    MoneySectionHeader(title = "已关闭")
+                    MoneySectionHeader(title = "已关闭账户")
                 }
                 itemsIndexed(state.closedAccounts, key = { _, account -> account.id }) { _, account ->
                     AccountCard(
@@ -198,18 +276,23 @@ private fun AccountOverviewCard(state: AccountsUiState) {
     val staleCount = state.openAccounts.count { it.isStale }
     val current = LocalMoneyColors.current.current
     val goal = state.savingsGoal
-    val goalPercentage = if (goal != null && goal.targetAmount > 0L) {
-        ((goal.currentAmount * 100L) / goal.targetAmount).coerceIn(0L, 100L)
-    } else {
-        0L
+    val goalProgress = goal?.let {
+        netWorthGoalProgressPresentation(it.currentAmount, it.targetAmount)
     }
     val goalText = if (goal != null) {
-        if (goal.isAchieved) "已达成目标" else "目标 ${formatInAppAmount(goal.targetAmount, state.settings)} · $goalPercentage%"
+        if (goal.isAchieved) {
+            "已达成净资产目标 · 当前 ${formatInAppAmount(goal.currentAmount, state.settings)} · " +
+                "进度 ${requireNotNull(goalProgress).percentageText}"
+        } else {
+            "当前 ${formatInAppAmount(goal.currentAmount, state.settings)} · " +
+                "目标 ${formatInAppAmount(goal.targetAmount, state.settings)} · " +
+                "进度 ${requireNotNull(goalProgress).percentageText}"
+        }
     } else {
         null
     }
     @Suppress("FloatingPointUsageInMoney")
-    val progressFraction = if (goal != null) (goalPercentage / 100f).coerceIn(0f, 1f) else 0f
+    val progressFraction = (goalProgress?.geometryPercent ?: 0) / 100f
     val accentColor = MaterialTheme.colorScheme.primary
 
     MoneyCard(contentPadding = PaddingValues(18.dp)) {
@@ -308,7 +391,9 @@ private fun AccountCard(
     }
     val assetShareColor = accountVisualColor(account.colorName)
     val statusText = when {
+        account.requiresReopenAndSettle -> "需重新开启并结清"
         account.isClosed -> "已关闭"
+        account.isHidden -> "已隐藏 · 仍计入净资产"
         account.isStale -> "余额待核对"
         else -> "余额正常"
     }

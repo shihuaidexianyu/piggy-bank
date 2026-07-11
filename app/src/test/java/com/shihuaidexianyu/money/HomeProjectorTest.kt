@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.usecase.HomeProjector
 import java.time.Instant

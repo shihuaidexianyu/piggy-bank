@@ -111,8 +111,6 @@ internal class UseCaseGraph(
         accountRepository = data.accountRepository,
         portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
-        calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
-        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         zoneIdProvider = SystemZoneIdProvider,
     )
 

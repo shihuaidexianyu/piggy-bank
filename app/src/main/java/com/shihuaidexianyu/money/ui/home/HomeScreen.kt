@@ -9,29 +9,29 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SouthWest
-import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,13 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -54,7 +52,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
@@ -63,13 +60,18 @@ fun HomeScreen(
     state: HomeUiState,
     snackbarMessage: String? = null,
     onSnackbarMessageShown: () -> Unit = {},
-    onStartCashFlow: (CashFlowDirection) -> Unit,
-    onStartTransfer: () -> Unit,
     onStartUpdateBalance: (Long) -> Unit,
     onAllRemindersClick: () -> Unit,
     onOpenSettings: () -> Unit,
+    onManageAccounts: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onRetry: () -> Unit = {},
+    onOpenMonthlyBudgetEditor: () -> Unit = {},
+    onDismissMonthlyBudgetEditor: () -> Unit = {},
+    onMonthlyBudgetInputChange: (String) -> Unit = {},
+    onSaveMonthlyBudget: () -> Unit = {},
+    onRetryMonthlyBudgetSave: () -> Unit = {},
+    onCloseMonthlyBudget: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showUpdateBalancePicker by remember { mutableStateOf(false) }
@@ -91,6 +93,23 @@ fun HomeScreen(
                 showUpdateBalancePicker = false
                 onStartUpdateBalance(accountId)
             },
+        )
+    }
+    if (state.showMonthlyBudgetEditor) {
+        MonthlyBudgetEditorDialog(
+            input = state.monthlyBudgetInput,
+            inputError = state.monthlyBudgetInputError,
+            saveError = state.monthlyBudgetSaveError,
+            isSaving = state.isMonthlyBudgetSaving,
+            hasBudget = state.monthlyBudget != null,
+            onInputChange = onMonthlyBudgetInputChange,
+            onSave = if (state.monthlyBudgetSaveError != null) {
+                onRetryMonthlyBudgetSave
+            } else {
+                onSaveMonthlyBudget
+            },
+            onCloseBudget = onCloseMonthlyBudget,
+            onDismiss = onDismissMonthlyBudgetEditor,
         )
     }
     Column(modifier = modifier) {
@@ -131,28 +150,50 @@ fun HomeScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     PeriodOverviewBlock(
-                        recordCount = renderedState.periodRecordCount,
-                        periodLabel = "本月",
+                        totalAssets = renderedState.totalAssets,
                         cashInflow = renderedState.periodCashInflow,
                         cashOutflow = renderedState.periodCashOutflow,
                         settings = renderedState.settings,
                     )
-                    MoneySectionHeader(title = "快速记录")
-                    ActionGrid(
-                        onInflow = { onStartCashFlow(CashFlowDirection.INFLOW) },
-                        onOutflow = { onStartCashFlow(CashFlowDirection.OUTFLOW) },
-                        onTransfer = onStartTransfer,
-                        onUpdateBalance = { showUpdateBalancePicker = true },
-                        enabled = true,
-                        transferEnabled = renderedState.accountOptions.size >= 2,
+                    if (renderedState.accountOptions.isEmpty()) {
+                        HomeOpenAccountCta(onManageAccounts = onManageAccounts)
+                    }
+                    MonthlyBudgetBlock(
+                        budget = renderedState.monthlyBudget,
+                        settings = renderedState.settings,
+                        onEdit = onOpenMonthlyBudgetEditor,
+                        onClose = onCloseMonthlyBudget,
+                    )
+                    HomeReminderSection(
+                        reminders = renderedState.dueReminders,
+                        onOpenReminders = onAllRemindersClick,
+                    )
+                    HomeStaleAccountSection(
+                        accounts = renderedState.staleAccounts,
+                        settings = renderedState.settings,
+                        onReconcile = onStartUpdateBalance,
+                        onChooseAccount = { showUpdateBalancePicker = true },
+                        showReconcileAction = renderedState.accountOptions.isNotEmpty(),
                     )
                 }
             },
         )
+    }
+}
+@Composable
+private fun HomeOpenAccountCta(
+    onManageAccounts: () -> Unit,
+) {
+    MoneyEmptyStateCard(
+        title = "创建或重新开启可用账户",
+        subtitle = "当前没有可记账的开放账户，历史净资产仍会保留。",
+    ) {
+        OutlinedButton(onClick = onManageAccounts) { Text("管理账户") }
     }
 }
 
@@ -219,8 +260,7 @@ private fun ReminderHeaderButton(
 
 @Composable
 private fun PeriodOverviewBlock(
-    recordCount: Int,
-    periodLabel: String,
+    totalAssets: Long,
     cashInflow: Long,
     cashOutflow: Long,
     settings: PortableSettings,
@@ -249,22 +289,12 @@ private fun PeriodOverviewBlock(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "本周期记录",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MoneyStatusPill(
-                    text = periodLabel,
-                    accent = MaterialTheme.colorScheme.primary,
-                )
-            }
-            val recordText = "$recordCount 笔"
+            Text(
+                text = "当前净资产",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val recordText = formatInAppAmount(totalAssets, settings)
             val recordStyle = when {
                 recordText.length > 12 -> MaterialTheme.typography.headlineSmall
                 recordText.length > 8 -> MaterialTheme.typography.displayMedium
@@ -279,25 +309,216 @@ private fun PeriodOverviewBlock(
             )
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PeriodMetricRow(
-                    label = "入账",
+                    label = "本月收入",
                     value = formatInAppAmount(cashInflow, settings),
                     color = moneyColors.income,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 PeriodMetricRow(
-                    label = "出账",
+                    label = "本月支出",
                     value = formatInAppAmount(cashOutflow, settings),
                     color = moneyColors.expense,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 PeriodMetricRow(
-                    label = "收支结余",
+                    label = "本月净现金流",
                     value = formatInAppAmount(cashNet, settings),
                     color = netColor,
                 )
             }
         }
     }
+}
+
+@Composable
+private fun MonthlyBudgetBlock(
+    budget: MonthlyBudgetStatus?,
+    settings: PortableSettings,
+    onEdit: () -> Unit,
+    onClose: () -> Unit,
+) {
+    MoneySectionHeader(title = "月预算")
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        if (budget == null) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("未设置", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = onEdit) { Text("设置月预算") }
+            }
+        } else {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "已支出 ${formatInAppAmount(budget.spentAmount, settings)} / " +
+                            formatInAppAmount(budget.targetAmount, settings),
+                    )
+                    Text(budget.percentageText, color = MaterialTheme.colorScheme.primary)
+                }
+                LinearProgressIndicator(
+                    progress = { budget.progressFraction },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (budget.overBudgetAmount != null && budget.overBudgetPercentageText != null) {
+                    Text(
+                        text = "超支 ${budget.overBudgetPercentageText} · " +
+                            formatInAppAmount(budget.overBudgetAmount, settings),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onEdit) { Text("修改月预算") }
+                    TextButton(onClick = onClose) { Text("关闭月预算") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeReminderSection(
+    reminders: List<DueReminderUiModel>,
+    onOpenReminders: () -> Unit,
+) {
+    MoneySectionHeader(title = "待处理提醒")
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        if (reminders.isEmpty()) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("暂无到期提醒", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onOpenReminders) { Text("管理提醒") }
+            }
+        } else {
+            Column {
+                reminders.forEachIndexed { index, reminder ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onOpenReminders)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(reminder.name)
+                        Text(reminder.amountFormatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (index != reminders.lastIndex) HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeStaleAccountSection(
+    accounts: List<StaleAccountUiModel>,
+    settings: PortableSettings,
+    onReconcile: (Long) -> Unit,
+    onChooseAccount: () -> Unit,
+    showReconcileAction: Boolean,
+) {
+    MoneySectionHeader(title = "待核对账户")
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        if (accounts.isEmpty()) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("暂无待核对账户", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (showReconcileAction) {
+                    TextButton(onClick = onChooseAccount) { Text("核对账户") }
+                }
+            }
+        } else {
+            Column {
+                accounts.forEachIndexed { index, account ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onReconcile(account.accountId) }
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(account.name)
+                        Text(
+                            formatInAppAmount(account.currentBalance, settings),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (index != accounts.lastIndex) HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyBudgetEditorDialog(
+    input: String,
+    inputError: String?,
+    saveError: String?,
+    isSaving: Boolean,
+    hasBudget: Boolean,
+    onInputChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onCloseBudget: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (hasBudget) "修改月预算" else "设置月预算") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    enabled = !isSaving,
+                    label = { Text("每月支出预算") },
+                    isError = inputError != null || saveError != null,
+                    supportingText = {
+                        (inputError ?: saveError)?.let { Text(it) }
+                    },
+                    singleLine = true,
+                )
+                if (hasBudget) {
+                    TextButton(onClick = onCloseBudget, enabled = !isSaving) {
+                        Text("关闭月预算")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSave, enabled = !isSaving) {
+                Text(if (saveError != null) "重试" else "保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) { Text("取消") }
+        },
+    )
 }
 
 @Composable
@@ -322,125 +543,6 @@ private fun PeriodMetricRow(
             color = color,
             maxLines = 1,
             overflow = TextOverflow.Clip,
-        )
-    }
-}
-
-@Composable
-private fun ActionGrid(
-    onInflow: () -> Unit,
-    onOutflow: () -> Unit,
-    onTransfer: () -> Unit,
-    onUpdateBalance: () -> Unit,
-    enabled: Boolean,
-    transferEnabled: Boolean,
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
-                shape = RoundedCornerShape(12.dp),
-            ),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ActionTile(
-                    label = "入账",
-                    icon = Icons.Rounded.SouthWest,
-                    tint = LocalMoneyColors.current.income,
-                    onClick = onInflow,
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                )
-                ActionTile(
-                    label = "出账",
-                    icon = Icons.Rounded.NorthEast,
-                    tint = LocalMoneyColors.current.expense,
-                    onClick = onOutflow,
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ActionTile(
-                    label = "转账",
-                    icon = Icons.Rounded.SwapHoriz,
-                    tint = LocalMoneyColors.current.transfer,
-                    onClick = onTransfer,
-                    enabled = transferEnabled,
-                    modifier = Modifier.weight(1f),
-                )
-                ActionTile(
-                    label = "余额",
-                    icon = Icons.Rounded.Sync,
-                    tint = LocalMoneyColors.current.current,
-                    onClick = onUpdateBalance,
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionTile(
-    label: String,
-    icon: ImageVector,
-    tint: Color,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .heightIn(min = 88.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                color = tint.copy(alpha = if (enabled) 0.07f else 0.04f),
-                shape = RoundedCornerShape(12.dp),
-            )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = if (enabled) 0.82f else 0.62f),
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (enabled) tint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleSmall,
-            color = if (enabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
         )
     }
 }

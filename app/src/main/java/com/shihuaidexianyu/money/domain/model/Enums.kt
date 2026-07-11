@@ -104,21 +104,6 @@ enum class CashFlowDirection(
     }
 }
 
-enum class HomePeriod(
-    val value: String,
-    val displayName: String,
-) {
-    WEEK("week", "本周"),
-    MONTH("month", "本月"),
-    ;
-
-    companion object {
-        fun fromValue(value: String?): HomePeriod {
-            return entries.firstOrNull { it.value == value } ?: WEEK
-        }
-    }
-}
-
 enum class ReminderType(
     val value: String,
     val displayName: String,

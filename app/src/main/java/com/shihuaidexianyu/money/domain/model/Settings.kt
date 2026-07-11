@@ -28,6 +28,7 @@ enum class AppRelockDelay(val value: String) {
 data class HistoryFilters(
     val keyword: String = "",
     val excludeKeyword: String = "",
+    val recordTypes: Set<String> = emptySet(),
     val accountId: Long? = null,
     val dateStartAt: Long? = null,
     val dateEndAt: Long? = null,

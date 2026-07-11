@@ -96,3 +96,16 @@ data class CashFlowDailyTotal(
     val direction: String,
     val amount: Long,
 )
+
+data class CashFlowAnalysisEntry(
+    val accountId: Long,
+    val direction: String,
+    val amount: Long,
+    val occurredAt: Long,
+)
+
+data class TransferPathTotal(
+    val fromAccountId: Long,
+    val toAccountId: Long,
+    val amount: Long,
+)

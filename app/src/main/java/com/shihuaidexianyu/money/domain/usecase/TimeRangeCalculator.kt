@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.domain.usecase
 
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.TimeRange
 import java.time.DayOfWeek
@@ -13,17 +12,6 @@ import java.time.ZoneId
  * to break the `domain ↔ util` package cycle.
  */
 object TimeRangeCalculator {
-    fun currentRange(
-        period: HomePeriod,
-        zoneId: ZoneId,
-        nowMillis: Long,
-    ): TimeRange {
-        return when (period) {
-            HomePeriod.WEEK -> currentWeekRange(zoneId, nowMillis)
-            HomePeriod.MONTH -> currentMonthRange(zoneId, nowMillis)
-        }
-    }
-
     fun currentWeekRange(
         zoneId: ZoneId,
         nowMillis: Long,

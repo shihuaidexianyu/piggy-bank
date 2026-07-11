@@ -93,6 +93,26 @@ class LedgerRecentAccountViewModelTest {
     }
 
     @Test
+    fun `transfer normalizes an explicitly closed source to safe open accounts`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val firstOpenId = accounts.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1))
+        val secondOpenId = accounts.createAccount(Account(name = "银行卡", initialBalance = 0, createdAt = 1))
+        val closedId = accounts.createAccount(Account(name = "已关闭", initialBalance = 0, createdAt = 1))
+        accounts.closeAccount(closedId, 2L)
+
+        val viewModel = transferViewModel(
+            accounts = accounts,
+            preferences = InMemoryDevicePreferencesRepository(),
+            initialFromAccountId = closedId,
+        )
+        advanceUntilIdle()
+
+        assertEquals(firstOpenId, viewModel.uiState.value.fromAccountId)
+        assertEquals(secondOpenId, viewModel.uiState.value.toAccountId)
+        assertFalse(viewModel.uiState.value.accounts.any { it.id == closedId })
+    }
+
+    @Test
     fun `successful cash save moves selected account to recent front`() = runTest(dispatcher) {
         val accounts = InMemoryAccountRepository()
         val firstId = accounts.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1))
@@ -242,10 +262,11 @@ class LedgerRecentAccountViewModelTest {
         accounts: InMemoryAccountRepository,
         preferences: InMemoryDevicePreferencesRepository,
         transactions: InMemoryTransactionRepository = InMemoryTransactionRepository(),
+        initialFromAccountId: Long? = null,
     ): RecordTransferViewModel {
         val refresh = RefreshAccountActivityStateUseCase(accounts, transactions)
         return RecordTransferViewModel(
-            initialFromAccountId = null,
+            initialFromAccountId = initialFromAccountId,
             accountRepository = accounts,
             transactionRepository = transactions,
             calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions),

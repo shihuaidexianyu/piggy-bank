@@ -12,6 +12,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
@@ -31,7 +32,9 @@ data class AccountListItemUiModel(
     val colorName: String,
     val iconName: String,
     val balance: Long,
+    val isHidden: Boolean = false,
     val isClosed: Boolean,
+    val requiresReopenAndSettle: Boolean = false,
     val isStale: Boolean,
     val displayOrder: Int,
 )
@@ -79,6 +82,7 @@ class AccountsViewModel(
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
     private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
+    private val observeAccountClosureIssuesUseCase: ObserveAccountClosureIssuesUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
@@ -123,8 +127,14 @@ class AccountsViewModel(
                     )
                 }
                 val goalsFlow = observeSavingsGoalUseCase().map { goal -> goal?.toUiModel() }
-                combine(snapshotFlow, goalsFlow) { snapshot, goal ->
-                    snapshot.copy(savingsGoal = goal)
+                combine(snapshotFlow, goalsFlow, observeAccountClosureIssuesUseCase()) { snapshot, goal, issues ->
+                    val issueIds = issues.mapTo(mutableSetOf()) { it.accountId }
+                    snapshot.copy(
+                        savingsGoal = goal,
+                        closedAccounts = snapshot.closedAccounts.map { account ->
+                            account.copy(requiresReopenAndSettle = account.id in issueIds)
+                        },
+                    )
                 }.combine(showClosedFlow) { snapshot, showClosed ->
                     AccountsUiState(
                         isLoading = false,
@@ -177,6 +187,7 @@ class AccountsViewModel(
             colorName = account.colorName,
             iconName = account.iconName,
             balance = balance,
+            isHidden = account.isHidden,
             isClosed = account.isClosed,
             isStale = AccountStatusUtils.isStale(
                 account,

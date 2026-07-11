@@ -30,10 +30,11 @@ internal const val HISTORY_UNION_FRAGMENT = """
         4 AS sourceOrder,
         accountId AS accountId,
         NULL AS relatedAccountId,
-        CASE WHEN TRIM(note) = '' THEN '未填写用途' ELSE note END AS title,
+        CASE WHEN TRIM(note) = '' THEN '未填写备注' ELSE note END AS title,
         CASE WHEN direction = 'inflow' THEN amount ELSE -amount END AS amount,
         occurredAt AS occurredAt,
-        note AS keywordSource
+        note || ' ' || CASE WHEN TRIM(note) = '' THEN '未填写备注' ELSE note END || ' ' ||
+            COALESCE((SELECT name FROM accounts WHERE accounts.id = cash_flow_records.accountId), '') AS keywordSource
     FROM cash_flow_records
     WHERE deletedAt IS NULL
     UNION ALL
@@ -46,7 +47,9 @@ internal const val HISTORY_UNION_FRAGMENT = """
         CASE WHEN TRIM(note) = '' THEN '账户间转移' ELSE note END AS title,
         amount AS amount,
         occurredAt AS occurredAt,
-        note AS keywordSource
+        note || ' ' || CASE WHEN TRIM(note) = '' THEN '账户间转移' ELSE note END || ' 转账 ' ||
+            COALESCE((SELECT name FROM accounts WHERE accounts.id = transfer_records.fromAccountId), '') || ' ' ||
+            COALESCE((SELECT name FROM accounts WHERE accounts.id = transfer_records.toAccountId), '') AS keywordSource
     FROM transfer_records
     WHERE deletedAt IS NULL
     UNION ALL
@@ -59,7 +62,8 @@ internal const val HISTORY_UNION_FRAGMENT = """
         CASE WHEN delta = 0 THEN '余额核对' ELSE '对账调整' END AS title,
         delta AS amount,
         occurredAt AS occurredAt,
-        '' AS keywordSource
+        CASE WHEN delta = 0 THEN '余额核对' ELSE '对账调整' END || ' ' ||
+            COALESCE((SELECT name FROM accounts WHERE accounts.id = balance_update_records.accountId), '') AS keywordSource
     FROM balance_update_records
     WHERE deletedAt IS NULL
     UNION ALL
@@ -72,7 +76,10 @@ internal const val HISTORY_UNION_FRAGMENT = """
         '余额矫正' AS title,
         delta AS amount,
         occurredAt AS occurredAt,
-        '' AS keywordSource
+        '余额矫正 余额校正 ' || COALESCE(
+            (SELECT name FROM accounts WHERE accounts.id = balance_adjustment_records.accountId),
+            ''
+        ) AS keywordSource
     FROM balance_adjustment_records
     WHERE deletedAt IS NULL
 """
@@ -80,16 +87,25 @@ internal const val HISTORY_UNION_FRAGMENT = """
 /**
  * Shared `WHERE` clause applied to the union result. Both query methods use this so filter
  * semantics stay in sync. Note: `LIKE ... ESCAPE '\'` requires the caller to escape `\`, `%`,
- * and `_` in [keyword]/[excludeKeyword] — see [com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl.escapeLikeLiteral].
+ * and `_` in [keyword]/[excludeKeyword] — see [com.shihuaidexianyu.money.data.repository.escapeHistoryLikeLiteral].
  */
 internal const val HISTORY_FILTER_FRAGMENT = """
     (:keyword = '' OR LOWER(keywordSource) LIKE '%' || :keyword || '%' ESCAPE '\')
         AND (:excludeKeyword = '' OR LOWER(keywordSource) NOT LIKE '%' || :excludeKeyword || '%' ESCAPE '\')
+        AND (
+            :allTypes
+            OR (:includeCashFlow AND type = 'CASH_FLOW')
+            OR (:includeTransfer AND type = 'TRANSFER')
+            OR (:includeBalanceUpdate AND type = 'BALANCE_UPDATE')
+            OR (:includeBalanceAdjustment AND type = 'BALANCE_ADJUSTMENT')
+        )
         AND (:accountId IS NULL OR accountId = :accountId OR relatedAccountId = :accountId)
+        AND (:transferFromAccountId IS NULL OR (type = 'TRANSFER' AND accountId = :transferFromAccountId))
+        AND (:transferToAccountId IS NULL OR (type = 'TRANSFER' AND relatedAccountId = :transferToAccountId))
         AND (:dateStartAt IS NULL OR occurredAt >= :dateStartAt)
         AND (:dateEndAt IS NULL OR occurredAt < :dateEndAt)
-        AND (:minAmount IS NULL OR ABS(amount) >= :minAmount)
-        AND (:maxAmount IS NULL OR ABS(amount) <= :maxAmount)
+        AND (:minAmount IS NULL OR amount >= :minAmount OR amount <= -:minAmount)
+        AND (:maxAmount IS NULL OR (amount >= -:maxAmount AND amount <= :maxAmount))
         AND (
             :amountDirection = 'ALL'
             OR (:amountDirection = 'INCREASE' AND amount > 0 AND type != 'TRANSFER')
@@ -116,7 +132,14 @@ interface HistoryRecordDao {
     suspend fun queryPage(
         keyword: String,
         excludeKeyword: String,
+        allTypes: Boolean,
+        includeCashFlow: Boolean,
+        includeTransfer: Boolean,
+        includeBalanceUpdate: Boolean,
+        includeBalanceAdjustment: Boolean,
         accountId: Long?,
+        transferFromAccountId: Long?,
+        transferToAccountId: Long?,
         dateStartAt: Long?,
         dateEndAt: Long?,
         minAmount: Long?,
@@ -137,7 +160,14 @@ interface HistoryRecordDao {
     suspend fun count(
         keyword: String,
         excludeKeyword: String,
+        allTypes: Boolean,
+        includeCashFlow: Boolean,
+        includeTransfer: Boolean,
+        includeBalanceUpdate: Boolean,
+        includeBalanceAdjustment: Boolean,
         accountId: Long?,
+        transferFromAccountId: Long?,
+        transferToAccountId: Long?,
         dateStartAt: Long?,
         dateEndAt: Long?,
         minAmount: Long?,

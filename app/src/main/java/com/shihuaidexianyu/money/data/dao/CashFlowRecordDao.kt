@@ -204,6 +204,21 @@ interface CashFlowRecordDao {
 
     @Query(
         """
+        SELECT accountId, direction, amount, occurredAt
+        FROM cash_flow_records
+        WHERE deletedAt IS NULL
+            AND occurredAt >= :startInclusive
+            AND occurredAt < :endExclusive
+        ORDER BY occurredAt ASC, id ASC
+        """,
+    )
+    suspend fun queryAnalysisEntriesBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowAnalysisEntryRow>
+
+    @Query(
+        """
         SELECT
             CASE WHEN TRIM(note) = '' THEN '未填写用途' ELSE note END AS purpose,
             COALESCE(SUM(amount), 0) AS amount

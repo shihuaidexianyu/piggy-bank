@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
@@ -66,7 +67,14 @@ class TransactionRepositoryContractTest {
             historyRecordDao = db.historyRecordDao(),
             ledgerAggregateDao = db.ledgerAggregateDao(),
         )
-        memoryRepo = InMemoryTransactionRepository()
+        memoryRepo = InMemoryTransactionRepository { accountId ->
+            when (accountId) {
+                1L -> "测试账户"
+                2L -> "第二账户"
+                3L -> "第三账户"
+                else -> null
+            }
+        }
     }
 
     @After
@@ -521,6 +529,135 @@ class TransactionRepositoryContractTest {
         val memoryResults = memoryRepo.queryHistoryRecords(filters, cursor = null, limit = 50)
         assertEquals(memoryResults, roomResults)
         assertTrue("应有至少 1 条命中 'a_b' 字面匹配", roomResults.isNotEmpty())
+    }
+
+    @Test
+    fun historyKeywordWithBackslash_matchesLiterallyInBothImplementations() = runBlocking {
+        seedAccountAndCashFlows()
+        val filters = HistoryRecordFilters(keyword = "PATH\\RECEIPT")
+
+        val roomResults = roomRepo.queryHistoryRecords(filters, cursor = null, limit = 50)
+        val memoryResults = memoryRepo.queryHistoryRecords(filters, cursor = null, limit = 50)
+
+        assertEquals(memoryResults, roomResults)
+        assertEquals(listOf("path\\receipt"), roomResults.map { it.title })
+    }
+
+    @Test
+    fun historyAmountMagnitudeHandlesLongMinInBothImplementations() = runBlocking {
+        seedAccount()
+        val record = BalanceAdjustmentRecord(
+            accountId = 1L,
+            delta = Long.MIN_VALUE,
+            occurredAt = 2_000L,
+            createdAt = 2_000L,
+            updatedAt = 2_000L,
+            operationId = "history-long-min",
+        )
+        roomRepo.insertBalanceAdjustmentRecord(record)
+        memoryRepo.insertBalanceAdjustmentRecord(record)
+
+        listOf(
+            HistoryRecordFilters(minAmount = Long.MAX_VALUE),
+            HistoryRecordFilters(maxAmount = Long.MAX_VALUE),
+        ).forEach { filters ->
+            assertEquals(
+                memoryRepo.queryHistoryRecords(filters, null, 50),
+                roomRepo.queryHistoryRecords(filters, null, 50),
+            )
+        }
+        assertEquals(1, roomRepo.countHistoryRecords(HistoryRecordFilters(minAmount = Long.MAX_VALUE)))
+        assertEquals(0, roomRepo.countHistoryRecords(HistoryRecordFilters(maxAmount = Long.MAX_VALUE)))
+    }
+
+    @Test
+    fun historySearchesAccountAndSystemTitlesAndCombinesRecordTypes() = runBlocking {
+        seedAccountAndCashFlows()
+        val update = BalanceUpdateRecord(
+            accountId = 1L,
+            actualBalance = 100_000L,
+            systemBalanceBeforeUpdate = 100_000L,
+            delta = 0L,
+            occurredAt = 1_800_000_000_000L,
+            createdAt = 1_800_000_000_000L,
+            updatedAt = 1_800_000_000_000L,
+            operationId = "history-system-title",
+        )
+        roomRepo.insertBalanceUpdateRecord(update)
+        memoryRepo.insertBalanceUpdateRecord(update)
+
+        listOf("测试账户", "余额核对").forEach { keyword ->
+            val filters = HistoryRecordFilters(
+                keyword = keyword,
+                recordTypes = setOf(HistoryRecordType.BALANCE_UPDATE),
+            )
+            assertEquals(
+                memoryRepo.queryHistoryRecords(filters, null, 50),
+                roomRepo.queryHistoryRecords(filters, null, 50),
+            )
+        }
+    }
+
+    @Test
+    fun historyTransferPathFilterMatchesExactSourceAndDestinationInBothImplementations() = runBlocking {
+        seedAccount()
+        listOf(2L to "第二账户", 3L to "第三账户").forEach { (id, name) ->
+            db.accountDao().insert(
+                com.shihuaidexianyu.money.data.entity.AccountEntity(
+                    id = id,
+                    name = name,
+                    initialBalance = 0L,
+                    createdAt = 1_000L,
+                    displayOrder = id.toInt(),
+                ),
+            )
+        }
+        listOf(2L, 3L).forEach { targetId ->
+            val record = TransferRecord(
+                fromAccountId = 1L,
+                toAccountId = targetId,
+                amount = targetId * 100L,
+                note = "路径$targetId",
+                occurredAt = 2_000L + targetId,
+                createdAt = 2_000L + targetId,
+                updatedAt = 2_000L + targetId,
+                operationId = "history-path-$targetId",
+            )
+            roomRepo.insertTransferRecord(record)
+            memoryRepo.insertTransferRecord(record)
+        }
+        val filters = HistoryRecordFilters(
+            recordTypes = setOf(HistoryRecordType.TRANSFER),
+            transferFromAccountId = 1L,
+            transferToAccountId = 2L,
+            dateStartAt = 1_000L,
+            dateEndAt = 3_000L,
+        )
+
+        assertEquals(
+            memoryRepo.queryHistoryRecords(filters, null, 20),
+            roomRepo.queryHistoryRecords(filters, null, 20),
+        )
+        assertEquals(1, roomRepo.countHistoryRecords(filters))
+        assertEquals(
+            memoryRepo.queryTransferPathTotalsBetween(1_000L, 3_000L),
+            roomRepo.queryTransferPathTotalsBetween(1_000L, 3_000L),
+        )
+    }
+
+    @Test
+    fun analysisCashProjectionUsesOnlyActiveHalfOpenRowsWithRoomMemoryParity() = runBlocking {
+        seedAccountAndCashFlows()
+        val start = 1_700_000_000_000L
+        val end = start + 3 * 60_000L
+
+        assertEquals(
+            memoryRepo.queryCashFlowAnalysisEntriesBetween(start, end),
+            roomRepo.queryCashFlowAnalysisEntriesBetween(start, end),
+        )
+        assertTrue(roomRepo.queryCashFlowAnalysisEntriesBetween(start, end).all {
+            it.occurredAt >= start && it.occurredAt < end
+        })
     }
 
     @Test
@@ -1086,6 +1223,7 @@ class TransactionRepositoryContractTest {
         val samples = listOf(
             Triple("工资 100% bonus", 5_000L, CashFlowDirection.INFLOW.value),
             Triple("a_b 测试", 1_200L, CashFlowDirection.OUTFLOW.value),
+            Triple("path\\receipt", 900L, CashFlowDirection.OUTFLOW.value),
             Triple("普通吃饭", 50_00L, CashFlowDirection.OUTFLOW.value),
             Triple("100% 报销", 3_400L, CashFlowDirection.INFLOW.value),
         )

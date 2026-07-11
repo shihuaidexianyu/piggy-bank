@@ -11,6 +11,9 @@ import com.shihuaidexianyu.money.data.backup.ImportReceiptStore
 import com.shihuaidexianyu.money.data.backup.SafetySnapshotStore
 import com.shihuaidexianyu.money.data.backup.StagedBackupStore
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
+import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
@@ -27,6 +30,28 @@ import org.junit.rules.TemporaryFolder
 class BackupImportCoordinatorTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `successful import cannot replace device-local history filters`() = runBlocking {
+        val original = fixtureV4()
+        val devicePreferences = DevicePreferences(
+            historyFilters = HistoryFilters(
+                keyword = "午餐",
+                excludeKeyword = "报销",
+                recordTypes = setOf("CASH_FLOW"),
+                accountId = 9L,
+            ),
+        )
+        val deviceRepository = InMemoryDevicePreferencesRepository(devicePreferences)
+        val repository = FakeBackupRepository(original)
+        val coordinator = coordinator(repository)
+        val target = original.copy(portableSettings = original.portableSettings.copy(currencySymbol = "$"))
+
+        val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(target).encodeToByteArray()))
+        coordinator.confirm(stage.id)
+
+        assertEquals(devicePreferences, deviceRepository.query())
+    }
 
     @Test
     fun `confirm uses staged bytes persists receipt and normalizes stale activity`() = runBlocking {
@@ -143,6 +168,26 @@ class BackupImportCoordinatorTest {
 
         assertFailsWith<IllegalArgumentException> { coordinator.rollback(receipt.id) }
         assertEquals(123L, repository.current.portableSettings.monthlyBudgetAmount)
+    }
+
+    @Test
+    fun `history eligibility requires latest commit sequence and current content hash`() = runBlocking {
+        val original = fixtureV4()
+        val repository = FakeBackupRepository(original)
+        val coordinator = coordinator(repository)
+        val target = original.copy(portableSettings = original.portableSettings.copy(currencySymbol = "$"))
+        val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(target).encodeToByteArray()))
+        val imported = coordinator.confirm(stage.id)
+
+        val eligible = coordinator.historyWithRollbackEligibility()
+        assertEquals(imported.id, eligible.rollbackEligibleReceiptId)
+
+        repository.current = repository.current.copy(
+            portableSettings = repository.current.portableSettings.copy(monthlyBudgetAmount = 123L),
+        )
+        val changed = coordinator.historyWithRollbackEligibility()
+        assertEquals(null, changed.rollbackEligibleReceiptId)
+        assertEquals(listOf(imported.id), changed.receipts.map(ImportReceipt::id))
     }
 
     @Test
@@ -267,6 +312,7 @@ class BackupImportCoordinatorTest {
         safetySnapshotSha256 = safetySha256,
         schemaVersion = 4,
         counts = ImportReceiptCounts(1, 1, 0, 1, 1, 1, 1),
+        commitSequence = 0L,
     )
 
     private fun fixtureV4() = BackupJsonCodec.decode(

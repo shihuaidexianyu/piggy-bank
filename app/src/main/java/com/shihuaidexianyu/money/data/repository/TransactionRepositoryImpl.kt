@@ -14,19 +14,24 @@ import com.shihuaidexianyu.money.domain.model.AccountLedgerAggregate
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
 import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.LedgerOverflowException
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
+import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
+import com.shihuaidexianyu.money.domain.model.requireValidAmountBounds
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.model.TransferPathTotal
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -43,6 +48,18 @@ internal suspend fun <T> translateLedgerSqlOverflow(query: suspend () -> T): T {
         if (isIntegerOverflow) throw LedgerOverflowException(error)
         throw error
     }
+}
+
+internal fun escapeHistoryLikeLiteral(input: String): String {
+    if (input.isEmpty()) return input
+    val builder = StringBuilder(input.length + 4)
+    for (ch in input) {
+        when (ch) {
+            '\\', '%', '_' -> builder.append('\\').append(ch)
+            else -> builder.append(ch)
+        }
+    }
+    return builder.toString()
 }
 
 class TransactionRepositoryImpl(
@@ -277,6 +294,15 @@ class TransactionRepositoryImpl(
         return transferRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
     }
 
+    override suspend fun queryTransferPathTotalsBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<TransferPathTotal> = translateLedgerSqlOverflow {
+        transferRecordDao.queryPathTotalsBetween(startInclusive, endExclusive).map {
+            TransferPathTotal(it.fromAccountId, it.toAccountId, it.amount)
+        }
+    }
+
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord> = transferRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
     override suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String> {
@@ -478,6 +504,13 @@ class TransactionRepositoryImpl(
         endExclusive: Long,
     ): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
 
+    override suspend fun queryCashFlowAnalysisEntriesBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<CashFlowAnalysisEntry> = cashFlowRecordDao.queryAnalysisEntriesBetween(startInclusive, endExclusive).map {
+        CashFlowAnalysisEntry(it.accountId, it.direction, it.amount, it.occurredAt)
+    }
+
     override suspend fun queryPurposeTotals(
         direction: String,
         startInclusive: Long,
@@ -503,10 +536,18 @@ class TransactionRepositoryImpl(
         cursor: HistoryPageCursor?,
         limit: Int,
     ): List<HistoryRecord> {
+        filters.requireValidAmountBounds()
         return historyRecordDao.queryPage(
-            keyword = escapeLikeLiteral(filters.keyword.trim().lowercase()),
-            excludeKeyword = escapeLikeLiteral(filters.excludeKeyword.trim().lowercase()),
+            keyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.keyword.trim())),
+            excludeKeyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.excludeKeyword.trim())),
+            allTypes = filters.recordTypes.isEmpty(),
+            includeCashFlow = HistoryRecordType.CASH_FLOW in filters.recordTypes,
+            includeTransfer = HistoryRecordType.TRANSFER in filters.recordTypes,
+            includeBalanceUpdate = HistoryRecordType.BALANCE_UPDATE in filters.recordTypes,
+            includeBalanceAdjustment = HistoryRecordType.BALANCE_ADJUSTMENT in filters.recordTypes,
             accountId = filters.accountId,
+            transferFromAccountId = filters.transferFromAccountId,
+            transferToAccountId = filters.transferToAccountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
             minAmount = filters.minAmount,
@@ -520,28 +561,24 @@ class TransactionRepositoryImpl(
     }
 
     override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+        filters.requireValidAmountBounds()
         return historyRecordDao.count(
-            keyword = escapeLikeLiteral(filters.keyword.trim().lowercase()),
-            excludeKeyword = escapeLikeLiteral(filters.excludeKeyword.trim().lowercase()),
+            keyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.keyword.trim())),
+            excludeKeyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.excludeKeyword.trim())),
+            allTypes = filters.recordTypes.isEmpty(),
+            includeCashFlow = HistoryRecordType.CASH_FLOW in filters.recordTypes,
+            includeTransfer = HistoryRecordType.TRANSFER in filters.recordTypes,
+            includeBalanceUpdate = HistoryRecordType.BALANCE_UPDATE in filters.recordTypes,
+            includeBalanceAdjustment = HistoryRecordType.BALANCE_ADJUSTMENT in filters.recordTypes,
             accountId = filters.accountId,
+            transferFromAccountId = filters.transferFromAccountId,
+            transferToAccountId = filters.transferToAccountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
             minAmount = filters.minAmount,
             maxAmount = filters.maxAmount,
             amountDirection = filters.amountDirection.name,
         )
-    }
-
-    private fun escapeLikeLiteral(input: String): String {
-        if (input.isEmpty()) return input
-        val builder = StringBuilder(input.length + 4)
-        for (ch in input) {
-            when (ch) {
-                '\\', '%', '_' -> builder.append('\\').append(ch)
-                else -> builder.append(ch)
-            }
-        }
-        return builder.toString()
     }
 
     private fun Int.changed(): Boolean {

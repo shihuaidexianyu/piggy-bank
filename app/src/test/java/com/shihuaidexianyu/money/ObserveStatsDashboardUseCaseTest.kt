@@ -1,273 +1,90 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
-import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
-import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
-import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.model.HomePeriod
+import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
-import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.util.TimeRangeUtils
+import java.time.ZoneId
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class ObserveStatsDashboardUseCaseTest {
     @Test
-    fun `stats closing and opening account lists each use one aggregate read`() = runBlocking {
-        val range = TimeRangeUtils.currentMonthRange()
-        val now = range.startInclusive + 1_000L
+    fun `stats dashboard targets a past natural month and coerces legacy periods to month`() = runBlocking {
+        val zone = ZoneId.of("UTC")
+        val januaryAnchor = java.time.LocalDate.of(2024, 1, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+        val januaryRange = TimeRangeUtils.statsRange(StatsPeriod.MONTH, zone, januaryAnchor)
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        repeat(2) { index ->
-            accounts.createAccount(
-                Account(name = "账户$index", initialBalance = 100L, createdAt = range.startInclusive - 60_000L),
-            )
-        }
-        val aggregate = CountingLedgerAggregateRepository(ledger)
-        val useCase = ObserveStatsDashboardUseCase(
-            accountRepository = accounts,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            transactionRepository = ledger,
-            calculateCurrentBalanceUseCase =
-                com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase(
-                    accounts,
-                    aggregate,
-                    testClockProvider(now),
-                ),
-            calculateAccountBalancesUseCase =
-                com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase(
-                    aggregate,
-                    testClockProvider(now),
-                ),
-            zoneIdProvider = testZoneIdProvider(),
-        )
+        val accountId = accounts.createAccount(Account(name = "主账户", initialBalance = 0L, createdAt = 1L))
+        ledger.insertCashFlowRecord(cash(accountId, 3_000L, CashFlowDirection.INFLOW, januaryRange.startInclusive + 1L))
+        val useCase = useCase(accounts, ledger, zone)
 
-        useCase(MutableStateFlow(StatsRangeSelection(StatsPeriod.MONTH, now))).first()
+        val snapshot = useCase(MutableStateFlow(StatsRangeSelection(StatsPeriod.WEEK, januaryAnchor))).first()
 
-        assertEquals(2, aggregate.beforeCalls)
-        assertEquals(0, aggregate.atCalls)
-    }
-
-    @Test
-    fun `stats dashboard exposes asset flow reconciliation`() = runBlocking {
-        val range = TimeRangeUtils.currentMonthRange()
-        val now = range.startInclusive + 1_000
-        val accountRepository = InMemoryAccountRepository()
-        val transactionRepository = InMemoryTransactionRepository()
-        val accountId = accountRepository.createAccount(
-            Account(
-                name = "主账户",
-                initialBalance = 10_000,
-                createdAt = range.startInclusive - 60_000,
-            ),
-        )
-        transactionRepository.insertCashFlowRecord(
-            CashFlowRecord(
-                accountId = accountId,
-                direction = CashFlowDirection.INFLOW.value,
-                amount = 3_000,
-                note = "工资",
-                occurredAt = now,
-                createdAt = now,
-                updatedAt = now,
-                operationId = testOperationId(),
-            ),
-        )
-        transactionRepository.insertCashFlowRecord(
-            CashFlowRecord(
-                accountId = accountId,
-                direction = CashFlowDirection.OUTFLOW.value,
-                amount = 800,
-                note = "餐饮",
-                occurredAt = now + 1_000,
-                createdAt = now,
-                updatedAt = now,
-                operationId = testOperationId(),
-            ),
-        )
-        transactionRepository.insertBalanceAdjustmentRecord(
-            BalanceAdjustmentRecord(
-                accountId = accountId,
-                delta = -200,
-                occurredAt = now + 2_000,
-                createdAt = now,
-                updatedAt = now,
-                operationId = testOperationId(),
-            ),
-        )
-        transactionRepository.insertBalanceUpdateRecord(
-            BalanceUpdateRecord(
-                accountId = accountId,
-                actualBalance = 12_500,
-                systemBalanceBeforeUpdate = 12_000,
-                delta = 500,
-                occurredAt = now + 3_000,
-                createdAt = now,
-                updatedAt = now,
-                operationId = testOperationId(),
-            ),
-        )
-
-        val useCase = ObserveStatsDashboardUseCase(
-            accountRepository = accountRepository,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
-            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
-            zoneIdProvider = testZoneIdProvider(),
-        )
-
-        val snapshot = useCase(
-            MutableStateFlow(
-                StatsRangeSelection(
-                    period = StatsPeriod.MONTH,
-                    anchorMillis = now,
-                ),
-            ),
-        ).first()
-
-        assertEquals(10_000, snapshot.openingAssets)
-        assertEquals(12_500, snapshot.closingAssets)
-        assertEquals(3_000, snapshot.totalInflow)
-        assertEquals(800, snapshot.totalOutflow)
-        assertEquals(2_200, snapshot.netCashFlow)
-        assertEquals(2_500, snapshot.assetChange)
-        assertEquals(300, snapshot.assetAdjustment)
-        assertEquals(-200, snapshot.manualAdjustmentNet)
-        assertEquals(500, snapshot.reconciliationNet)
-        assertEquals(
-            snapshot.closingAssets,
-            snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,
-        )
-    }
-
-    @Test
-    fun `stats dashboard can target a past month`() = runBlocking {
-        val zoneId = java.time.ZoneId.systemDefault()
-        val januaryAnchor = java.time.LocalDate.of(2024, 1, 15)
-            .atStartOfDay(zoneId)
-            .toInstant()
-            .toEpochMilli()
-        val januaryRange = TimeRangeUtils.statsRange(StatsPeriod.MONTH, zoneId, januaryAnchor)
-        val accountRepository = InMemoryAccountRepository()
-        val transactionRepository = InMemoryTransactionRepository()
-        val accountId = accountRepository.createAccount(
-            Account(
-                name = "主账户",
-                initialBalance = 10_000,
-                createdAt = januaryRange.startInclusive - 60_000,
-            ),
-        )
-        transactionRepository.insertCashFlowRecord(
-            CashFlowRecord(
-                accountId = accountId,
-                direction = CashFlowDirection.INFLOW.value,
-                amount = 3_000,
-                note = "一月工资",
-                occurredAt = januaryRange.startInclusive + 1_000,
-                createdAt = januaryRange.startInclusive + 1_000,
-                updatedAt = januaryRange.startInclusive + 1_000,
-                operationId = testOperationId(),
-            ),
-        )
-
-        val useCase = ObserveStatsDashboardUseCase(
-            accountRepository = accountRepository,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
-            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
-            zoneIdProvider = testZoneIdProvider(),
-        )
-
-        val snapshot = useCase(
-            MutableStateFlow(
-                StatsRangeSelection(
-                    period = StatsPeriod.MONTH,
-                    anchorMillis = januaryAnchor,
-                ),
-            ),
-        ).first()
-
+        assertEquals(StatsPeriod.MONTH, snapshot.period)
         assertEquals(januaryRange, snapshot.range)
-        assertEquals(3_000, snapshot.totalInflow)
-        assertEquals(13_000, snapshot.closingAssets)
+        assertEquals(3_000L, snapshot.totalInflow)
     }
 
     @Test
-    fun `stats dashboard treats in-range account initial balance as opening assets`() = runBlocking {
-        val range = TimeRangeUtils.currentMonthRange()
-        val now = range.startInclusive + 1_000
-        val accountRepository = InMemoryAccountRepository()
-        val transactionRepository = InMemoryTransactionRepository()
-        val accountId = accountRepository.createAccount(
-            Account(
-                name = "新账户",
-                initialBalance = 10_000,
-                createdAt = now,
-            ),
-        )
-        accountRepository.setHidden(accountId, hidden = true)
-        val legacyClosedId = accountRepository.createAccount(
-            Account(
-                name = "迁移关闭账户",
-                initialBalance = 5_000,
-                createdAt = range.startInclusive - 1_000,
-            ),
-        )
-        accountRepository.closeAccount(legacyClosedId, now)
-        transactionRepository.insertCashFlowRecord(
-            CashFlowRecord(
-                accountId = accountId,
-                direction = CashFlowDirection.INFLOW.value,
-                amount = 2_000,
-                note = "工资",
-                occurredAt = now + 1_000,
-                createdAt = now,
-                updatedAt = now,
-                operationId = testOperationId(),
-            ),
-        )
+    fun `hidden and closed account history remains in monthly cash analysis`() = runBlocking {
+        val zone = ZoneId.of("UTC")
+        val anchor = java.time.LocalDate.of(2024, 3, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+        val range = TimeRangeUtils.statsRange(StatsPeriod.MONTH, zone, anchor)
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        val hidden = accounts.createAccount(Account(name = "隐藏", initialBalance = 0L, createdAt = 1L))
+        accounts.setHidden(hidden, true)
+        val closed = accounts.createAccount(Account(name = "关闭", initialBalance = 0L, createdAt = 1L))
+        ledger.insertCashFlowRecord(cash(hidden, 2_000L, CashFlowDirection.INFLOW, range.startInclusive + 1L))
+        ledger.insertCashFlowRecord(cash(closed, 800L, CashFlowDirection.OUTFLOW, range.startInclusive + 2L))
+        accounts.closeAccount(closed, range.startInclusive + 3L)
 
-        val useCase = ObserveStatsDashboardUseCase(
-            accountRepository = accountRepository,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            transactionRepository = transactionRepository,
-            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
-            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
-            zoneIdProvider = testZoneIdProvider(),
-        )
+        val snapshot = useCase(accounts, ledger, zone)
+            .invoke(MutableStateFlow(StatsRangeSelection(StatsPeriod.MONTH, anchor)))
+            .first()
 
-        val snapshot = useCase(
-            MutableStateFlow(
-                StatsRangeSelection(
-                    period = StatsPeriod.MONTH,
-                    anchorMillis = now,
-                ),
-            ),
-        ).first()
-
-        assertEquals(15_000, snapshot.openingAssets)
-        assertEquals(17_000, snapshot.closingAssets)
-        assertEquals(2_000, snapshot.totalInflow)
-        assertEquals(2_000, snapshot.netCashFlow)
-        assertEquals(2_000, snapshot.assetChange)
-        assertEquals(0, snapshot.assetAdjustment)
-        assertEquals(
-            snapshot.closingAssets,
-            snapshot.openingAssets + snapshot.netCashFlow + snapshot.assetAdjustment,
-        )
+        assertEquals(2_000L, snapshot.totalInflow)
+        assertEquals(800L, snapshot.totalOutflow)
+        assertEquals(setOf(hidden, closed), snapshot.accountCashFlows.map { it.accountId }.toSet())
+        assertTrue(snapshot.hasSourceAccounts)
     }
+
+    private fun useCase(
+        accounts: InMemoryAccountRepository,
+        ledger: InMemoryTransactionRepository,
+        zoneId: ZoneId,
+    ) = ObserveStatsDashboardUseCase(
+        accountRepository = accounts,
+        portableSettingsRepository = InMemoryPortableSettingsRepository(),
+        transactionRepository = ledger,
+        zoneIdProvider = testZoneIdProvider(zoneId),
+    )
+
+    private fun cash(
+        accountId: Long,
+        amount: Long,
+        direction: CashFlowDirection,
+        occurredAt: Long,
+    ) = CashFlowRecord(
+        accountId = accountId,
+        direction = direction.value,
+        amount = amount,
+        note = "备注不参与聚合",
+        occurredAt = occurredAt,
+        createdAt = occurredAt,
+        updatedAt = occurredAt,
+        operationId = testOperationId(),
+    )
 }

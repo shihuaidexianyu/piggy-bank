@@ -17,6 +17,7 @@ import com.shihuaidexianyu.money.ui.accounts.EditAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 
 internal fun NavGraphBuilder.addAccountsGraph(
     navController: NavHostController,
@@ -73,14 +74,24 @@ internal fun NavGraphBuilder.addAccountsGraph(
                 AccountDetailViewModel(
                     accountId = accountId,
                     observeAccountDetailUseCase = container.observeAccountDetailUseCase(accountId),
+                    reopenAccountUseCase = container.reopenAccountUseCase,
                 )
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         AccountDetailScreen(
             state = state,
+            effectFlow = viewModel.effectFlow,
             onManageAccount = { navController.navigate(MoneyDestination.editAccountRoute(accountId)) },
+            onRecordIncome = {
+                navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.INFLOW, accountId))
+            },
+            onRecordExpense = {
+                navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.OUTFLOW, accountId))
+            },
+            onRecordTransfer = { navController.navigate(MoneyDestination.recordTransferRoute(accountId)) },
             onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(accountId)) },
+            onReopenAccount = viewModel::reopenAccount,
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,
         )
@@ -99,6 +110,9 @@ internal fun NavGraphBuilder.addAccountsGraph(
                     accountRepository = container.accountRepository,
                     accountReminderSettingsRepository = container.accountReminderSettingsRepository,
                     closeAccountUseCase = container.closeAccountUseCase,
+                    calculateCurrentBalanceUseCase = container.calculateCurrentBalanceUseCase,
+                    setAccountHiddenUseCase = container.setAccountHiddenUseCase,
+                    transactionRepository = container.transactionRepository,
                     updateAccountUseCase = container.updateAccountUseCase,
                 )
             },

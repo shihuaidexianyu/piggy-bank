@@ -42,18 +42,18 @@ fun SavingsGoalScreen(
         },
     )
 
-    if (state.showDeleteConfirm) {
+    if (state.showClearConfirm) {
         MoneyConfirmDialog(
-            title = "删除储蓄目标",
-            message = "确定要删除储蓄目标吗？此操作不可撤销。",
+            title = "清除净资产目标",
+            message = "仅清除目标设置，不会删除账户或账本记录。",
             onConfirm = viewModel::clear,
-            onDismiss = viewModel::dismissDeleteConfirm,
-            confirmLabel = "删除",
+            onDismiss = viewModel::dismissClearConfirm,
+            confirmLabel = "清除",
         )
     }
 
     MoneyFormPage(
-        title = if (state.hasGoal) "编辑储蓄目标" else "设置储蓄目标",
+        title = if (state.hasGoal) "修改净资产目标" else "设置净资产目标",
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
@@ -82,7 +82,7 @@ fun SavingsGoalScreen(
                         label = "目标金额",
                     )
                     Text(
-                        text = "总资产达到此金额时即视为达成目标。",
+                        text = "进度按所有账户当前余额之和计算，包括隐藏账户和旧版非零关闭账户。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -92,19 +92,19 @@ fun SavingsGoalScreen(
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
-                    label = if (state.hasGoal) "保存修改" else "设置目标",
+                    label = if (state.hasGoal) "修改目标" else "设置目标",
                 )
             }
             if (state.hasGoal) {
                 item {
                     OutlinedButton(
-                        onClick = viewModel::showDeleteConfirm,
+                        onClick = viewModel::showClearConfirm,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp),
                         enabled = !state.isSaving,
                     ) {
-                        Text("删除目标")
+                        Text("清除目标")
                     }
                 }
             }

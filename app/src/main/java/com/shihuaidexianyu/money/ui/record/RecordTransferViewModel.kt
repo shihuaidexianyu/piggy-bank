@@ -116,6 +116,11 @@ class RecordTransferViewModel(
                     recentAccountIds = recentAccountIds,
                     explicitFromAccountId = _uiState.value.fromAccountId,
                 )
+                val openAccountIds = accounts.mapTo(mutableSetOf()) { it.id }
+                val normalizedFromAccountId = selection.fromAccountId
+                val normalizedToAccountId = _uiState.value.toAccountId
+                    ?.takeIf { it in openAccountIds && it != normalizedFromAccountId }
+                    ?: accounts.firstOrNull { it.id != normalizedFromAccountId }?.id
                 val balances = calculateAccountBalancesUseCase(accounts)
                 _uiState.value = _uiState.value.copy(
                     accounts = accounts.map { account ->
@@ -123,8 +128,10 @@ class RecordTransferViewModel(
                             balance = balances.getValue(account.id),
                         )
                     },
-                    fromAccountId = _uiState.value.fromAccountId ?: selection.fromAccountId,
-                    toAccountId = _uiState.value.toAccountId ?: selection.toAccountId,
+                    fromAccountId = normalizedFromAccountId,
+                    toAccountId = normalizedToAccountId,
+                    fromAccountError = if (normalizedFromAccountId != null) null else _uiState.value.fromAccountError,
+                    toAccountError = if (normalizedToAccountId != null) null else _uiState.value.toAccountError,
                     isLoading = false,
                     loadErrorMessage = null,
                 )

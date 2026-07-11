@@ -36,6 +36,8 @@ import kotlinx.coroutines.launch
 
 data class NotificationPermissionGateway(
     val state: NotificationPermissionUiState,
+    val recurringChannelEnabled: Boolean,
+    val balanceChannelEnabled: Boolean,
     val requestPending: Boolean,
     val requestContextually: () -> Boolean,
     val openSettings: (NotificationSettingsTarget) -> Unit,
@@ -78,8 +80,10 @@ fun rememberNotificationPermissionGateway(
 
     @Suppress("UNUSED_EXPRESSION")
     refreshToken
-    val state = resolveNotificationPermissionState(readNotificationPermissionFacts(context, preferences))
-    LaunchedEffect(state) {
+    val facts = readNotificationPermissionFacts(context, preferences)
+    val state = resolveNotificationPermissionState(facts)
+    val settingsSyncObservation = notificationSettingsSyncObservation(facts)
+    LaunchedEffect(settingsSyncObservation) {
         val pendingTarget = pendingSettingsTargetName?.let(NotificationSettingsTarget::valueOf)
         if (shouldSyncAfterNotificationSettingsReturn(pendingTarget, state)) {
             pendingSettingsTargetName = null
@@ -90,6 +94,8 @@ fun rememberNotificationPermissionGateway(
     }
     return NotificationPermissionGateway(
         state = state,
+        recurringChannelEnabled = facts.recurringChannelEnabled,
+        balanceChannelEnabled = facts.balanceChannelEnabled,
         requestPending = requestPending,
         requestContextually = request@{
             if (!shouldLaunchRuntimeNotificationPermission(Build.VERSION.SDK_INT, state)) {
@@ -123,7 +129,9 @@ private fun readNotificationPermissionFacts(
 ): NotificationPermissionFacts {
     val manager = context.getSystemService(NotificationManager::class.java)
     fun channelEnabled(channelId: String): Boolean = manager?.getNotificationChannel(channelId)
-        ?.importance != NotificationManager.IMPORTANCE_NONE
+        ?.importance
+        ?.let { it != NotificationManager.IMPORTANCE_NONE }
+        ?: false
     return NotificationPermissionFacts(
         apiLevel = Build.VERSION.SDK_INT,
         runtimePermissionGranted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(

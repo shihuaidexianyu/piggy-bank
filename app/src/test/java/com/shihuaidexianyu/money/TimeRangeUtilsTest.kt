@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money
 
-import com.shihuaidexianyu.money.domain.model.HomePeriod
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.TimeRange
 import com.shihuaidexianyu.money.util.TimeRangeUtils
@@ -42,22 +41,6 @@ class TimeRangeUtilsTest {
         assertEquals(feb1, range.startInclusive)
         assertEquals(mar1, range.endExclusive)
         assertTrue(contains(range, Instant.parse("2024-02-29T12:00:00Z").toEpochMilli()))
-    }
-
-    @Test
-    fun `currentRange dispatches to week`() {
-        val now = 1712140200000L
-        val weekRange = TimeRangeUtils.currentWeekRange(utc, now)
-        val dispatched = TimeRangeUtils.currentRange(HomePeriod.WEEK, utc, now)
-        assertEquals(weekRange, dispatched)
-    }
-
-    @Test
-    fun `currentRange dispatches to month`() {
-        val now = 1712140200000L
-        val monthRange = TimeRangeUtils.currentMonthRange(utc, now)
-        val dispatched = TimeRangeUtils.currentRange(HomePeriod.MONTH, utc, now)
-        assertEquals(monthRange, dispatched)
     }
 
     @Test
