@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.usecase.LedgerBalanceCalculator
+import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -24,6 +25,27 @@ class RoomV14ContractTest {
         val migration = MONEY_DATABASE_MIGRATIONS.last()
         assertEquals(13, migration.startVersion)
         assertEquals(14, migration.endVersion)
+    }
+
+    @Test
+    fun `v14 migration forces foreign key rewriting before renaming replacement tables`() {
+        val source = File(
+            "src/main/java/com/shihuaidexianyu/money/data/db/MoneyDatabase.kt",
+        ).readText()
+        val migration = source.substring(
+            startIndex = source.indexOf("private val MIGRATION_13_14"),
+            endIndex = source.indexOf("internal val MONEY_DATABASE_MIGRATIONS"),
+        )
+        val replacementTables = source.substring(
+            startIndex = source.indexOf("private fun createVersion14ReplacementTables"),
+            endIndex = source.indexOf("private fun copyVersion13DataIntoVersion14Tables"),
+        )
+
+        assertTrue(
+            "PRAGMA legacy_alter_table = OFF" in migration,
+            "13→14 migration must override connection-local legacy ALTER TABLE behavior",
+        )
+        assertEquals(6, Regex("REFERENCES \\\"accounts_v14\\\"").findAll(replacementTables).count())
     }
 
     @Test

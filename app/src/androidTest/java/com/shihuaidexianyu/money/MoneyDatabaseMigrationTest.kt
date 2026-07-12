@@ -509,6 +509,51 @@ class MoneyDatabaseMigrationTest {
     }
 
     @Test
+    fun migrateFromVersion13To14DoesNotDependOnForeignKeyRenameRewriting() {
+        val dbName = "$TEST_DB-v13-legacy-alter-table"
+        val database = helper.createDatabase(dbName, 13).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, archivedAt, isArchived,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName
+                ) VALUES (1, '提醒账户', 0, 1000, NULL, 0, NULL, NULL, 0, 'blue', 'wallet')
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO recurring_reminders (
+                    id, name, type, accountId, direction, amount, periodType, periodValue, periodMonth,
+                    isEnabled, nextDueAt, lastConfirmedAt, createdAt, updatedAt
+                ) VALUES (1, '月度提醒', 'subscription', 1, 'outflow', 100, 'monthly', 1, NULL,
+                    1, 2000, NULL, 1000, 1000)
+                """.trimIndent(),
+            )
+            // Reproduce the connection state from the failing upgrade: with enforcement disabled,
+            // legacy ALTER TABLE leaves child schemas pointing at the temporary parent name.
+            execSQL("PRAGMA foreign_keys = OFF")
+            execSQL("PRAGMA legacy_alter_table = ON")
+        }
+
+        database.beginTransaction()
+        try {
+            MONEY_DATABASE_MIGRATIONS.last().migrate(database)
+            database.setTransactionSuccessful()
+        } finally {
+            database.endTransaction()
+        }
+
+        database.query("PRAGMA foreign_key_list(recurring_reminders)").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("accounts", cursor.getString(cursor.getColumnIndexOrThrow("table")))
+        }
+        database.query("PRAGMA foreign_key_check").use { cursor ->
+            assertEquals("Foreign-key violations with legacy ALTER TABLE behavior", 0, cursor.count)
+        }
+        database.close()
+    }
+
+    @Test
     fun migrateFromVersion13To14ChoosesEachClosedAtCandidateIndependently() {
         val dbName = "$TEST_DB-v13-closed-at-candidates"
         helper.createDatabase(dbName, 13).apply {

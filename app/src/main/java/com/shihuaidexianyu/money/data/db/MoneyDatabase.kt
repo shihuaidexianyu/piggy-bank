@@ -285,6 +285,10 @@ private val MIGRATION_12_13 = object : Migration(12, 13) {
 
 private val MIGRATION_13_14 = object : Migration(13, 14) {
     override fun migrate(db: SupportSQLiteDatabase) {
+        // Some upgraded installations retain legacy ALTER TABLE behavior. In that mode SQLite
+        // renames accounts_v14 without rewriting child-table foreign-key targets, leaving the
+        // migrated schema permanently pointed at a table that no longer exists.
+        db.execSQL("PRAGMA legacy_alter_table = OFF")
         db.execSQL("PRAGMA defer_foreign_keys = ON")
         createVersion14ReplacementTables(db)
         copyVersion13DataIntoVersion14Tables(db)
