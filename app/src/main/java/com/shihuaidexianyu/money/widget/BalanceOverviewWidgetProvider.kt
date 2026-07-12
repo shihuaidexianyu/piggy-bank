@@ -60,9 +60,30 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.widget_total_assets, total)
                 setTextViewText(R.id.widget_month_income, income)
                 setTextViewText(R.id.widget_month_expense, expense)
-                setContentDescription(R.id.widget_total_assets, "总资产 $total")
-                setContentDescription(R.id.widget_month_income, "本月收入 $income")
-                setContentDescription(R.id.widget_month_expense, "本月支出 $expense")
+                setContentDescription(
+                    R.id.widget_total_assets,
+                    context.getString(
+                        R.string.widget_amount_semantics_format,
+                        context.getString(R.string.widget_balance_overview_title),
+                        total,
+                    ),
+                )
+                setContentDescription(
+                    R.id.widget_month_income,
+                    context.getString(
+                        R.string.widget_amount_semantics_format,
+                        context.getString(R.string.widget_this_month_income),
+                        income,
+                    ),
+                )
+                setContentDescription(
+                    R.id.widget_month_expense,
+                    context.getString(
+                        R.string.widget_amount_semantics_format,
+                        context.getString(R.string.widget_this_month_expense),
+                        expense,
+                    ),
+                )
             }
             manager.updateAppWidget(widgetId, views)
         }
@@ -94,9 +115,18 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.widget_total_assets, "—")
                 setTextViewText(R.id.widget_month_income, "—")
                 setTextViewText(R.id.widget_month_expense, "—")
-                setContentDescription(R.id.widget_total_assets, "总资产已隐藏，正在刷新")
-                setContentDescription(R.id.widget_month_income, "本月收入已隐藏，正在刷新")
-                setContentDescription(R.id.widget_month_expense, "本月支出已隐藏，正在刷新")
+                setContentDescription(
+                    R.id.widget_total_assets,
+                    context.getString(R.string.widget_total_hidden_refreshing),
+                )
+                setContentDescription(
+                    R.id.widget_month_income,
+                    context.getString(R.string.widget_income_hidden_refreshing),
+                )
+                setContentDescription(
+                    R.id.widget_month_expense,
+                    context.getString(R.string.widget_expense_hidden_refreshing),
+                )
             }
 
         private fun baseViews(context: Context, widgetId: Int): RemoteViews {

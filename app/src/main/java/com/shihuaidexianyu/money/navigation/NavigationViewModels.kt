@@ -42,7 +42,7 @@ internal fun rememberSettingsViewModel(container: MoneyAppContainer): SettingsVi
             SettingsViewModel(
                 portableSettingsRepository = container.portableSettingsRepository,
                 devicePreferencesRepository = container.devicePreferencesRepository,
-                buildExportJsonUseCase = container.buildExportJsonUseCase,
+                buildExportSnapshotUseCase = container.buildExportSnapshotUseCase,
                 exportJsonFileWriter = container.exportJsonFileWriter,
                 backupFileReader = container.backupFileReader,
                 backupImportCoordinator = container.backupImportCoordinator,

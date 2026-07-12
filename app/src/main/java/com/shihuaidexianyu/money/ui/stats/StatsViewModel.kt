@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.ui.stats
 
 import androidx.lifecycle.ViewModel
+import androidx.annotation.StringRes
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
@@ -21,6 +23,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +61,7 @@ data class StatsUiState(
     val isRefreshing: Boolean = false,
     val hasCommittedContent: Boolean = false,
     val hasSourceAccounts: Boolean = false,
-    val errorMessage: String? = null,
+    @param:StringRes val errorMessageRes: Int? = null,
     val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val rangeStartInclusive: Long = 0L,
@@ -79,8 +82,8 @@ data class StatsUiState(
     val transferPaths: List<StatsTransferPathUiModel> = emptyList(),
 )
 
-internal fun StatsUiState.toAsyncContent(): AsyncContent<StatsUiState> {
-    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+internal fun StatsUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<StatsUiState> {
+    errorMessageRes?.let { return AsyncContent.Error(errorMessage, retryToken) }
     if (!hasCommittedContent) return AsyncContent.Loading
     if (isRefreshing) return AsyncContent.Refreshing(this)
     if (!hasSourceAccounts) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
@@ -141,7 +144,7 @@ class StatsViewModel(
         _uiState.value = _uiState.value.copy(
             isLoading = !committed,
             isRefreshing = committed,
-            errorMessage = null,
+            errorMessageRes = null,
             retryToken = null,
         )
         observationJob = viewModelScope.launch {
@@ -159,7 +162,7 @@ class StatsViewModel(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    errorMessage = "分析加载失败，请重试",
+                    errorMessageRes = R.string.stats_load_failed,
                     retryToken = "stats:$retryGeneration",
                 )
             }
@@ -178,7 +181,7 @@ class StatsViewModel(
             settings = settings,
             rangeStartInclusive = range.startInclusive,
             rangeEndExclusive = range.endExclusive,
-            rangeText = DateTimeFormatter.ofPattern("yyyy年M月").format(selectedMonth),
+            rangeText = DateTimeFormatter.ofPattern("yyyy年M月", Locale.SIMPLIFIED_CHINESE).format(selectedMonth),
             canNavigateNext = selectedMonth < currentMonth,
             totalInflow = totalInflow,
             totalOutflow = totalOutflow,
@@ -192,7 +195,7 @@ class StatsViewModel(
             dailyPoints = dailyPoints.map { point ->
                 StatsDailyUiModel(
                     date = point.date,
-                    dateText = DateTimeFormatter.ofPattern("M月d日").format(point.date),
+                    dateText = DateTimeFormatter.ofPattern("M月d日", Locale.SIMPLIFIED_CHINESE).format(point.date),
                     inflowText = amount(point.inflow),
                     outflowText = amount(point.outflow),
                     netFlowText = signed(point.netFlow),

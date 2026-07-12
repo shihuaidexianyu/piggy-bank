@@ -30,13 +30,18 @@ class BuildExportJsonUseCaseTest {
     @Test
     fun `legacy v3 export emits zero or one singleton savings goal`() = runBlocking {
         val goals = InMemorySavingsGoalRepository()
+        val reminderConfigs = InMemoryAccountReminderSettingsRepository()
+        val transactions = InMemoryTransactionRepository()
+        val accounts = InMemoryAccountRepository()
+        accounts.createAccount(Account(name = "A", initialBalance = 0L, createdAt = 1L))
+        accounts.createAccount(Account(name = "B", initialBalance = 0L, createdAt = 1L))
         val useCase = BuildExportSnapshotUseCase(
-            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
-            accountRepository = InMemoryAccountRepository(),
+            accountReminderSettingsRepository = reminderConfigs,
+            accountRepository = accounts,
             recurringReminderRepository = InMemoryRecurringReminderRepository(),
             savingsGoalRepository = goals,
             portableSettingsRepository = TestSettingsRepository(),
-            transactionRepository = InMemoryTransactionRepository(),
+            transactionRepository = transactions,
             databaseVersion = 14,
             clockProvider = { 99L },
         )
@@ -48,6 +53,9 @@ class BuildExportJsonUseCaseTest {
 
         assertEquals(1L, exported?.id)
         assertEquals(20_000L, exported?.targetAmount)
+        assertEquals(2, transactions.transactionInvocationCount)
+        assertEquals(2, reminderConfigs.queryInvocationCount)
+        assertEquals(0, reminderConfigs.getInvocationCount)
     }
 
     @Test

@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -41,12 +43,13 @@ fun StatsScreen(
     onNextRange: () -> Unit,
     onResetRange: () -> Unit,
     onOpenHistory: (HistoryRecordFilters) -> Unit,
-    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
 ) {
+    val loadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
     Column(modifier = modifier) {
         MoneyPageTitle(
-            title = "分析",
+            title = stringResource(R.string.stats_title),
             modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
         )
         LazyColumn(
@@ -62,7 +65,7 @@ fun StatsScreen(
                     onCurrent = onResetRange,
                 )
             }
-            when (val content = state.toAsyncContent()) {
+            when (val content = state.toAsyncContent(loadErrorMessage)) {
                 AsyncContent.Loading,
                 is AsyncContent.Error,
                 -> item {
@@ -75,25 +78,29 @@ fun StatsScreen(
                 }
                 is AsyncContent.Empty -> item {
                     MoneyEmptyStateCard(
-                        title = "暂无可分析数据",
-                        subtitle = "创建账户并记录流水后，这里会显示按自然月汇总的分析。",
+                        title = stringResource(R.string.stats_empty_title),
+                        subtitle = stringResource(R.string.stats_empty_description),
                     )
                 }
                 is AsyncContent.Data,
                 is AsyncContent.Refreshing,
                 -> {
                     item { MonthlySummaryCard(state, onOpenHistory) }
-                    item { AnalysisSectionTitle("每日趋势与净流") }
+                    item { AnalysisSectionTitle(stringResource(R.string.stats_daily_section)) }
                     items(state.dailyPoints, key = { it.date.toEpochDay() }) { point ->
                         DailyAnalysisRow(point, onOpenHistory)
                     }
-                    item { AnalysisSectionTitle("账户现金流入／流出（转账单列）") }
-                    if (state.accountCashFlows.isEmpty()) item { AnalysisEmptyCard("该月没有账户现金收支") }
+                    item { AnalysisSectionTitle(stringResource(R.string.stats_account_cash_section)) }
+                    if (state.accountCashFlows.isEmpty()) {
+                        item { AnalysisEmptyCard(stringResource(R.string.stats_no_account_cash)) }
+                    }
                     items(state.accountCashFlows, key = { it.accountId }) { flow ->
                         AccountCashFlowRow(flow, onOpenHistory)
                     }
-                    item { AnalysisSectionTitle("转账路径") }
-                    if (state.transferPaths.isEmpty()) item { AnalysisEmptyCard("该月没有转账") }
+                    item { AnalysisSectionTitle(stringResource(R.string.stats_transfer_path_section)) }
+                    if (state.transferPaths.isEmpty()) {
+                        item { AnalysisEmptyCard(stringResource(R.string.stats_no_transfers)) }
+                    }
                     items(state.transferPaths, key = { "${it.historyFilters.transferFromAccountId}:${it.historyFilters.transferToAccountId}" }) { path ->
                         TransferPathRow(path, onOpenHistory)
                     }
@@ -117,7 +124,10 @@ private fun MonthNavigator(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onPrevious) {
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "上个月")
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                    contentDescription = stringResource(R.string.stats_previous_month),
+                )
             }
             Text(
                 text = rangeText,
@@ -126,7 +136,10 @@ private fun MonthNavigator(
                 modifier = Modifier.weight(1f).clickable(onClick = onCurrent),
             )
             IconButton(onClick = onNext, enabled = canNavigateNext) {
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "下个月")
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.stats_next_month),
+                )
             }
         }
     }
@@ -135,21 +148,21 @@ private fun MonthNavigator(
 @Composable
 private fun MonthlySummaryCard(state: StatsUiState, onOpenHistory: (HistoryRecordFilters) -> Unit) {
     MoneyCard(contentPadding = PaddingValues(0.dp)) {
-        MoneySectionHeader(title = "月度收支")
+        MoneySectionHeader(title = stringResource(R.string.stats_month_summary))
         MoneyListRow(
-            title = "收入",
+            title = stringResource(R.string.stats_income),
             trailing = state.totalInflowText,
             modifier = Modifier.clickable { onOpenHistory(state.inflowHistoryFilters) },
         )
         MoneySectionDivider()
         MoneyListRow(
-            title = "支出",
+            title = stringResource(R.string.stats_expense),
             trailing = state.totalOutflowText,
             modifier = Modifier.clickable { onOpenHistory(state.outflowHistoryFilters) },
         )
         MoneySectionDivider()
         MoneyListRow(
-            title = "净现金流",
+            title = stringResource(R.string.stats_net_cash_flow),
             trailing = state.netCashFlowText,
             modifier = Modifier.clickable { onOpenHistory(state.netCashFlowHistoryFilters) },
         )
@@ -161,7 +174,7 @@ private fun DailyAnalysisRow(point: StatsDailyUiModel, onOpenHistory: (HistoryRe
     MoneyCard(contentPadding = PaddingValues(0.dp)) {
         MoneyListRow(
             title = point.dateText,
-            subtitle = "收入 ${point.inflowText} · 支出 ${point.outflowText}",
+            subtitle = stringResource(R.string.stats_daily_flow_format, point.inflowText, point.outflowText),
             trailing = point.netFlowText,
             modifier = Modifier.clickable { onOpenHistory(point.historyFilters) },
         )
@@ -176,13 +189,13 @@ private fun AccountCashFlowRow(
     MoneyCard(contentPadding = PaddingValues(0.dp)) {
         MoneyListRow(
             title = flow.name,
-            subtitle = "现金流入",
+            subtitle = stringResource(R.string.stats_cash_inflow),
             trailing = flow.inflowText,
             modifier = Modifier.clickable { onOpenHistory(flow.inflowHistoryFilters) },
         )
         MoneySectionDivider()
         MoneyListRow(
-            title = "${flow.name} · 现金流出",
+            title = stringResource(R.string.stats_account_outflow_format, flow.name),
             trailing = flow.outflowText,
             modifier = Modifier.clickable { onOpenHistory(flow.outflowHistoryFilters) },
         )

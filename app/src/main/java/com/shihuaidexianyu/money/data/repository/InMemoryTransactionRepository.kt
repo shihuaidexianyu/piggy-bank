@@ -18,6 +18,7 @@ import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
@@ -39,6 +40,11 @@ import java.time.ZoneOffset
 class InMemoryTransactionRepository(
     private val accountNameLookup: (Long) -> String? = { null },
 ) : TransactionRepository, LedgerAggregateRepository {
+    var transactionInvocationCount: Int = 0
+        private set
+    var homePeriodSummaryInvocationCount: Int = 0
+        private set
+
     private var nextCashFlowId = 1L
     private var nextTransferId = 1L
     private var nextBalanceUpdateId = 1L
@@ -96,6 +102,7 @@ class InMemoryTransactionRepository(
     }
 
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = transactionMutex.withLock {
+        transactionInvocationCount++
         val snapshot = synchronized(ledgerLock) { snapshot() }
         try {
             block()
@@ -777,6 +784,54 @@ class InMemoryTransactionRepository(
 
     override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int {
         return adjustments.count { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+    }
+
+    override suspend fun queryHomePeriodLedgerSummary(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): HomePeriodLedgerSummary = synchronized(ledgerLock) {
+        homePeriodSummaryInvocationCount++
+        val cash = cashFlowRecords.filter {
+            it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive)
+        }
+        val periodTransfers = transferRecords.filter {
+            it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive)
+        }
+        val reconciliations = balanceUpdates.filter {
+            it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive)
+        }
+        val manualAdjustments = adjustments.filter {
+            it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive)
+        }
+        HomePeriodLedgerSummary(
+            cashInflow = cash
+                .filter { it.direction == CashFlowDirection.INFLOW.value }
+                .map { it.amount }
+                .ledgerSumExact(),
+            cashOutflow = cash
+                .filter { it.direction == CashFlowDirection.OUTFLOW.value }
+                .map { it.amount }
+                .ledgerSumExact(),
+            reconciliationIncrease = reconciliations
+                .filter { it.delta > 0L }
+                .map { it.delta }
+                .ledgerSumExact(),
+            reconciliationDecrease = reconciliations
+                .filter { it.delta < 0L }
+                .map { ledgerSubtractExact(0L, it.delta) }
+                .ledgerSumExact(),
+            manualAdjustmentIncrease = manualAdjustments
+                .filter { it.delta > 0L }
+                .map { it.delta }
+                .ledgerSumExact(),
+            manualAdjustmentDecrease = manualAdjustments
+                .filter { it.delta < 0L }
+                .map { ledgerSubtractExact(0L, it.delta) }
+                .ledgerSumExact(),
+            cashFlowRecordCount = cash.size,
+            transferRecordCount = periodTransfers.size,
+            manualAdjustmentRecordCount = manualAdjustments.size,
+        )
     }
 
     override suspend fun queryActiveCashFlowRecordsBetween(

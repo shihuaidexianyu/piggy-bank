@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -153,6 +154,10 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int
     suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int
     suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int
+    suspend fun queryHomePeriodLedgerSummary(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): HomePeriodLedgerSummary
 
     // === Unified history ===
     suspend fun queryHistoryRecords(

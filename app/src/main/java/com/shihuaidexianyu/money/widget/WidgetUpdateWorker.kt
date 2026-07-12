@@ -36,27 +36,30 @@ class WidgetUpdateWorker(
         return try {
             WidgetRefreshCoordinator(
                 snapshotSource = {
+                    val snapshotTimeMillis = SystemClockProvider.nowMillis()
+                    val snapshotZoneId = SystemZoneIdProvider.zoneId()
                     val devicePreferences = container.devicePreferencesRepository.query()
                     val visibility = AmountPrivacy.from(devicePreferences)
                         .visibilityFor(AmountSurface.WIDGET)
                     container.moneyDatabase.withTransaction {
                         val accounts = container.accountRepository.queryAllAccounts()
-                        val balances = container.calculateAccountBalancesUseCase(accounts)
+                        val balances = container.calculateAccountBalancesUseCase(
+                            accounts,
+                            snapshotTimeMillis,
+                        )
                         val totalAssets = balances.values.ledgerSumExact()
                         val range = TimeRangeCalculator.currentMonthRange(
-                            zoneId = SystemZoneIdProvider.zoneId(),
-                            nowMillis = SystemClockProvider.nowMillis(),
+                            zoneId = snapshotZoneId,
+                            nowMillis = snapshotTimeMillis,
+                        )
+                        val periodSummary = container.transactionRepository.queryHomePeriodLedgerSummary(
+                            range.startInclusive,
+                            range.endExclusive,
                         )
                         WidgetBalanceSnapshot(
                             totalAssets = totalAssets,
-                            monthInflow = container.transactionRepository.sumCashInflowBetween(
-                                range.startInclusive,
-                                range.endExclusive,
-                            ),
-                            monthOutflow = container.transactionRepository.sumCashOutflowBetween(
-                                range.startInclusive,
-                                range.endExclusive,
-                            ),
+                            monthInflow = periodSummary.cashInflow,
+                            monthOutflow = periodSummary.cashOutflow,
                             settings = container.portableSettingsRepository.query(),
                             visibility = visibility,
                         )

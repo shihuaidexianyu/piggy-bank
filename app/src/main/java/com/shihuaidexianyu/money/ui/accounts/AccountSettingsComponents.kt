@@ -12,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -57,10 +59,10 @@ internal fun AccountSettingsPickerDialog(
     when (picker) {
         AccountSettingsPicker.COLOR -> {
             MoneyChoiceDialog(
-                title = "账户颜色",
+                title = stringResource(R.string.account_color_title),
                 options = AccountColorOptions,
                 selected = AccountColorOptions.firstOrNull { it.name == normalizeAccountColorName(colorName) },
-                label = { it.label },
+                label = { stringResource(it.labelRes) },
                 onSelect = {
                     onColorSelected(it.name)
                     onDismiss()
@@ -82,7 +84,7 @@ internal fun AccountSettingsPickerDialog(
 
         AccountSettingsPicker.REMINDER_PERIOD -> {
             MoneyChoiceDialog(
-                title = "提醒周期",
+                title = stringResource(R.string.account_reminder_period),
                 options = BalanceUpdateReminderPeriod.entries,
                 selected = reminderConfig.period,
                 label = { it.displayName },
@@ -96,7 +98,7 @@ internal fun AccountSettingsPickerDialog(
 
         AccountSettingsPicker.REMINDER_WEEKDAY -> {
             MoneyChoiceDialog(
-                title = "每周提醒日",
+                title = stringResource(R.string.account_reminder_weekday_dialog),
                 options = BalanceUpdateReminderWeekday.entries,
                 selected = reminderConfig.weekday,
                 label = { it.displayName },
@@ -110,10 +112,10 @@ internal fun AccountSettingsPickerDialog(
 
         AccountSettingsPicker.REMINDER_MONTH_DAY -> {
             MoneyChoiceDialog(
-                title = "每月提醒日",
+                title = stringResource(R.string.account_reminder_month_day_dialog),
                 options = (1..31).toList(),
                 selected = reminderConfig.monthDay,
-                label = { "${it}日" },
+                label = { stringResource(R.string.account_month_day_format, it) },
                 onSelect = {
                     onReminderMonthDaySelected(it)
                     onDismiss()
@@ -150,7 +152,7 @@ private fun AccountIconChoiceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("账户图标") },
+        title = { Text(stringResource(R.string.account_icon_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 AccountIconOptions.forEach { option ->
@@ -173,7 +175,7 @@ private fun AccountIconChoiceDialog(
                                 },
                             )
                             Text(
-                                text = option.label,
+                                text = stringResource(option.labelRes),
                                 color = if (selected) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
@@ -187,7 +189,7 @@ private fun AccountIconChoiceDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         },
     )
 }
@@ -201,26 +203,26 @@ internal fun AccountReminderFields(
     onReminderTimeClick: () -> Unit,
 ) {
     MoneySelectionField(
-        label = "提醒周期",
+        label = stringResource(R.string.account_reminder_period),
         value = reminderConfig.period.displayName,
-        subtitle = "到了提醒时间后未核对会标记为待核对",
+        subtitle = stringResource(R.string.account_reminder_description),
         modifier = Modifier.clickable(onClick = onReminderPeriodClick),
     )
     when (reminderConfig.period) {
         BalanceUpdateReminderPeriod.WEEKLY -> MoneySelectionField(
-            label = "每周几",
+            label = stringResource(R.string.account_reminder_weekday),
             value = reminderConfig.weekday.displayName,
             modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
         )
 
         BalanceUpdateReminderPeriod.MONTHLY -> MoneySelectionField(
-            label = "每月几号",
-            value = "${reminderConfig.monthDay}日",
+            label = stringResource(R.string.account_reminder_month_day),
+            value = stringResource(R.string.account_month_day_format, reminderConfig.monthDay),
             modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
         )
     }
     MoneySelectionField(
-        label = "提醒时间",
+        label = stringResource(R.string.account_reminder_time),
         value = reminderConfig.timeText,
         modifier = Modifier.clickable(onClick = onReminderTimeClick),
     )
@@ -234,12 +236,12 @@ internal fun AccountVisualFields(
     onIconClick: () -> Unit,
 ) {
     MoneySelectionField(
-        label = "账户图标",
+        label = stringResource(R.string.account_icon_title),
         value = accountIconLabel(iconName),
         modifier = Modifier.clickable(onClick = onIconClick),
     )
     MoneySelectionField(
-        label = "账户颜色",
+        label = stringResource(R.string.account_color_title),
         value = accountColorLabel(colorName),
         modifier = Modifier.clickable(onClick = onColorClick),
     )
@@ -255,28 +257,28 @@ internal fun AccountReminderListSection(
 ) {
     MoneyListSection {
         MoneyListRow(
-            title = "提醒周期",
-            subtitle = "到了提醒时间后未核对会标记为待核对",
+            title = stringResource(R.string.account_reminder_period),
+            subtitle = stringResource(R.string.account_reminder_description),
             trailing = reminderConfig.period.displayName,
             modifier = Modifier.clickable(onClick = onReminderPeriodClick),
         )
         MoneySectionDivider()
         when (reminderConfig.period) {
             BalanceUpdateReminderPeriod.WEEKLY -> MoneyListRow(
-                title = "每周几",
+                title = stringResource(R.string.account_reminder_weekday),
                 trailing = reminderConfig.weekday.displayName,
                 modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
             )
 
             BalanceUpdateReminderPeriod.MONTHLY -> MoneyListRow(
-                title = "每月几号",
-                trailing = "${reminderConfig.monthDay}日",
+                title = stringResource(R.string.account_reminder_month_day),
+                trailing = stringResource(R.string.account_month_day_format, reminderConfig.monthDay),
                 modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
             )
         }
         MoneySectionDivider()
         MoneyListRow(
-            title = "提醒时间",
+            title = stringResource(R.string.account_reminder_time),
             trailing = reminderConfig.timeText,
             modifier = Modifier.clickable(onClick = onReminderTimeClick),
         )
@@ -292,14 +294,14 @@ internal fun AccountVisualListRows(
 ) {
     MoneySectionDivider()
     MoneyListRow(
-        title = "账户图标",
+        title = stringResource(R.string.account_icon_title),
         trailing = accountIconLabel(iconName),
         leading = { AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp) },
         modifier = Modifier.clickable(onClick = onIconClick),
     )
     MoneySectionDivider()
     MoneyListRow(
-        title = "账户颜色",
+        title = stringResource(R.string.account_color_title),
         trailing = accountColorLabel(colorName),
         leading = { AccountColorSwatch(colorName = colorName, size = 18.dp) },
         modifier = Modifier.clickable(onClick = onColorClick),

@@ -52,9 +52,9 @@ class HomeBudgetViewModelTest {
         viewModel.openMonthlyBudgetEditor()
         viewModel.updateMonthlyBudgetInput("0")
         viewModel.saveMonthlyBudget()
-        assertEquals("月预算必须大于 0", viewModel.uiState.value.monthlyBudgetInputError)
+        assertEquals(R.string.home_budget_positive_error, viewModel.uiState.value.monthlyBudgetInputErrorRes)
         val restoredError = fixture.recreateViewModel()
-        assertEquals("月预算必须大于 0", restoredError.uiState.value.monthlyBudgetInputError)
+        assertEquals(R.string.home_budget_positive_error, restoredError.uiState.value.monthlyBudgetInputErrorRes)
 
         viewModel.updateMonthlyBudgetInput("123.45")
         val restored = fixture.recreateViewModel()
@@ -65,7 +65,7 @@ class HomeBudgetViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.showMonthlyBudgetEditor)
         assertEquals("123.45", viewModel.uiState.value.monthlyBudgetInput)
-        assertEquals("月预算保存失败，请重试", viewModel.uiState.value.monthlyBudgetSaveError)
+        assertEquals(R.string.home_budget_save_failed, viewModel.uiState.value.monthlyBudgetSaveErrorRes)
 
         viewModel.retryMonthlyBudgetSave()
         viewModel.retryMonthlyBudgetSave()
@@ -85,10 +85,10 @@ class HomeBudgetViewModelTest {
         fixture.settings.failNextUpdate = true
         viewModel.closeMonthlyBudget()
         advanceUntilIdle()
-        assertEquals("月预算保存失败，请重试", viewModel.uiState.value.monthlyBudgetSaveError)
+        assertEquals(R.string.home_budget_save_failed, viewModel.uiState.value.monthlyBudgetSaveErrorRes)
 
         val restored = fixture.recreateViewModel()
-        assertEquals("月预算保存失败，请重试", restored.uiState.value.monthlyBudgetSaveError)
+        assertEquals(R.string.home_budget_save_failed, restored.uiState.value.monthlyBudgetSaveErrorRes)
         restored.retryMonthlyBudgetSave()
         advanceUntilIdle()
 

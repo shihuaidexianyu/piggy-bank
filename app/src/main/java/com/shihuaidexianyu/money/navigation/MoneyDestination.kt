@@ -6,18 +6,20 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.StringRes
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 
 sealed class MoneyDestination(
     val route: String,
-    val label: String,
+    @param:StringRes val labelRes: Int,
     val icon: ImageVector,
 ) {
-    data object Home : MoneyDestination("home", "首页", Icons.Rounded.Home)
-    data object History : MoneyDestination("history", "明细", Icons.Rounded.History)
-    data object Stats : MoneyDestination("stats", "分析", Icons.Rounded.BarChart)
-    data object Accounts : MoneyDestination("accounts", "账户", Icons.Rounded.AccountBalanceWallet)
-    data object Settings : MoneyDestination("settings", "设置", Icons.Rounded.Settings)
+    data object Home : MoneyDestination("home", R.string.home_title, Icons.Rounded.Home)
+    data object History : MoneyDestination("history", R.string.nav_history, Icons.Rounded.History)
+    data object Stats : MoneyDestination("stats", R.string.stats_title, Icons.Rounded.BarChart)
+    data object Accounts : MoneyDestination("accounts", R.string.accounts_title, Icons.Rounded.AccountBalanceWallet)
+    data object Settings : MoneyDestination("settings", R.string.settings_title, Icons.Rounded.Settings)
 
     companion object {
         val topLevel = listOf(Home, History, Stats, Accounts)

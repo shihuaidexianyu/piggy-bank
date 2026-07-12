@@ -4,6 +4,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.shihuaidexianyu.money.R
 import java.lang.ref.WeakReference
 
 class RebindableHost<T : Any> {
@@ -48,7 +49,7 @@ class AndroidBiometricAuthenticationGateway : BiometricAuthenticationGateway {
         if (activity == null || activity.isFinishing || activity.isDestroyed) {
             callback(
                 requestToken,
-                BiometricAuthenticationResult.Error("身份验证界面不可用"),
+                BiometricAuthenticationResult.Error("host_unavailable"),
             )
             return
         }
@@ -75,10 +76,10 @@ class AndroidBiometricAuthenticationGateway : BiometricAuthenticationGateway {
         activePrompt = prompt
         prompt.authenticate(
             BiometricPrompt.PromptInfo.Builder()
-                .setTitle("解锁小金库")
-                .setSubtitle("验证生物识别以查看你的账本")
+                .setTitle(activity.getString(R.string.biometric_unlock_title))
+                .setSubtitle(activity.getString(R.string.biometric_unlock_subtitle))
                 .setAllowedAuthenticators(biometricAuthenticators())
-                .setNegativeButtonText("取消")
+                .setNegativeButtonText(activity.getString(R.string.action_cancel))
                 .build(),
         )
     }

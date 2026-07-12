@@ -8,6 +8,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -25,29 +27,29 @@ fun BalanceUpdateResultScreen(
 ) {
     BackHandler(onBack = onDone)
     MoneyFormPage(
-        title = "更新结果",
+        title = stringResource(R.string.balance_result_title),
         modifier = modifier,
     ) {
         item {
             MoneyCard {
                 Text(result.accountName, style = MaterialTheme.typography.titleMedium)
                 MoneyInlineLabelValue(
-                    label = "对账前账面余额",
+                    label = stringResource(R.string.balance_before_reconciliation),
                     value = formatInAppAmount(result.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyInlineLabelValue(
-                    label = "本次确认余额",
+                    label = stringResource(R.string.balance_confirmed),
                     value = formatInAppAmount(result.actualBalance, settings),
                 )
                 MoneyInlineLabelValue(
-                    label = "差额",
+                    label = stringResource(R.string.balance_delta),
                     value = formatInAppAmount(result.delta, settings),
                 )
                 Text(
                     if (result.delta == 0L) {
-                        "本次已保存为一条余额核对记录"
+                        stringResource(R.string.balance_result_reconciliation_saved)
                     } else {
-                        "本次已保存为一条对账调整记录"
+                        stringResource(R.string.balance_result_adjustment_saved)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -57,13 +59,13 @@ fun BalanceUpdateResultScreen(
         item {
             MoneyCard {
                 Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                    Text("完成")
+                    Text(stringResource(R.string.action_done))
                 }
                 OutlinedButton(
                     onClick = { onOpenAccount(result.accountId) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("查看账户详情")
+                    Text(stringResource(R.string.action_view_account_detail))
                 }
             }
         }

@@ -15,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -53,7 +55,7 @@ fun SharePreviewScreen(
     }
     if (showAccountPicker) {
         AccountPickerDialog(
-            title = "选择开放账户",
+            title = stringResource(R.string.share_choose_open_account),
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
             onDismiss = { showAccountPicker = false },
@@ -91,17 +93,21 @@ fun SharePreviewScreen(
     }
 
     MoneyFormPage(
-        title = "分享内容预览",
+        title = stringResource(R.string.share_preview_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
         item {
             MoneyCard {
-                Text(if (state.isUncertain) "解析结果需要确认" else "已解析分享内容，请确认后保存")
+                Text(
+                    stringResource(
+                        if (state.isUncertain) R.string.share_uncertain else R.string.share_confirm_parsed,
+                    ),
+                )
                 Text(state.originalText, maxLines = 4)
                 if (state.candidateAmounts.size > 1) {
-                    Text("检测到多个可能金额，请手动填写正确金额")
+                    Text(stringResource(R.string.share_multiple_amounts))
                 }
             }
         }
@@ -140,33 +146,33 @@ fun SharePreviewScreen(
                     onValueChange = viewModel::updateAmount,
                 )
                 if (state.accounts.isEmpty()) {
-                    Text("没有可记账的开放账户")
-                    Button(onClick = onCreateAccount) { Text("创建账户") }
+                    Text(stringResource(R.string.share_no_open_account))
+                    Button(onClick = onCreateAccount) { Text(stringResource(R.string.share_create_account)) }
                 } else {
                     MoneySelectionField(
-                        label = "账户",
-                        value = selectedAccount?.name ?: "请选择",
+                        label = stringResource(R.string.account_single),
+                        value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
                         modifier = Modifier.clickable { showAccountPicker = true },
                     )
                 }
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注（可选，最多 200 字）",
+                    label = stringResource(R.string.share_note_label),
                 )
                 Text("${state.note.length}/200")
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAt,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "可修改分享记录时间",
+                    timeSubtitle = stringResource(R.string.share_time_description),
                 )
                 state.fieldError?.let { Text(it) }
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
                     enabled = !state.isLoading && state.accounts.isNotEmpty(),
-                    label = "确认并保存",
+                    label = stringResource(R.string.share_confirm_save),
                 )
             }
         }

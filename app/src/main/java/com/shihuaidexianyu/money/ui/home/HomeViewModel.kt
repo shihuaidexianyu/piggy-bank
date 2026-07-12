@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.ui.home
 
 import androidx.lifecycle.ViewModel
+import androidx.annotation.StringRes
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -48,7 +50,7 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val hasCommittedContent: Boolean = false,
-    val errorMessage: String? = null,
+    @param:StringRes val errorMessageRes: Int? = null,
     val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val totalAssets: Long = 0L,
@@ -67,13 +69,13 @@ data class HomeUiState(
     val dueReminders: List<DueReminderUiModel> = emptyList(),
     val showMonthlyBudgetEditor: Boolean = false,
     val monthlyBudgetInput: String = "",
-    val monthlyBudgetInputError: String? = null,
-    val monthlyBudgetSaveError: String? = null,
+    @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
+    @param:StringRes val monthlyBudgetSaveErrorRes: Int? = null,
     val isMonthlyBudgetSaving: Boolean = false,
 )
 
-internal fun HomeUiState.toAsyncContent(): AsyncContent<HomeUiState> {
-    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+internal fun HomeUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<HomeUiState> {
+    errorMessageRes?.let { return AsyncContent.Error(errorMessage, retryToken) }
     if (!hasCommittedContent) return AsyncContent.Loading
     if (isRefreshing) return AsyncContent.Refreshing(this)
     if (!hasAnyAccounts) return AsyncContent.Empty(EmptyKind.COMPLETELY_EMPTY)
@@ -90,8 +92,8 @@ class HomeViewModel(
         HomeUiState(
             showMonthlyBudgetEditor = savedStateHandle[KEY_BUDGET_EDITOR_OPEN] ?: false,
             monthlyBudgetInput = savedStateHandle.get<String>(KEY_BUDGET_INPUT).orEmpty(),
-            monthlyBudgetInputError = savedStateHandle.get<String>(KEY_BUDGET_INPUT_ERROR),
-            monthlyBudgetSaveError = savedStateHandle.get<String>(KEY_BUDGET_SAVE_ERROR),
+            monthlyBudgetInputErrorRes = savedStateHandle.get<Int>(KEY_BUDGET_INPUT_ERROR),
+            monthlyBudgetSaveErrorRes = savedStateHandle.get<Int>(KEY_BUDGET_SAVE_ERROR),
         ),
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -112,7 +114,7 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(
             isLoading = !hasCommittedContent,
             isRefreshing = hasCommittedContent,
-            errorMessage = null,
+            errorMessageRes = null,
             retryToken = null,
         )
         observationJob = viewModelScope.launch {
@@ -173,8 +175,8 @@ class HomeViewModel(
                         },
                         showMonthlyBudgetEditor = editorState.showMonthlyBudgetEditor,
                         monthlyBudgetInput = editorState.monthlyBudgetInput,
-                        monthlyBudgetInputError = editorState.monthlyBudgetInputError,
-                        monthlyBudgetSaveError = editorState.monthlyBudgetSaveError,
+                        monthlyBudgetInputErrorRes = editorState.monthlyBudgetInputErrorRes,
+                        monthlyBudgetSaveErrorRes = editorState.monthlyBudgetSaveErrorRes,
                         isMonthlyBudgetSaving = editorState.isMonthlyBudgetSaving,
                     )
                 }
@@ -186,7 +188,7 @@ class HomeViewModel(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    errorMessage = "首页加载失败，请重试",
+                    errorMessageRes = R.string.home_load_failed,
                     retryToken = "home:$retryGeneration",
                 )
             }
@@ -199,8 +201,8 @@ class HomeViewModel(
         updateBudgetEditor(
             show = true,
             input = input,
-            inputError = null,
-            saveError = null,
+            inputErrorRes = null,
+            saveErrorRes = null,
         )
     }
 
@@ -214,8 +216,8 @@ class HomeViewModel(
         clearPendingBudgetAction()
         updateBudgetEditor(
             input = value,
-            inputError = null,
-            saveError = null,
+            inputErrorRes = null,
+            saveErrorRes = null,
         )
     }
 
@@ -225,7 +227,7 @@ class HomeViewModel(
         val amount = AmountInputParser.parseUnsignedToMinor(current.monthlyBudgetInput)
         if (amount == null || amount <= 0L) {
             clearPendingBudgetAction()
-            updateBudgetEditor(inputError = "月预算必须大于 0", saveError = null)
+            updateBudgetEditor(inputErrorRes = R.string.home_budget_positive_error, saveErrorRes = null)
             return
         }
         persistMonthlyBudget(BudgetPendingAction.SET, amount)
@@ -262,8 +264,8 @@ class HomeViewModel(
         savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
         _uiState.value = _uiState.value.copy(
             isMonthlyBudgetSaving = true,
-            monthlyBudgetInputError = null,
-            monthlyBudgetSaveError = null,
+            monthlyBudgetInputErrorRes = null,
+            monthlyBudgetSaveErrorRes = null,
         )
         savedStateHandle[KEY_BUDGET_INPUT_ERROR] = null
         viewModelScope.launch {
@@ -273,8 +275,8 @@ class HomeViewModel(
                 updateBudgetEditor(
                     show = false,
                     input = "",
-                    inputError = null,
-                    saveError = null,
+                    inputErrorRes = null,
+                    saveErrorRes = null,
                     saving = false,
                 )
             } catch (e: CancellationException) {
@@ -282,7 +284,7 @@ class HomeViewModel(
             } catch (_: Exception) {
                 updateBudgetEditor(
                     show = true,
-                    saveError = "月预算保存失败，请重试",
+                    saveErrorRes = R.string.home_budget_save_failed,
                     saving = false,
                 )
             }
@@ -292,23 +294,23 @@ class HomeViewModel(
     private fun updateBudgetEditor(
         show: Boolean = _uiState.value.showMonthlyBudgetEditor,
         input: String = _uiState.value.monthlyBudgetInput,
-        inputError: String? = _uiState.value.monthlyBudgetInputError,
-        saveError: String? = _uiState.value.monthlyBudgetSaveError,
+        @StringRes inputErrorRes: Int? = _uiState.value.monthlyBudgetInputErrorRes,
+        @StringRes saveErrorRes: Int? = _uiState.value.monthlyBudgetSaveErrorRes,
         saving: Boolean = _uiState.value.isMonthlyBudgetSaving,
     ) {
         savedStateHandle[KEY_BUDGET_EDITOR_OPEN] = show
         savedStateHandle[KEY_BUDGET_INPUT] = input
-        savedStateHandle[KEY_BUDGET_INPUT_ERROR] = inputError
-        if (saveError == null) {
+        savedStateHandle[KEY_BUDGET_INPUT_ERROR] = inputErrorRes
+        if (saveErrorRes == null) {
             savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
         } else {
-            savedStateHandle[KEY_BUDGET_SAVE_ERROR] = saveError
+            savedStateHandle[KEY_BUDGET_SAVE_ERROR] = saveErrorRes
         }
         _uiState.value = _uiState.value.copy(
             showMonthlyBudgetEditor = show,
             monthlyBudgetInput = input,
-            monthlyBudgetInputError = inputError,
-            monthlyBudgetSaveError = saveError,
+            monthlyBudgetInputErrorRes = inputErrorRes,
+            monthlyBudgetSaveErrorRes = saveErrorRes,
             isMonthlyBudgetSaving = saving,
         )
     }

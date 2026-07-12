@@ -26,6 +26,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.io.Serializable
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -187,7 +188,7 @@ class ReminderListViewModel(
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.SIMPLIFIED_CHINESE)
 
 internal fun partitionReminderModels(
     reminders: List<RecurringReminder>,

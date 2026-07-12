@@ -35,15 +35,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountKey
 import com.shihuaidexianyu.money.util.appendAmountKey
 import com.shihuaidexianyu.money.util.parseAmountKeypadPreview
 
 private data class AmountKeypadButtonSpec(
-    val label: String,
+    val label: String? = null,
     val key: AmountKey? = null,
     val isPrimary: Boolean = false,
+    @param:StringRes val labelRes: Int? = null,
 )
 
 private val amountKeypadRows = listOf(
@@ -51,7 +55,7 @@ private val amountKeypadRows = listOf(
         AmountKeypadButtonSpec("7", AmountKey.Digit(7)),
         AmountKeypadButtonSpec("8", AmountKey.Digit(8)),
         AmountKeypadButtonSpec("9", AmountKey.Digit(9)),
-        AmountKeypadButtonSpec("删除", AmountKey.Delete),
+        AmountKeypadButtonSpec(labelRes = R.string.action_delete, key = AmountKey.Delete),
     ),
     listOf(
         AmountKeypadButtonSpec("4", AmountKey.Digit(4)),
@@ -69,7 +73,7 @@ private val amountKeypadRows = listOf(
         AmountKeypadButtonSpec("C", AmountKey.Clear),
         AmountKeypadButtonSpec("0", AmountKey.Digit(0)),
         AmountKeypadButtonSpec(".", AmountKey.Decimal),
-        AmountKeypadButtonSpec("完成", isPrimary = true),
+        AmountKeypadButtonSpec(labelRes = R.string.action_done, isPrimary = true),
     ),
 )
 
@@ -203,6 +207,7 @@ private fun AmountKeypadButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resolvedLabel = spec.labelRes?.let { stringResource(it) } ?: requireNotNull(spec.label)
     val hapticFeedback = LocalHapticFeedback.current
     val shape = RoundedCornerShape(12.dp)
     val isOperator = spec.key == AmountKey.Plus || spec.key == AmountKey.Minus
@@ -246,12 +251,12 @@ private fun AmountKeypadButton(
             if (spec.key == AmountKey.Delete) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.Backspace,
-                    contentDescription = "删除",
+                    contentDescription = resolvedLabel,
                     tint = contentColor,
                 )
             } else {
                 Text(
-                    text = spec.label,
+                    text = resolvedLabel,
                     style = if (spec.isPrimary) {
                         MaterialTheme.typography.titleMedium
                     } else {

@@ -46,6 +46,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -98,10 +101,10 @@ fun HistoryScreen(
     onAmountDirectionChange: (AmountDirectionFilter) -> Unit,
     onClearAllFilters: () -> Unit,
     onLoadMore: () -> Unit,
-    onRetryLoadMore: () -> Unit = onLoadMore,
-    onRetry: () -> Unit = {},
     onRecordClick: (HistoryRecordUiModel) -> Unit,
     modifier: Modifier = Modifier,
+    onRetryLoadMore: () -> Unit = onLoadMore,
+    onRetry: () -> Unit = {},
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
@@ -109,7 +112,8 @@ fun HistoryScreen(
     val canPrefetch = state.hasMoreRecords &&
         !state.isLoading &&
         !state.isLoadingMore &&
-        state.loadMoreErrorMessage == null
+        state.loadMoreErrorMessageRes == null
+    val historyLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
     val shouldPrefetch by remember(listState, canPrefetch, state.records.size) {
         derivedStateOf {
             if (!canPrefetch) {
@@ -131,10 +135,10 @@ fun HistoryScreen(
 
     if (sheet == HistoryFilterSheet.ACCOUNT) {
         AccountPickerDialog(
-            title = "筛选账户",
+            title = stringResource(R.string.history_filter_account),
             accounts = state.accountOptions,
             selectedAccountId = state.selectedAccountId,
-            noSelectionLabel = "全部账户",
+            noSelectionLabel = stringResource(R.string.history_all_accounts),
             onDismiss = { sheet = null },
             onPick = { accountId ->
                 onAccountChange(accountId)
@@ -180,11 +184,11 @@ fun HistoryScreen(
     sheet?.takeIf { it != HistoryFilterSheet.ACCOUNT }?.let { current ->
         HistoryFilterSheetContent(
             title = when (current) {
-                HistoryFilterSheet.OVERVIEW -> "筛选"
-                HistoryFilterSheet.TYPE -> "类型"
-                HistoryFilterSheet.DATE -> "日期"
-                HistoryFilterSheet.AMOUNT -> "金额"
-                HistoryFilterSheet.DIRECTION -> "方向"
+                HistoryFilterSheet.OVERVIEW -> stringResource(R.string.history_filter)
+                HistoryFilterSheet.TYPE -> stringResource(R.string.history_type)
+                HistoryFilterSheet.DATE -> stringResource(R.string.field_date)
+                HistoryFilterSheet.AMOUNT -> stringResource(R.string.field_amount)
+                HistoryFilterSheet.DIRECTION -> stringResource(R.string.history_direction)
                 else -> ""
             },
             onDismiss = { sheet = null },
@@ -194,35 +198,35 @@ fun HistoryScreen(
                     MoneySingleLineField(
                         value = state.excludeKeyword,
                         onValueChange = onExcludeKeywordChange,
-                        label = "排除关键词",
+                        label = stringResource(R.string.history_exclude_keyword),
                     )
                     MoneyCard(contentPadding = PaddingValues(0.dp)) {
                         MoneyListRow(
-                            title = "类型",
+                            title = stringResource(R.string.history_type),
                             trailing = typeSheetSummary(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.TYPE },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
-                            title = "账户",
+                            title = stringResource(R.string.accounts_title),
                             trailing = accountSheetSummary(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.ACCOUNT },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
-                            title = "日期",
+                            title = stringResource(R.string.field_date),
                             trailing = dateSheetSummary(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.DATE },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
-                            title = "金额",
+                            title = stringResource(R.string.field_amount),
                             trailing = amountChipLabel(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.AMOUNT },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
-                            title = "方向",
+                            title = stringResource(R.string.history_direction),
                             trailing = directionChipLabel(state),
                             modifier = Modifier.clickable { sheet = HistoryFilterSheet.DIRECTION },
                         )
@@ -251,7 +255,7 @@ fun HistoryScreen(
                     }
                     if (state.selectedRecordTypes.isNotEmpty()) {
                         OutlinedButton(onClick = { onRecordTypesChange(emptySet()) }) {
-                            Text("显示全部类型")
+                            Text(stringResource(R.string.history_show_all_types))
                         }
                     }
                 }
@@ -261,7 +265,7 @@ fun HistoryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         QuickDateChip(
-                            label = "今天",
+                            label = stringResource(R.string.history_today),
                             onClick = {
                                 val todayStart = DateTimeTextFormatter.startOfDayMillis(System.currentTimeMillis())
                                 val todayEnd = DateTimeTextFormatter.endExclusiveOfDayMillis(System.currentTimeMillis())
@@ -269,7 +273,7 @@ fun HistoryScreen(
                             },
                         )
                         QuickDateChip(
-                            label = "最近 7 天",
+                            label = stringResource(R.string.history_last_seven_days),
                             onClick = {
                                 val today = LocalDate.now()
                                 val start = today.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -278,25 +282,29 @@ fun HistoryScreen(
                             },
                         )
                         QuickDateChip(
-                            label = "本月",
+                            label = stringResource(R.string.history_this_month),
                             onClick = {
                                 val range = TimeRangeUtils.currentMonthRange()
                                 onDateRangeChange(range.startInclusive, range.endExclusive)
                             },
                         )
                         QuickDateChip(
-                            label = "清除",
+                            label = stringResource(R.string.action_clear),
                             onClick = { onDateRangeChange(null, null) },
                         )
                     }
                     MoneySelectionField(
-                        label = "开始日期",
-                        value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly) ?: "不限",
+                        label = stringResource(R.string.history_start_date),
+                        value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly)
+                            ?: stringResource(R.string.history_unlimited),
                         modifier = Modifier.clickable { dateField = HistoryDateField.START },
                     )
                     MoneySelectionField(
-                        label = "结束日期",
-                        value = historyEndDateFieldText(state.dateEndAt),
+                        label = stringResource(R.string.history_end_date),
+                        value = historyEndDateFieldText(
+                            state.dateEndAt,
+                            unlimitedLabel = stringResource(R.string.history_unlimited),
+                        ),
                         modifier = Modifier.clickable { dateField = HistoryDateField.END },
                     )
                 }
@@ -304,18 +312,18 @@ fun HistoryScreen(
                     MoneySingleLineField(
                         value = state.minAmountText,
                         onValueChange = onMinAmountChange,
-                        label = "最小金额",
+                        label = stringResource(R.string.history_min_amount),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = state.minAmountError != null,
-                        supportingText = state.minAmountError,
+                        isError = state.minAmountErrorRes != null,
+                        supportingText = state.minAmountErrorRes?.let { stringResource(it) },
                     )
                     MoneySingleLineField(
                         value = state.maxAmountText,
                         onValueChange = onMaxAmountChange,
-                        label = "最大金额",
+                        label = stringResource(R.string.history_max_amount),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = state.maxAmountError != null,
-                        supportingText = state.maxAmountError,
+                        isError = state.maxAmountErrorRes != null,
+                        supportingText = state.maxAmountErrorRes?.let { stringResource(it) },
                     )
                 }
                 HistoryFilterSheet.DIRECTION -> {
@@ -327,7 +335,7 @@ fun HistoryScreen(
                             FilterChip(
                                 selected = state.amountDirectionFilter == option,
                                 onClick = { onAmountDirectionChange(option) },
-                                label = { Text(option.displayName) },
+                                label = { Text(stringResource(option.labelRes)) },
                             )
                         }
                     }
@@ -338,7 +346,7 @@ fun HistoryScreen(
     }
 
     MoneyFormPage(
-        title = "历史",
+        title = stringResource(R.string.history_title),
         modifier = modifier,
         listState = listState,
         contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
@@ -349,7 +357,7 @@ fun HistoryScreen(
                 SearchField(
                     value = state.keyword,
                     onValueChange = onKeywordChange,
-                    placeholder = "包含关键词",
+                    placeholder = stringResource(R.string.history_include_keyword),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -363,7 +371,7 @@ fun HistoryScreen(
                     )
                     if (hasActiveFilters(state)) {
                         Text(
-                            text = "清除",
+                            text = stringResource(R.string.action_clear),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable(onClick = onClearAllFilters),
@@ -372,7 +380,7 @@ fun HistoryScreen(
                 }
             }
         }
-        when (val content = state.toAsyncContent()) {
+        when (val content = state.toAsyncContent(historyLoadErrorMessage)) {
             AsyncContent.Loading,
             is AsyncContent.Error,
             -> item {
@@ -388,12 +396,12 @@ fun HistoryScreen(
             is AsyncContent.Empty -> item {
                 MoneyEmptyStateCard(
                     title = when (content.kind) {
-                        EmptyKind.COMPLETELY_EMPTY -> "还没有记录"
-                        EmptyKind.FILTERED_EMPTY -> "没有符合筛选条件的记录"
+                        EmptyKind.COMPLETELY_EMPTY -> stringResource(R.string.history_empty)
+                        EmptyKind.FILTERED_EMPTY -> stringResource(R.string.history_filtered_empty)
                     },
                     subtitle = when (content.kind) {
-                        EmptyKind.COMPLETELY_EMPTY -> "记下第一笔入账、出账或转账后，这里会按时间线展示。"
-                        EmptyKind.FILTERED_EMPTY -> "筛选条件会继续保留，可以调整或清除后重试。"
+                        EmptyKind.COMPLETELY_EMPTY -> stringResource(R.string.history_empty_description)
+                        EmptyKind.FILTERED_EMPTY -> stringResource(R.string.history_filtered_empty_description)
                     },
                 )
             }
@@ -407,14 +415,14 @@ fun HistoryScreen(
                         onClick = { onRecordClick(record) },
                     )
                 }
-                state.loadMoreErrorMessage?.let { message ->
+                state.loadMoreErrorMessageRes?.let { messageRes ->
                 item {
                     MoneyEmptyStateCard(
-                        title = message,
-                        subtitle = "已加载的记录会继续保留。",
+                        title = stringResource(messageRes),
+                        subtitle = stringResource(R.string.history_loaded_records_retained),
                     ) {
                         OutlinedButton(onClick = onRetryLoadMore) {
-                            Text("重试")
+                            Text(stringResource(R.string.action_retry))
                         }
                     }
                 }
@@ -492,6 +500,7 @@ private fun HistoryRow(
         -> moneyColors.current
     }
     val amountText = formatInAppAmount(record.amount, settings)
+    val kindLabel = historyKindLabel(record)
     val amountColor = when (record.kind) {
         HistoryRecordKind.TRANSFER -> moneyColors.transfer
         else -> when {
@@ -507,7 +516,7 @@ private fun HistoryRow(
             .semantics(mergeDescendants = true) {
                 contentDescription = buildString {
                     append(record.title)
-                    append("，${historyKindLabel(record)}")
+                    append("，$kindLabel")
                     append("，$amountText")
                     append("，${DateTimeTextFormatter.format(record.occurredAt)}")
                 }
@@ -535,7 +544,7 @@ private fun HistoryRow(
             ) {
                 Text(record.title, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "${historyKindLabel(record)} · ${record.subtitle}",
+                    text = "$kindLabel · ${record.subtitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -556,73 +565,87 @@ private fun HistoryRow(
     }
 }
 
-private fun accountChipLabel(state: HistoryUiState): String {
-    val account = state.accountOptions.firstOrNull { it.id == state.selectedAccountId }
-    return account?.let {
-        if (it.name.length > 6) "账户已选" else it.name
-    } ?: "全部账户"
-}
-
+@Composable
 private fun accountSheetSummary(state: HistoryUiState): String {
     val account = state.accountOptions.firstOrNull { it.id == state.selectedAccountId }
-    return account?.name ?: "全部账户"
-}
-
-private fun dateChipLabel(state: HistoryUiState): String {
-    val start = state.dateStartAt
-    val end = state.dateEndAt
-    return if (start == null && end == null) "日期" else "日期已选"
+    return account?.name ?: stringResource(R.string.history_all_accounts)
 }
 
 internal fun historyEndDateFieldText(
     endExclusive: Long?,
     zoneId: ZoneId = ZoneId.systemDefault(),
+    unlimitedLabel: String,
 ): String = endExclusive
     ?.let { DateTimeTextFormatter.formatDisplayedEndDate(it, zoneId) }
-    ?: "不限"
+    ?: unlimitedLabel
 
+@Composable
 private fun dateSheetSummary(state: HistoryUiState): String {
     val start = state.dateStartAt
     val end = state.dateEndAt
     return if (start == null && end == null) {
-        "不限"
+        stringResource(R.string.history_unlimited)
     } else if (start != null && end != null) {
-        "${DateTimeTextFormatter.formatDateOnly(start)} 至 ${DateTimeTextFormatter.formatDisplayedEndDate(end)}"
+        stringResource(
+            R.string.history_date_range_format,
+            DateTimeTextFormatter.formatDateOnly(start),
+            DateTimeTextFormatter.formatDisplayedEndDate(end),
+        )
     } else if (start != null) {
-        "${DateTimeTextFormatter.formatDateOnly(start)} 起"
+        stringResource(R.string.history_date_from_format, DateTimeTextFormatter.formatDateOnly(start))
     } else {
-        "截至 ${DateTimeTextFormatter.formatDisplayedEndDate(requireNotNull(end))}"
+        stringResource(
+            R.string.history_date_until_format,
+            DateTimeTextFormatter.formatDisplayedEndDate(requireNotNull(end)),
+        )
     }
 }
 
+@Composable
 private fun amountChipLabel(state: HistoryUiState): String {
     return if (state.minAmountText.isBlank() && state.maxAmountText.isBlank()) {
-        "金额"
+        stringResource(R.string.field_amount)
     } else {
-        "金额已筛选"
+        stringResource(R.string.history_amount_filtered)
     }
 }
 
+@Composable
 private fun directionChipLabel(state: HistoryUiState): String {
-    return if (state.amountDirectionFilter == AmountDirectionFilter.ALL) "方向" else state.amountDirectionFilter.displayName
+    return if (state.amountDirectionFilter == AmountDirectionFilter.ALL) {
+        stringResource(R.string.history_direction)
+    } else {
+        stringResource(state.amountDirectionFilter.labelRes)
+    }
 }
 
+@Composable
 private fun typeSheetSummary(state: HistoryUiState): String = when (state.selectedRecordTypes.size) {
-    0 -> "全部类型"
+    0 -> stringResource(R.string.history_all_types)
     1 -> historyTypeLabel(state.selectedRecordTypes.single())
-    else -> "已选 ${state.selectedRecordTypes.size} 类"
+    else -> pluralStringResource(
+        R.plurals.history_selected_type_count,
+        state.selectedRecordTypes.size,
+        state.selectedRecordTypes.size,
+    )
 }
 
+@Composable
 private fun historyTypeLabel(type: HistoryRecordType): String = when (type) {
-    HistoryRecordType.CASH_FLOW -> "收支"
-    HistoryRecordType.TRANSFER -> "转账"
-    HistoryRecordType.BALANCE_UPDATE -> "余额核对"
-    HistoryRecordType.BALANCE_ADJUSTMENT -> "余额校正"
+    HistoryRecordType.CASH_FLOW -> stringResource(R.string.history_cash_flow)
+    HistoryRecordType.TRANSFER -> stringResource(R.string.history_transfer)
+    HistoryRecordType.BALANCE_UPDATE -> stringResource(R.string.history_balance_update)
+    HistoryRecordType.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
 }
 
+@Composable
 private fun filterChipLabel(state: HistoryUiState): String {
     val count = activeFilterCount(state)
-    return if (count == 0) "筛选" else "筛选 $count"
+    return if (count == 0) {
+        stringResource(R.string.history_filter)
+    } else {
+        stringResource(R.string.history_filter_count_format, count)
+    }
 }
 
 private fun hasActiveFilters(state: HistoryUiState): Boolean {
@@ -642,12 +665,21 @@ private fun activeFilterCount(state: HistoryUiState): Int {
     ).count { it }
 }
 
+@Composable
 private fun historyKindLabel(record: HistoryRecordUiModel): String {
     return when (record.kind) {
-        HistoryRecordKind.CASH_FLOW -> if (record.amount > 0) "入账" else "出账"
-        HistoryRecordKind.TRANSFER -> "转账"
-        HistoryRecordKind.BALANCE_UPDATE -> if (record.amount == 0L) "余额核对" else "对账调整"
-        HistoryRecordKind.BALANCE_ADJUSTMENT -> "余额校正"
+        HistoryRecordKind.CASH_FLOW -> stringResource(
+            if (record.amount > 0) R.string.history_inflow else R.string.history_outflow,
+        )
+        HistoryRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
+        HistoryRecordKind.BALANCE_UPDATE -> stringResource(
+            if (record.amount == 0L) {
+                R.string.history_balance_update
+            } else {
+                R.string.history_reconciliation_adjustment
+            },
+        )
+        HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
     }
 }
 

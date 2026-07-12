@@ -43,6 +43,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
@@ -114,8 +117,8 @@ fun AccountsScreen(
     onToggleClosedVisibility: () -> Unit,
     onManageAccountOrder: () -> Unit,
     onManageSavingsGoal: () -> Unit,
-    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
@@ -125,12 +128,12 @@ fun AccountsScreen(
 
     Column(modifier = modifier) {
         MoneyPageTitle(
-            title = "账户",
+            title = stringResource(R.string.accounts_title),
             trailing = {
                 IconButton(
                     onClick = onCreateAccount,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .background(
                             color = MaterialTheme.colorScheme.primary,
                             shape = CircleShape,
@@ -138,7 +141,7 @@ fun AccountsScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Add,
-                        contentDescription = "新建账户",
+                        contentDescription = stringResource(R.string.accounts_create),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
@@ -169,19 +172,21 @@ fun AccountsScreen(
                 }
             }
             item {
-                MoneySectionHeader(title = "管理")
+                MoneySectionHeader(title = stringResource(R.string.accounts_management))
             }
             item {
                 MoneyListSection {
                     MoneyListRow(
-                        title = "账户顺序",
-                        subtitle = "调整正常与隐藏账户的显示顺序",
+                        title = stringResource(R.string.accounts_order),
+                        subtitle = stringResource(R.string.accounts_order_description),
                         modifier = Modifier.clickable(onClick = onManageAccountOrder),
                     )
                     MoneySectionDivider()
                     MoneyListRow(
-                        title = "净资产目标",
-                        subtitle = if (state.savingsGoal == null) "设置单一净资产目标" else "查看或修改净资产目标",
+                        title = stringResource(R.string.accounts_net_worth_goal),
+                        subtitle = stringResource(
+                            if (state.savingsGoal == null) R.string.accounts_goal_set else R.string.accounts_goal_edit,
+                        ),
                         modifier = Modifier.clickable(onClick = onManageSavingsGoal),
                     )
                 }
@@ -189,15 +194,29 @@ fun AccountsScreen(
             if (state.openAccounts.isEmpty()) {
                 item {
                     MoneyEmptyStateCard(
-                        title = if (hasClosedAccounts) "还没有开放账户" else "还没有账户",
-                        subtitle = if (hasClosedAccounts) "关闭账户可以在下方查看。" else "创建账户后，就能开始记录资金流和查看总资产。",
+                            title = stringResource(
+                                if (hasClosedAccounts) R.string.accounts_no_open else R.string.accounts_none,
+                            ),
+                            subtitle = stringResource(
+                                if (hasClosedAccounts) R.string.accounts_closed_hint else R.string.accounts_empty_hint,
+                            ),
                     ) {
                         if (hasClosedAccounts) {
                             OutlinedButton(onClick = onToggleClosedVisibility) {
-                                Text(if (state.showClosed) "收起已关闭" else "查看已关闭")
+                                Text(
+                                    stringResource(
+                                        if (state.showClosed) {
+                                            R.string.accounts_collapse_closed
+                                        } else {
+                                            R.string.accounts_show_closed
+                                        },
+                                    ),
+                                )
                             }
                         } else {
-                            OutlinedButton(onClick = onCreateAccount) { Text("创建第一个账户") }
+                            OutlinedButton(onClick = onCreateAccount) {
+                                Text(stringResource(R.string.accounts_create_first))
+                            }
                         }
                     }
                 }
@@ -206,8 +225,12 @@ fun AccountsScreen(
                     val staleCount = groups.normal.count { it.isStale }
                     item {
                         MoneySectionHeader(
-                            title = "正常账户",
-                            trailing = if (staleCount > 0) "$staleCount 个待核对" else "${groups.normal.size} 个",
+                            title = stringResource(R.string.accounts_normal),
+                            trailing = if (staleCount > 0) {
+                                pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount)
+                            } else {
+                                pluralStringResource(R.plurals.account_count, groups.normal.size, groups.normal.size)
+                            },
                         )
                     }
                     itemsIndexed(groups.normal, key = { _, account -> account.id }) { _, account ->
@@ -220,7 +243,16 @@ fun AccountsScreen(
                     }
                 }
                 if (groups.hidden.isNotEmpty()) {
-                    item { MoneySectionHeader(title = "隐藏账户", trailing = "${groups.hidden.size} 个") }
+                    item {
+                        MoneySectionHeader(
+                            title = stringResource(R.string.accounts_hidden),
+                            trailing = pluralStringResource(
+                                R.plurals.account_count,
+                                groups.hidden.size,
+                                groups.hidden.size,
+                            ),
+                        )
+                    }
                     itemsIndexed(groups.hidden, key = { _, account -> account.id }) { _, account ->
                         AccountCard(
                             account = account,
@@ -235,12 +267,18 @@ fun AccountsScreen(
                 item {
                     MoneyCard(contentPadding = PaddingValues(0.dp)) {
                         MoneyListRow(
-                            title = "已关闭账户",
-                            trailing = "${state.closedAccounts.size} 个",
+                            title = stringResource(R.string.accounts_closed),
+                            trailing = pluralStringResource(
+                                R.plurals.account_count,
+                                state.closedAccounts.size,
+                                state.closedAccounts.size,
+                            ),
                             showChevron = false,
                             accessory = {
                                 Text(
-                                    text = if (state.showClosed) "收起" else "查看",
+                                    text = stringResource(
+                                        if (state.showClosed) R.string.action_collapse else R.string.action_view,
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(start = 12.dp),
@@ -253,7 +291,7 @@ fun AccountsScreen(
             }
             if (state.showClosed) {
                 item {
-                    MoneySectionHeader(title = "已关闭账户")
+                    MoneySectionHeader(title = stringResource(R.string.accounts_closed))
                 }
                 itemsIndexed(state.closedAccounts, key = { _, account -> account.id }) { _, account ->
                     AccountCard(
@@ -281,12 +319,18 @@ private fun AccountOverviewCard(state: AccountsUiState) {
     }
     val goalText = if (goal != null) {
         if (goal.isAchieved) {
-            "已达成净资产目标 · 当前 ${formatInAppAmount(goal.currentAmount, state.settings)} · " +
-                "进度 ${requireNotNull(goalProgress).percentageText}"
+            stringResource(
+                R.string.accounts_goal_achieved_format,
+                formatInAppAmount(goal.currentAmount, state.settings),
+                requireNotNull(goalProgress).percentageText,
+            )
         } else {
-            "当前 ${formatInAppAmount(goal.currentAmount, state.settings)} · " +
-                "目标 ${formatInAppAmount(goal.targetAmount, state.settings)} · " +
-                "进度 ${requireNotNull(goalProgress).percentageText}"
+            stringResource(
+                R.string.accounts_goal_progress_format,
+                formatInAppAmount(goal.currentAmount, state.settings),
+                formatInAppAmount(goal.targetAmount, state.settings),
+                requireNotNull(goalProgress).percentageText,
+            )
         }
     } else {
         null
@@ -306,7 +350,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "总资产",
+                    text = stringResource(R.string.accounts_total_assets),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -317,13 +361,11 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                         else -> MaterialTheme.typography.headlineSmall
                     },
                     color = current,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
                 )
             }
             if (staleCount > 0) {
                 MoneyStatusPill(
-                    text = "$staleCount 个待核对",
+                    text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
                     accent = MaterialTheme.colorScheme.secondary,
                 )
             }
@@ -357,7 +399,7 @@ private fun AccountOverviewCard(state: AccountsUiState) {
         }
         if (staleCount > 0) {
             Text(
-                text = "有账户余额需要确认，更新后总资产会更准确。",
+                text = stringResource(R.string.accounts_stale_explanation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -391,17 +433,18 @@ private fun AccountCard(
     }
     val assetShareColor = accountVisualColor(account.colorName)
     val statusText = when {
-        account.requiresReopenAndSettle -> "需重新开启并结清"
-        account.isClosed -> "已关闭"
-        account.isHidden -> "已隐藏 · 仍计入净资产"
-        account.isStale -> "余额待核对"
-        else -> "余额正常"
+        account.requiresReopenAndSettle -> stringResource(R.string.account_status_reopen_settle)
+        account.isClosed -> stringResource(R.string.account_status_closed)
+        account.isHidden -> stringResource(R.string.account_status_hidden)
+        account.isStale -> stringResource(R.string.account_status_stale)
+        else -> stringResource(R.string.account_status_normal)
     }
     val balanceStyle = when {
         balanceText.length > 18 -> MaterialTheme.typography.bodyMedium
         balanceText.length > 14 -> MaterialTheme.typography.titleMedium
         else -> MaterialTheme.typography.titleLarge
     }
+    val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
 
     Surface(
         modifier = Modifier
@@ -416,7 +459,7 @@ private fun AccountCard(
             .semantics(mergeDescendants = true) {
                 contentDescription = buildString {
                     append(account.name)
-                    append("，余额 ${balanceText}")
+                    append(balanceSemantics)
                     append("，$statusText")
                 }
                 role = Role.Button
@@ -490,12 +533,10 @@ private fun AccountCard(
                         text = balanceText,
                         style = balanceStyle,
                         color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
                     )
                     if (account.isStale && !account.isClosed) {
                         MoneyStatusPill(
-                            text = "待核对",
+                            text = stringResource(R.string.account_stale_badge),
                             accent = MaterialTheme.colorScheme.secondary,
                         )
                     }

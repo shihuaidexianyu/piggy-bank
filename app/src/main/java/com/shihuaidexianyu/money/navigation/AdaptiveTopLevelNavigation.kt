@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -37,6 +38,7 @@ fun AdaptiveTopLevelNavigation(
                     tonalElevation = 0.dp,
                 ) {
                     MoneyDestination.topLevel.forEach { destination ->
+                        val label = stringResource(destination.labelRes)
                         NavigationBarItem(
                             selected = currentRoute == destination.route,
                             onClick = { onDestinationClick(destination) },
@@ -48,9 +50,9 @@ fun AdaptiveTopLevelNavigation(
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),
                             icon = {
-                                Icon(destination.icon, contentDescription = destination.label)
+                                Icon(destination.icon, contentDescription = label)
                             },
-                            label = { Text(destination.label) },
+                            label = { Text(label) },
                         )
                     }
                 }
@@ -62,11 +64,12 @@ fun AdaptiveTopLevelNavigation(
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
             MoneyDestination.topLevel.forEach { destination ->
+                val label = stringResource(destination.labelRes)
                 NavigationRailItem(
                     selected = currentRoute == destination.route,
                     onClick = { onDestinationClick(destination) },
-                    icon = { Icon(destination.icon, contentDescription = destination.label) },
-                    label = { Text(destination.label) },
+                    icon = { Icon(destination.icon, contentDescription = label) },
+                    label = { Text(label) },
                 )
             }
         }

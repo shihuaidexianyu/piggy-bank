@@ -21,6 +21,7 @@ import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.model.LedgerOverflowException
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
@@ -498,6 +499,29 @@ class TransactionRepositoryImpl(
 
     override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
         balanceAdjustmentRecordDao.countBetween(startInclusive, endExclusive)
+
+    override suspend fun queryHomePeriodLedgerSummary(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): HomePeriodLedgerSummary = translateLedgerSqlOverflow {
+        val row = ledgerAggregateDao.queryHomePeriodLedgerSummary(
+            startInclusive = startInclusive,
+            endExclusive = endExclusive,
+            inflowDirection = CashFlowDirection.INFLOW.value,
+            outflowDirection = CashFlowDirection.OUTFLOW.value,
+        )
+        HomePeriodLedgerSummary(
+            cashInflow = row.cashInflow,
+            cashOutflow = row.cashOutflow,
+            reconciliationIncrease = row.reconciliationIncrease,
+            reconciliationDecrease = ledgerSubtractExact(0L, row.reconciliationDecrease),
+            manualAdjustmentIncrease = row.manualAdjustmentIncrease,
+            manualAdjustmentDecrease = ledgerSubtractExact(0L, row.manualAdjustmentDecrease),
+            cashFlowRecordCount = Math.toIntExact(row.cashFlowRecordCount),
+            transferRecordCount = Math.toIntExact(row.transferRecordCount),
+            manualAdjustmentRecordCount = Math.toIntExact(row.manualAdjustmentRecordCount),
+        )
+    }
 
     override suspend fun queryActiveCashFlowRecordsBetween(
         startInclusive: Long,

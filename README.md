@@ -1,26 +1,29 @@
 # Money
 
-一个离线优先的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。
+一个完全离线的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。当前版本为 `2.3.0`（versionCode `103`）。
 
 仓库地址: [https://github.com/shihuaidexianyu/piggy-bank](https://github.com/shihuaidexianyu/piggy-bank)
 
 ## ✨ 功能特性
 
-- 多账户管理：活动账户可自定义排序，归档账户只读保留历史。
-- 现金流记录：记录收入与支出，并支持用途标签。
+- 多账户管理：账户支持排序、隐藏、关闭和重新开启；隐藏账户仍计入净资产。
+- 现金流记录：记录收入与支出，备注可选，并支持最近备注建议。
 - 账户间转账：支持从任意账户转入/转出。
 - 对账调整：对账作为普通记账事件入账，按固定差额影响余额。
 - 期初资产：账户新建的初始余额作为开户时的期初资产处理。
 - 调整记录：支持手动修正余额（独立于自动计算）。
-- 提醒：支持月度、年度、间隔天数等周期的到期提醒，仅应用内展示。
-- 历史与搜索：按账户、日期范围、金额和关键字过滤。
-- 深色模式：支持浅色/深色主题。
-- JSON 导出：设置页可导出完整数据，方便迁移与备份。
-- 隐私优先：应用仅本地离线存储，不依赖网络服务。
+- 提醒：支持月度、年度、间隔天数等周期，提供应用内到期卡片与后台通知。
+- 首页与分析：展示本月收支、净现金流、月预算、每日趋势、账户流向与转账路径。
+- 明细与搜索：按账户、类型、日期、金额和关键字筛选，并支持精确下钻。
+- 隐私保护：支持生物识别锁、金额遮罩、最近任务隐藏及 Widget/通知独立遮罩。
+- JSON 备份：导出明文 backup v4，支持旧 v1-v3 导入、导入前安全快照与撤销。
+- 外部入口：支持桌面 Widget、快捷方式、分享文本记账和通知深链。
 
 ## 📱 界面截图
 
 以下截图使用调试构建自动生成的随机演示数据。
+
+<!-- markdownlint-disable MD033 -->
 
 <table>
   <tr>
@@ -49,12 +52,14 @@
   </tr>
 </table>
 
+<!-- markdownlint-enable MD033 -->
+
 ## 🧱 技术栈
 
 - **语言**: Kotlin 2.2.20
 - **UI**: Jetpack Compose BOM 2025.10.01 + Material 3
 - **架构**: Clean Architecture（Domain / Data / UI）+ MVVM
-- **数据库**: Room 2.8.0（SQLite），模式版本 10
+- **数据库**: Room 2.8.0（SQLite），模式版本 14
 - **状态存储**: DataStore Preferences 1.1.7
 - **导航**: Navigation Compose 2.9.5
 - **依赖注入**: 手动注入（`MoneyAppContainer`）
@@ -73,11 +78,11 @@
 # 运行全部单元测试
 ./gradlew test
 
-# 运行 Lint
-./gradlew lint
+# 运行 Debug Lint
+./gradlew lintDebug
 ```
 
-也可使用发布脚本进行版本号自动递增与打包：
+也可使用发布脚本进行版本号管理、测试、签名校验与打包：
 
 ```bash
 # 仅打包并自动 bump 版本
@@ -87,9 +92,15 @@
 .\scripts\build-release.ps1 -RunTests -Commit -Push
 ```
 
+发布包必须使用本地 `signing/keystore.properties` 配置的正式证书签名。备份文件是未加密 JSON，请只保存到可信位置。
+
+## 📌 当前发布范围
+
+`2.3.0` 完成了数据安全、提醒与隐私、主导航和日常记账体验三阶段改造。性能基准自动化、全量文案资源化和更完整的设备矩阵验证保留到后续版本，不作为本次发布阻塞项。详见 [2.3.0 发布说明](RELEASE_NOTES_2.3.0.md)。
+
 ## 🗂️ 目录结构
 
-```
+```text
 app/src/main/java/com/shihuaidexianyu/money/
 ├── domain/          # 业务模型与接口、UseCase
 ├── data/            # Room 实体、DAO、仓库实现

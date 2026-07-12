@@ -12,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 
 enum class EmptyKind {
     COMPLETELY_EMPTY,
@@ -82,8 +84,8 @@ private fun DefaultAsyncEmpty(kind: EmptyKind) {
     ) {
         Text(
             text = when (kind) {
-                EmptyKind.COMPLETELY_EMPTY -> "暂无数据"
-                EmptyKind.FILTERED_EMPTY -> "没有符合筛选条件的数据"
+                EmptyKind.COMPLETELY_EMPTY -> stringResource(R.string.async_empty)
+                EmptyKind.FILTERED_EMPTY -> stringResource(R.string.async_filtered_empty)
             },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -120,7 +122,7 @@ private fun DefaultAsyncError(
             onClick = onRetry,
             modifier = Modifier.padding(top = 16.dp),
         ) {
-            Text("重试")
+            Text(stringResource(R.string.action_retry))
         }
     }
 }

@@ -29,8 +29,8 @@ class RecurringReminderRepositoryImpl(
 
     override suspend fun queryAll(): List<RecurringReminder> = dao.queryAll().map { it.toDomain() }
 
-    override suspend fun queryDue(): List<RecurringReminder> =
-        dao.queryDue(System.currentTimeMillis()).map { it.toDomain() }
+    override suspend fun queryDue(nowMillis: Long): List<RecurringReminder> =
+        dao.queryDue(nowMillis).map { it.toDomain() }
 
     override suspend fun insertReminder(reminder: RecurringReminder): Long =
         dao.insert(reminder.toEntity())

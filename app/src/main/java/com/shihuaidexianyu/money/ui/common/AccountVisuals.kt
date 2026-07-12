@@ -18,12 +18,15 @@ import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_ICON_NAMES
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_COLOR_NAMES
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
@@ -31,48 +34,56 @@ import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 
 data class AccountVisualOption(
     val name: String,
-    val label: String,
+    @param:StringRes val labelRes: Int,
 )
 
 data class AccountIconOption(
     val name: String,
-    val label: String,
+    @param:StringRes val labelRes: Int,
     val icon: ImageVector,
 )
 
 val AccountColorOptions = ACCOUNT_COLOR_NAMES.map { name ->
-    AccountVisualOption(name = name, label = accountColorLabel(name))
+    AccountVisualOption(name = name, labelRes = accountColorLabelRes(name))
 }
 
 val AccountIconOptions = ACCOUNT_ICON_NAMES.map { name ->
-    AccountIconOption(name = name, label = accountIconLabel(name), icon = accountIconVector(name))
+    AccountIconOption(name = name, labelRes = accountIconLabelRes(name), icon = accountIconVector(name))
 }
 
-fun accountColorLabel(name: String): String {
+@StringRes
+fun accountColorLabelRes(name: String): Int {
     return when (normalizeAccountColorName(name)) {
-        "green" -> "绿色"
-        "orange" -> "橙色"
-        "purple" -> "紫色"
-        "red" -> "红色"
-        "teal" -> "青色"
-        "gray" -> "灰色"
-        else -> "蓝色"
+        "green" -> R.string.account_color_green
+        "orange" -> R.string.account_color_orange
+        "purple" -> R.string.account_color_purple
+        "red" -> R.string.account_color_red
+        "teal" -> R.string.account_color_teal
+        "gray" -> R.string.account_color_gray
+        else -> R.string.account_color_blue
     }
 }
 
-fun accountIconLabel(name: String): String {
+@StringRes
+fun accountIconLabelRes(name: String): Int {
     return when (normalizeAccountIconName(name)) {
-        "bank" -> "银行"
-        "cash" -> "现金"
-        "credit_card" -> "信用卡"
-        "savings" -> "储蓄"
-        "investment" -> "理财"
-        "home" -> "房产"
-        "phone" -> "手机"
-        "shopping" -> "消费"
-        else -> "钱包"
+        "bank" -> R.string.account_icon_bank
+        "cash" -> R.string.account_icon_cash
+        "credit_card" -> R.string.account_icon_credit_card
+        "savings" -> R.string.account_icon_savings
+        "investment" -> R.string.account_icon_investment
+        "home" -> R.string.account_icon_home
+        "phone" -> R.string.account_icon_phone
+        "shopping" -> R.string.account_icon_shopping
+        else -> R.string.account_icon_wallet
     }
 }
+
+@Composable
+fun accountColorLabel(name: String): String = stringResource(accountColorLabelRes(name))
+
+@Composable
+fun accountIconLabel(name: String): String = stringResource(accountIconLabelRes(name))
 
 @Composable
 fun AccountColorSwatch(
@@ -112,7 +123,7 @@ fun AccountIconBadge(
     ) {
         Icon(
             imageVector = accountIconVector(iconName),
-            contentDescription = accountIconLabel(iconName),
+            contentDescription = stringResource(accountIconLabelRes(iconName)),
             tint = accent,
             modifier = Modifier.size(iconSize),
         )

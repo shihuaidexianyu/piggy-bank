@@ -34,10 +34,9 @@ class InMemoryRecurringReminderRepository(
     override suspend fun queryAll(): List<RecurringReminder> =
         reminders.value.values.sortedBy { it.nextDueAt }
 
-    override suspend fun queryDue(): List<RecurringReminder> {
-        val now = System.currentTimeMillis()
+    override suspend fun queryDue(nowMillis: Long): List<RecurringReminder> {
         return reminders.value.values
-            .filter { it.isEnabled && it.nextDueAt <= now }
+            .filter { it.isEnabled && it.nextDueAt <= nowMillis }
             .sortedBy { it.nextDueAt }
     }
 

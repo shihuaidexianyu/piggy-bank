@@ -3,6 +3,11 @@ package com.shihuaidexianyu.money
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
+import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
+import com.shihuaidexianyu.money.domain.model.backup.BackupPortableSettings
+import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
+import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -15,13 +20,18 @@ class ExportJsonFileWriterTest {
     @Test
     fun writeCreatesShareableFileProviderUri() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val writer = ExportJsonFileWriter(context, { java.time.ZoneId.of("Asia/Shanghai") })
+        val writer = ExportJsonFileWriter(
+            context,
+            { java.time.ZoneId.of("Asia/Shanghai") },
+            BackupJsonCodec,
+        )
+        val snapshot = emptySnapshot()
         val result = writer.write(
-            json = """{"metadata":{"schemaVersion":1}}""",
+            snapshot = snapshot,
             timestamp = 1_700_000_000_000L,
         )
         val second = writer.write(
-            json = """{"metadata":{"schemaVersion":1}}""",
+            snapshot = snapshot,
             timestamp = 1_700_000_000_000L,
         )
 
@@ -37,6 +47,18 @@ class ExportJsonFileWriterTest {
             .openInputStream(result.uri)
             ?.bufferedReader()
             ?.use { it.readText() }
-        assertEquals("""{"metadata":{"schemaVersion":1}}""", exportedText)
+        assertEquals(BackupJsonCodec.encode(snapshot), exportedText)
     }
+
+    private fun emptySnapshot(): MoneyBackupSnapshot = MoneyBackupSnapshot(
+        metadata = BackupMetadata(MONEY_BACKUP_SCHEMA_VERSION, 14, 1L),
+        portableSettings = BackupPortableSettings("¥", "red_income_green_expense"),
+        accounts = emptyList(),
+        cashFlowRecords = emptyList(),
+        transferRecords = emptyList(),
+        balanceUpdateRecords = emptyList(),
+        balanceAdjustmentRecords = emptyList(),
+        recurringReminders = emptyList(),
+        accountReminderConfigs = emptyList(),
+    )
 }

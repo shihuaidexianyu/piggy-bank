@@ -41,7 +41,7 @@ class HomeDashboardStatesTest {
 
         composeRule.onNodeWithText("当前净资产").assertDoesNotExist()
         composeRule.runOnIdle {
-            state.value = HomeUiState(errorMessage = "首页加载失败，请重试", retryToken = "1")
+            state.value = HomeUiState(errorMessageRes = R.string.home_load_failed, retryToken = "1")
         }
         composeRule.onNodeWithText("首页加载失败，请重试").assertIsDisplayed()
         composeRule.onNodeWithText("当前净资产").assertDoesNotExist()

@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "money"
 include(":app")
- 
+include(":benchmark")

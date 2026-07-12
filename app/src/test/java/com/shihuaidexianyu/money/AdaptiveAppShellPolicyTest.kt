@@ -17,8 +17,8 @@ class AdaptiveAppShellPolicyTest {
     @Test
     fun `top level exposes exactly home history analysis and accounts`() {
         assertEquals(
-            listOf("首页", "明细", "分析", "账户"),
-            MoneyDestination.topLevel.map { it.label },
+            listOf(R.string.home_title, R.string.nav_history, R.string.stats_title, R.string.accounts_title),
+            MoneyDestination.topLevel.map { it.labelRes },
         )
         assertEquals(4, MoneyDestination.topLevel.map { it.route }.distinct().size)
     }

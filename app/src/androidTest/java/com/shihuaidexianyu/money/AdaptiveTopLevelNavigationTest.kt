@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.test.core.app.ApplicationProvider
 import com.shihuaidexianyu.money.navigation.AdaptiveNavigationType
 import com.shihuaidexianyu.money.navigation.AdaptiveTopLevelNavigation
 import com.shihuaidexianyu.money.navigation.MoneyDestination
@@ -45,7 +46,9 @@ class AdaptiveTopLevelNavigationTest {
     private fun assertExactlyFourDestinations() {
         check(MoneyDestination.topLevel.size == 4)
         MoneyDestination.topLevel.forEach { destination ->
-            composeRule.onNodeWithContentDescription(destination.label).assertExists()
+            val label = ApplicationProvider.getApplicationContext<android.content.Context>()
+                .getString(destination.labelRes)
+            composeRule.onNodeWithContentDescription(label).assertExists()
         }
     }
 }

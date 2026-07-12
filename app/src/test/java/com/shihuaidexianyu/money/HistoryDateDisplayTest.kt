@@ -13,12 +13,12 @@ class HistoryDateDisplayTest {
 
         assertEquals(
             "2024-04-03",
-            historyEndDateFieldText(endExclusive, ZoneOffset.UTC),
+            historyEndDateFieldText(endExclusive, ZoneOffset.UTC, unlimitedLabel = "不限"),
         )
     }
 
     @Test
     fun `end date field displays unlimited when unset`() {
-        assertEquals("不限", historyEndDateFieldText(null, ZoneOffset.UTC))
+        assertEquals("不限", historyEndDateFieldText(null, ZoneOffset.UTC, unlimitedLabel = "不限"))
     }
 }

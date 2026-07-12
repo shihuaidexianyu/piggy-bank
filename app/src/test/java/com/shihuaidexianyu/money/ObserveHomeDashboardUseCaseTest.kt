@@ -111,6 +111,8 @@ class ObserveHomeDashboardUseCaseTest {
 
         val snapshot = useCase().first()
 
+        assertEquals(1, transactionRepository.transactionInvocationCount)
+        assertEquals(1, transactionRepository.homePeriodSummaryInvocationCount)
         assertEquals(0, snapshot.staleAccountCount)
         assertEquals(emptyList(), snapshot.staleAccounts)
     }

@@ -3,12 +3,10 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.ui.reminder.NotificationPermissionUiState
 import com.shihuaidexianyu.money.ui.reminder.NotificationSettingsTarget
 import com.shihuaidexianyu.money.ui.settings.NotificationSettingsAction
-import com.shihuaidexianyu.money.ui.settings.SETTINGS_ABOUT_DATA_SAFETY_COPY
-import com.shihuaidexianyu.money.ui.settings.SETTINGS_PLAINTEXT_EXPORT_WARNING
 import com.shihuaidexianyu.money.ui.settings.SETTINGS_SECTION_CONTRACTS
 import com.shihuaidexianyu.money.ui.settings.notificationSettingsPresentation
 import com.shihuaidexianyu.money.ui.settings.importReceiptHistoryRows
-import com.shihuaidexianyu.money.ui.settings.notificationChannelStatus
+import com.shihuaidexianyu.money.ui.settings.notificationChannelStatusRes
 import com.shihuaidexianyu.money.data.backup.ImportReceipt
 import com.shihuaidexianyu.money.data.backup.ImportReceiptCounts
 import com.shihuaidexianyu.money.data.backup.ImportReceiptKind
@@ -38,59 +36,59 @@ class SettingsSectionContractTest {
     fun `settings has exactly five sections with the approved ownership`() {
         assertEquals(
             listOf(
-                "显示" to listOf("theme", "amount_color", "currency_symbol", "mask_in_app"),
-                "隐私" to listOf("biometric", "relock", "hide_recents", "hide_widget", "hide_notification"),
-                "通知" to listOf("permission_channels", "reminder_management", "account_reminder_config"),
-                "数据" to listOf("plaintext_warning", "export_json", "import_preview", "receipt_history"),
-                "关于" to listOf("version", "offline_data_safety"),
+                R.string.settings_section_display to listOf("theme", "amount_color", "currency_symbol", "mask_in_app"),
+                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_widget", "hide_notification"),
+                R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
+                R.string.settings_section_data to listOf("plaintext_warning", "export_json", "import_preview", "receipt_history"),
+                R.string.settings_section_about to listOf("version", "offline_data_safety"),
             ),
-            SETTINGS_SECTION_CONTRACTS.map { it.title to it.itemKeys },
+            SETTINGS_SECTION_CONTRACTS.map { it.titleRes to it.itemKeys },
         )
     }
 
     @Test
     fun `notification status tells the user whether to request or open exact settings`() {
         val notRequested = notificationSettingsPresentation(NotificationPermissionUiState.NotRequested)
-        assertEquals("未授权", notRequested.status)
+        assertEquals(R.string.settings_notifications_not_authorized, notRequested.statusRes)
         assertEquals(NotificationSettingsAction.REQUEST_PERMISSION, notRequested.action)
 
         val denied = notificationSettingsPresentation(NotificationPermissionUiState.Denied(canRequestAgain = false))
-        assertEquals("已拒绝，请前往系统设置", denied.status)
+        assertEquals(R.string.settings_notifications_denied_settings, denied.statusRes)
         assertEquals(NotificationSettingsAction.OPEN_SETTINGS, denied.action)
         assertEquals(NotificationSettingsTarget.APPLICATION, denied.settingsTarget)
 
         val channel = notificationSettingsPresentation(
             NotificationPermissionUiState.SettingsRequired(NotificationSettingsTarget.RECURRING_CHANNEL),
         )
-        assertTrue(channel.status.contains("提醒通知渠道"))
+        assertEquals(R.string.settings_recurring_channel_disabled, channel.statusRes)
         assertEquals(NotificationSettingsTarget.RECURRING_CHANNEL, channel.settingsTarget)
 
         val granted = notificationSettingsPresentation(NotificationPermissionUiState.Granted)
-        assertEquals("权限和渠道均可用", granted.status)
+        assertEquals(R.string.settings_notifications_available, granted.statusRes)
         assertEquals(NotificationSettingsAction.OPEN_SETTINGS, granted.action)
     }
 
     @Test
     fun `recurring and balance channel rows use independent facts`() {
-        assertEquals("已关闭", notificationChannelStatus(enabled = false))
-        assertEquals("已开启", notificationChannelStatus(enabled = true))
+        assertEquals(R.string.settings_channel_disabled, notificationChannelStatusRes(enabled = false))
+        assertEquals(R.string.settings_channel_enabled, notificationChannelStatusRes(enabled = true))
         assertEquals(
-            listOf("已关闭", "已开启"),
-            listOf(false, true).map(::notificationChannelStatus),
+            listOf(R.string.settings_channel_disabled, R.string.settings_channel_enabled),
+            listOf(false, true).map(::notificationChannelStatusRes),
         )
         assertEquals(
-            listOf("已关闭", "已关闭"),
-            listOf(false, false).map(::notificationChannelStatus),
+            listOf(R.string.settings_channel_disabled, R.string.settings_channel_disabled),
+            listOf(false, false).map(::notificationChannelStatusRes),
         )
         assertEquals(
-            listOf("已开启", "已开启"),
-            listOf(true, true).map(::notificationChannelStatus),
+            listOf(R.string.settings_channel_enabled, R.string.settings_channel_enabled),
+            listOf(true, true).map(::notificationChannelStatusRes),
         )
     }
 
     @Test
     fun `backup and about copy describe the actual offline plaintext model`() {
-        val copy = "$SETTINGS_PLAINTEXT_EXPORT_WARNING $SETTINGS_ABOUT_DATA_SAFETY_COPY"
+        val copy = java.io.File("src/main/res/values/strings.xml").readText()
         assertTrue(copy.contains("未加密 JSON"))
         assertTrue(copy.contains("完全离线"))
         assertTrue(copy.contains("系统自动备份"))

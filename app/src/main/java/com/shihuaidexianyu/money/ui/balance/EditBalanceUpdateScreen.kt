@@ -14,7 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
@@ -51,6 +53,8 @@ fun EditBalanceUpdateScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
+    val deletedMessage = stringResource(R.string.ledger_record_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -61,8 +65,8 @@ fun EditBalanceUpdateScreen(
                     terminal.ledgerUndoToken?.let { undoToken ->
                         rootSnackbarDispatcher?.dispatch(
                             rootSnackbarEffect(
-                                "记录已删除",
-                                "撤销",
+                                deletedMessage,
+                                undoLabel,
                                 RootSnackbarAction.RestoreLedger(undoToken),
                                 terminal.token,
                             ),
@@ -77,12 +81,12 @@ fun EditBalanceUpdateScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = "撤销对账记录",
-            message = "撤销后会重新计算该账户当前余额，确认继续？",
+            title = stringResource(R.string.balance_undo_title),
+            message = stringResource(R.string.balance_undo_message),
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
-            confirmLabel = "确认撤销",
-            dismissLabel = "取消",
+            confirmLabel = stringResource(R.string.balance_confirm_undo),
+            dismissLabel = stringResource(R.string.action_cancel),
         )
     }
 
@@ -126,7 +130,7 @@ fun EditBalanceUpdateScreen(
     }
 
     MoneyFormPage(
-        title = "修改对账记录",
+        title = stringResource(R.string.balance_edit_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -145,22 +149,22 @@ fun EditBalanceUpdateScreen(
         item {
             MoneyCard {
                 if (state.isLoading) {
-                    Text("加载中...", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.loading_ellipsis), style = MaterialTheme.typography.bodyMedium)
                 } else {
                     Text(
-                        text = "这次修改会影响当前余额",
+                        text = stringResource(R.string.balance_edit_warning),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    MoneyInlineLabelValue(label = "账户", value = state.accountName)
+                    MoneyInlineLabelValue(label = stringResource(R.string.account_single), value = state.accountName)
                     MoneyInlineLabelValue(
-                        label = "系统余额",
+                        label = stringResource(R.string.balance_system),
                         value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                     )
                     MoneyAmountField(
                         value = state.actualBalanceText,
                         onValueChange = viewModel::updateActualBalance,
-                        label = "实际余额",
+                        label = stringResource(R.string.balance_actual),
                         allowSigned = true,
                         isError = state.actualBalanceError != null,
                         supportingText = state.actualBalanceError,
@@ -174,29 +178,29 @@ fun EditBalanceUpdateScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "修改本次更新的发生时间",
+                    timeSubtitle = stringResource(R.string.balance_edit_time_description),
                     errorText = state.occurredAtError,
                 )
                 MoneyInlineLabelValue(
-                    label = "实际余额",
+                    label = stringResource(R.string.balance_actual),
                     value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneyInlineLabelValue(
-                    label = "差额",
+                    label = stringResource(R.string.balance_delta),
                     value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
                     enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = "保存修改",
+                    label = stringResource(R.string.action_save_changes),
                 )
                 if (state.hasConflict) {
                     OutlinedButton(
                         onClick = viewModel::reload,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("重新加载最新记录")
+                        Text(stringResource(R.string.ledger_reload_latest))
                     }
                 }
             }
@@ -208,7 +212,7 @@ fun EditBalanceUpdateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
                 ) {
-                    Text("撤销这次更新")
+                    Text(stringResource(R.string.balance_undo_update))
                 }
             }
         }

@@ -30,7 +30,7 @@ class AsyncContentAdapterTest {
         val content = HomeUiState(
             hasCommittedContent = true,
             accountOptions = listOf(AccountOptionUiModel(id = 1L, name = "现金")),
-            errorMessage = "失败",
+            errorMessageRes = R.string.home_load_failed,
             retryToken = "home:1",
         ).toAsyncContent()
 
@@ -65,7 +65,7 @@ class AsyncContentAdapterTest {
     fun `history load failure is error rather than either empty state`() {
         val content = HistoryUiState(
             hasCommittedContent = true,
-            errorMessage = "加载失败",
+            errorMessageRes = R.string.history_load_failed,
             retryToken = "history:failed",
         ).toAsyncContent()
 

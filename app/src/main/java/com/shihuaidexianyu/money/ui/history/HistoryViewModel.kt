@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.annotation.StringRes
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -65,10 +67,10 @@ enum class HistoryRecordKind {
     BALANCE_ADJUSTMENT,
 }
 
-enum class AmountDirectionFilter(val value: String, val displayName: String) {
-    ALL("all", "全部"),
-    INCREASE("increase", "金额增加"),
-    DECREASE("decrease", "金额减少"),
+enum class AmountDirectionFilter(val value: String, @param:StringRes val labelRes: Int) {
+    ALL("all", R.string.history_direction_all),
+    INCREASE("increase", R.string.history_direction_increase),
+    DECREASE("decrease", R.string.history_direction_decrease),
     ;
 
     companion object {
@@ -104,17 +106,17 @@ data class HistoryUiState(
     val dateEndAt: Long? = null,
     val minAmountText: String = "",
     val maxAmountText: String = "",
-    val minAmountError: String? = null,
-    val maxAmountError: String? = null,
+    @param:StringRes val minAmountErrorRes: Int? = null,
+    @param:StringRes val maxAmountErrorRes: Int? = null,
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
     val records: List<HistoryRecordUiModel> = emptyList(),
     val totalRecordCount: Int = 0,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val hasCommittedContent: Boolean = false,
-    val errorMessage: String? = null,
+    @param:StringRes val errorMessageRes: Int? = null,
     val retryToken: String? = null,
-    val loadMoreErrorMessage: String? = null,
+    @param:StringRes val loadMoreErrorMessageRes: Int? = null,
     val isLoadingMore: Boolean = false,
     val hasMoreRecords: Boolean = false,
 )
@@ -175,7 +177,7 @@ class HistoryViewModel(
             it.copy(
                 isLoading = !it.hasCommittedContent,
                 isRefreshing = it.hasCommittedContent,
-                errorMessage = null,
+                errorMessageRes = null,
                 retryToken = null,
             )
         }
@@ -191,7 +193,7 @@ class HistoryViewModel(
                         isLoading = false,
                         isRefreshing = false,
                         isLoadingMore = false,
-                        errorMessage = "明细加载失败，请重试",
+                        errorMessageRes = R.string.history_load_failed,
                         retryToken = "history:init",
                     )
                 }
@@ -243,24 +245,26 @@ class HistoryViewModel(
         val generation = loadGeneration
         loadMoreJob?.cancel()
         loadMoreJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true, loadMoreErrorMessage = null) }
+            _uiState.update { it.copy(isLoadingMore = true, loadMoreErrorMessageRes = null) }
             runCatching {
                 transactionRepository.queryHistoryRecords(
                     filters = filters,
                     cursor = cursor,
-                    limit = HISTORY_PAGE_SIZE,
+                    limit = HISTORY_PAGE_SIZE + 1,
                 )
             }.onSuccess { nextRecords ->
                 if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
-                loadedRecords = loadedRecords + nextRecords
-                nextCursor = nextRecords.lastOrNull()?.cursor ?: nextCursor
-                val hasMore = loadedRecords.size < totalRecordCount && nextRecords.isNotEmpty()
+                val page = nextRecords.take(HISTORY_PAGE_SIZE)
+                val hasMore = nextRecords.size > HISTORY_PAGE_SIZE
+                loadedRecords = loadedRecords + page
+                nextCursor = page.lastOrNull()?.cursor ?: nextCursor
+                totalRecordCount = loadedRecords.size + if (hasMore) 1 else 0
                 _uiState.update {
                     it.copy(
                         records = loadedRecords.toUiModels(),
                         totalRecordCount = totalRecordCount,
                         isLoadingMore = false,
-                        loadMoreErrorMessage = null,
+                        loadMoreErrorMessageRes = null,
                         hasMoreRecords = hasMore,
                     )
                 }
@@ -271,7 +275,7 @@ class HistoryViewModel(
                 _uiState.update {
                     it.copy(
                         isLoadingMore = false,
-                        loadMoreErrorMessage = "加载更多明细失败",
+                        loadMoreErrorMessageRes = R.string.history_load_more_failed,
                     )
                 }
             }
@@ -362,8 +366,8 @@ class HistoryViewModel(
                 dateEndAt = filters.dateEndAt,
                 minAmountText = filters.minAmountText,
                 maxAmountText = filters.maxAmountText,
-                minAmountError = amountValidation.minError,
-                maxAmountError = amountValidation.maxError,
+                minAmountErrorRes = amountValidation.minErrorRes,
+                maxAmountErrorRes = amountValidation.maxErrorRes,
                 amountDirectionFilter = filters.amountDirectionFilter,
             )
         }
@@ -395,9 +399,9 @@ class HistoryViewModel(
                     isRefreshing = false,
                     hasCommittedContent = true,
                     isLoadingMore = false,
-                    loadMoreErrorMessage = null,
+                    loadMoreErrorMessageRes = null,
                     hasMoreRecords = false,
-                    errorMessage = null,
+                    errorMessageRes = null,
                     retryToken = null,
                 )
             }
@@ -410,21 +414,22 @@ class HistoryViewModel(
                     isLoading = !it.hasCommittedContent,
                     isRefreshing = it.hasCommittedContent,
                     isLoadingMore = false,
-                    errorMessage = null,
+                    errorMessageRes = null,
                     retryToken = null,
-                    loadMoreErrorMessage = null,
+                    loadMoreErrorMessageRes = null,
                 )
             }
             runCatching {
-                val total = transactionRepository.countHistoryRecords(filters)
-                val records = transactionRepository.queryHistoryRecords(
+                transactionRepository.queryHistoryRecords(
                     filters = filters,
                     cursor = null,
-                    limit = HISTORY_PAGE_SIZE,
+                    limit = HISTORY_PAGE_SIZE + 1,
                 )
-                total to records
-            }.onSuccess { (total, records) ->
+            }.onSuccess { queriedRecords ->
                 if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
+                val records = queriedRecords.take(HISTORY_PAGE_SIZE)
+                val hasMore = queriedRecords.size > HISTORY_PAGE_SIZE
+                val total = records.size + if (hasMore) 1 else 0
                 totalRecordCount = total
                 loadedRecords = records
                 nextCursor = records.lastOrNull()?.cursor
@@ -435,11 +440,11 @@ class HistoryViewModel(
                         isLoading = false,
                         isRefreshing = false,
                         hasCommittedContent = true,
-                        errorMessage = null,
+                        errorMessageRes = null,
                         retryToken = null,
                         isLoadingMore = false,
-                        loadMoreErrorMessage = null,
-                        hasMoreRecords = records.size < total,
+                        loadMoreErrorMessageRes = null,
+                        hasMoreRecords = hasMore,
                     )
                 }
             }.onFailure { error ->
@@ -451,7 +456,7 @@ class HistoryViewModel(
                         isLoading = false,
                         isRefreshing = false,
                         isLoadingMore = false,
-                        errorMessage = "明细加载失败，请重试",
+                        errorMessageRes = R.string.history_load_failed,
                         retryToken = "history:$generation",
                     )
                 }
@@ -469,9 +474,9 @@ class HistoryViewModel(
                 kind = kind,
                 title = record.title,
                 subtitle = if (record.type == HistoryRecordType.TRANSFER && relatedAccountId != null) {
-                    "${accountMap[record.accountId]?.name ?: "未知"} → ${accountMap[relatedAccountId]?.name ?: "未知"}"
+                    "${accountMap[record.accountId]?.name ?: "—"} → ${accountMap[relatedAccountId]?.name ?: "—"}"
                 } else {
-                    accountMap[record.accountId]?.name ?: "未知账户"
+                    accountMap[record.accountId]?.name ?: "—"
                 },
                 amount = record.amount,
                 occurredAt = record.occurredAt,
@@ -577,8 +582,8 @@ private fun HistoryFilterState.toDeviceHistoryFilters(): HistoryFilters = Histor
     amountDirection = amountDirectionFilter.value,
 )
 
-internal fun HistoryUiState.toAsyncContent(): AsyncContent<HistoryUiState> {
-    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+internal fun HistoryUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<HistoryUiState> {
+    errorMessageRes?.let { return AsyncContent.Error(errorMessage, retryToken) }
     if (!hasCommittedContent) return AsyncContent.Loading
     if (isRefreshing) return AsyncContent.Refreshing(this)
     if (records.isEmpty()) {
@@ -606,21 +611,21 @@ private fun HistoryUiState.hasActiveFilters(): Boolean =
 private data class HistoryAmountValidation(
     val minAmount: Long?,
     val maxAmount: Long?,
-    val minError: String?,
-    val maxError: String?,
+    @param:StringRes val minErrorRes: Int?,
+    @param:StringRes val maxErrorRes: Int?,
 ) {
-    val isValid: Boolean get() = minError == null && maxError == null
+    val isValid: Boolean get() = minErrorRes == null && maxErrorRes == null
 }
 
 private fun HistoryFilterState.validateAmounts(): HistoryAmountValidation {
     val minAmount = minAmountText.takeIf(String::isNotBlank)?.let(AmountInputParser::parseUnsignedToMinor)
     val maxAmount = maxAmountText.takeIf(String::isNotBlank)?.let(AmountInputParser::parseUnsignedToMinor)
-    val minError = if (minAmountText.isNotBlank() && minAmount == null) "请输入有效金额" else null
-    var maxError = if (maxAmountText.isNotBlank() && maxAmount == null) "请输入有效金额" else null
-    if (minError == null && maxError == null && minAmount != null && maxAmount != null && minAmount > maxAmount) {
-        maxError = "最大金额不能小于最小金额"
+    val minErrorRes = if (minAmountText.isNotBlank() && minAmount == null) R.string.validation_valid_amount else null
+    var maxErrorRes = if (maxAmountText.isNotBlank() && maxAmount == null) R.string.validation_valid_amount else null
+    if (minErrorRes == null && maxErrorRes == null && minAmount != null && maxAmount != null && minAmount > maxAmount) {
+        maxErrorRes = R.string.validation_max_less_than_min
     }
-    return HistoryAmountValidation(minAmount, maxAmount, minError, maxError)
+    return HistoryAmountValidation(minAmount, maxAmount, minErrorRes, maxErrorRes)
 }
 
 private fun HistoryFilterState.toHistoryRecordFiltersOrNull(): HistoryRecordFilters? {

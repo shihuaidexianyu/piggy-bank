@@ -20,9 +20,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -57,7 +59,7 @@ fun BatchReconcileScreen(
     }
 
     MoneyFormPage(
-        title = "账户核对",
+        title = stringResource(R.string.batch_reconcile_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -77,14 +79,14 @@ fun BatchReconcileScreen(
         if (state.accounts.isEmpty()) {
             item {
                 MoneyEmptyStateCard(
-                    title = "暂无待核对账户",
-                    subtitle = "所有账户余额都已在提醒周期内确认。",
+                    title = stringResource(R.string.batch_reconcile_empty),
+                    subtitle = stringResource(R.string.batch_reconcile_empty_description),
                     action = {
                         Button(
                             onClick = guardedBack,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("返回首页")
+                            Text(stringResource(R.string.action_back_home))
                         }
                     },
                 )
@@ -99,9 +101,11 @@ fun BatchReconcileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    MoneyStatusPill(text = "待核对 ${state.accounts.size} 个")
+                    MoneyStatusPill(
+                        text = stringResource(R.string.batch_reconcile_pending_format, state.accounts.size),
+                    )
                     Text(
-                        text = "已选择 ${state.selectedCount} 个",
+                        text = stringResource(R.string.batch_reconcile_selected_format, state.selectedCount),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -132,7 +136,7 @@ fun BatchReconcileScreen(
                     onClick = viewModel::saveSelected,
                     isSaving = state.isSaving,
                     enabled = state.selectedCount > 0 && state.pendingTerminal == null,
-                    label = "确认无变化",
+                    label = stringResource(R.string.balance_confirm_unchanged),
                 )
             }
         }
@@ -175,7 +179,9 @@ private fun BatchReconcileAccountRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 MoneyStatusPill(
-                    text = if (account.isFailed) "失败" else "待核对",
+                    text = stringResource(
+                        if (account.isFailed) R.string.status_failed else R.string.account_stale_badge,
+                    ),
                     accent = if (account.isFailed) {
                         MaterialTheme.colorScheme.error
                     } else {
@@ -185,8 +191,8 @@ private fun BatchReconcileAccountRow(
             }
             Text(
                 text = account.lastBalanceUpdateAt?.let {
-                    "最近核对 ${DateTimeTextFormatter.format(it)}"
-                } ?: "尚未核对",
+                    stringResource(R.string.batch_reconcile_last_format, DateTimeTextFormatter.format(it))
+                } ?: stringResource(R.string.batch_reconcile_never),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

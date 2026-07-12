@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.repository.BackupJsonEncoder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.encodeToStream
+import java.io.OutputStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,6 +30,11 @@ object BackupJsonCodec : BackupJsonEncoder {
     }
 
     override fun encode(snapshot: MoneyBackupSnapshot): String = json.encodeToString(snapshot)
+
+    @OptIn(ExperimentalSerializationApi::class)
+    override fun encodeToStream(snapshot: MoneyBackupSnapshot, output: OutputStream) {
+        json.encodeToStream(MoneyBackupSnapshot.serializer(), snapshot, output)
+    }
 
     fun decode(raw: String): MoneyBackupSnapshot =
         json.decodeFromString(migrateLegacyBackupJson(raw).toString())

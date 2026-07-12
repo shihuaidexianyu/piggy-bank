@@ -32,6 +32,7 @@ class ObserveStatsDashboardUseCaseTest {
 
         val snapshot = useCase(MutableStateFlow(StatsRangeSelection(StatsPeriod.WEEK, januaryAnchor))).first()
 
+        assertEquals(1, ledger.transactionInvocationCount)
         assertEquals(StatsPeriod.MONTH, snapshot.period)
         assertEquals(januaryRange, snapshot.range)
         assertEquals(3_000L, snapshot.totalInflow)

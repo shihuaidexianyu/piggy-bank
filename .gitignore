@@ -24,6 +24,7 @@ local.properties
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/benchmark/build
 /captures
 .externalNativeBuild
 .cxx

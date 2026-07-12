@@ -9,7 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
@@ -43,7 +45,7 @@ fun CreateReminderScreen(
 
     if (showAccountPicker) {
         AccountPickerDialog(
-            title = "选择账户",
+            title = stringResource(R.string.account_choose),
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
             onDismiss = { showAccountPicker = false },
@@ -57,7 +59,7 @@ fun CreateReminderScreen(
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
 
     MoneyFormPage(
-        title = "新建提醒",
+        title = stringResource(R.string.reminder_create_title),
         snackbarHostState = snackbarHostState,
         onBack = onBack,
         modifier = modifier,
@@ -78,31 +80,31 @@ fun CreateReminderScreen(
                 MoneySingleLineField(
                     value = state.name,
                     onValueChange = viewModel::updateName,
-                    label = "名称",
-                    placeholder = "如：话费、Netflix",
+                    label = stringResource(R.string.field_name),
+                    placeholder = stringResource(R.string.reminder_name_example),
                 )
             }
         }
         item {
             MoneyCard {
                 MoneyPickerField(
-                    label = "类型",
+                    label = stringResource(R.string.field_type),
                     value = state.type.displayName,
-                    dialogTitle = "提醒类型",
+                    dialogTitle = stringResource(R.string.reminder_type_dialog),
                     options = ReminderType.entries.toList(),
                     selected = state.type,
                     optionLabel = { it.displayName },
                     onSelect = viewModel::updateType,
                 )
                 MoneySelectionField(
-                    label = "账户",
-                    value = selectedAccount?.name ?: "请选择",
+                    label = stringResource(R.string.account_single),
+                    value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { showAccountPicker = true },
                 )
                 MoneyPickerField(
-                    label = "方向",
+                    label = stringResource(R.string.field_direction),
                     value = state.direction.displayName,
-                    dialogTitle = "收支方向",
+                    dialogTitle = stringResource(R.string.cash_flow_direction_dialog),
                     options = CashFlowDirection.entries.toList(),
                     selected = state.direction,
                     optionLabel = { it.displayName },
@@ -115,16 +117,16 @@ fun CreateReminderScreen(
                 MoneyAmountField(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmount,
-                    label = "预设金额",
+                    label = stringResource(R.string.reminder_preset_amount),
                 )
             }
         }
         item {
             MoneyCard {
                 MoneyPickerField(
-                    label = "周期",
+                    label = stringResource(R.string.reminder_period),
                     value = state.periodType.displayName,
-                    dialogTitle = "周期类型",
+                    dialogTitle = stringResource(R.string.reminder_period_dialog),
                     options = ReminderPeriodType.entries.toList(),
                     selected = state.periodType,
                     optionLabel = { it.displayName },
@@ -138,20 +140,20 @@ fun CreateReminderScreen(
                         MoneySingleLineField(
                             value = state.periodCustomDays,
                             onValueChange = viewModel::updatePeriodCustomDays,
-                            label = "间隔天数",
+                            label = stringResource(R.string.reminder_interval_days),
                         )
                     }
                 }
                 MoneySingleLineField(
                     value = state.anchorDateText,
                     onValueChange = viewModel::updateAnchorDate,
-                    label = "首次日期 (YYYY-MM-DD)",
+                    label = stringResource(R.string.reminder_first_date),
                     isError = state.anchorError != null,
                 )
                 MoneySingleLineField(
                     value = state.anchorTimeText,
                     onValueChange = viewModel::updateAnchorTime,
-                    label = "首次时间 (HH:mm)",
+                    label = stringResource(R.string.reminder_first_time),
                     isError = state.anchorError != null,
                     supportingText = state.anchorError,
                 )

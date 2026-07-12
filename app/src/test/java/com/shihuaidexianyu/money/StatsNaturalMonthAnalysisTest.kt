@@ -235,8 +235,8 @@ class StatsMonthNavigationViewModelTest {
             clockProvider = testClockProvider(now),
             zoneIdProvider = testZoneIdProvider(zoneId),
         )
-        val current = withTimeout(5_000L) { viewModel.uiState.first { it.hasCommittedContent || it.errorMessage != null } }
-        assertEquals(null, current.errorMessage)
+        val current = withTimeout(5_000L) { viewModel.uiState.first { it.hasCommittedContent || it.errorMessageRes != null } }
+        assertEquals(null, current.errorMessageRes)
         assertEquals("2024年3月", current.rangeText)
         assertFalse(current.canNavigateNext)
         val currentStart = current.rangeStartInclusive

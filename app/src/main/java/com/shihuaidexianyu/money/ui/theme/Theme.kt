@@ -1,68 +1,14 @@
 package com.shihuaidexianyu.money.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
-
-private val LightColors = lightColorScheme(
-    primary = BrandTealPrimary,
-    onPrimary = SurfaceWhite,
-    primaryContainer = BrandTealPrimaryContainer,
-    onPrimaryContainer = CharcoalWarm,
-    secondary = CoralRed,
-    onSecondary = SurfaceWhite,
-    tertiary = SageGreen,
-    onTertiary = SurfaceWhite,
-    background = BackgroundCream,
-    onBackground = CharcoalWarm,
-    surface = Color(0xFFFFFFFF),
-    onSurface = CharcoalWarm,
-    surfaceVariant = SurfaceWarm,
-    onSurfaceVariant = WarmGray,
-    outline = WarmBorderFocused,
-    outlineVariant = WarmBorder,
-    error = CoralRed,
-    onError = SurfaceWhite,
-    errorContainer = Color(0xFFFDE8E8),
-    onErrorContainer = CoralRed,
-)
-
-private val DarkColors = darkColorScheme(
-    primary = BrandTealPrimaryDark,
-    onPrimary = Night950,
-    primaryContainer = Color(0xFF163C3D),
-    onPrimaryContainer = Color(0xFFDCEEEF),
-    secondary = Color(0xFFED8A81),
-    onSecondary = Night950,
-    secondaryContainer = Color(0xFF53302F),
-    onSecondaryContainer = Color(0xFFFDE8E8),
-    tertiary = Color(0xFF7AC286),
-    onTertiary = Night950,
-    tertiaryContainer = Color(0xFF223B2D),
-    onTertiaryContainer = Color(0xFFE8F5E9),
-    background = Night950,
-    onBackground = Color(0xFFF4EEE7),
-    surface = Night800,
-    onSurface = Color(0xFFF4EEE7),
-    surfaceVariant = Night700,
-    onSurfaceVariant = Color(0xFFC9C0B6),
-    outline = Color(0xFF61584F),
-    outlineVariant = Color(0xFF494138),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
-)
 
 @Composable
 fun MoneyTheme(
@@ -76,13 +22,9 @@ fun MoneyTheme(
         ThemeMode.DARK -> true
     }
     val context = LocalContext.current
-    // Android 12+ (API 31+) supports dynamic color from the user's wallpaper.
-    val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val colorScheme = when {
-        supportsDynamicColor && darkTheme -> dynamicDarkColorScheme(context)
-        supportsDynamicColor && !darkTheme -> dynamicLightColorScheme(context)
-        darkTheme -> DarkColors
-        else -> LightColors
+        darkTheme -> dynamicDarkColorScheme(context)
+        else -> dynamicLightColorScheme(context)
     }
     val moneyColors = moneyColorsFor(
         darkTheme = darkTheme,

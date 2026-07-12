@@ -16,7 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -67,7 +69,7 @@ fun UpdateBalanceScreen(
 
     if (showAccountPicker) {
         AccountPickerDialog(
-            title = "选择账户",
+            title = stringResource(R.string.account_choose),
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
             onDismiss = { showAccountPicker = false },
@@ -118,7 +120,7 @@ fun UpdateBalanceScreen(
     }
 
     MoneyFormPage(
-        title = "核对余额",
+        title = stringResource(R.string.balance_reconcile_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -137,20 +139,20 @@ fun UpdateBalanceScreen(
         item {
             MoneyCard {
                 MoneySelectionField(
-                    label = "账户",
-                    value = selectedAccount?.name ?: "请选择",
+                    label = stringResource(R.string.account_single),
+                    value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { showAccountPicker = true },
                     isError = state.accountError != null,
                     supportingText = state.accountError,
                 )
                 MoneyInlineLabelValue(
-                    label = "系统余额",
+                    label = stringResource(R.string.balance_system),
                     value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
-                    label = "实际余额",
+                    label = stringResource(R.string.balance_actual),
                     allowSigned = true,
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
@@ -161,14 +163,14 @@ fun UpdateBalanceScreen(
                         enabled = !state.isSaving,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("设为无变化")
+                        Text(stringResource(R.string.balance_set_unchanged))
                     }
                 }
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "默认当前时间",
+                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
                     errorText = state.occurredAtError,
                 )
             }
@@ -176,23 +178,23 @@ fun UpdateBalanceScreen(
         item {
             MoneyCard {
                 MoneyInlineLabelValue(
-                    label = "系统余额",
+                    label = stringResource(R.string.balance_system),
                     value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyInlineLabelValue(
-                    label = "实际余额",
+                    label = stringResource(R.string.balance_actual),
                     value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneyInlineLabelValue(
-                    label = "差额",
+                    label = stringResource(R.string.balance_delta),
                     value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 state.deltaPreview?.let {
                     Text(
                         text = when {
-                            it > 0 -> "高于系统记录"
-                            it < 0 -> "低于系统记录"
-                            else -> "余额无变化，可直接确认"
+                            it > 0 -> stringResource(R.string.balance_above_system)
+                            it < 0 -> stringResource(R.string.balance_below_system)
+                            else -> stringResource(R.string.balance_unchanged_hint)
                         },
                         color = when {
                             it > 0 -> LocalMoneyColors.current.income
@@ -205,7 +207,7 @@ fun UpdateBalanceScreen(
                 val nonZeroDelta = state.deltaPreview
                 if (nonZeroDelta != null && nonZeroDelta != 0L) {
                     Text(
-                        text = "如果这是漏记的收支，可以先补记一笔；如果只是实际余额修正，可直接保存本次核对。",
+                        text = stringResource(R.string.balance_correction_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -227,7 +229,7 @@ fun UpdateBalanceScreen(
                                 enabled = !state.isSaving,
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("补记收入")
+                                Text(stringResource(R.string.balance_record_income))
                             }
                             OutlinedButton(
                                 onClick = {
@@ -240,7 +242,7 @@ fun UpdateBalanceScreen(
                                 enabled = !state.isSaving,
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("补记支出")
+                                Text(stringResource(R.string.balance_record_expense))
                             }
                         }
                     }
@@ -249,7 +251,9 @@ fun UpdateBalanceScreen(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
                     enabled = state.pendingTerminal == null,
-                    label = if (state.deltaPreview == 0L) "确认无变化" else "保存余额核对",
+                    label = stringResource(
+                        if (state.deltaPreview == 0L) R.string.balance_confirm_unchanged else R.string.balance_save_reconciliation,
+                    ),
                 )
             }
         }

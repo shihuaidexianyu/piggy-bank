@@ -1,11 +1,13 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TimeRange
+import com.shihuaidexianyu.money.domain.model.TransferPathTotal
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -14,8 +16,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
@@ -78,30 +78,43 @@ class ObserveStatsDashboardUseCase(
         portableSettingsRepository.observe(),
         transactionRepository.observeChangeVersion(),
         selectionFlow,
-    ) { accounts, settings, _, selection -> StatsSource(accounts, settings, selection) }
-        .mapLatest { source -> buildSnapshot(source) }
+    ) { _, _, _, selection -> selection }
+        .mapLatest { selection ->
+            val source = readConsistentSource(selection)
+            StatsProjector.project(
+                accounts = source.accounts,
+                settings = source.settings,
+                selection = source.selection,
+                range = source.range,
+                cashEntries = source.cashEntries,
+                transferPathTotals = source.transferPathTotals,
+                zoneId = source.zoneId,
+            )
+        }
         .flowOn(Dispatchers.Default)
 
-    private suspend fun buildSnapshot(source: StatsSource): StatsDashboardSnapshot = coroutineScope {
+    private suspend fun readConsistentSource(selection: StatsRangeSelection): StatsSource {
         // Capture once so range calculation, DST grouping, labels and drill-down boundaries agree.
         val zoneId = zoneIdProvider.zoneId()
-        val selection = source.selection.copy(period = StatsPeriod.MONTH)
-        val range = TimeRangeCalculator.statsRange(StatsPeriod.MONTH, zoneId, selection.anchorMillis)
-        val cashEntries = async {
-            transactionRepository.queryCashFlowAnalysisEntriesBetween(range.startInclusive, range.endExclusive)
+        val monthlySelection = selection.copy(period = StatsPeriod.MONTH)
+        val range = TimeRangeCalculator.statsRange(StatsPeriod.MONTH, zoneId, monthlySelection.anchorMillis)
+        return transactionRepository.runInTransaction {
+            StatsSource(
+                accounts = accountRepository.queryAllAccounts(),
+                settings = portableSettingsRepository.query(),
+                selection = monthlySelection,
+                range = range,
+                cashEntries = transactionRepository.queryCashFlowAnalysisEntriesBetween(
+                    range.startInclusive,
+                    range.endExclusive,
+                ),
+                transferPathTotals = transactionRepository.queryTransferPathTotalsBetween(
+                    range.startInclusive,
+                    range.endExclusive,
+                ),
+                zoneId = zoneId,
+            )
         }
-        val transferPaths = async {
-            transactionRepository.queryTransferPathTotalsBetween(range.startInclusive, range.endExclusive)
-        }
-        StatsProjector.project(
-            accounts = source.accounts,
-            settings = source.settings,
-            selection = selection,
-            range = range,
-            cashEntries = cashEntries.await(),
-            transferPathTotals = transferPaths.await(),
-            zoneId = zoneId,
-        )
     }
 }
 
@@ -109,4 +122,8 @@ private data class StatsSource(
     val accounts: List<Account>,
     val settings: PortableSettings,
     val selection: StatsRangeSelection,
+    val range: TimeRange,
+    val cashEntries: List<CashFlowAnalysisEntry>,
+    val transferPathTotals: List<TransferPathTotal>,
+    val zoneId: ZoneId,
 )

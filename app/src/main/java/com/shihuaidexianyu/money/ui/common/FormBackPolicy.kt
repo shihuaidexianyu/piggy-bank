@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 
 enum class FormBackDecision {
     EXIT,
@@ -31,15 +33,15 @@ fun rememberDirtyFormBackAction(
     BackHandler(onBack = requestBack)
     if (showDiscardConfirmation) {
         MoneyConfirmDialog(
-            title = "放弃未保存的更改？",
-            message = "当前草稿尚未保存。",
+            title = stringResource(R.string.form_discard_title),
+            message = stringResource(R.string.form_discard_message),
             onConfirm = {
                 showDiscardConfirmation = false
                 onExit()
             },
             onDismiss = { showDiscardConfirmation = false },
-            confirmLabel = "放弃",
-            dismissLabel = "继续编辑",
+            confirmLabel = stringResource(R.string.form_discard_action),
+            dismissLabel = stringResource(R.string.form_continue_editing),
         )
     }
     return requestBack

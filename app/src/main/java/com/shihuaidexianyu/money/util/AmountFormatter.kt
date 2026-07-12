@@ -4,8 +4,21 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountVisibility
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 object AmountFormatter {
+    private val formatters = ThreadLocal.withInitial {
+        DecimalFormat(
+            "#,##0.00",
+            DecimalFormatSymbols.getInstance(Locale.SIMPLIFIED_CHINESE),
+        ).apply {
+            roundingMode = RoundingMode.HALF_UP
+            isParseBigDecimal = true
+        }
+    }
+
     fun format(
         amountInMinor: Long,
         settings: PortableSettings,
@@ -16,28 +29,16 @@ object AmountFormatter {
             .movePointLeft(2)
             .abs()
             .setScale(2, RoundingMode.HALF_UP)
-            .toPlainString()
-        val grouped = addGroupingSeparators(absolute)
+        val grouped = decimalFormatter().format(absolute)
         val signed = if (amountInMinor < 0) "-" else ""
         return "${signed}${settings.currencySymbol}$grouped"
     }
 
     fun formatPlain(amountInMinor: Long): String {
-        return addGroupingSeparators(
-            BigDecimal.valueOf(amountInMinor, 2)
-                .setScale(2, RoundingMode.HALF_UP)
-                .toPlainString(),
+        return decimalFormatter().format(
+            BigDecimal.valueOf(amountInMinor, 2).setScale(2, RoundingMode.HALF_UP),
         )
     }
 
-    private fun addGroupingSeparators(decimal: String): String {
-        val parts = decimal.split('.', limit = 2)
-        val integerPart = parts[0]
-        val groupedInteger = integerPart
-            .reversed()
-            .chunked(3)
-            .joinToString(",")
-            .reversed()
-        return if (parts.size == 2) "$groupedInteger.${parts[1]}" else groupedInteger
-    }
+    private fun decimalFormatter(): DecimalFormat = requireNotNull(formatters.get())
 }

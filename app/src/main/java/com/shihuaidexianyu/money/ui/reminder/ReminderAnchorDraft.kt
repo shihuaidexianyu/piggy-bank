@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.time.format.DateTimeParseException
 
 internal data class ReminderAnchorInput(
@@ -15,7 +16,7 @@ internal data class ReminderAnchorInput(
 )
 
 private val anchorDateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
-private val anchorTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val anchorTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.SIMPLIFIED_CHINESE)
 
 internal fun formatReminderAnchor(anchorDueAt: Long, zoneId: ZoneId): Pair<String, String> {
     val local = Instant.ofEpochMilli(anchorDueAt).atZone(zoneId)

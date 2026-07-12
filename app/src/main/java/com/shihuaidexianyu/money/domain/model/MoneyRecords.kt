@@ -109,3 +109,15 @@ data class TransferPathTotal(
     val toAccountId: Long,
     val amount: Long,
 )
+
+data class HomePeriodLedgerSummary(
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val reconciliationIncrease: Long,
+    val reconciliationDecrease: Long,
+    val manualAdjustmentIncrease: Long,
+    val manualAdjustmentDecrease: Long,
+    val cashFlowRecordCount: Int,
+    val transferRecordCount: Int,
+    val manualAdjustmentRecordCount: Int,
+)

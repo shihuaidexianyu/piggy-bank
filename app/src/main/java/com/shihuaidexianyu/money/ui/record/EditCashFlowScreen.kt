@@ -14,7 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -53,6 +55,8 @@ fun EditCashFlowScreen(
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
+    val deletedMessage = stringResource(R.string.ledger_record_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -63,8 +67,8 @@ fun EditCashFlowScreen(
                     terminal.ledgerUndoToken?.let { undoToken ->
                         rootSnackbarDispatcher?.dispatch(
                             rootSnackbarEffect(
-                                message = "记录已删除",
-                                actionLabel = "撤销",
+                                message = deletedMessage,
+                                actionLabel = undoLabel,
                                 action = RootSnackbarAction.RestoreLedger(undoToken),
                                 token = terminal.token,
                             ),
@@ -79,18 +83,18 @@ fun EditCashFlowScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = "删除记录",
-            message = "删除后将重新计算相关账户余额，确认删除？",
+            title = stringResource(R.string.ledger_delete_title),
+            message = stringResource(R.string.ledger_delete_balance_warning),
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
-            confirmLabel = "确认删除",
-            dismissLabel = "取消",
+            confirmLabel = stringResource(R.string.ledger_confirm_delete),
+            dismissLabel = stringResource(R.string.action_cancel),
         )
     }
 
     if (showAccountPicker) {
         AccountPickerDialog(
-            title = "选择账户",
+            title = stringResource(R.string.account_choose),
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
             onDismiss = { showAccountPicker = false },
@@ -141,7 +145,10 @@ fun EditCashFlowScreen(
     }
 
     MoneyFormPage(
-        title = editCashFlowTitle(state),
+        title = when (val titleRes = editCashFlowTitleRes(state)) {
+            R.string.cash_flow_edit_title -> stringResource(titleRes)
+            else -> stringResource(titleRes, state.direction.displayName)
+        },
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -160,7 +167,7 @@ fun EditCashFlowScreen(
         item {
             MoneyCard {
                 Text(
-                    text = "此修改会影响当前余额",
+                    text = stringResource(R.string.cash_flow_edit_balance_warning),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -171,8 +178,8 @@ fun EditCashFlowScreen(
                     supportingText = state.amountError,
                 )
                 MoneySelectionField(
-                    label = "账户",
-                    value = selectedAccount?.name ?: "请选择",
+                    label = stringResource(R.string.account_single),
+                    value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { showAccountPicker = true },
                     isError = state.accountError != null,
                     supportingText = state.accountError,
@@ -184,7 +191,7 @@ fun EditCashFlowScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注（可选）",
+                    label = stringResource(R.string.field_optional_note),
                     isError = state.noteError != null,
                     supportingText = state.noteError,
                 )
@@ -192,21 +199,21 @@ fun EditCashFlowScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "修改记录发生时间",
+                    timeSubtitle = stringResource(R.string.ledger_edit_time_description),
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
                     enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = "保存修改",
+                    label = stringResource(R.string.action_save_changes),
                 )
                 if (state.hasConflict) {
                     OutlinedButton(
                         onClick = viewModel::reload,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("重新加载最新记录")
+                        Text(stringResource(R.string.ledger_reload_latest))
                     }
                 }
             }
@@ -218,16 +225,16 @@ fun EditCashFlowScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
                 ) {
-                    Text("删除记录")
+                    Text(stringResource(R.string.ledger_delete_title))
                 }
             }
         }
     }
 }
 
-internal fun editCashFlowTitle(state: EditCashFlowUiState): String =
+internal fun editCashFlowTitleRes(state: EditCashFlowUiState): Int =
     if (state.isLoading || state.loadErrorMessage != null) {
-        "编辑收支记录"
+        R.string.cash_flow_edit_title
     } else {
-        "编辑${state.direction.displayName}"
+        R.string.cash_flow_edit_direction_format
     }

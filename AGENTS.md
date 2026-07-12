@@ -9,7 +9,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 
 - **Package**: `com.shihuaidexianyu.money`
 - **Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.0.1` (versionCode `99`)
+- **Version**: `2.3.0` (versionCode `103`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -26,10 +26,10 @@ It supports multi-account management, cash flow recording, transfers, balance up
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON export/import/backup) |
 | Background work | WorkManager 2.10.1 (reminder checks, balance checks, widget refresh) |
-| Exact alarms | AlarmManager (precise recurring-reminder firing) |
+| Scheduling | WorkManager (15-minute periodic check plus debounced one-time sync) |
 | Biometrics | AndroidX Biometric 1.2.0-alpha05 |
 | DI | Manual (no Hilt/Dagger/Koin) via `MoneyAppContainer` → `DataGraph` + `UseCaseGraph` |
-| Reminders | In-app due display **plus** background notifications (WorkManager periodic check + AlarmManager exact alarms) |
+| Reminders | In-app due display **plus** WorkManager-backed background notifications |
 | Testing | JUnit 4 + `kotlin.test` assertions + Turbine + coroutines-test |
 
 ## Build and Test Commands
@@ -98,7 +98,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── repository/              # Repository interfaces (incl. BackupRepository, BackupJsonEncoder)
 │   └── usecase/                 # Business logic / use cases
 ├── navigation/                  # Nav graphs, destinations, ViewModel factories, query codec
-├── notification/                # Background notifications (WorkManager + AlarmManager + channels)
+├── notification/                # WorkManager-backed notifications and channels
 │   ├── ReminderNotificationScheduler.kt   # Schedules 15-min periodic workers
 │   ├── RecurringReminderWorker.kt         # Posts due-reminder notifications
 │   ├── BalanceCheckWorker.kt             # Posts stale-account "balance needs check" notifications
@@ -126,15 +126,15 @@ app/src/main/java/com/shihuaidexianyu/money/
 ### Clean Architecture Layers
 
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
-   - `model/`: Enums and value objects like `CashFlowDirection`, `HomePeriod`, `ThemeMode`, `AppSettings`, plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, schema version 2).
+   - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, schema version 4).
    - `repository/`: Interfaces only (`AccountRepository`, `TransactionRepository`, `SettingsRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `BackupRepository`, `BackupJsonEncoder`).
    - `usecase/`: Single-responsibility business logic. Use cases accept repository interfaces via constructor.
 
 2. **Data** (`data/`):
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
-   - `dao/`: Room DAOs. Cash flow and transfer records use soft-delete (`isDeleted` field). `HistoryRecordDao` unions 4 tables with keyset pagination.
+   - `dao/`: Room DAOs. All four ledger record types use `deletedAt` soft deletion and unique `operationId` values. `HistoryRecordDao` unions 4 tables with keyset pagination.
    - `repository/`: Concrete implementations plus `InMemory*` variants for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 12, `exportSchema = true`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 14, `exportSchema = true`).
    - `export/`: `ExportJsonFileWriter` writes plaintext `.json` files with collision-resistant names.
    - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v4 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
 
@@ -159,7 +159,7 @@ After any data mutation, use cases must refresh derived state:
 - Create/Update/Delete cash flow and transfer records run the mutation, then call `RefreshAccountActivityStateUseCase` for affected accounts.
 - Balance updates are ordinary ledger events with a fixed `delta`; changing older records must not rewrite later balance update deltas.
 - Balance updates and manual adjustments call `RefreshAccountActivityStateUseCase`.
-- Archived accounts are read-only. Use mutation use cases rather than repositories directly so `requireActiveForMutation(...)` guards are applied.
+- Closed accounts are read-only. Use mutation use cases rather than repositories directly so lifecycle guards are applied.
 
 ## Code Style Guidelines
 
@@ -196,7 +196,7 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **12**.
+Room schema is exported to `app/schemas/`. Current database version is **14**.
 
 Existing migrations:
 
@@ -211,6 +211,8 @@ Existing migrations:
 - `9 → 10`: Re-added `iconName` column to `accounts` (TEXT NOT NULL DEFAULT 'wallet').
 - `10 → 11`: Added `savings_goals` and `savings_goal_account_links` tables (many-to-many with CASCADE/RESTRICT).
 - `11 → 12`: Re-created `savings_goals` without the `colorName` column (savings goals use the app primary color).
+- `12 → 13`: Removed savings-goal account links and reduced the goal model to a net-worth target.
+- `13 → 14`: Rebuilt accounts and ledger tables for hidden/closed lifecycle state, tombstones, operation IDs, reminder anchors, portable settings, reminder configs, and migration state.
 
 When modifying entities:
 
@@ -221,17 +223,17 @@ When modifying entities:
 
 ## Key Domain Concepts
 
-- **Accounts**: Active accounts are user-ordered. Archived accounts are read-only and kept for historical records; there is no restore/unarchive flow.
+- **Accounts**: Open accounts are user-ordered and may be hidden without changing calculations. A zero-balance account may be closed and later reopened; closed accounts are read-only.
 - **Account creation**: The account's `initialBalance` is the opening asset event. For period dashboards, accounts opened inside the selected period contribute their initial balance to opening assets, not cash inflow or asset adjustment.
 - **Transaction types**:
-  - `CashFlow`: Inflow / outflow with purpose tagging.
+  - `CashFlow`: Inflow / outflow with an optional note.
   - `Transfer`: Between two accounts.
   - `BalanceUpdate`: Reconciliation adjustment. It stores `actualBalance` and `systemBalanceBeforeUpdate` as evidence, but only its fixed `delta` affects ledger balance.
   - `BalanceAdjustment`: Manual correction ledger event.
 - **Balance calculation**: Uses `LedgerBalanceCalculator` semantics: before account opening the balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`.
-- **Reminders**: Recurring reminders with `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods. Stored in `RecurringReminderEntity` and shown in-app when due. In addition, the `notification/` package posts OS notifications via a dual-strategy pipeline: WorkManager periodic workers (15-min coarse fallback) + AlarmManager exact alarms (precise firing). `BalanceCheckWorker` also posts stale-account "balance needs check" notifications. Two notification channels: `recurring_reminders` (IMPORTANCE_DEFAULT) and `balance_check_reminders` (IMPORTANCE_LOW).
+- **Reminders**: Recurring reminders use `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods anchored to the first due time. WorkManager performs a 15-minute periodic check plus debounced one-time synchronization. No exact-alarm permission is used.
 - **Export/import**: Backup schema v4 contains portable settings, accounts, all four ledger record types (including tombstones and operation IDs), reminders, account reminder configs, and the optional singleton savings goal. Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
-- **Savings goals**: User-defined targets with a name, target amount, and one or more associated accounts (many-to-many via `savings_goal_account_links`). Progress = sum of current balances of associated accounts. Multiple goals can exist in parallel; an account can belong to multiple goals. No deadline. Displayed as horizontal cards on the accounts page using the same background-fill + percentage visual style as account cards.
+- **Savings goal**: A nullable singleton (`id = 1`) represents one net-worth target. Progress uses total current net assets and has no deadline.
 
 ## Security Considerations
 
@@ -240,16 +242,16 @@ When modifying entities:
 - **Pre-import backup**: Before any replacement, `SafetySnapshotStore` atomically writes and verifies a snapshot under `filesDir/pre_import_backups/`; `ImportReceiptStore` records its hash and supports rollback without importing device-local privacy preferences.
 - **Biometric lock**: Optional app-wide biometric lock (`BiometricGatekeeper` in `ui/common/`), gated by the `biometricLock` setting.
 - **Backup**: `AndroidManifest.xml` sets `allowBackup="false"`. The app does not rely on Android automatic cloud/device-transfer backup; use manual export for user-controlled data transfer.
-- **Signing**: Release builds are signed with a keystore located outside the repo (`../timeline/`). Never commit keystore files or `keystore.properties`.
+- **Signing**: Release builds use `signing/keystore.properties` when available, with the legacy external path as fallback. Never commit keystore files or `keystore.properties`.
 - **Debug data**: `DebugSampleDataSeeder` seeds sample data only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
 
 ## Common Pitfalls for Agents
 
 - Do **not** use `Float`/`Double` for monetary amounts. Use `Long` (cents).
 - Do **not** add new DI frameworks. Use `MoneyAppContainer`.
-- When deleting cash flow / transfer records, perform soft-delete (`isDeleted = true`) rather than hard-delete.
+- When deleting any ledger record, set `deletedAt` rather than hard-deleting it; restore through the matching use case.
 - Do **not** re-anchor balances on the latest reconciliation or recalculate later reconciliation deltas. Reconciliation deltas are fixed ledger events.
 - After any mutation use case, ensure `RefreshAccountActivityStateUseCase` is invoked for affected accounts.
-- Do not mutate archived accounts through repositories directly; go through use cases so read-only guards and recurring-reminder disabling are preserved.
+- Do not mutate closed accounts through repositories directly; reopen through the lifecycle use case first.
 - All new UI strings must be in Chinese (Simplified).
 - If changing Room entities, always provide a migration and update the schema export.

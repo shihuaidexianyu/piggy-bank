@@ -30,7 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
@@ -68,6 +71,8 @@ fun ReminderListScreen(
     var deleteTarget by remember { mutableStateOf<Long?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val rootDispatcher = LocalRootSnackbarDispatcher.current
+    val skippedMessage = stringResource(R.string.reminder_skipped)
+    val undoLabel = stringResource(R.string.action_undo)
 
     LaunchedEffect(effects) {
         effects.collect { effect ->
@@ -81,8 +86,8 @@ fun ReminderListScreen(
         LaunchedEffect(pending.token) {
             rootDispatcher?.dispatch(
                 rootSnackbarEffect(
-                    "已跳过本期",
-                    "撤销",
+                    skippedMessage,
+                    undoLabel,
                     RootSnackbarAction.UndoReminderSkip(pending.undoToken),
                     pending.token,
                 ),
@@ -93,8 +98,8 @@ fun ReminderListScreen(
 
     deleteTarget?.let { id ->
         MoneyConfirmDialog(
-            title = "删除提醒",
-            message = "确定要删除这个提醒吗？",
+            title = stringResource(R.string.reminder_delete_title),
+            message = stringResource(R.string.reminder_delete_message),
             onConfirm = {
                 onDeleteReminder(id)
                 deleteTarget = null
@@ -106,7 +111,7 @@ fun ReminderListScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
-                Icon(Icons.Rounded.Add, contentDescription = "添加提醒")
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.reminder_add))
             }
         },
     ) { innerPadding ->
@@ -114,7 +119,7 @@ fun ReminderListScreen(
             modifier = modifier.padding(innerPadding),
         ) {
             MoneyPageTitle(
-                title = "提醒中心",
+                title = stringResource(R.string.reminder_center_title),
                 leading = { MoneyBackButton(onClick = onBack) },
                 modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
             )
@@ -137,14 +142,14 @@ fun ReminderListScreen(
                 ) {
                     item {
                         MoneyEmptyStateCard(
-                            title = "暂无待处理提醒",
-                            subtitle = "余额核对和定期提醒都会显示在这里。",
+                            title = stringResource(R.string.reminder_empty),
+                            subtitle = stringResource(R.string.reminder_empty_description),
                             action = {
                                 Button(
                                     onClick = onCreateReminder,
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text("添加定期提醒")
+                                    Text(stringResource(R.string.reminder_add_recurring))
                                 }
                             },
                         )
@@ -153,8 +158,12 @@ fun ReminderListScreen(
                 if (state.balanceReminders.isNotEmpty()) {
                     item {
                         MoneySectionHeader(
-                            title = "余额待核对",
-                            trailing = "${state.balanceReminders.size} 个账户",
+                            title = stringResource(R.string.reminder_balance_due),
+                            trailing = pluralStringResource(
+                                R.plurals.account_count,
+                                state.balanceReminders.size,
+                                state.balanceReminders.size,
+                            ),
                         )
                     }
                     item {
@@ -168,8 +177,12 @@ fun ReminderListScreen(
                 if (state.dueReminders.isNotEmpty()) {
                     item {
                         MoneySectionHeader(
-                            title = "已到期",
-                            trailing = "${state.dueReminders.size} 条",
+                            title = stringResource(R.string.reminder_due),
+                            trailing = pluralStringResource(
+                                R.plurals.reminder_count,
+                                state.dueReminders.size,
+                                state.dueReminders.size,
+                            ),
                         )
                     }
                 }
@@ -184,7 +197,16 @@ fun ReminderListScreen(
                     )
                 }
                 if (state.upcomingReminders.isNotEmpty()) {
-                    item { MoneySectionHeader("即将到期", "${state.upcomingReminders.size} 条") }
+                    item {
+                        MoneySectionHeader(
+                            title = stringResource(R.string.reminder_upcoming),
+                            trailing = pluralStringResource(
+                                R.plurals.reminder_count,
+                                state.upcomingReminders.size,
+                                state.upcomingReminders.size,
+                            ),
+                        )
+                    }
                 }
                 items(state.upcomingReminders, key = { "upcoming:${it.id}" }) { reminder ->
                     ReminderListItem(
@@ -197,7 +219,16 @@ fun ReminderListScreen(
                     )
                 }
                 if (state.pausedReminders.isNotEmpty()) {
-                    item { MoneySectionHeader("已暂停", "${state.pausedReminders.size} 条") }
+                    item {
+                        MoneySectionHeader(
+                            title = stringResource(R.string.reminder_paused),
+                            trailing = pluralStringResource(
+                                R.plurals.reminder_count,
+                                state.pausedReminders.size,
+                                state.pausedReminders.size,
+                            ),
+                        )
+                    }
                 }
                 items(state.pausedReminders, key = { "paused:${it.id}" }) { reminder ->
                     ReminderListItem(
@@ -237,15 +268,15 @@ private fun BalanceReminderSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("批量确认无变化", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.reminder_batch_confirm_unchanged), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "适合余额没有实际变化的账户",
+                    text = stringResource(R.string.reminder_batch_confirm_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                text = "去核对",
+                text = stringResource(R.string.reminder_go_reconcile),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -279,7 +310,7 @@ private fun BalanceReminderRow(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 MoneyStatusPill(
-                    text = "待核对",
+                    text = stringResource(R.string.account_stale_badge),
                     accent = MaterialTheme.colorScheme.secondary,
                 )
             }
@@ -299,7 +330,7 @@ private fun BalanceReminderRow(
                 maxLines = 1,
             )
             Text(
-                text = "核对",
+                text = stringResource(R.string.account_detail_kind_reconciliation),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -337,8 +368,8 @@ private fun ReminderListItem(
                     )
                     MoneyStatusPill(
                         text = when (reminder.type) {
-                            ReminderType.MANUAL -> "手动缴费"
-                            ReminderType.SUBSCRIPTION -> "自动扣费"
+                            ReminderType.MANUAL -> stringResource(R.string.reminder_type_manual)
+                            ReminderType.SUBSCRIPTION -> stringResource(R.string.reminder_type_subscription)
                         },
                         accent = when (reminder.type) {
                             ReminderType.MANUAL -> MaterialTheme.colorScheme.primary
@@ -347,12 +378,20 @@ private fun ReminderListItem(
                     )
                 }
                 Text(
-                    text = "${reminder.amountFormatted} · ${reminder.periodDescription}",
+                    text = stringResource(
+                        R.string.reminder_amount_period_format,
+                        reminder.amountFormatted,
+                        reminder.periodDescription,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = if (reminder.isOverdue) "已到期" else "下次: ${reminder.nextDueFormatted}",
+                    text = if (reminder.isOverdue) {
+                        stringResource(R.string.reminder_due)
+                    } else {
+                        stringResource(R.string.reminder_next_due_format, reminder.nextDueFormatted)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (reminder.isOverdue) {
                         MaterialTheme.colorScheme.error
@@ -362,7 +401,7 @@ private fun ReminderListItem(
                 )
                 if (!reminder.isEnabled) {
                     Text(
-                        text = "已暂停",
+                        text = stringResource(R.string.reminder_paused),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -371,7 +410,7 @@ private fun ReminderListItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Rounded.Delete,
-                    contentDescription = "删除",
+                    contentDescription = stringResource(R.string.action_delete),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -382,13 +421,13 @@ private fun ReminderListItem(
                 horizontalArrangement = Arrangement.End,
             ) {
                 TextButton(onClick = onProcess) {
-                    Text("记账")
+                    Text(stringResource(R.string.reminder_record))
                 }
                 TextButton(onClick = onSkip) {
-                    Text("跳过本期")
+                    Text(stringResource(R.string.reminder_skip_period))
                 }
                 TextButton(onClick = onEdit) {
-                    Text("编辑")
+                    Text(stringResource(R.string.action_edit))
                 }
             }
         }
@@ -408,30 +447,30 @@ private fun NotificationPermissionStatusCard(
     when (state) {
         NotificationPermissionUiState.Granted -> return
         NotificationPermissionUiState.NotRequested -> {
-            title = "开启提醒通知"
-            message = "创建提醒后可在到期时收到系统通知。"
-            actionLabel = "允许通知"
+            title = stringResource(R.string.notification_enable_title)
+            message = stringResource(R.string.notification_enable_message)
+            actionLabel = stringResource(R.string.notification_allow)
             action = onRequest
         }
         is NotificationPermissionUiState.Denied -> if (state.canRequestAgain) {
-            title = "通知权限已拒绝"
-            message = "你可以在需要提醒时再次申请通知权限。"
-            actionLabel = "再次申请"
+            title = stringResource(R.string.notification_denied_title)
+            message = stringResource(R.string.notification_denied_message)
+            actionLabel = stringResource(R.string.notification_request_again)
             action = onRequest
         } else {
-            title = "通知权限不可再次申请"
-            message = "请前往系统设置为 Money 开启通知。"
-            actionLabel = "打开设置"
+            title = stringResource(R.string.notification_denied_permanent_title)
+            message = stringResource(R.string.notification_denied_permanent_message)
+            actionLabel = stringResource(R.string.notification_open_settings)
             action = { onOpenSettings(NotificationSettingsTarget.APPLICATION) }
         }
         is NotificationPermissionUiState.SettingsRequired -> {
             title = when (state.target) {
-                NotificationSettingsTarget.APPLICATION -> "应用通知已关闭"
-                NotificationSettingsTarget.RECURRING_CHANNEL -> "定期提醒通知渠道已关闭"
-                NotificationSettingsTarget.BALANCE_CHANNEL -> "余额核对通知渠道已关闭"
+                NotificationSettingsTarget.APPLICATION -> stringResource(R.string.settings_app_notifications_disabled)
+                NotificationSettingsTarget.RECURRING_CHANNEL -> stringResource(R.string.notification_recurring_channel_disabled)
+                NotificationSettingsTarget.BALANCE_CHANNEL -> stringResource(R.string.notification_balance_channel_disabled)
             }
-            message = "请在系统设置中开启对应通知，应用不会把未发送的通知标记为已通知。"
-            actionLabel = "打开设置"
+            message = stringResource(R.string.notification_settings_required_message)
+            actionLabel = stringResource(R.string.notification_open_settings)
             action = { onOpenSettings(state.target) }
         }
     }

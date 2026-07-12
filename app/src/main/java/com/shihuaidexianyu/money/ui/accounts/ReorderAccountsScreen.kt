@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -42,7 +44,7 @@ fun ReorderAccountsScreen(
     }
 
     MoneyFormPage(
-        title = "账户顺序",
+        title = stringResource(R.string.accounts_order),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
@@ -63,8 +65,8 @@ fun ReorderAccountsScreen(
         if (state.accounts.isEmpty()) {
             item {
                 MoneyEmptyStateCard(
-                    title = "还没有账户",
-                    subtitle = "创建账户后才能调整顺序。",
+                    title = stringResource(R.string.accounts_none),
+                    subtitle = stringResource(R.string.accounts_reorder_empty_description),
                 )
             }
         } else {
@@ -79,27 +81,27 @@ fun ReorderAccountsScreen(
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         ) {
-                            Text("按余额")
+                            Text(stringResource(R.string.accounts_sort_balance))
                         }
                         OutlinedButton(
                             onClick = viewModel::sortByRecentUse,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         ) {
-                            Text("最近使用")
+                            Text(stringResource(R.string.accounts_sort_recent))
                         }
                         OutlinedButton(
                             onClick = viewModel::sortByName,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         ) {
-                            Text("按名称")
+                            Text(stringResource(R.string.accounts_sort_name))
                         }
                     }
                 }
             }
             item {
-                MoneySectionHeader(title = "账户顺序")
+                MoneySectionHeader(title = stringResource(R.string.accounts_order))
             }
             item {
                 MoneyListSection {
@@ -122,14 +124,14 @@ fun ReorderAccountsScreen(
                                         enabled = index > 0,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     ) {
-                                        Text("上移")
+                                        Text(stringResource(R.string.action_move_up))
                                     }
                                     OutlinedButton(
                                         onClick = { viewModel.moveAccountDown(account.id) },
                                         enabled = index < state.accounts.lastIndex,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     ) {
-                                        Text("下移")
+                                        Text(stringResource(R.string.action_move_down))
                                     }
                                 }
                             },
@@ -142,7 +144,11 @@ fun ReorderAccountsScreen(
             }
             item {
                 MoneyCard {
-                    MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, label = "保存顺序")
+                    MoneySaveButton(
+                        onClick = viewModel::save,
+                        isSaving = state.isSaving,
+                        label = stringResource(R.string.accounts_save_order),
+                    )
                 }
             }
         }

@@ -15,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
@@ -40,8 +42,8 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 fun RecordCashFlowScreen(
     viewModel: RecordCashFlowViewModel,
     onBack: () -> Unit,
-    onSaved: () -> Unit = onBack,
     modifier: Modifier = Modifier,
+    onSaved: () -> Unit = onBack,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -60,7 +62,7 @@ fun RecordCashFlowScreen(
 
     if (showAccountPicker) {
         AccountPickerDialog(
-            title = "选择账户",
+            title = stringResource(R.string.account_choose),
             accounts = state.accounts,
             selectedAccountId = state.selectedAccountId,
             onDismiss = { showAccountPicker = false },
@@ -136,8 +138,8 @@ fun RecordCashFlowScreen(
                     supportingText = state.amountError,
                 )
                 MoneySelectionField(
-                    label = "账户",
-                    value = selectedAccount?.name ?: "请选择",
+                    label = stringResource(R.string.account_single),
+                    value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { showAccountPicker = true },
                     isError = state.accountError != null,
                     supportingText = state.accountError,
@@ -149,7 +151,7 @@ fun RecordCashFlowScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注（可选）",
+                    label = stringResource(R.string.field_optional_note),
                     isError = state.noteError != null,
                     supportingText = state.noteError,
                 )
@@ -170,7 +172,7 @@ fun RecordCashFlowScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "默认当前时间",
+                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(

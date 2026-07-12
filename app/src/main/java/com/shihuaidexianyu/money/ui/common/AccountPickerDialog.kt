@@ -21,9 +21,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.R
 
 data class AccountOptionUiModel(
     val id: Long,
@@ -116,6 +118,7 @@ private fun AccountPickerList(
                     MoneyListRow(
                         title = noSelectionLabel,
                         showChevron = false,
+                        isClickable = true,
                         modifier = Modifier.clickable { onClearSelection() },
                         accessory = {
                             if (selectedAccountId == null) {
@@ -148,11 +151,12 @@ private fun AccountPickerList(
                 MoneyListSection {
                     MoneyListRow(
                         title = if (sections.hiddenExpanded) {
-                            "收起隐藏账户"
+                            stringResource(R.string.account_picker_collapse_hidden)
                         } else {
-                            "显示隐藏账户（${sections.hiddenAccountCount}）"
+                            stringResource(R.string.account_picker_show_hidden_format, sections.hiddenAccountCount)
                         },
                         showChevron = false,
+                        isClickable = true,
                         modifier = Modifier.clickable { hiddenExpanded = !sections.hiddenExpanded },
                         accessory = {
                             Icon(
@@ -171,7 +175,7 @@ private fun AccountPickerList(
 
         if (sections.hiddenExpanded) {
             item {
-                Text("隐藏账户", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.accounts_hidden), style = MaterialTheme.typography.titleMedium)
             }
             item {
                 AccountPickerSection(
@@ -217,7 +221,7 @@ private fun AccountPickerSection(
                         selectedAccountId == account.id -> {
                             Icon(
                                 imageVector = Icons.Rounded.Check,
-                                contentDescription = "已选择${account.name}",
+                                contentDescription = stringResource(R.string.account_picker_selected_format, account.name),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -243,6 +247,8 @@ private fun AccountPickerSection(
 private fun AccountOptionUiModel.pickerSubtitle(
     settings: PortableSettings,
 ): String? {
-    return balance?.let { "余额 ${formatInAppAmount(it, settings)}" }
+    return balance?.let {
+        stringResource(R.string.account_picker_balance_format, formatInAppAmount(it, settings))
+    }
 }
 

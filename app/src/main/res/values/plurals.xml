@@ -1,0 +1,14 @@
+<resources>
+    <plurals name="account_count">
+        <item quantity="other">%d 个</item>
+    </plurals>
+    <plurals name="stale_account_count">
+        <item quantity="other">%d 个待核对</item>
+    </plurals>
+    <plurals name="history_selected_type_count">
+        <item quantity="other">已选 %d 类</item>
+    </plurals>
+    <plurals name="reminder_count">
+        <item quantity="other">%d 条</item>
+    </plurals>
+</resources>

@@ -10,8 +10,12 @@ val Amber400 = Color(0xFFD4A85A)
 val Amber100 = Color(0xFFFFF3D6)
 
 // ===== Semantic colors =====
-val CoralRed = Color(0xFFC45C4A)
-val SageGreen = Color(0xFF5A8A6E)
+internal const val LIGHT_INCOME_ARGB: Long = 0xFFA94442
+internal const val LIGHT_EXPENSE_ARGB: Long = 0xFF2F6B4F
+internal const val DARK_INCOME_ARGB: Long = 0xFFE57373
+internal const val DARK_EXPENSE_ARGB: Long = 0xFF66BB6A
+val CoralRed = Color(LIGHT_INCOME_ARGB)
+val SageGreen = Color(LIGHT_EXPENSE_ARGB)
 val TransferBlue = Color(0xFF5B8DB8)
 val ReminderPurple = Color(0xFF9B7CB6)
 
@@ -58,8 +62,8 @@ private val LightMoneyColors = MoneyColors(
 )
 
 private val DarkMoneyColors = MoneyColors(
-    income = Color(0xFFE57373),
-    expense = Color(0xFF66BB6A),
+    income = Color(DARK_INCOME_ARGB),
+    expense = Color(DARK_EXPENSE_ARGB),
     current = Color(0xFFE5B84C),
     transfer = Color(0xFF90CAF9),
     reminder = Color(0xFFCE93D8),
@@ -71,8 +75,8 @@ private val LightInvertedMoneyColors = LightMoneyColors.copy(
 )
 
 private val DarkInvertedMoneyColors = DarkMoneyColors.copy(
-    income = Color(0xFF66BB6A),
-    expense = Color(0xFFE57373),
+    income = Color(DARK_EXPENSE_ARGB),
+    expense = Color(DARK_INCOME_ARGB),
 )
 
 fun moneyColorsFor(

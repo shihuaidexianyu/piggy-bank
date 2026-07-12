@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_ink">#18242A</color>
-    <color name="brand_forest">#2E5E4E</color>
-    <color name="brand_sand">#EDE2C9</color>
-    <color name="brand_sun">#D7A244</color>
-    <color name="brand_surface">#F8F4EB</color>
-    <color name="brand_surface_dark">#121917</color>
     <color name="shortcut_icon_background">#256F70</color>
 </resources>

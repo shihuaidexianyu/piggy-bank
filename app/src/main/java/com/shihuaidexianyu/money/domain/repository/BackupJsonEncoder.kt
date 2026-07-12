@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.domain.repository
 
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
+import java.io.OutputStream
 
 /**
  * Port for serializing a [MoneyBackupSnapshot] to a JSON string.
@@ -9,4 +10,11 @@ import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
  */
 fun interface BackupJsonEncoder {
     fun encode(snapshot: MoneyBackupSnapshot): String
+
+    fun encodeToStream(snapshot: MoneyBackupSnapshot, output: OutputStream) {
+        output.writer(Charsets.UTF_8).apply {
+            write(encode(snapshot))
+            flush()
+        }
+    }
 }

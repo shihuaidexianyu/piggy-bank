@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecordKind
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecentRecord
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
@@ -59,15 +61,15 @@ fun AccountDetailScreen(
     onStartUpdateBalance: () -> Unit,
     onReopenAccount: () -> Unit,
     onBackToAccounts: () -> Unit,
-    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     CollectUiEffects(effectFlow, snackbarHostState) { }
     MoneyFormPage(
-        title = state.name.ifEmpty { "账户详情" },
+        title = state.name.ifEmpty { stringResource(R.string.account_detail_title) },
         trailing = if (state.isMissing || state.isLoading || state.loadErrorMessage != null || state.isClosed) null else {
-            { TextButton(onClick = onManageAccount) { Text("管理") } }
+            { TextButton(onClick = onManageAccount) { Text(stringResource(R.string.accounts_management)) } }
         },
         onBack = onBackToAccounts,
         snackbarHostState = snackbarHostState,
@@ -87,14 +89,14 @@ fun AccountDetailScreen(
         if (state.isMissing) {
             item {
                 MoneyEmptyStateCard(
-                    title = "账户不存在",
-                    subtitle = "这个账户可能已经失效，或者当前路由里的账户 ID 不可用。",
+                    title = stringResource(R.string.account_detail_missing),
+                    subtitle = stringResource(R.string.account_detail_missing_description),
                     action = {
                         Button(
                             onClick = onBackToAccounts,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("返回账户列表")
+                            Text(stringResource(R.string.account_detail_back_to_list))
                         }
                     },
                 )
@@ -115,8 +117,11 @@ fun AccountDetailScreen(
                 )
                 Text(
                     text = state.lastBalanceUpdateAt?.let {
-                        "最近核对 ${DateTimeTextFormatter.format(it)}"
-                    } ?: "尚未核对余额",
+                        stringResource(
+                            R.string.account_detail_last_reconciled_format,
+                            DateTimeTextFormatter.format(it),
+                        )
+                    } ?: stringResource(R.string.account_detail_never_reconciled),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -125,7 +130,7 @@ fun AccountDetailScreen(
                     MoneyStatusPill(text = closure.statusText, accent = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (state.currentBalance != 0L) {
                         Text(
-                            text = "这个账户来自旧版本且关闭时仍有余额。请重新开启并结清，历史数据不会被改写。",
+                            text = stringResource(R.string.account_detail_legacy_closure_issue),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -135,42 +140,56 @@ fun AccountDetailScreen(
                         enabled = !state.isReopening,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(if (state.isReopening) "正在重新开启…" else "重新开启账户")
+                        Text(
+                            stringResource(
+                                if (state.isReopening) {
+                                    R.string.account_detail_reopening
+                                } else {
+                                    R.string.account_detail_reopen
+                                },
+                            ),
+                        )
                     }
                 } else {
                     Text(
-                        text = "提醒时间 ${state.reminderConfig.displayText}",
+                        text = stringResource(
+                            R.string.account_detail_reminder_time_format,
+                            state.reminderConfig.displayText,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (state.isStale && !state.isClosed) {
-                    MoneyStatusPill(text = "待核对", accent = MaterialTheme.colorScheme.secondary)
+                    MoneyStatusPill(
+                        text = stringResource(R.string.account_stale_badge),
+                        accent = MaterialTheme.colorScheme.secondary,
+                    )
                 }
             }
         }
         if (state.canMutateLedger()) {
-            item { MoneySectionHeader(title = "快捷记账") }
+            item { MoneySectionHeader(title = stringResource(R.string.account_detail_quick_actions)) }
             item {
                 MoneyListSection {
                     MoneyListRow(
-                        title = "记录收入",
-                        subtitle = "已预选当前账户",
+                        title = stringResource(R.string.account_detail_record_income),
+                        subtitle = stringResource(R.string.account_detail_preselected),
                         modifier = Modifier.clickable(onClick = onRecordIncome),
                     )
                     MoneySectionDivider()
                     MoneyListRow(
-                        title = "记录支出",
-                        subtitle = "已预选当前账户",
+                        title = stringResource(R.string.account_detail_record_expense),
+                        subtitle = stringResource(R.string.account_detail_preselected),
                         modifier = Modifier.clickable(onClick = onRecordExpense),
                     )
                     MoneySectionDivider()
                     MoneyListRow(
-                        title = "转账",
+                        title = stringResource(R.string.history_transfer),
                         subtitle = if (state.openAccountCount >= 2) {
-                            "当前账户作为转出账户"
+                            stringResource(R.string.account_detail_transfer_from)
                         } else {
-                            "至少需要两个开放账户才能转账"
+                            stringResource(R.string.account_detail_transfer_unavailable)
                         },
                         modifier = Modifier.clickable(
                             enabled = state.openAccountCount >= 2,
@@ -179,8 +198,8 @@ fun AccountDetailScreen(
                     )
                     MoneySectionDivider()
                     MoneyListRow(
-                        title = "核对余额",
-                        subtitle = "按当前账面余额开始核对",
+                        title = stringResource(R.string.account_detail_reconcile),
+                        subtitle = stringResource(R.string.account_detail_reconcile_description),
                         modifier = Modifier.clickable(onClick = onStartUpdateBalance),
                     )
                 }
@@ -188,7 +207,7 @@ fun AccountDetailScreen(
         }
         // === This month summary ===
         item {
-            MoneySectionHeader(title = "本月收支")
+            MoneySectionHeader(title = stringResource(R.string.account_detail_month_cash))
         }
         item {
             MoneyCard {
@@ -200,7 +219,7 @@ fun AccountDetailScreen(
                 ) {
                     Column {
                         Text(
-                            text = "收入",
+                            text = stringResource(R.string.stats_income),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -212,7 +231,7 @@ fun AccountDetailScreen(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "支出",
+                            text = stringResource(R.string.stats_expense),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -228,7 +247,7 @@ fun AccountDetailScreen(
         // === Recent records ===
         if (state.recentRecords.isNotEmpty()) {
             item {
-                MoneySectionHeader(title = "最近记录")
+                MoneySectionHeader(title = stringResource(R.string.account_detail_recent_records))
             }
             item {
                 MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
@@ -259,19 +278,25 @@ private fun RecentRecordRow(
     }
     val amountText = formatInAppAmount(record.amount, settings)
     val kindLabel = when (record.kind) {
-        AccountDetailRecordKind.CASH_FLOW -> "收支"
-        AccountDetailRecordKind.TRANSFER -> "转账"
-        AccountDetailRecordKind.BALANCE_UPDATE -> "对账"
-        AccountDetailRecordKind.BALANCE_ADJUSTMENT -> "调整"
+        AccountDetailRecordKind.CASH_FLOW -> stringResource(R.string.history_cash_flow)
+        AccountDetailRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
+        AccountDetailRecordKind.BALANCE_UPDATE -> stringResource(R.string.account_detail_kind_reconciliation)
+        AccountDetailRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.account_detail_kind_adjustment)
     }
+    val recordContentDescription = stringResource(
+        R.string.account_detail_record_semantics_format,
+        record.title,
+        kindLabel,
+        amountText,
+        DateTimeTextFormatter.format(record.occurredAt),
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "${record.title}，$kindLabel，$amountText，${DateTimeTextFormatter.format(record.occurredAt)}"
-                role = Role.Button
+                contentDescription = recordContentDescription
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {

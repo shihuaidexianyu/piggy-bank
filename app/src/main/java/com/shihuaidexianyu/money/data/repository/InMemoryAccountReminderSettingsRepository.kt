@@ -9,13 +9,22 @@ import kotlinx.coroutines.sync.withLock
 class InMemoryAccountReminderSettingsRepository : AccountReminderSettingsRepository {
     private val reminderConfigs = MutableStateFlow<Map<Long, BalanceUpdateReminderConfig>>(emptyMap())
     private val mutex = Mutex()
+    var queryInvocationCount: Int = 0
+        private set
+    var getInvocationCount: Int = 0
+        private set
 
     override fun observeReminderConfigs(): Flow<Map<Long, BalanceUpdateReminderConfig>> = reminderConfigs
 
-    override suspend fun queryReminderConfigs(): Map<Long, BalanceUpdateReminderConfig> = reminderConfigs.value
+    override suspend fun queryReminderConfigs(): Map<Long, BalanceUpdateReminderConfig> {
+        queryInvocationCount += 1
+        return reminderConfigs.value
+    }
 
-    override suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig =
-        reminderConfigs.value[accountId] ?: BalanceUpdateReminderConfig()
+    override suspend fun getReminderConfig(accountId: Long): BalanceUpdateReminderConfig {
+        getInvocationCount += 1
+        return reminderConfigs.value[accountId] ?: BalanceUpdateReminderConfig()
+    }
 
     override suspend fun updateReminderConfig(accountId: Long, config: BalanceUpdateReminderConfig) {
         mutex.withLock {

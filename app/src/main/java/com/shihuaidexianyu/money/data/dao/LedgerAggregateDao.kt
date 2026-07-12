@@ -18,8 +18,75 @@ data class AccountActivityMaximaProjection(
     val maxBalanceUpdateOccurredAt: Long?,
 )
 
+data class HomePeriodLedgerSummaryProjection(
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val reconciliationIncrease: Long,
+    val reconciliationDecrease: Long,
+    val manualAdjustmentIncrease: Long,
+    val manualAdjustmentDecrease: Long,
+    val cashFlowRecordCount: Long,
+    val transferRecordCount: Long,
+    val manualAdjustmentRecordCount: Long,
+)
+
 @Dao
 interface LedgerAggregateDao {
+    @Query(
+        """
+        SELECT
+            COALESCE(SUM(cashInflow), 0) AS cashInflow,
+            COALESCE(SUM(cashOutflow), 0) AS cashOutflow,
+            COALESCE(SUM(reconciliationIncrease), 0) AS reconciliationIncrease,
+            COALESCE(SUM(reconciliationDecrease), 0) AS reconciliationDecrease,
+            COALESCE(SUM(manualAdjustmentIncrease), 0) AS manualAdjustmentIncrease,
+            COALESCE(SUM(manualAdjustmentDecrease), 0) AS manualAdjustmentDecrease,
+            COALESCE(SUM(cashFlowRecordCount), 0) AS cashFlowRecordCount,
+            COALESCE(SUM(transferRecordCount), 0) AS transferRecordCount,
+            COALESCE(SUM(manualAdjustmentRecordCount), 0) AS manualAdjustmentRecordCount
+        FROM (
+            SELECT
+                CASE WHEN direction = :inflowDirection THEN amount ELSE 0 END AS cashInflow,
+                CASE WHEN direction = :outflowDirection THEN amount ELSE 0 END AS cashOutflow,
+                0 AS reconciliationIncrease, 0 AS reconciliationDecrease,
+                0 AS manualAdjustmentIncrease, 0 AS manualAdjustmentDecrease,
+                1 AS cashFlowRecordCount, 0 AS transferRecordCount, 0 AS manualAdjustmentRecordCount
+            FROM cash_flow_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT 0, 0, 0, 0, 0, 0, 0, 1, 0
+            FROM transfer_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT 0, 0,
+                CASE WHEN delta > 0 THEN delta ELSE 0 END,
+                CASE WHEN delta < 0 THEN delta ELSE 0 END,
+                0, 0, 0, 0, 0
+            FROM balance_update_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT 0, 0, 0, 0,
+                CASE WHEN delta > 0 THEN delta ELSE 0 END,
+                CASE WHEN delta < 0 THEN delta ELSE 0 END,
+                0, 0, 1
+            FROM balance_adjustment_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+        ) period_ledger
+        """,
+    )
+    suspend fun queryHomePeriodLedgerSummary(
+        startInclusive: Long,
+        endExclusive: Long,
+        inflowDirection: String,
+        outflowDirection: String,
+    ): HomePeriodLedgerSummaryProjection
+
     @Query(
         """
         SELECT

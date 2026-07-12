@@ -45,6 +45,7 @@ class BuildExportSnapshotUseCase(
     suspend operator fun invoke(exportedAt: Long): MoneyBackupSnapshot =
         transactionRepository.runInTransaction {
             val accounts = accountRepository.queryAllAccounts().sortedBy { it.id }
+            val reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs()
             MoneyBackupSnapshot(
                 metadata = BackupMetadata(
                     schemaVersion = MONEY_BACKUP_SCHEMA_VERSION,
@@ -71,7 +72,7 @@ class BuildExportSnapshotUseCase(
                 accountReminderConfigs = accounts.map { account ->
                     BackupAccountReminderConfig(
                         accountId = account.id,
-                        config = accountReminderSettingsRepository.getReminderConfig(account.id).toBackup(),
+                        config = (reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()).toBackup(),
                     )
                 },
                 savingsGoal = savingsGoalRepository.query()?.toBackup(),

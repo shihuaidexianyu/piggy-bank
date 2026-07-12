@@ -16,7 +16,7 @@ import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.usecase.BackupValidationResult
-import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
+import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.ui.common.userMessage
@@ -128,7 +128,7 @@ sealed interface SettingsEffect {
 class SettingsViewModel(
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
-    private val buildExportJsonUseCase: BuildExportJsonUseCase,
+    private val buildExportSnapshotUseCase: BuildExportSnapshotUseCase,
     private val exportJsonFileWriter: ExportJsonFileWriter,
     private val backupFileReader: BackupFileReader,
     private val backupImportCoordinator: BackupImportCoordinator,
@@ -243,8 +243,8 @@ class SettingsViewModel(
             runCatching {
                 withContext(Dispatchers.IO) {
                     val exportedAt = clockProvider.nowMillis()
-                    val json = buildExportJsonUseCase(exportedAt = exportedAt)
-                    exportJsonFileWriter.write(json = json, timestamp = exportedAt)
+                    val snapshot = buildExportSnapshotUseCase(exportedAt = exportedAt)
+                    exportJsonFileWriter.write(snapshot = snapshot, timestamp = exportedAt)
                 }
             }.onSuccess { file ->
                 effects.emit(

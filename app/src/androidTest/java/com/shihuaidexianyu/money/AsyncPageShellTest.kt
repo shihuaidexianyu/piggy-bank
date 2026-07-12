@@ -86,7 +86,7 @@ class AsyncPageShellTest {
                         isLoading = false,
                         hasCommittedContent = true,
                         minAmountText = "999999999999999999999999",
-                        minAmountError = "请输入有效金额",
+                        minAmountErrorRes = R.string.validation_valid_amount,
                     ),
                     onKeywordChange = {},
                     onExcludeKeywordChange = {},

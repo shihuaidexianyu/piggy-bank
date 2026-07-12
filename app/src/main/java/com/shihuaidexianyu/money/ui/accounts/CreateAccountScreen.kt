@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -44,7 +46,7 @@ fun CreateAccountScreen(
     )
 
     MoneyFormPage(
-        title = "新建账户",
+        title = stringResource(R.string.account_create_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
@@ -54,12 +56,12 @@ fun CreateAccountScreen(
                 MoneySingleLineField(
                     value = state.name,
                     onValueChange = viewModel::updateName,
-                    label = "账户名称",
+                    label = stringResource(R.string.account_name),
                 )
                 MoneyAmountField(
                     value = state.amountText,
                     onValueChange = viewModel::updateAmountText,
-                    label = "当前余额",
+                    label = stringResource(R.string.account_current_balance),
                     allowSigned = true,
                 )
                 AccountVisualFields(

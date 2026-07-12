@@ -21,7 +21,13 @@ function Resolve-ApksignerPath {
         $localProps = Join-Path $RepoRoot "local.properties"
         if (Test-Path $localProps) {
             $match = Get-Content $localProps | Select-String -Pattern '^sdk\.dir=(.+)$'
-            if ($match) { $sdkRoot = $match.Matches[0].Groups[1].Value.Trim() }
+            if ($match) {
+                # local.properties uses Java-properties escaping on Windows
+                # (for example C\:\\Users\\name\\Android\\Sdk).
+                $sdkRoot = $match.Matches[0].Groups[1].Value.Trim() `
+                    -replace '\\:', ':' `
+                    -replace '\\\\', '\'
+            }
         }
     }
     if (-not $sdkRoot) { return $null }

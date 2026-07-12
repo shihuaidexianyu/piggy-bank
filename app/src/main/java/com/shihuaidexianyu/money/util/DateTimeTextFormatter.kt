@@ -4,11 +4,12 @@ import com.shihuaidexianyu.money.domain.model.TimeMath
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 object DateTimeTextFormatter {
-    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.SIMPLIFIED_CHINESE)
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.SIMPLIFIED_CHINESE)
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.SIMPLIFIED_CHINESE)
 
     fun format(
         timeMillis: Long,

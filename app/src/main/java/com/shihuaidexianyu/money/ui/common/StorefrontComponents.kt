@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.shihuaidexianyu.money.R
 
 @Composable
 fun MoneyGradientBackground(
@@ -99,9 +101,9 @@ fun MoneyCard(
 @Composable
 fun MoneyPageTitle(
     title: String,
+    modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -136,7 +138,7 @@ fun MoneyBackButton(
     IconButton(onClick = onClick, modifier = modifier.size(48.dp)) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "返回",
+            contentDescription = stringResource(R.string.action_back),
         )
     }
 }
@@ -144,9 +146,9 @@ fun MoneyBackButton(
 @Composable
 fun MoneySectionHeader(
     title: String,
+    modifier: Modifier = Modifier,
     trailing: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -288,10 +290,11 @@ fun MoneyListSection(
 @Composable
 fun MoneyListRow(
     title: String,
+    modifier: Modifier = Modifier,
     subtitle: String? = null,
     trailing: String? = null,
     showChevron: Boolean = true,
-    modifier: Modifier = Modifier,
+    isClickable: Boolean = showChevron,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
 ) {
@@ -308,7 +311,7 @@ fun MoneyListRow(
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = rowDescription
-                role = Role.Button
+                if (isClickable) role = Role.Button
             },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

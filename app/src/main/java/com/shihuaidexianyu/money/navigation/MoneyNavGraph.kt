@@ -36,7 +36,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -44,6 +46,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarDispatcher
@@ -180,7 +183,10 @@ fun MoneyNavGraph(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isTopLevel = currentRoute in topLevelRoutes
-    val navigationType = adaptiveNavigationType(LocalConfiguration.current.screenWidthDp)
+    val windowWidthDp = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width.toDp().value.toInt()
+    }
+    val navigationType = adaptiveNavigationType(windowWidthDp)
     val openAccountAvailabilityFlow = remember(container) {
         openAccountAvailability(container.accountRepository.observeOpenAccounts())
     }
@@ -188,6 +194,12 @@ fun MoneyNavGraph(
         initialValue = OpenAccountAvailability.Loading,
     )
     var fabExpanded by remember { mutableStateOf(false) }
+    val createFirstAccountMessage = stringResource(R.string.ledger_fab_create_first_message)
+    val createAccountLabel = stringResource(R.string.share_create_account)
+    val needSecondAccountMessage = stringResource(R.string.ledger_fab_need_second_message)
+    val manageAccountsLabel = stringResource(R.string.ledger_fab_manage_accounts)
+    val notificationStateChangedMessage = stringResource(R.string.notification_state_changed)
+    val retryLabel = stringResource(R.string.action_retry)
 
     fun navigateTopLevel(destination: MoneyDestination) {
         navController.navigate(destination.route) {
@@ -204,16 +216,16 @@ fun MoneyNavGraph(
         fabExpanded = false
         when (val decision = resolveLedgerFabAction(action, availability)) {
             LedgerFabDecision.CreateFirstAccount -> rootSnackbarQueue.enqueue(
-                message = "记账前请先创建第一个账户",
-                actionLabel = "创建账户",
+                message = createFirstAccountMessage,
+                actionLabel = createAccountLabel,
                 action = RootSnackbarAction.CreateAccount,
             )
             is LedgerFabDecision.OpenCashForm -> navController.navigate(
                 MoneyDestination.recordCashFlowRoute(decision.direction, accountId = 0L),
             )
             LedgerFabDecision.NeedSecondAccount -> rootSnackbarQueue.enqueue(
-                message = "转账至少需要两个可用账户",
-                actionLabel = "管理账户",
+                message = needSecondAccountMessage,
+                actionLabel = manageAccountsLabel,
                 action = RootSnackbarAction.ManageAccounts,
             )
             LedgerFabDecision.OpenTransferForm -> navController.navigate(
@@ -266,7 +278,7 @@ fun MoneyNavGraph(
         }
         onAppLaunchConsumed(request.token)
         if (showNotificationStateChanged) {
-            rootSnackbarQueue.enqueue("提醒状态已变化")
+            rootSnackbarQueue.enqueue(notificationStateChangedMessage)
         }
     }
 
@@ -295,7 +307,7 @@ fun MoneyNavGraph(
                     effect.token,
                     rootSnackbarEffect(
                         message = execution.message,
-                        actionLabel = "重试",
+                        actionLabel = retryLabel,
                         action = effect.action,
                     ),
                 )
@@ -319,22 +331,22 @@ fun MoneyNavGraph(
                     ExtendedFloatingActionButton(
                         onClick = { fabExpanded = true },
                         icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                        text = { Text("记一笔") },
+                        text = { Text(stringResource(R.string.ledger_fab_title)) },
                     )
                     DropdownMenu(
                         expanded = fabExpanded,
                         onDismissRequest = { fabExpanded = false },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("收入") },
+                            text = { Text(stringResource(R.string.ledger_income)) },
                             onClick = { handleFabAction(LedgerFabAction.INCOME) },
                         )
                         DropdownMenuItem(
-                            text = { Text("支出") },
+                            text = { Text(stringResource(R.string.ledger_expense)) },
                             onClick = { handleFabAction(LedgerFabAction.EXPENSE) },
                         )
                         DropdownMenuItem(
-                            text = { Text("转账") },
+                            text = { Text(stringResource(R.string.history_transfer)) },
                             onClick = { handleFabAction(LedgerFabAction.TRANSFER) },
                         )
                     }

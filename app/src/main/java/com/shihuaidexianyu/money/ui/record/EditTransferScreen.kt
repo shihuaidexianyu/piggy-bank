@@ -24,7 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -68,6 +70,8 @@ fun EditTransferScreen(
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
+    val deletedMessage = stringResource(R.string.ledger_record_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -78,8 +82,8 @@ fun EditTransferScreen(
                     terminal.ledgerUndoToken?.let { undoToken ->
                         rootSnackbarDispatcher?.dispatch(
                             rootSnackbarEffect(
-                                "记录已删除",
-                                "撤销",
+                                deletedMessage,
+                                undoLabel,
                                 RootSnackbarAction.RestoreLedger(undoToken),
                                 terminal.token,
                             ),
@@ -94,18 +98,20 @@ fun EditTransferScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = "删除记录",
-            message = "删除后将重新计算相关账户余额，确认删除？",
+            title = stringResource(R.string.ledger_delete_title),
+            message = stringResource(R.string.ledger_delete_balance_warning),
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
-            confirmLabel = "确认删除",
-            dismissLabel = "取消",
+            confirmLabel = stringResource(R.string.ledger_confirm_delete),
+            dismissLabel = stringResource(R.string.action_cancel),
         )
     }
 
     pickerTarget?.let { target ->
         AccountPickerDialog(
-            title = if (target == EditTransferPickerTarget.FROM) "选择转出账户" else "选择转入账户",
+            title = stringResource(
+                if (target == EditTransferPickerTarget.FROM) R.string.transfer_choose_from else R.string.transfer_choose_to,
+            ),
             accounts = state.accounts,
             selectedAccountId = if (target == EditTransferPickerTarget.FROM) state.fromAccountId else state.toAccountId,
             disabledAccountIds = setOfNotNull(
@@ -163,7 +169,7 @@ fun EditTransferScreen(
     }
 
     MoneyFormPage(
-        title = "编辑转账",
+        title = stringResource(R.string.transfer_edit_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -182,7 +188,7 @@ fun EditTransferScreen(
         item {
             MoneyCard {
                 Text(
-                    text = "此修改会影响相关账户余额",
+                    text = stringResource(R.string.transfer_edit_balance_warning),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -199,14 +205,14 @@ fun EditTransferScreen(
                         item {
                             SuggestionChip(
                                 onClick = viewModel::useAllFromAccountBalance,
-                                label = { Text("全部转出") },
+                                label = { Text(stringResource(R.string.transfer_all)) },
                             )
                         }
                     }
                 }
                 MoneySelectionField(
-                    label = "转出账户",
-                    value = fromAccount?.name ?: "请选择",
+                    label = stringResource(R.string.transfer_from_account),
+                    value = fromAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.FROM },
                     isError = state.fromAccountError != null,
                     supportingText = state.fromAccountError,
@@ -218,12 +224,12 @@ fun EditTransferScreen(
                 ) {
                     TextButton(onClick = viewModel::swapAccounts) {
                         Icon(Icons.Rounded.SwapHoriz, contentDescription = null)
-                        Text("互换账户", modifier = Modifier.padding(start = 6.dp))
+                        Text(stringResource(R.string.transfer_swap_accounts), modifier = Modifier.padding(start = 6.dp))
                     }
                 }
                 MoneySelectionField(
-                    label = "转入账户",
-                    value = toAccount?.name ?: "请选择",
+                    label = stringResource(R.string.transfer_to_account),
+                    value = toAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { pickerTarget = EditTransferPickerTarget.TO },
                     isError = state.toAccountError != null,
                     supportingText = state.toAccountError,
@@ -235,7 +241,7 @@ fun EditTransferScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注（可选）",
+                    label = stringResource(R.string.field_optional_note),
                     isError = state.noteError != null,
                     supportingText = state.noteError,
                 )
@@ -243,21 +249,21 @@ fun EditTransferScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "修改记录发生时间",
+                    timeSubtitle = stringResource(R.string.ledger_edit_time_description),
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
                     enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = "保存修改",
+                    label = stringResource(R.string.action_save_changes),
                 )
                 if (state.hasConflict) {
                     OutlinedButton(
                         onClick = viewModel::reload,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("重新加载最新记录")
+                        Text(stringResource(R.string.ledger_reload_latest))
                     }
                 }
             }
@@ -269,7 +275,7 @@ fun EditTransferScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
                 ) {
-                    Text("删除记录")
+                    Text(stringResource(R.string.ledger_delete_title))
                 }
             }
         }

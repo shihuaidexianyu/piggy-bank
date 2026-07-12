@@ -15,8 +15,6 @@ import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.time.clockMinuteTickerFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -73,103 +71,112 @@ class ObserveHomeDashboardUseCase(
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
-        val accountSources = combine(
+        val accountInvalidation = combine(
             accountRepository.observeAllAccounts(),
             accountRepository.observeOpenAccounts(),
-        ) { allAccounts, openAccounts -> allAccounts to openAccounts }
-        val dashboardSources = combine(
-            accountSources,
+        ) { _, _ -> Unit }
+        val dashboardInvalidation = combine(
+            accountInvalidation,
             accountReminderSettingsRepository.observeReminderConfigs(),
             portableSettingsRepository.observe(),
             transactionRepository.observeChangeVersion(),
             recurringReminderRepository.observeDueReminders(),
-        ) { accounts, reminderConfigs, settings, _, dueReminders ->
-            Triple(accounts, reminderConfigs, settings) to dueReminders
-        }
-        return combine(dashboardSources, timeSignal) { source, snapshotTimeMillis ->
-            source to snapshotTimeMillis
-        }.mapLatest { (source, snapshotTimeMillis) ->
-            val (triple, dueReminders) = source
-            val (accounts, reminderConfigs, settings) = triple
-            buildSnapshot(
-                accounts.first,
-                accounts.second,
-                reminderConfigs,
-                settings,
-                dueReminders,
-                snapshotTimeMillis,
+        ) { _, _, _, _, _ -> Unit }
+        return combine(dashboardInvalidation, timeSignal) { _, snapshotTimeMillis ->
+            snapshotTimeMillis
+        }.mapLatest { snapshotTimeMillis ->
+            val input = readConsistentInput(snapshotTimeMillis)
+            HomeProjector.project(
+                accounts = input.allAccounts,
+                openAccounts = input.openAccounts,
+                reminderConfigs = input.reminderConfigs,
+                settings = input.settings,
+                dueReminders = input.dueReminders,
+                balances = input.balances,
+                openingBalanceByAccount = input.openingBalanceByAccount,
+                newAccountOpeningAssets = input.newAccountOpeningAssets,
+                cashInflow = input.cashInflow,
+                cashOutflow = input.cashOutflow,
+                reconciliationIncrease = input.reconciliationIncrease,
+                reconciliationDecrease = input.reconciliationDecrease,
+                manualAdjustmentIncrease = input.manualAdjustmentIncrease,
+                manualAdjustmentDecrease = input.manualAdjustmentDecrease,
+                cashFlowRecordCount = input.cashFlowRecordCount,
+                transferRecordCount = input.transferRecordCount,
+                manualAdjustmentRecordCount = input.manualAdjustmentRecordCount,
+                snapshotTimeMillis = snapshotTimeMillis,
+                zoneId = input.zoneId,
             )
         }.flowOn(Dispatchers.Default)
     }
 
-    private suspend fun buildSnapshot(
-        allAccounts: List<Account>,
-        openAccounts: List<Account>,
-        reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
-        settings: PortableSettings,
-        dueReminders: List<RecurringReminder>,
+    private suspend fun readConsistentInput(
         snapshotTimeMillis: Long,
-    ): HomeDashboardSnapshot = coroutineScope {
+    ): HomeDashboardInput {
         val zoneId = zoneIdProvider.zoneId()
         val range = TimeRangeCalculator.currentMonthRange(zoneId, snapshotTimeMillis)
-        val balanceJob = async { calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis) }
-        val openingAccounts = allAccounts.filter {
-            LedgerBalanceCalculator.openingAt(it) < range.startInclusive
+        return transactionRepository.runInTransaction {
+            val allAccounts = accountRepository.queryAllAccounts()
+            val openingAccounts = allAccounts.filter {
+                LedgerBalanceCalculator.openingAt(it) < range.startInclusive
+            }
+            val periodSummary = transactionRepository.queryHomePeriodLedgerSummary(
+                range.startInclusive,
+                range.endExclusive,
+            )
+            HomeDashboardInput(
+                zoneId = zoneId,
+                allAccounts = allAccounts,
+                openAccounts = accountRepository.queryOpenAccounts(),
+                reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs(),
+                settings = portableSettingsRepository.query(),
+                dueReminders = recurringReminderRepository.queryDue(snapshotTimeMillis),
+                balances = calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis),
+                openingBalanceByAccount = calculateAccountBalancesUseCase.before(
+                    openingAccounts,
+                    range.startInclusive,
+                ),
+                newAccountOpeningAssets = allAccounts
+                    .filter { account ->
+                        LedgerBalanceCalculator.isOpeningInRange(
+                            account,
+                            range.startInclusive,
+                            range.endExclusive,
+                        )
+                    }
+                    .map(Account::initialBalance)
+                    .ledgerSumExact(),
+                cashInflow = periodSummary.cashInflow,
+                cashOutflow = periodSummary.cashOutflow,
+                reconciliationIncrease = periodSummary.reconciliationIncrease,
+                reconciliationDecrease = periodSummary.reconciliationDecrease,
+                manualAdjustmentIncrease = periodSummary.manualAdjustmentIncrease,
+                manualAdjustmentDecrease = periodSummary.manualAdjustmentDecrease,
+                cashFlowRecordCount = periodSummary.cashFlowRecordCount,
+                transferRecordCount = periodSummary.transferRecordCount,
+                manualAdjustmentRecordCount = periodSummary.manualAdjustmentRecordCount,
+            )
         }
-        val openingBalanceJob = async {
-            calculateAccountBalancesUseCase.before(openingAccounts, range.startInclusive)
-        }
-        val newAccountOpeningAssets = allAccounts
-            .filter { account -> LedgerBalanceCalculator.isOpeningInRange(account, range.startInclusive, range.endExclusive) }
-            .map(Account::initialBalance)
-            .ledgerSumExact()
-        val cashInflowJob = async { transactionRepository.sumCashInflowBetween(range.startInclusive, range.endExclusive) }
-        val cashOutflowJob = async { transactionRepository.sumCashOutflowBetween(range.startInclusive, range.endExclusive) }
-        val reconciliationIncreaseJob = async {
-            transactionRepository.sumBalanceUpdateIncreaseBetween(range.startInclusive, range.endExclusive)
-        }
-        val reconciliationDecreaseJob = async {
-            transactionRepository.sumBalanceUpdateDecreaseBetween(range.startInclusive, range.endExclusive)
-        }
-        val manualAdjustmentIncreaseJob = async {
-            transactionRepository.sumManualAdjustmentIncreaseBetween(range.startInclusive, range.endExclusive)
-        }
-        val manualAdjustmentDecreaseJob = async {
-            transactionRepository.sumManualAdjustmentDecreaseBetween(range.startInclusive, range.endExclusive)
-        }
-        val cashFlowRecordCountJob = async {
-            transactionRepository.countActiveCashFlowRecordsBetween(range.startInclusive, range.endExclusive)
-        }
-        val transferRecordCountJob = async {
-            transactionRepository.countActiveTransferRecordsBetween(range.startInclusive, range.endExclusive)
-        }
-        val manualAdjustmentRecordCountJob = async {
-            transactionRepository.countManualAdjustmentRecordsBetween(range.startInclusive, range.endExclusive)
-        }
-
-        val balances = balanceJob.await()
-        val openingBalanceByAccount = openingBalanceJob.await()
-
-        HomeProjector.project(
-            accounts = allAccounts,
-            openAccounts = openAccounts,
-            reminderConfigs = reminderConfigs,
-            settings = settings,
-            dueReminders = dueReminders,
-            balances = balances,
-            openingBalanceByAccount = openingBalanceByAccount,
-            newAccountOpeningAssets = newAccountOpeningAssets,
-            cashInflow = cashInflowJob.await(),
-            cashOutflow = cashOutflowJob.await(),
-            reconciliationIncrease = reconciliationIncreaseJob.await(),
-            reconciliationDecrease = reconciliationDecreaseJob.await(),
-            manualAdjustmentIncrease = manualAdjustmentIncreaseJob.await(),
-            manualAdjustmentDecrease = manualAdjustmentDecreaseJob.await(),
-            cashFlowRecordCount = cashFlowRecordCountJob.await(),
-            transferRecordCount = transferRecordCountJob.await(),
-            manualAdjustmentRecordCount = manualAdjustmentRecordCountJob.await(),
-            snapshotTimeMillis = snapshotTimeMillis,
-            zoneId = zoneId,
-        )
     }
 }
+
+private data class HomeDashboardInput(
+    val zoneId: java.time.ZoneId,
+    val allAccounts: List<Account>,
+    val openAccounts: List<Account>,
+    val reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
+    val settings: PortableSettings,
+    val dueReminders: List<RecurringReminder>,
+    val balances: Map<Long, Long>,
+    val openingBalanceByAccount: Map<Long, Long>,
+    val newAccountOpeningAssets: Long,
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val reconciliationIncrease: Long,
+    val reconciliationDecrease: Long,
+    val manualAdjustmentIncrease: Long,
+    val manualAdjustmentDecrease: Long,
+    val cashFlowRecordCount: Int,
+    val transferRecordCount: Int,
+    val manualAdjustmentRecordCount: Int,
+)

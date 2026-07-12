@@ -8,7 +8,7 @@ interface RecurringReminderRepository {
     fun observeDueReminders(): Flow<List<RecurringReminder>>
     suspend fun getReminderById(id: Long): RecurringReminder?
     suspend fun queryAll(): List<RecurringReminder>
-    suspend fun queryDue(): List<RecurringReminder>
+    suspend fun queryDue(nowMillis: Long): List<RecurringReminder>
     suspend fun insertReminder(reminder: RecurringReminder): Long
     suspend fun updateReminder(reminder: RecurringReminder)
     suspend fun updateReminderIfUnchanged(

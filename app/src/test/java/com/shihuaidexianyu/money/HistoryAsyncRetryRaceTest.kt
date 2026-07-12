@@ -75,7 +75,7 @@ class HistoryAsyncRetryRaceTest {
 
             assertEquals(2, settingsRepository.queryCount)
             assertTrue(viewModel.uiState.value.hasCommittedContent)
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertNull(viewModel.uiState.value.errorMessageRes)
         }
 
     @Test
@@ -119,8 +119,8 @@ class HistoryAsyncRetryRaceTest {
         runCurrent()
 
         assertTrue(viewModel.uiState.value.records.isEmpty())
-        assertNull(viewModel.uiState.value.loadMoreErrorMessage)
-        assertNull(viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.loadMoreErrorMessageRes)
+        assertNull(viewModel.uiState.value.errorMessageRes)
     }
 
     @Test
@@ -195,7 +195,7 @@ class HistoryAsyncRetryRaceTest {
         advanceTimeBy(300L)
         runCurrent()
 
-        assertEquals("请输入有效金额", viewModel.uiState.value.minAmountError)
+        assertEquals(R.string.validation_valid_amount, viewModel.uiState.value.minAmountErrorRes)
         assertTrue(viewModel.uiState.value.records.isEmpty())
         assertEquals(initialQueries, repository.queryCount)
         assertEquals(initialCounts, repository.countCount)
@@ -204,7 +204,7 @@ class HistoryAsyncRetryRaceTest {
         viewModel.updateMaxAmount("not-an-amount")
         advanceTimeBy(300L)
         runCurrent()
-        assertEquals("请输入有效金额", viewModel.uiState.value.maxAmountError)
+        assertEquals(R.string.validation_valid_amount, viewModel.uiState.value.maxAmountErrorRes)
         assertEquals(initialQueries, repository.queryCount)
         assertEquals(initialCounts, repository.countCount)
 
@@ -212,8 +212,8 @@ class HistoryAsyncRetryRaceTest {
         viewModel.updateMinAmount("1.00")
         advanceTimeBy(300L)
         runCurrent()
-        assertNull(viewModel.uiState.value.minAmountError)
-        assertNull(viewModel.uiState.value.maxAmountError)
+        assertNull(viewModel.uiState.value.minAmountErrorRes)
+        assertNull(viewModel.uiState.value.maxAmountErrorRes)
         assertTrue(repository.queryCount > initialQueries)
     }
 
@@ -226,16 +226,16 @@ class HistoryAsyncRetryRaceTest {
             devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
         )
         runCurrent()
-        assertEquals("明细加载失败，请重试", viewModel.uiState.value.errorMessage)
+        assertEquals(R.string.history_load_failed, viewModel.uiState.value.errorMessageRes)
         assertTrue(viewModel.uiState.value.retryToken != null)
 
         viewModel.updateMinAmount("overflow-overflow")
         advanceTimeBy(300L)
         runCurrent()
 
-        assertNull(viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.errorMessageRes)
         assertNull(viewModel.uiState.value.retryToken)
-        assertEquals("请输入有效金额", viewModel.uiState.value.minAmountError)
+        assertEquals(R.string.validation_valid_amount, viewModel.uiState.value.minAmountErrorRes)
     }
 
     @Test
@@ -347,16 +347,24 @@ private class CapturingHistoryRepository(
 ) : TransactionRepository by delegate {
     var lastFilters: HistoryRecordFilters? = null
 
-    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
+    override suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord> {
         lastFilters = filters
-        return delegate.countHistoryRecords(filters)
+        return delegate.queryHistoryRecords(filters, cursor, limit)
     }
 }
 
 private class AlwaysFailingHistoryRepository(
     private val delegate: TransactionRepository,
 ) : TransactionRepository by delegate {
-    override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int = error("history failure")
+    override suspend fun queryHistoryRecords(
+        filters: HistoryRecordFilters,
+        cursor: HistoryPageCursor?,
+        limit: Int,
+    ): List<HistoryRecord> = error("history failure")
 }
 
 private class GapEmittingAccountRepository(

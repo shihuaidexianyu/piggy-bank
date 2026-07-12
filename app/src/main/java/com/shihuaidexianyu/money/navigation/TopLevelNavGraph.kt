@@ -154,9 +154,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     accountRepository = container.accountRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
+                    savingsGoalRepository = container.savingsGoalRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
-                    observeAccountClosureIssuesUseCase = container.observeAccountClosureIssuesUseCase,
                 )
             },
         )

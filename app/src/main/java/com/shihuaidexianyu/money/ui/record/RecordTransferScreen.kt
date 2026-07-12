@@ -22,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -71,7 +73,9 @@ fun RecordTransferScreen(
 
     pickerTarget?.let { target ->
         AccountPickerDialog(
-            title = if (target == TransferPickerTarget.FROM) "选择转出账户" else "选择转入账户",
+            title = stringResource(
+                if (target == TransferPickerTarget.FROM) R.string.transfer_choose_from else R.string.transfer_choose_to,
+            ),
             accounts = state.accounts,
             selectedAccountId = if (target == TransferPickerTarget.FROM) state.fromAccountId else state.toAccountId,
             disabledAccountIds = setOfNotNull(
@@ -128,7 +132,7 @@ fun RecordTransferScreen(
     }
 
     MoneyFormPage(
-        title = "转账",
+        title = stringResource(R.string.history_transfer),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -160,14 +164,14 @@ fun RecordTransferScreen(
                         item {
                             SuggestionChip(
                                 onClick = viewModel::useAllFromAccountBalance,
-                                label = { Text("全部转出") },
+                                label = { Text(stringResource(R.string.transfer_all)) },
                             )
                         }
                     }
                 }
                 MoneySelectionField(
-                    label = "转出账户",
-                    value = fromAccount?.name ?: "请选择",
+                    label = stringResource(R.string.transfer_from_account),
+                    value = fromAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.FROM },
                     isError = state.fromAccountError != null,
                     supportingText = state.fromAccountError,
@@ -179,12 +183,12 @@ fun RecordTransferScreen(
                 ) {
                     androidx.compose.material3.TextButton(onClick = viewModel::swapAccounts) {
                         Icon(Icons.Rounded.SwapHoriz, contentDescription = null)
-                        Text("互换", modifier = Modifier.padding(start = 6.dp))
+                        Text(stringResource(R.string.transfer_swap), modifier = Modifier.padding(start = 6.dp))
                     }
                 }
                 MoneySelectionField(
-                    label = "转入账户",
-                    value = toAccount?.name ?: "请选择",
+                    label = stringResource(R.string.transfer_to_account),
+                    value = toAccount?.name ?: stringResource(R.string.field_please_choose),
                     modifier = Modifier.clickable { pickerTarget = TransferPickerTarget.TO },
                     isError = state.toAccountError != null,
                     supportingText = state.toAccountError,
@@ -196,7 +200,7 @@ fun RecordTransferScreen(
                 MoneySingleLineField(
                     value = state.note,
                     onValueChange = viewModel::updateNote,
-                    label = "备注（可选）",
+                    label = stringResource(R.string.field_optional_note),
                     isError = state.noteError != null,
                     supportingText = state.noteError,
                 )
@@ -217,7 +221,7 @@ fun RecordTransferScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = "默认当前时间",
+                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(

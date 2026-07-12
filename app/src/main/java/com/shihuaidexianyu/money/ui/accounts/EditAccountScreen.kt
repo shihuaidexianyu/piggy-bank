@@ -12,7 +12,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -58,7 +60,7 @@ fun EditAccountScreen(
         when (currentDialog) {
             EditAccountDialog.Name -> {
                 MoneyTextInputDialog(
-                    title = "账户名称",
+                    title = stringResource(R.string.account_name),
                     value = nameDraft,
                     onValueChange = { nameDraft = it.take(MAX_ACCOUNT_NAME_LENGTH) },
                     onConfirm = {
@@ -71,14 +73,14 @@ fun EditAccountScreen(
 
             EditAccountDialog.CloseConfirm -> {
                 MoneyConfirmDialog(
-                    title = "关闭账户",
-                    message = "仅当余额为 0 时可以关闭；关闭后账户将只读并保留历史记录。",
+                    title = stringResource(R.string.account_close_title),
+                    message = stringResource(R.string.account_close_message),
                     onConfirm = {
                         dialog = null
                         viewModel.closeAccount()
                     },
                     onDismiss = { dialog = null },
-                    confirmLabel = "确认关闭",
+                    confirmLabel = stringResource(R.string.account_confirm_close),
                 )
             }
         }
@@ -99,7 +101,7 @@ fun EditAccountScreen(
     )
 
     MoneyFormPage(
-        title = "账户管理",
+        title = stringResource(R.string.account_management_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
@@ -115,11 +117,11 @@ fun EditAccountScreen(
             }
             return@MoneyFormPage
         }
-        item { MoneySectionHeader(title = "账户信息") }
+        item { MoneySectionHeader(title = stringResource(R.string.account_information)) }
         item {
             MoneyListSection {
                 MoneyListRow(
-                    title = "账户名称",
+                    title = stringResource(R.string.account_name),
                     trailing = state.name,
                     showChevron = !state.isClosed,
                     modifier = Modifier.clickable(enabled = !state.isClosed) {
@@ -136,8 +138,8 @@ fun EditAccountScreen(
                     )
                     MoneySectionDivider()
                     MoneyListRow(
-                        title = "隐藏账户",
-                        subtitle = "仍计入净资产和分析，可在选择器中展开使用",
+                        title = stringResource(R.string.account_hide),
+                        subtitle = stringResource(R.string.account_hide_description),
                         showChevron = false,
                         accessory = {
                             Switch(
@@ -154,7 +156,7 @@ fun EditAccountScreen(
             item {
                 MoneyCard {
                     Text(
-                        text = "这个账户已关闭，仅保留历史记录和余额查看。",
+                        text = stringResource(R.string.account_closed_readonly_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -175,17 +177,18 @@ fun EditAccountScreen(
                     MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
                 }
             }
-            item { MoneySectionHeader(title = "关闭") }
+            item { MoneySectionHeader(title = stringResource(R.string.account_close_section)) }
             item {
                 MoneyListSection {
                     MoneyListRow(
-                        title = "关闭账户",
+                        title = stringResource(R.string.account_close_title),
                         subtitle = if (state.canClose) {
-                            "关闭后只读并保留历史"
+                            stringResource(R.string.account_close_available_description)
                         } else {
-                            "请先结清余额（当前余额不为 0）"
+                            stringResource(R.string.account_close_nonzero_description)
                         },
                         showChevron = false,
+                        isClickable = state.canClose,
                         modifier = Modifier.clickable(enabled = state.canClose) {
                             dialog = EditAccountDialog.CloseConfirm
                         },

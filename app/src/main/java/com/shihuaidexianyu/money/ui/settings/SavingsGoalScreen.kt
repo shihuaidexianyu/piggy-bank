@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -44,16 +46,18 @@ fun SavingsGoalScreen(
 
     if (state.showClearConfirm) {
         MoneyConfirmDialog(
-            title = "清除净资产目标",
-            message = "仅清除目标设置，不会删除账户或账本记录。",
+            title = stringResource(R.string.savings_goal_clear_title),
+            message = stringResource(R.string.savings_goal_clear_message),
             onConfirm = viewModel::clear,
             onDismiss = viewModel::dismissClearConfirm,
-            confirmLabel = "清除",
+            confirmLabel = stringResource(R.string.action_clear),
         )
     }
 
     MoneyFormPage(
-        title = if (state.hasGoal) "修改净资产目标" else "设置净资产目标",
+        title = stringResource(
+            if (state.hasGoal) R.string.savings_goal_edit_title else R.string.savings_goal_set_title,
+        ),
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
@@ -72,17 +76,17 @@ fun SavingsGoalScreen(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "目标金额",
+                        text = stringResource(R.string.savings_goal_amount),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     MoneyAmountField(
                         value = state.amountText,
                         onValueChange = viewModel::updateAmount,
-                        label = "目标金额",
+                        label = stringResource(R.string.savings_goal_amount),
                     )
                     Text(
-                        text = "进度按所有账户当前余额之和计算，包括隐藏账户和旧版非零关闭账户。",
+                        text = stringResource(R.string.savings_goal_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -92,7 +96,9 @@ fun SavingsGoalScreen(
                 MoneySaveButton(
                     onClick = viewModel::save,
                     isSaving = state.isSaving,
-                    label = if (state.hasGoal) "修改目标" else "设置目标",
+                    label = stringResource(
+                        if (state.hasGoal) R.string.savings_goal_edit_action else R.string.savings_goal_set_action,
+                    ),
                 )
             }
             if (state.hasGoal) {
@@ -104,7 +110,7 @@ fun SavingsGoalScreen(
                             .padding(top = 8.dp),
                         enabled = !state.isSaving,
                     ) {
-                        Text("清除目标")
+                        Text(stringResource(R.string.savings_goal_clear_action))
                     }
                 }
             }

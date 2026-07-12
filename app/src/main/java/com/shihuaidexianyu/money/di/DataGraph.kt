@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.di
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.shihuaidexianyu.money.data.backup.BackupFileReader
+import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.backup.BackupRepositoryImpl
 import com.shihuaidexianyu.money.data.backup.ImportReceiptStore
 import com.shihuaidexianyu.money.data.backup.SafetySnapshotStore
@@ -103,7 +104,11 @@ internal class DataGraph(context: Context) {
             accountReminderSettingsRepository = accountReminderSettingsRepository,
         )
 
-    val exportJsonFileWriter = ExportJsonFileWriter(appContext, SystemZoneIdProvider)
+    val exportJsonFileWriter = ExportJsonFileWriter(
+        appContext,
+        SystemZoneIdProvider,
+        BackupJsonCodec,
+    )
 
     val stagedBackupStore = StagedBackupStore(appContext.cacheDir)
 

@@ -35,10 +35,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.R
 
 enum class MoneyDateTimePickerField {
     DATE,
@@ -83,18 +86,20 @@ fun MoneyConfirmDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    confirmLabel: String = "确定",
-    dismissLabel: String = "取消",
+    confirmLabel: String? = null,
+    dismissLabel: String? = null,
 ) {
+    val resolvedConfirmLabel = confirmLabel ?: stringResource(R.string.action_confirm)
+    val resolvedDismissLabel = dismissLabel ?: stringResource(R.string.action_cancel)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmLabel) }
+            TextButton(onClick = onConfirm) { Text(resolvedConfirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            TextButton(onClick = onDismiss) { Text(resolvedDismissLabel) }
         },
     )
 }
@@ -107,9 +112,11 @@ fun MoneyTextInputDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    confirmLabel: String = "确定",
-    dismissLabel: String = "取消",
+    confirmLabel: String? = null,
+    dismissLabel: String? = null,
 ) {
+    val resolvedConfirmLabel = confirmLabel ?: stringResource(R.string.action_confirm)
+    val resolvedDismissLabel = dismissLabel ?: stringResource(R.string.action_cancel)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -122,10 +129,10 @@ fun MoneyTextInputDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmLabel) }
+            TextButton(onClick = onConfirm) { Text(resolvedConfirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            TextButton(onClick = onDismiss) { Text(resolvedDismissLabel) }
         },
     )
 }
@@ -172,11 +179,12 @@ fun <T> MoneyChoiceDialog(
     title: String,
     options: List<T>,
     selected: T? = null,
-    label: (T) -> String,
+    label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
-    dismissLabel: String = "关闭",
+    dismissLabel: String? = null,
 ) {
+    val resolvedDismissLabel = dismissLabel ?: stringResource(R.string.action_close)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -202,7 +210,7 @@ fun <T> MoneyChoiceDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(dismissLabel) }
+            TextButton(onClick = onDismiss) { Text(resolvedDismissLabel) }
         },
     )
 }
@@ -221,11 +229,11 @@ fun MoneyDatePickerDialogHost(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = { onConfirm(pickerState.selectedDateMillis) }) {
-                Text("确定")
+                Text(stringResource(R.string.action_confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     ) {
         DatePicker(state = pickerState)
@@ -261,17 +269,19 @@ fun MoneyDateTimeFields(
     onDateClick: () -> Unit,
     onTimeClick: () -> Unit,
     modifier: Modifier = Modifier,
-    dateLabel: String = "日期",
-    timeLabel: String = "时间",
+    dateLabel: String? = null,
+    timeLabel: String? = null,
     timeSubtitle: String? = null,
     errorText: String? = null,
 ) {
+    val resolvedDateLabel = dateLabel ?: stringResource(R.string.field_date)
+    val resolvedTimeLabel = timeLabel ?: stringResource(R.string.field_time)
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         MoneySelectionField(
-            label = dateLabel,
+            label = resolvedDateLabel,
             value = DateTimeTextFormatter.formatDateOnly(valueMillis),
             modifier = Modifier.clickable(onClick = onDateClick),
             isError = errorText != null,
@@ -284,7 +294,7 @@ fun MoneyDateTimeFields(
             )
         }
         MoneySelectionField(
-            label = timeLabel,
+            label = resolvedTimeLabel,
             value = DateTimeTextFormatter.formatTimeOnly(valueMillis),
             subtitle = timeSubtitle,
             modifier = Modifier.clickable(onClick = onTimeClick),
@@ -298,11 +308,12 @@ fun MoneyAmountField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "金额",
+    label: String? = null,
     allowSigned: Boolean = false,
     isError: Boolean = false,
     supportingText: String? = null,
 ) {
+    val resolvedLabel = label ?: stringResource(R.string.field_amount)
     var showKeypad by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -317,7 +328,7 @@ fun MoneyAmountField(
     if (showKeypad) {
         MoneyAmountKeypadSheet(
             value = value,
-            label = label,
+            label = resolvedLabel,
             allowSigned = allowSigned,
             onValueChange = onValueChange,
             onDismiss = { showKeypad = false },
@@ -326,11 +337,14 @@ fun MoneyAmountField(
 
     OutlinedTextField(
         value = value,
-        onValueChange = {},
-        label = { Text(label) },
+        onValueChange = onValueChange,
+        label = { Text(resolvedLabel) },
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
-        readOnly = true,
+        readOnly = false,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (allowSigned) KeyboardType.Text else KeyboardType.Decimal,
+        ),
         textStyle = MaterialTheme.typography.displayMedium,
         interactionSource = interactionSource,
         isError = isError,
@@ -353,8 +367,9 @@ fun MoneySaveButton(
     isSaving: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    label: String = "保存",
+    label: String? = null,
 ) {
+    val resolvedLabel = label ?: stringResource(R.string.action_save)
     Button(
         onClick = onClick,
         modifier = modifier
@@ -368,7 +383,7 @@ fun MoneySaveButton(
         ),
     ) {
         Text(
-            text = label,
+            text = resolvedLabel,
             style = MaterialTheme.typography.titleMedium,
         )
     }
@@ -380,10 +395,10 @@ fun <T> MoneyPickerField(
     value: String,
     dialogTitle: String,
     options: List<T>,
-    selected: T? = null,
-    optionLabel: (T) -> String,
+    optionLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    selected: T? = null,
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
