@@ -88,15 +88,14 @@ class HomeDashboardStatesTest {
     }
 
     @Test
-    fun successfulDashboardShowsIndependentDueAndStaleEmptyStatesAndBudgetEntry() {
-        var reminderClicks = 0
+    fun successfulDashboardHidesEmptyAttentionSectionsAndKeepsBudgetEntry() {
         var budgetClicks = 0
         composeRule.setContent {
             MoneyTheme {
                 HomeScreen(
                     state = dataState(),
                     onStartUpdateBalance = {},
-                    onAllRemindersClick = { reminderClicks += 1 },
+                    onAllRemindersClick = {},
                     onOpenSettings = {},
                     onOpenMonthlyBudgetEditor = { budgetClicks += 1 },
                 )
@@ -107,14 +106,10 @@ class HomeDashboardStatesTest {
         composeRule.onNodeWithText("本月收入").assertIsDisplayed()
         composeRule.onNodeWithText("本月支出").assertIsDisplayed()
         composeRule.onNodeWithText("本月净现金流").assertIsDisplayed()
-        composeRule.onNodeWithText("暂无到期提醒").assertIsDisplayed()
-        composeRule.onNodeWithText("管理提醒").performClick()
-        composeRule.onNodeWithText("暂无待核对账户").assertIsDisplayed()
+        composeRule.onNodeWithText("暂无到期提醒").assertDoesNotExist()
+        composeRule.onNodeWithText("暂无待核对账户").assertDoesNotExist()
         composeRule.onNodeWithText("设置月预算").performClick()
-        composeRule.onNodeWithText("核对账户").performClick()
-        composeRule.onNodeWithText("选择核对余额账户").assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(1, reminderClicks)
             assertEquals(1, budgetClicks)
         }
     }

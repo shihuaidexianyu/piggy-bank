@@ -171,17 +171,21 @@ fun HomeScreen(
                         onEdit = onOpenMonthlyBudgetEditor,
                         onClose = onCloseMonthlyBudget,
                     )
-                    HomeReminderSection(
-                        reminders = renderedState.dueReminders,
-                        onOpenReminders = onAllRemindersClick,
-                    )
-                    HomeStaleAccountSection(
-                        accounts = renderedState.staleAccounts,
-                        settings = renderedState.settings,
-                        onReconcile = onStartUpdateBalance,
-                        onChooseAccount = { showUpdateBalancePicker = true },
-                        showReconcileAction = renderedState.accountOptions.isNotEmpty(),
-                    )
+                    if (renderedState.dueReminders.isNotEmpty()) {
+                        HomeReminderSection(
+                            reminders = renderedState.dueReminders,
+                            onOpenReminders = onAllRemindersClick,
+                        )
+                    }
+                    if (renderedState.staleAccounts.isNotEmpty()) {
+                        HomeStaleAccountSection(
+                            accounts = renderedState.staleAccounts,
+                            settings = renderedState.settings,
+                            onReconcile = onStartUpdateBalance,
+                            onChooseAccount = { showUpdateBalancePicker = true },
+                            showReconcileAction = renderedState.accountOptions.isNotEmpty(),
+                        )
+                    }
                 }
             },
         )
@@ -307,23 +311,28 @@ private fun PeriodOverviewBlock(
                 style = recordStyle,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                PeriodMetricRow(
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PeriodMetricCell(
                     label = stringResource(R.string.home_month_income),
                     value = formatInAppAmount(cashInflow, settings),
                     color = moneyColors.income,
+                    modifier = Modifier.weight(1f),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-                PeriodMetricRow(
+                PeriodMetricCell(
                     label = stringResource(R.string.home_month_expense),
                     value = formatInAppAmount(cashOutflow, settings),
                     color = moneyColors.expense,
+                    modifier = Modifier.weight(1f),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-                PeriodMetricRow(
+                PeriodMetricCell(
                     label = stringResource(R.string.home_month_net_cash_flow),
                     value = formatInAppAmount(cashNet, settings),
                     color = netColor,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -344,12 +353,23 @@ private fun MonthlyBudgetBlock(
         shape = RoundedCornerShape(12.dp),
     ) {
         if (budget == null) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onEdit)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.home_budget_not_set), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.home_set_monthly_budget)) }
+                Text(
+                    stringResource(R.string.home_budget_not_set_description),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(R.string.home_set_monthly_budget),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         } else {
             Column(
@@ -531,24 +551,26 @@ private fun MonthlyBudgetEditorDialog(
 }
 
 @Composable
-private fun PeriodMetricRow(
+private fun PeriodMetricCell(
     label: String,
     value: String,
     color: Color,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = color,
+            maxLines = 1,
         )
     }
 }

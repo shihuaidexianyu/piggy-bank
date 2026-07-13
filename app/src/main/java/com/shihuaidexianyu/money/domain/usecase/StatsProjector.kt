@@ -9,10 +9,8 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TimeRange
-import com.shihuaidexianyu.money.domain.model.TransferPathTotal
 import com.shihuaidexianyu.money.domain.model.ledgerAddExact
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
-import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,71 +23,47 @@ internal object StatsProjector {
         selection: StatsRangeSelection,
         range: TimeRange,
         cashEntries: List<CashFlowAnalysisEntry>,
-        transferPathTotals: List<TransferPathTotal>,
         zoneId: ZoneId,
+        openingAssets: Long = 0L,
+        closingAssets: Long = 0L,
     ): StatsDashboardSnapshot {
         var totalInflow = 0L
         var totalOutflow = 0L
         val daily = mutableMapOf<LocalDate, SignedTotals>()
-        val byAccount = mutableMapOf<Long, SignedTotals>()
         cashEntries.forEach { entry ->
             val date = Instant.ofEpochMilli(entry.occurredAt).atZone(zoneId).toLocalDate()
             val dayTotals = daily.getOrPut(date, ::SignedTotals)
-            val accountTotals = byAccount.getOrPut(entry.accountId, ::SignedTotals)
             when (entry.direction) {
                 CashFlowDirection.INFLOW.value -> {
                     totalInflow = ledgerAddExact(totalInflow, entry.amount)
                     dayTotals.inflow = ledgerAddExact(dayTotals.inflow, entry.amount)
-                    accountTotals.inflow = ledgerAddExact(accountTotals.inflow, entry.amount)
                 }
                 CashFlowDirection.OUTFLOW.value -> {
                     totalOutflow = ledgerAddExact(totalOutflow, entry.amount)
                     dayTotals.outflow = ledgerAddExact(dayTotals.outflow, entry.amount)
-                    accountTotals.outflow = ledgerAddExact(accountTotals.outflow, entry.amount)
                 }
             }
         }
-        val names = accounts.associate { it.id to it.name }
-        val accountCashFlows = byAccount.map { (accountId, totals) ->
-            StatsAccountCashFlow(
-                accountId = accountId,
-                name = names[accountId] ?: "未知账户",
-                inflow = totals.inflow,
-                outflow = totals.outflow,
-                inflowHistoryFilters = cashFilters(range, HistoryAmountDirection.INCREASE, accountId),
-                outflowHistoryFilters = cashFilters(range, HistoryAmountDirection.DECREASE, accountId),
-            )
-        }.sortedWith { left, right ->
-            flowMagnitude(right).compareTo(flowMagnitude(left))
-        }
-        val transferPaths = transferPathTotals.map { total ->
-            StatsTransferPath(
-                fromAccountId = total.fromAccountId,
-                fromAccountName = names[total.fromAccountId] ?: "未知账户",
-                toAccountId = total.toAccountId,
-                toAccountName = names[total.toAccountId] ?: "未知账户",
-                amount = total.amount,
-                historyFilters = HistoryRecordFilters(
-                    recordTypes = setOf(HistoryRecordType.TRANSFER),
-                    transferFromAccountId = total.fromAccountId,
-                    transferToAccountId = total.toAccountId,
-                    dateStartAt = range.startInclusive,
-                    dateEndAt = range.endExclusive,
-                ),
-            )
-        }
+        val netCashFlow = ledgerSubtractExact(totalInflow, totalOutflow)
+        val assetAdjustment = ledgerSubtractExact(
+            ledgerSubtractExact(closingAssets, openingAssets),
+            netCashFlow,
+        )
         return StatsDashboardSnapshot(
             settings = settings,
             period = selection.period,
             range = range,
             zoneId = zoneId,
             hasSourceAccounts = accounts.isNotEmpty(),
+            openingAssets = openingAssets,
+            closingAssets = closingAssets,
+            assetAdjustment = assetAdjustment,
             totalInflow = totalInflow,
             totalOutflow = totalOutflow,
-            netCashFlow = ledgerSubtractExact(totalInflow, totalOutflow),
+            netCashFlow = netCashFlow,
             dailyPoints = buildDailyPoints(daily, range, zoneId),
-            accountCashFlows = accountCashFlows,
-            transferPaths = transferPaths,
+            accountCashFlows = emptyList(),
+            transferPaths = emptyList(),
             inflowHistoryFilters = cashFilters(range, HistoryAmountDirection.INCREASE),
             outflowHistoryFilters = cashFilters(range, HistoryAmountDirection.DECREASE),
             netCashFlowHistoryFilters = cashFilters(range, HistoryAmountDirection.ALL),
@@ -121,9 +95,6 @@ internal object StatsProjector {
                 )
             }.toList()
     }
-
-    private fun flowMagnitude(flow: StatsAccountCashFlow): BigInteger =
-        BigInteger.valueOf(flow.inflow).add(BigInteger.valueOf(flow.outflow))
 
     private fun cashFilters(
         range: TimeRange,

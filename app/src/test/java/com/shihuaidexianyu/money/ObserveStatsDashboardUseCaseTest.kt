@@ -36,6 +36,9 @@ class ObserveStatsDashboardUseCaseTest {
         assertEquals(StatsPeriod.MONTH, snapshot.period)
         assertEquals(januaryRange, snapshot.range)
         assertEquals(3_000L, snapshot.totalInflow)
+        assertEquals(0L, snapshot.openingAssets)
+        assertEquals(3_000L, snapshot.closingAssets)
+        assertEquals(0L, snapshot.assetAdjustment)
     }
 
     @Test
@@ -58,7 +61,8 @@ class ObserveStatsDashboardUseCaseTest {
 
         assertEquals(2_000L, snapshot.totalInflow)
         assertEquals(800L, snapshot.totalOutflow)
-        assertEquals(setOf(hidden, closed), snapshot.accountCashFlows.map { it.accountId }.toSet())
+        assertTrue(snapshot.accountCashFlows.isEmpty())
+        assertTrue(snapshot.transferPaths.isEmpty())
         assertTrue(snapshot.hasSourceAccounts)
     }
 
@@ -70,6 +74,7 @@ class ObserveStatsDashboardUseCaseTest {
         accountRepository = accounts,
         portableSettingsRepository = InMemoryPortableSettingsRepository(),
         transactionRepository = ledger,
+        calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(ledger),
         zoneIdProvider = testZoneIdProvider(zoneId),
     )
 

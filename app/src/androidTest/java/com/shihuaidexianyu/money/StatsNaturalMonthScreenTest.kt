@@ -7,11 +7,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
+import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
-import com.shihuaidexianyu.money.ui.stats.StatsAccountCashFlowUiModel
 import com.shihuaidexianyu.money.ui.stats.StatsDailyUiModel
 import com.shihuaidexianyu.money.ui.stats.StatsScreen
-import com.shihuaidexianyu.money.ui.stats.StatsTransferPathUiModel
 import com.shihuaidexianyu.money.ui.stats.StatsUiState
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
 import java.time.LocalDate
@@ -30,13 +29,7 @@ class StatsNaturalMonthScreenTest {
             dateStartAt = 1_000L,
             dateEndAt = 2_000L,
         )
-        val path = HistoryRecordFilters(
-            recordTypes = setOf(HistoryRecordType.TRANSFER),
-            transferFromAccountId = 1L,
-            transferToAccountId = 2L,
-            dateStartAt = 1_000L,
-            dateEndAt = 2_000L,
-        )
+        val dayCash = monthCash.copy(dateStartAt = 1_100L, dateEndAt = 1_200L)
         val opened = mutableListOf<HistoryRecordFilters>()
         composeRule.setContent {
             MoneyTheme {
@@ -58,13 +51,14 @@ class StatsNaturalMonthScreenTest {
                                 inflowText = "¥100.00",
                                 outflowText = "¥40.00",
                                 netFlowText = "+¥60.00",
-                                historyFilters = monthCash.copy(dateStartAt = 1_100L, dateEndAt = 1_200L),
+                                historyFilters = dayCash,
+                                inflow = 10_000L,
+                                outflow = 4_000L,
+                                netFlow = 6_000L,
+                                inflowHistoryFilters = dayCash.copy(amountDirection = HistoryAmountDirection.INCREASE),
+                                outflowHistoryFilters = dayCash.copy(amountDirection = HistoryAmountDirection.DECREASE),
                             ),
                         ),
-                        accountCashFlows = listOf(
-                            StatsAccountCashFlowUiModel(1L, "隐藏账户", "¥100.00", "¥0.00", monthCash, monthCash),
-                        ),
-                        transferPaths = listOf(StatsTransferPathUiModel("隐藏账户 → 关闭账户", "¥70.00", path)),
                     ),
                     onPreviousRange = {},
                     onNextRange = {},
@@ -76,16 +70,19 @@ class StatsNaturalMonthScreenTest {
 
         composeRule.onNodeWithText("分析").assertIsDisplayed()
         composeRule.onNodeWithText("2024年3月").assertIsDisplayed()
-        composeRule.onNodeWithText("每日趋势与净流").assertIsDisplayed()
-        composeRule.onNodeWithText("账户现金流入／流出（转账单列）").assertIsDisplayed()
-        composeRule.onNodeWithText("转账路径").assertIsDisplayed()
-        composeRule.onNodeWithText("期初资产").assertDoesNotExist()
+        composeRule.onNodeWithText("每日收支趋势").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("每日收支趋势图，共 1 天，其中 1 天有现金流").assertIsDisplayed()
+        composeRule.onNodeWithText("累计净流").assertIsDisplayed()
+        composeRule.onNodeWithText("账户现金流入／流出（转账单列）").assertDoesNotExist()
+        composeRule.onNodeWithText("转账路径").assertDoesNotExist()
+        composeRule.onNodeWithText("期初资产").assertIsDisplayed()
+        composeRule.onNodeWithText("期末净资产").assertIsDisplayed()
         composeRule.onNodeWithText("周").assertDoesNotExist()
         composeRule.onNodeWithText("年").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("下个月").assertIsNotEnabled()
 
-        composeRule.onNodeWithText("净现金流").performClick()
-        composeRule.onNodeWithText("隐藏账户 → 关闭账户").performClick()
-        composeRule.runOnIdle { assertEquals(listOf(monthCash, path), opened) }
+        composeRule.onNodeWithContentDescription("现金净额，+¥60.00").performClick()
+        composeRule.onNodeWithContentDescription("3月10日，收入 ¥100.00，支出 ¥40.00，净额 +¥60.00").performClick()
+        composeRule.runOnIdle { assertEquals(listOf(monthCash, dayCash), opened) }
     }
 }

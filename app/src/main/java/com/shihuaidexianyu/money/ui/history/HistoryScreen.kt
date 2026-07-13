@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +29,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -87,7 +91,7 @@ private enum class HistoryDateField {
 
 private const val HISTORY_PREFETCH_ITEM_DISTANCE = 8
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
@@ -345,15 +349,20 @@ fun HistoryScreen(
         }
     }
 
+    val recordGroups = state.records.groupBy { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
+
     MoneyFormPage(
         title = stringResource(R.string.history_title),
         modifier = modifier,
         listState = listState,
         contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         item {
-            MoneyCard {
+            Column(
+                modifier = Modifier.padding(bottom = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 SearchField(
                     value = state.keyword,
                     onValueChange = onKeywordChange,
@@ -377,6 +386,23 @@ fun HistoryScreen(
                             modifier = Modifier.clickable(onClick = onClearAllFilters),
                         )
                     }
+                }
+                if (hasActiveFilters(state)) {
+                    ActiveFilterChips(
+                        state = state,
+                        onOpenSheet = { sheet = it },
+                    )
+                }
+                if (state.hasCommittedContent) {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.history_loaded_count,
+                            state.records.size,
+                            state.records.size,
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -408,12 +434,17 @@ fun HistoryScreen(
             is AsyncContent.Data,
             is AsyncContent.Refreshing,
             -> {
-                itemsIndexed(state.records, key = { _, record -> record.id }) { _, record ->
-                    HistoryRow(
-                        record = record,
-                        settings = state.settings,
-                        onClick = { onRecordClick(record) },
-                    )
+                recordGroups.forEach { (dateLabel, records) ->
+                    stickyHeader(key = "history_date_$dateLabel") {
+                        HistoryDateHeader(dateLabel)
+                    }
+                    items(records, key = { record -> record.id }) { record ->
+                        HistoryRow(
+                            record = record,
+                            settings = state.settings,
+                            onClick = { onRecordClick(record) },
+                        )
+                    }
                 }
                 state.loadMoreErrorMessageRes?.let { messageRes ->
                 item {
@@ -464,6 +495,84 @@ private fun SearchField(
     )
 }
 
+@Composable
+private fun HistoryDateHeader(dateLabel: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
+    ) {
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ActiveFilterChips(
+    state: HistoryUiState,
+    onOpenSheet: (HistoryFilterSheet) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (state.excludeKeyword.isNotBlank()) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.OVERVIEW) },
+                label = { Text(stringResource(R.string.history_excluding_keyword, state.excludeKeyword)) },
+            )
+        }
+        if (state.selectedRecordTypes.isNotEmpty()) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.TYPE) },
+                label = { Text(typeSheetSummary(state)) },
+            )
+        }
+        if (state.selectedAccountId != null) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.ACCOUNT) },
+                label = { Text(accountSheetSummary(state)) },
+            )
+        }
+        if (state.transferFromAccountId != null || state.transferToAccountId != null) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.OVERVIEW) },
+                label = { Text(stringResource(R.string.history_transfer_path_filter)) },
+            )
+        }
+        if (state.dateStartAt != null || state.dateEndAt != null) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.DATE) },
+                label = { Text(dateSheetSummary(state)) },
+            )
+        }
+        if (state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank()) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.AMOUNT) },
+                label = { Text(amountChipLabel(state)) },
+            )
+        }
+        if (state.amountDirectionFilter != AmountDirectionFilter.ALL) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.DIRECTION) },
+                label = { Text(directionChipLabel(state)) },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilterSheetContent(
@@ -509,7 +618,7 @@ private fun HistoryRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    MoneyCard(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
@@ -522,19 +631,17 @@ private fun HistoryRow(
                 }
                 role = Role.Button
             },
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .height(42.dp)
+                    .size(10.dp)
                     .background(
                         color = accent,
-                        shape = RoundedCornerShape(999.dp),
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     ),
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -556,12 +663,13 @@ private fun HistoryRow(
                     color = amountColor,
                 )
                 Text(
-                    text = DateTimeTextFormatter.format(record.occurredAt),
+                    text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
     }
 }
 

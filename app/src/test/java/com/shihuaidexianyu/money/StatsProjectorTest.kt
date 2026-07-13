@@ -38,10 +38,13 @@ class StatsProjectorTest {
         assertEquals(700L, snapshot.totalInflow)
         assertEquals(100L, snapshot.totalOutflow)
         assertEquals(600L, snapshot.netCashFlow)
+        assertEquals(10_000L, snapshot.openingAssets)
+        assertEquals(10_650L, snapshot.closingAssets)
+        assertEquals(50L, snapshot.assetAdjustment)
     }
 
     @Test
-    fun `account cash flow ordering never adds Long values in Long`() {
+    fun `removed account breakdown still preserves Long boundary monthly totals`() {
         val accounts = listOf(
             Account(id = 1L, name = "极值账户", initialBalance = 0L, createdAt = 1L),
             Account(id = 2L, name = "普通账户", initialBalance = 0L, createdAt = 1L),
@@ -56,13 +59,14 @@ class StatsProjectorTest {
                 entry(1L, CashFlowDirection.OUTFLOW, Long.MAX_VALUE, LocalDate.of(2024, 1, 2)),
                 entry(2L, CashFlowDirection.INFLOW, 0L, LocalDate.of(2024, 1, 3)),
             ),
-            transferPathTotals = emptyList(),
             zoneId = utc,
         )
 
-        assertEquals(listOf(1L, 2L), snapshot.accountCashFlows.map { it.accountId })
-        assertEquals(Long.MAX_VALUE, snapshot.accountCashFlows.first().inflow)
-        assertEquals(Long.MAX_VALUE, snapshot.accountCashFlows.first().outflow)
+        assertEquals(Long.MAX_VALUE, snapshot.totalInflow)
+        assertEquals(Long.MAX_VALUE, snapshot.totalOutflow)
+        assertEquals(0L, snapshot.netCashFlow)
+        assertEquals(emptyList(), snapshot.accountCashFlows)
+        assertEquals(emptyList(), snapshot.transferPaths)
     }
 
     private fun project(entries: List<CashFlowAnalysisEntry>) = StatsProjector.project(
@@ -71,8 +75,9 @@ class StatsProjectorTest {
         selection = StatsRangeSelection(StatsPeriod.MONTH, range.startInclusive),
         range = range,
         cashEntries = entries,
-        transferPathTotals = emptyList(),
         zoneId = utc,
+        openingAssets = 10_000L,
+        closingAssets = 10_650L,
     )
 
     private fun entry(

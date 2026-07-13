@@ -11,6 +11,8 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -39,6 +41,11 @@ data class StatsDailyUiModel(
     val outflowText: String,
     val netFlowText: String,
     val historyFilters: HistoryRecordFilters,
+    val inflow: Long = 0L,
+    val outflow: Long = 0L,
+    val netFlow: Long = 0L,
+    val inflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
+    val outflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
 )
 
 data class StatsAccountCashFlowUiModel(
@@ -48,12 +55,17 @@ data class StatsAccountCashFlowUiModel(
     val outflowText: String,
     val inflowHistoryFilters: HistoryRecordFilters,
     val outflowHistoryFilters: HistoryRecordFilters,
+    val inflow: Long = 0L,
+    val outflow: Long = 0L,
+    val netFlow: Long = 0L,
+    val netFlowText: String = "",
 )
 
 data class StatsTransferPathUiModel(
     val label: String,
     val amountText: String,
     val historyFilters: HistoryRecordFilters,
+    val amount: Long = 0L,
 )
 
 data class StatsUiState(
@@ -68,18 +80,28 @@ data class StatsUiState(
     val rangeEndExclusive: Long = 0L,
     val rangeText: String = "",
     val canNavigateNext: Boolean = false,
+    val openingAssets: Long = 0L,
+    val closingAssets: Long = 0L,
+    val assetChange: Long = 0L,
+    val assetAdjustment: Long = 0L,
     val totalInflow: Long = 0L,
     val totalOutflow: Long = 0L,
     val netCashFlow: Long = 0L,
     val totalInflowText: String = "",
     val totalOutflowText: String = "",
     val netCashFlowText: String = "",
+    val openingAssetsText: String = "",
+    val closingAssetsText: String = "",
+    val assetChangeText: String = "",
+    val assetAdjustmentText: String = "",
     val inflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
     val outflowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
     val netCashFlowHistoryFilters: HistoryRecordFilters = HistoryRecordFilters(),
     val dailyPoints: List<StatsDailyUiModel> = emptyList(),
     val accountCashFlows: List<StatsAccountCashFlowUiModel> = emptyList(),
     val transferPaths: List<StatsTransferPathUiModel> = emptyList(),
+    val totalTransfer: Long = 0L,
+    val totalTransferText: String = "",
 )
 
 internal fun StatsUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<StatsUiState> {
@@ -172,6 +194,8 @@ class StatsViewModel(
     private fun StatsDashboardSnapshot.toUiState(visibility: AmountVisibility): StatsUiState {
         val selectedMonth = YearMonth.from(Instant.ofEpochMilli(range.startInclusive).atZone(zoneId))
         val currentMonth = YearMonth.from(Instant.ofEpochMilli(clockProvider.nowMillis()).atZone(zoneId))
+        val totalTransfer = transferPaths.map { it.amount }.ledgerSumExact()
+        val assetChange = ledgerSubtractExact(closingAssets, openingAssets)
         fun amount(value: Long): String = AmountFormatter.format(value, settings, visibility)
         fun signed(value: Long): String = if (value > 0L && visibility != AmountVisibility.MASKED) "+${amount(value)}" else amount(value)
         return StatsUiState(
@@ -183,12 +207,20 @@ class StatsViewModel(
             rangeEndExclusive = range.endExclusive,
             rangeText = DateTimeFormatter.ofPattern("yyyy年M月", Locale.SIMPLIFIED_CHINESE).format(selectedMonth),
             canNavigateNext = selectedMonth < currentMonth,
+            openingAssets = openingAssets,
+            closingAssets = closingAssets,
+            assetChange = assetChange,
+            assetAdjustment = assetAdjustment,
             totalInflow = totalInflow,
             totalOutflow = totalOutflow,
             netCashFlow = netCashFlow,
             totalInflowText = amount(totalInflow),
             totalOutflowText = amount(totalOutflow),
             netCashFlowText = signed(netCashFlow),
+            openingAssetsText = amount(openingAssets),
+            closingAssetsText = amount(closingAssets),
+            assetChangeText = signed(assetChange),
+            assetAdjustmentText = signed(assetAdjustment),
             inflowHistoryFilters = inflowHistoryFilters,
             outflowHistoryFilters = outflowHistoryFilters,
             netCashFlowHistoryFilters = netCashFlowHistoryFilters,
@@ -196,18 +228,27 @@ class StatsViewModel(
                 StatsDailyUiModel(
                     date = point.date,
                     dateText = DateTimeFormatter.ofPattern("M月d日", Locale.SIMPLIFIED_CHINESE).format(point.date),
+                    inflow = point.inflow,
+                    outflow = point.outflow,
+                    netFlow = point.netFlow,
                     inflowText = amount(point.inflow),
                     outflowText = amount(point.outflow),
                     netFlowText = signed(point.netFlow),
                     historyFilters = point.historyFilters,
+                    inflowHistoryFilters = point.inflowHistoryFilters,
+                    outflowHistoryFilters = point.outflowHistoryFilters,
                 )
             },
             accountCashFlows = accountCashFlows.map { flow ->
                 StatsAccountCashFlowUiModel(
                     accountId = flow.accountId,
                     name = flow.name,
+                    inflow = flow.inflow,
+                    outflow = flow.outflow,
+                    netFlow = ledgerSubtractExact(flow.inflow, flow.outflow),
                     inflowText = amount(flow.inflow),
                     outflowText = amount(flow.outflow),
+                    netFlowText = signed(ledgerSubtractExact(flow.inflow, flow.outflow)),
                     inflowHistoryFilters = flow.inflowHistoryFilters,
                     outflowHistoryFilters = flow.outflowHistoryFilters,
                 )
@@ -215,10 +256,13 @@ class StatsViewModel(
             transferPaths = transferPaths.map { path ->
                 StatsTransferPathUiModel(
                     label = "${path.fromAccountName} → ${path.toAccountName}",
+                    amount = path.amount,
                     amountText = amount(path.amount),
                     historyFilters = path.historyFilters,
                 )
             },
+            totalTransfer = totalTransfer,
+            totalTransferText = amount(totalTransfer),
         )
     }
 }

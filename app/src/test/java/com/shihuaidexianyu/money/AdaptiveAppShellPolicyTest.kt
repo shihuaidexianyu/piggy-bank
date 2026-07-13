@@ -31,9 +31,14 @@ class AdaptiveAppShellPolicyTest {
     }
 
     @Test
-    fun `fab offers only income expense and transfer with account guards`() {
+    fun `fab offers income expense transfer and reconcile with account guards`() {
         assertEquals(
-            listOf(LedgerFabAction.INCOME, LedgerFabAction.EXPENSE, LedgerFabAction.TRANSFER),
+            listOf(
+                LedgerFabAction.INCOME,
+                LedgerFabAction.EXPENSE,
+                LedgerFabAction.TRANSFER,
+                LedgerFabAction.RECONCILE,
+            ),
             LedgerFabAction.entries,
         )
         assertIs<LedgerFabDecision.CreateFirstAccount>(
@@ -47,6 +52,9 @@ class AdaptiveAppShellPolicyTest {
         )
         assertIs<LedgerFabDecision.OpenTransferForm>(
             resolveLedgerFabAction(LedgerFabAction.TRANSFER, OpenAccountAvailability.Data(2)),
+        )
+        assertIs<LedgerFabDecision.OpenReconcileForm>(
+            resolveLedgerFabAction(LedgerFabAction.RECONCILE, OpenAccountAvailability.Data(1)),
         )
     }
 

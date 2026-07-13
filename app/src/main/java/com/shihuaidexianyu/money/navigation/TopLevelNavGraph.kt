@@ -165,7 +165,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
-                onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
                 onManageSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
                 onRetry = viewModel::retry,
             )
@@ -207,6 +206,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onManageAccountReminderConfigs = {
                 navController.navigate(MoneyDestination.Accounts.route) { launchSingleTop = true }
             },
+            onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,

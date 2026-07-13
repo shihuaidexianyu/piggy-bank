@@ -77,6 +77,7 @@ fun SettingsScreen(
     onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
     onManageReminders: () -> Unit,
     onManageAccountReminderConfigs: () -> Unit,
+    onManageAccountOrder: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
     onConfirmImport: (String) -> Unit,
@@ -275,6 +276,12 @@ fun SettingsScreen(
                         currencyDraft = settings.currencySymbol
                         dialog = SettingsDialog.CurrencySymbol
                     },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = stringResource(R.string.accounts_order),
+                    subtitle = stringResource(R.string.settings_account_order_description),
+                    modifier = Modifier.clickable(onClick = onManageAccountOrder),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(

@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.StatsPeriod
 import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
@@ -111,33 +110,14 @@ class StatsNaturalMonthAnalysisTest {
         assertEquals(march11Start, march10.historyFilters.dateEndAt)
         assertEquals(setOf(HistoryRecordType.CASH_FLOW), march10.historyFilters.recordTypes)
 
-        val hiddenFlow = snapshot.accountCashFlows.single { it.accountId == hiddenId }
-        assertEquals(100L, hiddenFlow.inflow)
-        assertEquals(0L, hiddenFlow.outflow)
-        assertEquals(hiddenId, hiddenFlow.inflowHistoryFilters.accountId)
-        assertEquals(HistoryAmountDirection.INCREASE, hiddenFlow.inflowHistoryFilters.amountDirection)
-        val closedFlow = snapshot.accountCashFlows.single { it.accountId == closedId }
-        assertEquals(20L, closedFlow.inflow)
-        assertEquals(40L, closedFlow.outflow)
-
-        val path = snapshot.transferPaths.single()
-        assertEquals(hiddenId, path.fromAccountId)
-        assertEquals(closedId, path.toAccountId)
-        assertEquals(70L, path.amount)
-        assertEquals(hiddenId, path.historyFilters.transferFromAccountId)
-        assertEquals(closedId, path.historyFilters.transferToAccountId)
-        assertEquals(setOf(HistoryRecordType.TRANSFER), path.historyFilters.recordTypes)
+        assertTrue(snapshot.accountCashFlows.isEmpty())
+        assertTrue(snapshot.transferPaths.isEmpty())
 
         val allDrillDowns = buildList {
             add(snapshot.inflowHistoryFilters)
             add(snapshot.outflowHistoryFilters)
             add(snapshot.netCashFlowHistoryFilters)
             snapshot.dailyPoints.forEach { add(it.historyFilters) }
-            snapshot.accountCashFlows.forEach {
-                add(it.inflowHistoryFilters)
-                add(it.outflowHistoryFilters)
-            }
-            snapshot.transferPaths.forEach { add(it.historyFilters) }
         }
         allDrillDowns.forEach { filters ->
             assertEquals(filters, HistoryFilterRequestCodec.decode(HistoryFilterRequestCodec.encode(filters)))
@@ -162,13 +142,6 @@ class StatsNaturalMonthAnalysisTest {
         snapshot.dailyPoints.forEach { point ->
             assertEquals(point.netFlow, signedTotal(point.historyFilters))
         }
-        snapshot.accountCashFlows.forEach { flow ->
-            assertEquals(flow.inflow, signedTotal(flow.inflowHistoryFilters))
-            assertEquals(-flow.outflow, signedTotal(flow.outflowHistoryFilters))
-        }
-        snapshot.transferPaths.forEach { transferPath ->
-            assertEquals(transferPath.amount, signedTotal(transferPath.historyFilters))
-        }
     }
 
     private fun analysisUseCase(
@@ -178,6 +151,7 @@ class StatsNaturalMonthAnalysisTest {
         accountRepository = accounts,
         portableSettingsRepository = InMemoryPortableSettingsRepository(),
         transactionRepository = ledger,
+        calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(ledger),
         zoneIdProvider = testZoneIdProvider(zoneId),
     )
 
@@ -227,6 +201,7 @@ class StatsMonthNavigationViewModelTest {
             accountRepository = accounts,
             portableSettingsRepository = InMemoryPortableSettingsRepository(),
             transactionRepository = ledger,
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(ledger),
             zoneIdProvider = testZoneIdProvider(zoneId),
         )
         val viewModel = StatsViewModel(

@@ -66,6 +66,31 @@ class AppLockViewModelTest {
     }
 
     @Test
+    fun `locked app automatically authenticates once and retries on the next foreground`() = runTest(dispatcher) {
+        val fixture = Fixture(enabled = true)
+        advanceUntilIdle()
+        assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
+
+        fixture.viewModel.authenticateAutomaticallyOnce()
+        advanceUntilIdle()
+        assertEquals(AppLockState.Authenticating, fixture.viewModel.state.value)
+        val firstToken = fixture.gateway.lastToken
+
+        fixture.gateway.complete(BiometricAuthenticationResult.Cancelled)
+        advanceUntilIdle()
+        assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
+        fixture.viewModel.authenticateAutomaticallyOnce()
+        advanceUntilIdle()
+        assertEquals(firstToken, fixture.gateway.lastToken)
+        assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
+
+        fixture.viewModel.authenticateAutomaticallyForForeground()
+        advanceUntilIdle()
+        assertEquals(AppLockState.Authenticating, fixture.viewModel.state.value)
+        assertTrue(fixture.gateway.lastToken > firstToken)
+    }
+
+    @Test
     fun `cancel failure and error remain locked while success alone unlocks`() = runTest(dispatcher) {
         val fixture = Fixture(enabled = true)
         advanceUntilIdle()

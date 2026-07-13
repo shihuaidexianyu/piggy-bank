@@ -26,6 +26,7 @@ class AppLockViewModel(
     private var generation = 0L
     private var authenticationEnablesLock = false
     private var enablePersistenceInFlight = false
+    private var automaticAuthenticationAttemptedForCurrentLock = false
 
     init {
         viewModelScope.launch {
@@ -49,7 +50,26 @@ class AppLockViewModel(
 
     fun authenticate() {
         if (!biometricEnabled) return
+        automaticAuthenticationAttemptedForCurrentLock = true
         checkCapabilityAndAuthenticate(enablesLock = false)
+    }
+
+    fun authenticateAutomaticallyOnce() {
+        if (
+            !biometricEnabled ||
+            _state.value != AppLockState.Locked ||
+            automaticAuthenticationAttemptedForCurrentLock
+        ) {
+            return
+        }
+        automaticAuthenticationAttemptedForCurrentLock = true
+        checkCapabilityAndAuthenticate(enablesLock = false)
+    }
+
+    fun authenticateAutomaticallyForForeground() {
+        if (!biometricEnabled || _state.value != AppLockState.Locked) return
+        automaticAuthenticationAttemptedForCurrentLock = false
+        authenticateAutomaticallyOnce()
     }
 
     fun authenticateForEnable() {
@@ -90,7 +110,7 @@ class AppLockViewModel(
         invalidateAuthentication()
         authenticationEnablesLock = false
         if (enablePersistenceInFlight) {
-            _state.value = AppLockState.Locked
+            enterLockedState()
             return
         }
         if (wasPendingEnable) {
@@ -98,7 +118,7 @@ class AppLockViewModel(
             return
         }
         if (relockDelay == AppRelockDelay.IMMEDIATELY || authenticationWasActive) {
-            _state.value = AppLockState.Locked
+            enterLockedState()
         }
     }
 
@@ -117,7 +137,7 @@ class AppLockViewModel(
         if (enablePersistenceInFlight) {
             invalidateAuthentication()
             authenticationEnablesLock = false
-            _state.value = AppLockState.Locked
+            enterLockedState()
         } else if (!biometricEnabled && authenticationEnablesLock) {
             invalidateAuthentication()
             authenticationEnablesLock = false
@@ -194,7 +214,11 @@ class AppLockViewModel(
             }
             authenticationEnablesLock = false
             if (requestToken != generation || _state.value != AppLockState.Authenticating) {
-                _state.value = if (persisted) AppLockState.Locked else AppLockState.Unlocked
+                if (persisted) {
+                    enterLockedState()
+                } else {
+                    _state.value = AppLockState.Unlocked
+                }
                 if (!persisted) runCatching(onPrivacyDefaultsEnableFailed)
                 return
             }
@@ -211,6 +235,11 @@ class AppLockViewModel(
 
     private fun lockNow() {
         invalidateAuthentication()
+        enterLockedState()
+    }
+
+    private fun enterLockedState() {
+        automaticAuthenticationAttemptedForCurrentLock = false
         _state.value = AppLockState.Locked
     }
 

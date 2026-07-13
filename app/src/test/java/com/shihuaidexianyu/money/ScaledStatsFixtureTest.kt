@@ -39,7 +39,6 @@ class ScaledStatsFixtureTest {
             selection = StatsRangeSelection(StatsPeriod.MONTH, anchor),
             range = range,
             cashEntries = entries,
-            transferPathTotals = emptyList(),
             zoneId = zone,
         )
 

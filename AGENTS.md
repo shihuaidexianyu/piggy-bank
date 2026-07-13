@@ -9,7 +9,7 @@ It supports multi-account management, cash flow recording, transfers, balance up
 
 - **Package**: `com.shihuaidexianyu.money`
 - **Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.3.1` (versionCode `104`)
+- **Version**: `2.4.0` (versionCode `105`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20

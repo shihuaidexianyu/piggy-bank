@@ -193,6 +193,7 @@ class HomeMonthlyConsistencyTest {
             accountRepository = accounts,
             portableSettingsRepository = settings,
             transactionRepository = ledger,
+            calculateAccountBalancesUseCase = balances,
             zoneIdProvider = zone,
         ).invoke(MutableStateFlow(StatsRangeSelection(StatsPeriod.MONTH, now))).first()
         val history = ledger.queryHistoryRecords(

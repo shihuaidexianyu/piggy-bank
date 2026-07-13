@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -58,7 +57,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
@@ -115,7 +113,6 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
-    onManageAccountOrder: () -> Unit,
     onManageSavingsGoal: () -> Unit,
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
@@ -172,24 +169,14 @@ fun AccountsScreen(
                 }
             }
             item {
-                MoneySectionHeader(title = stringResource(R.string.accounts_management))
+                MoneySectionHeader(title = stringResource(R.string.accounts_goal_section))
             }
             item {
-                MoneyListSection {
-                    MoneyListRow(
-                        title = stringResource(R.string.accounts_order),
-                        subtitle = stringResource(R.string.accounts_order_description),
-                        modifier = Modifier.clickable(onClick = onManageAccountOrder),
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.accounts_net_worth_goal),
-                        subtitle = stringResource(
-                            if (state.savingsGoal == null) R.string.accounts_goal_set else R.string.accounts_goal_edit,
-                        ),
-                        modifier = Modifier.clickable(onClick = onManageSavingsGoal),
-                    )
-                }
+                NetWorthGoalCard(
+                    goal = state.savingsGoal,
+                    settings = state.settings,
+                    onClick = onManageSavingsGoal,
+                )
             }
             if (state.openAccounts.isEmpty()) {
                 item {
@@ -313,32 +300,6 @@ private fun AccountOverviewCard(state: AccountsUiState) {
         .ledgerSumExact()
     val staleCount = state.openAccounts.count { it.isStale }
     val current = LocalMoneyColors.current.current
-    val goal = state.savingsGoal
-    val goalProgress = goal?.let {
-        netWorthGoalProgressPresentation(it.currentAmount, it.targetAmount)
-    }
-    val goalText = if (goal != null) {
-        if (goal.isAchieved) {
-            stringResource(
-                R.string.accounts_goal_achieved_format,
-                formatInAppAmount(goal.currentAmount, state.settings),
-                requireNotNull(goalProgress).percentageText,
-            )
-        } else {
-            stringResource(
-                R.string.accounts_goal_progress_format,
-                formatInAppAmount(goal.currentAmount, state.settings),
-                formatInAppAmount(goal.targetAmount, state.settings),
-                requireNotNull(goalProgress).percentageText,
-            )
-        }
-    } else {
-        null
-    }
-    @Suppress("FloatingPointUsageInMoney")
-    val progressFraction = (goalProgress?.geometryPercent ?: 0) / 100f
-    val accentColor = MaterialTheme.colorScheme.primary
-
     MoneyCard(contentPadding = PaddingValues(18.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -370,39 +331,160 @@ private fun AccountOverviewCard(state: AccountsUiState) {
                 )
             }
         }
-        if (goalText != null) {
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 6.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .drawBehind {
-                        if (progressFraction > 0f) {
-                            drawRect(
-                                color = accentColor.copy(alpha = 0.10f),
-                                size = Size(
-                                    width = size.width * progressFraction.coerceIn(0.01f, 1f),
-                                    height = size.height,
-                                ),
-                            )
-                        }
-                    },
-            ) {
-                Text(
-                    text = goalText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (goal?.isAchieved == true) MaterialTheme.colorScheme.tertiary else accentColor,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
-            }
-        }
         if (staleCount > 0) {
             Text(
                 text = stringResource(R.string.accounts_stale_explanation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Suppress("FloatingPointUsageInMoney")
+@Composable
+private fun NetWorthGoalCard(
+    goal: SavingsGoalUiModel?,
+    settings: PortableSettings,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    val accent = MaterialTheme.colorScheme.primary
+    val progress = goal?.let {
+        netWorthGoalProgressPresentation(it.currentAmount, it.targetAmount)
+    }
+    val fillFraction = (progress?.geometryPercent ?: 0) / 100f
+    val currentText = goal?.let { formatInAppAmount(it.currentAmount, settings) }
+    val targetText = goal?.let { formatInAppAmount(it.targetAmount, settings) }
+    val isAchieved = goal?.isAchieved == true
+    val statusText = when {
+        goal == null -> stringResource(R.string.accounts_goal_empty_hint)
+        isAchieved -> stringResource(R.string.accounts_goal_achieved)
+        else -> stringResource(R.string.accounts_goal_in_progress)
+    }
+    val semantics = if (goal == null) {
+        stringResource(R.string.accounts_goal_set)
+    } else {
+        stringResource(
+            R.string.accounts_goal_card_semantics,
+            requireNotNull(currentText),
+            requireNotNull(targetText),
+            requireNotNull(progress).percentageText,
+        )
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f),
+                shape = shape,
+            )
+            .clip(shape)
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = semantics
+                role = Role.Button
+            },
+        color = MaterialTheme.colorScheme.surface,
+        shape = shape,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (fillFraction > 0f) {
+                        Modifier.drawBehind {
+                            drawRect(
+                                color = accent.copy(alpha = 0.12f),
+                                size = Size(
+                                    width = size.width * fillFraction.coerceIn(0f, 1f),
+                                    height = size.height,
+                                ),
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = CircleShape,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Flag,
+                        contentDescription = null,
+                        modifier = Modifier.padding(11.dp).size(22.dp),
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.accounts_net_worth_goal),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = if (targetText == null) {
+                            statusText
+                        } else {
+                            stringResource(R.string.accounts_goal_target_format, targetText)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    if (progress == null || currentText == null) {
+                        Text(
+                            text = stringResource(R.string.accounts_goal_set_action),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = accent,
+                        )
+                    } else {
+                        Text(
+                            text = progress.percentageText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = accent,
+                        )
+                        Text(
+                            text = currentText,
+                            style = if (currentText.length > 14) {
+                                MaterialTheme.typography.titleMedium
+                            } else {
+                                MaterialTheme.typography.titleLarge
+                            },
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isAchieved) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
     }
 }

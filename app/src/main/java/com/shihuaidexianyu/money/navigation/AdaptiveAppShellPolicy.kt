@@ -25,6 +25,7 @@ enum class LedgerFabAction {
     INCOME,
     EXPENSE,
     TRANSFER,
+    RECONCILE,
 }
 
 sealed interface LedgerFabDecision {
@@ -37,6 +38,8 @@ sealed interface LedgerFabDecision {
     data object NeedSecondAccount : LedgerFabDecision
 
     data object OpenTransferForm : LedgerFabDecision
+
+    data object OpenReconcileForm : LedgerFabDecision
 }
 
 sealed interface OpenAccountAvailability {
@@ -79,6 +82,7 @@ fun resolveLedgerFabAction(
         } else {
             LedgerFabDecision.OpenTransferForm
         }
+        LedgerFabAction.RECONCILE -> LedgerFabDecision.OpenReconcileForm
     }
 }
 

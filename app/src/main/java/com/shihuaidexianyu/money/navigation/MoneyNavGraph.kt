@@ -9,15 +9,23 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.FactCheck
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,9 +44,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -231,7 +242,17 @@ fun MoneyNavGraph(
             LedgerFabDecision.OpenTransferForm -> navController.navigate(
                 MoneyDestination.recordTransferRoute(),
             )
+            LedgerFabDecision.OpenReconcileForm -> navController.navigate(
+                MoneyDestination.updateBalanceRoute(accountId = 0L),
+            )
         }
+    }
+
+    if (fabExpanded) {
+        LedgerActionDialog(
+            onDismiss = { fabExpanded = false },
+            onAction = ::handleFabAction,
+        )
     }
 
     LaunchedEffect(appLaunchRequest?.token) {
@@ -327,30 +348,11 @@ fun MoneyNavGraph(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
-                Box {
-                    ExtendedFloatingActionButton(
-                        onClick = { fabExpanded = true },
-                        icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                        text = { Text(stringResource(R.string.ledger_fab_title)) },
-                    )
-                    DropdownMenu(
-                        expanded = fabExpanded,
-                        onDismissRequest = { fabExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.ledger_income)) },
-                            onClick = { handleFabAction(LedgerFabAction.INCOME) },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.ledger_expense)) },
-                            onClick = { handleFabAction(LedgerFabAction.EXPENSE) },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.history_transfer)) },
-                            onClick = { handleFabAction(LedgerFabAction.TRANSFER) },
-                        )
-                    }
-                }
+                ExtendedFloatingActionButton(
+                    onClick = { fabExpanded = true },
+                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.ledger_fab_title)) },
+                )
             }
         },
         bottomBar = {
@@ -430,5 +432,100 @@ fun MoneyNavGraph(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun LedgerActionDialog(
+    onDismiss: () -> Unit,
+    onAction: (LedgerFabAction) -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.material3.Surface(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .widthIn(max = 420.dp)
+                .fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.ledger_fab_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.ledger_action_menu_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    LedgerActionButton(
+                        label = stringResource(R.string.ledger_income),
+                        icon = Icons.Rounded.ArrowDownward,
+                        onClick = { onAction(LedgerFabAction.INCOME) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    LedgerActionButton(
+                        label = stringResource(R.string.ledger_expense),
+                        icon = Icons.Rounded.ArrowUpward,
+                        onClick = { onAction(LedgerFabAction.EXPENSE) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    LedgerActionButton(
+                        label = stringResource(R.string.history_transfer),
+                        icon = Icons.Rounded.SwapHoriz,
+                        onClick = { onAction(LedgerFabAction.TRANSFER) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    LedgerActionButton(
+                        label = stringResource(R.string.ledger_reconcile),
+                        icon = Icons.AutoMirrored.Rounded.FactCheck,
+                        onClick = { onAction(LedgerFabAction.RECONCILE) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LedgerActionButton(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 92.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
+        shape = MaterialTheme.shapes.large,
+    ) {
+        Column(
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null)
+            Text(label, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }

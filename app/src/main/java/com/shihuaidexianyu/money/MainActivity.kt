@@ -128,6 +128,11 @@ class MainActivity : FragmentActivity() {
                 } else {
                     lockState
                 }
+                LaunchedEffect(effectiveLockState) {
+                    if (effectiveLockState == com.shihuaidexianyu.money.ui.lock.AppLockState.Locked) {
+                        appLockViewModel.authenticateAutomaticallyOnce()
+                    }
+                }
                 when (resolveAppRootSurface(startupState, effectiveLockState)) {
                     AppRootSurface.LOCK -> AppLockScreen(
                         state = effectiveLockState,
@@ -166,6 +171,7 @@ class MainActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         appLockViewModel.onForegrounded()
+        appLockViewModel.authenticateAutomaticallyForForeground()
     }
 
     override fun onStop() {
