@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
+import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -196,6 +197,9 @@ class StatsMonthNavigationViewModelTest {
         val now = ZonedDateTime.of(2024, 3, 15, 12, 0, 0, 0, zoneId).toInstant().toEpochMilli()
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
+        val savingsGoalRepository = InMemorySavingsGoalRepository().also {
+            it.upsert(targetAmount = 100_000L, now = now)
+        }
         accounts.createAccount(Account(name = "账户", initialBalance = 0L, createdAt = 1L))
         val useCase = ObserveStatsDashboardUseCase(
             accountRepository = accounts,
@@ -207,6 +211,7 @@ class StatsMonthNavigationViewModelTest {
         val viewModel = StatsViewModel(
             observeStatsDashboardUseCase = useCase,
             devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+            savingsGoalRepository = savingsGoalRepository,
             clockProvider = testClockProvider(now),
             zoneIdProvider = testZoneIdProvider(zoneId),
         )
@@ -214,6 +219,7 @@ class StatsMonthNavigationViewModelTest {
         assertEquals(null, current.errorMessageRes)
         assertEquals("2024年3月", current.rangeText)
         assertFalse(current.canNavigateNext)
+        assertEquals(100_000L, current.netWorthGoalTargetAmount)
         val currentStart = current.rangeStartInclusive
         viewModel.moveToNextRange()
         assertEquals(currentStart, viewModel.uiState.value.rangeStartInclusive)

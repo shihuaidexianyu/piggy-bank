@@ -14,6 +14,7 @@ import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
@@ -102,6 +103,9 @@ data class StatsUiState(
     val transferPaths: List<StatsTransferPathUiModel> = emptyList(),
     val totalTransfer: Long = 0L,
     val totalTransferText: String = "",
+    val netWorthGoalTargetAmount: Long? = null,
+    val netWorthGoalTargetText: String? = null,
+    val netWorthGoalDifferenceText: String? = null,
 )
 
 internal fun StatsUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<StatsUiState> {
@@ -115,6 +119,7 @@ internal fun StatsUiState.toAsyncContent(errorMessage: String = ""): AsyncConten
 class StatsViewModel(
     private val observeStatsDashboardUseCase: ObserveStatsDashboardUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val savingsGoalRepository: SavingsGoalRepository,
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
 ) : ViewModel() {
@@ -174,8 +179,16 @@ class StatsViewModel(
                 combine(
                     observeStatsDashboardUseCase(selectedRange),
                     devicePreferencesRepository.observe(),
-                ) { snapshot, preferences -> snapshot to AmountPrivacy.from(preferences).visibilityFor(AmountSurface.IN_APP) }
-                    .collect { (snapshot, visibility) -> _uiState.value = snapshot.toUiState(visibility) }
+                    savingsGoalRepository.observe(),
+                ) { snapshot, preferences, goal ->
+                    Triple(
+                        snapshot,
+                        AmountPrivacy.from(preferences).visibilityFor(AmountSurface.IN_APP),
+                        goal?.targetAmount,
+                    )
+                }.collect { (snapshot, visibility, targetAmount) ->
+                    _uiState.value = snapshot.toUiState(visibility, targetAmount)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -191,13 +204,25 @@ class StatsViewModel(
         }
     }
 
-    private fun StatsDashboardSnapshot.toUiState(visibility: AmountVisibility): StatsUiState {
+    private fun StatsDashboardSnapshot.toUiState(
+        visibility: AmountVisibility,
+        netWorthGoalTargetAmount: Long?,
+    ): StatsUiState {
         val selectedMonth = YearMonth.from(Instant.ofEpochMilli(range.startInclusive).atZone(zoneId))
         val currentMonth = YearMonth.from(Instant.ofEpochMilli(clockProvider.nowMillis()).atZone(zoneId))
         val totalTransfer = transferPaths.map { it.amount }.ledgerSumExact()
         val assetChange = ledgerSubtractExact(closingAssets, openingAssets)
         fun amount(value: Long): String = AmountFormatter.format(value, settings, visibility)
         fun signed(value: Long): String = if (value > 0L && visibility != AmountVisibility.MASKED) "+${amount(value)}" else amount(value)
+        val goalDifferenceAmount = netWorthGoalTargetAmount?.let { targetAmount ->
+            runCatching {
+                if (closingAssets >= targetAmount) {
+                    Math.subtractExact(closingAssets, targetAmount)
+                } else {
+                    Math.subtractExact(targetAmount, closingAssets)
+                }
+            }.getOrNull()
+        }
         return StatsUiState(
             isLoading = false,
             hasCommittedContent = true,
@@ -263,6 +288,9 @@ class StatsViewModel(
             },
             totalTransfer = totalTransfer,
             totalTransferText = amount(totalTransfer),
+            netWorthGoalTargetAmount = netWorthGoalTargetAmount,
+            netWorthGoalTargetText = netWorthGoalTargetAmount?.let(::amount),
+            netWorthGoalDifferenceText = goalDifferenceAmount?.let(::amount),
         )
     }
 }

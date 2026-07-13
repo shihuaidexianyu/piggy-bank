@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,12 +58,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
-import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
-import java.math.BigInteger
-
-internal fun shouldShowAccountOverview(state: AccountsUiState): Boolean =
-    state.openAccounts.isNotEmpty() || state.closedAccounts.isNotEmpty()
 
 data class AccountGroups(
     val normal: List<AccountListItemUiModel>,
@@ -82,30 +76,6 @@ fun accountGroups(
     hidden = openAccounts.filter(AccountListItemUiModel::isHidden),
     closed = closedAccounts,
 )
-
-data class NetWorthGoalProgressPresentation(
-    val geometryPercent: Int,
-    val percentageText: String,
-)
-
-fun netWorthGoalProgressPresentation(
-    currentAmount: Long,
-    targetAmount: Long,
-): NetWorthGoalProgressPresentation {
-    require(targetAmount > 0L) { "净资产目标必须大于 0" }
-    val percentage = BigInteger.valueOf(currentAmount)
-        .multiply(BigInteger.valueOf(100L))
-        .divide(BigInteger.valueOf(targetAmount))
-    val geometryPercent = when {
-        percentage.signum() <= 0 -> 0
-        percentage >= BigInteger.valueOf(100L) -> 100
-        else -> percentage.toInt()
-    }
-    return NetWorthGoalProgressPresentation(
-        geometryPercent = geometryPercent,
-        percentageText = "$percentage%",
-    )
-}
 
 @Composable
 fun AccountsScreen(
@@ -162,21 +132,6 @@ fun AccountsScreen(
                     )
                 }
                 return@LazyColumn
-            }
-            if (shouldShowAccountOverview(state)) {
-                item {
-                    AccountOverviewCard(state = state)
-                }
-            }
-            item {
-                MoneySectionHeader(title = stringResource(R.string.accounts_goal_section))
-            }
-            item {
-                NetWorthGoalCard(
-                    goal = state.savingsGoal,
-                    settings = state.settings,
-                    onClick = onManageSavingsGoal,
-                )
             }
             if (state.openAccounts.isEmpty()) {
                 item {
@@ -289,200 +244,22 @@ fun AccountsScreen(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AccountOverviewCard(state: AccountsUiState) {
-    val totalAssets = (state.openAccounts + state.closedAccounts)
-        .map(AccountListItemUiModel::balance)
-        .ledgerSumExact()
-    val staleCount = state.openAccounts.count { it.isStale }
-    val current = LocalMoneyColors.current.current
-    MoneyCard(contentPadding = PaddingValues(18.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.accounts_total_assets),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = formatInAppAmount(totalAssets, state.settings),
-                    style = when {
-                        totalAssets.toString().length > 10 -> MaterialTheme.typography.titleLarge
-                        else -> MaterialTheme.typography.headlineSmall
-                    },
-                    color = current,
-                )
+            item {
+                MoneySectionHeader(title = stringResource(R.string.account_management_title))
             }
-            if (staleCount > 0) {
-                MoneyStatusPill(
-                    text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
-                    accent = MaterialTheme.colorScheme.secondary,
-                )
-            }
-        }
-        if (staleCount > 0) {
-            Text(
-                text = stringResource(R.string.accounts_stale_explanation),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Suppress("FloatingPointUsageInMoney")
-@Composable
-private fun NetWorthGoalCard(
-    goal: SavingsGoalUiModel?,
-    settings: PortableSettings,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(12.dp)
-    val accent = MaterialTheme.colorScheme.primary
-    val progress = goal?.let {
-        netWorthGoalProgressPresentation(it.currentAmount, it.targetAmount)
-    }
-    val fillFraction = (progress?.geometryPercent ?: 0) / 100f
-    val currentText = goal?.let { formatInAppAmount(it.currentAmount, settings) }
-    val targetText = goal?.let { formatInAppAmount(it.targetAmount, settings) }
-    val isAchieved = goal?.isAchieved == true
-    val statusText = when {
-        goal == null -> stringResource(R.string.accounts_goal_empty_hint)
-        isAchieved -> stringResource(R.string.accounts_goal_achieved)
-        else -> stringResource(R.string.accounts_goal_in_progress)
-    }
-    val semantics = if (goal == null) {
-        stringResource(R.string.accounts_goal_set)
-    } else {
-        stringResource(
-            R.string.accounts_goal_card_semantics,
-            requireNotNull(currentText),
-            requireNotNull(targetText),
-            requireNotNull(progress).percentageText,
-        )
-    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f),
-                shape = shape,
-            )
-            .clip(shape)
-            .clickable(onClick = onClick)
-            .semantics(mergeDescendants = true) {
-                contentDescription = semantics
-                role = Role.Button
-            },
-        color = MaterialTheme.colorScheme.surface,
-        shape = shape,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (fillFraction > 0f) {
-                        Modifier.drawBehind {
-                            drawRect(
-                                color = accent.copy(alpha = 0.12f),
-                                size = Size(
-                                    width = size.width * fillFraction.coerceIn(0f, 1f),
-                                    height = size.height,
-                                ),
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
-                ),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = CircleShape,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Flag,
-                        contentDescription = null,
-                        modifier = Modifier.padding(11.dp).size(22.dp),
-                    )
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.accounts_net_worth_goal),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = if (targetText == null) {
-                            statusText
-                        } else {
-                            stringResource(R.string.accounts_goal_target_format, targetText)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    if (progress == null || currentText == null) {
-                        Text(
-                            text = stringResource(R.string.accounts_goal_set_action),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = accent,
-                        )
-                    } else {
-                        Text(
-                            text = progress.percentageText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = accent,
-                        )
-                        Text(
-                            text = currentText,
-                            style = if (currentText.length > 14) {
-                                MaterialTheme.typography.titleMedium
+            item {
+                MoneyCard(contentPadding = PaddingValues(0.dp)) {
+                    MoneyListRow(
+                        title = stringResource(
+                            if (state.savingsGoal == null) {
+                                R.string.savings_goal_set_title
                             } else {
-                                MaterialTheme.typography.titleLarge
+                                R.string.savings_goal_edit_title
                             },
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                        )
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isAchieved) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
+                        ),
+                        subtitle = stringResource(R.string.accounts_goal_manage_description),
+                        modifier = Modifier.clickable(onClick = onManageSavingsGoal),
+                    )
                 }
             }
         }

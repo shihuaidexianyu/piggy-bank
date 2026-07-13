@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -210,6 +212,7 @@ private fun MonthHero(
                     color = changeColor,
                 )
             }
+            NetWorthGoalProgress(state)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -241,6 +244,72 @@ private fun MonthHero(
                 )
             }
         }
+    }
+}
+
+@Suppress("FloatingPointUsageInMoney")
+@Composable
+private fun NetWorthGoalProgress(state: StatsUiState) {
+    val targetAmount = state.netWorthGoalTargetAmount ?: return
+    val targetText = state.netWorthGoalTargetText ?: return
+    val progress = netWorthGoalProgressPresentation(
+        currentAmount = state.closingAssets,
+        targetAmount = targetAmount,
+    )
+    val isAchieved = state.closingAssets >= targetAmount
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.net_worth_goal_target_format, targetText),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = progress.percentageText,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.geometryPercent / 100f)
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+        }
+        Text(
+            text = when {
+                state.netWorthGoalDifferenceText == null -> stringResource(R.string.net_worth_goal_in_progress)
+                isAchieved && state.closingAssets == targetAmount -> stringResource(R.string.net_worth_goal_achieved)
+                isAchieved -> stringResource(
+                    R.string.net_worth_goal_exceeded_format,
+                    state.netWorthGoalDifferenceText,
+                )
+                else -> stringResource(
+                    R.string.net_worth_goal_remaining_format,
+                    state.netWorthGoalDifferenceText,
+                )
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isAchieved) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.align(Alignment.End),
+        )
     }
 }
 

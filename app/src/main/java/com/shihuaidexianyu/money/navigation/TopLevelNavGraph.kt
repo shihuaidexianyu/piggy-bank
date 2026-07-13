@@ -126,6 +126,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 StatsViewModel(
                     observeStatsDashboardUseCase = container.observeStatsDashboardUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    savingsGoalRepository = container.savingsGoalRepository,
                     clockProvider = SystemClockProvider,
                     zoneIdProvider = SystemZoneIdProvider,
                 )

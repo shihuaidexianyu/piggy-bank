@@ -43,6 +43,11 @@ class StatsNaturalMonthScreenTest {
                         totalInflowText = "¥100.00",
                         totalOutflowText = "¥40.00",
                         netCashFlowText = "+¥60.00",
+                        closingAssets = 25_000L,
+                        closingAssetsText = "¥250.00",
+                        netWorthGoalTargetAmount = 100_000L,
+                        netWorthGoalTargetText = "¥1,000.00",
+                        netWorthGoalDifferenceText = "¥750.00",
                         netCashFlowHistoryFilters = monthCash,
                         dailyPoints = listOf(
                             StatsDailyUiModel(
@@ -77,6 +82,9 @@ class StatsNaturalMonthScreenTest {
         composeRule.onNodeWithText("转账路径").assertDoesNotExist()
         composeRule.onNodeWithText("期初资产").assertIsDisplayed()
         composeRule.onNodeWithText("期末净资产").assertIsDisplayed()
+        composeRule.onNodeWithText("目标 ¥1,000.00").assertIsDisplayed()
+        composeRule.onNodeWithText("25%").assertIsDisplayed()
+        composeRule.onNodeWithText("还差 ¥750.00").assertIsDisplayed()
         composeRule.onNodeWithText("周").assertDoesNotExist()
         composeRule.onNodeWithText("年").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("下个月").assertIsNotEnabled()

@@ -1,13 +1,11 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.ui.accounts.AccountListItemUiModel
-import com.shihuaidexianyu.money.ui.accounts.AccountsUiState
 import com.shihuaidexianyu.money.ui.accounts.accountGroups
 import com.shihuaidexianyu.money.ui.accounts.accountClosurePresentation
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailUiState
 import com.shihuaidexianyu.money.ui.accounts.canMutateLedger
-import com.shihuaidexianyu.money.ui.accounts.netWorthGoalProgressPresentation
-import com.shihuaidexianyu.money.ui.accounts.shouldShowAccountOverview
+import com.shihuaidexianyu.money.ui.stats.netWorthGoalProgressPresentation
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -58,27 +56,6 @@ class AccountsScreenProjectionTest {
 
         assertTrue(AccountDetailUiState(isLoading = false, isClosed = false).canMutateLedger())
         assertFalse(AccountDetailUiState(isLoading = false, isClosed = true).canMutateLedger())
-    }
-
-    @Test
-    fun `overview remains visible with no open account and one nonzero closed account`() {
-        val state = AccountsUiState(
-            openAccounts = emptyList(),
-            closedAccounts = listOf(
-                AccountListItemUiModel(
-                    id = 1L,
-                    name = "已关闭账户",
-                    colorName = "blue",
-                    iconName = "wallet",
-                    balance = 12_345L,
-                    isClosed = true,
-                    isStale = false,
-                    displayOrder = 0,
-                ),
-            ),
-        )
-
-        assertTrue(shouldShowAccountOverview(state))
     }
 
     private fun item(
