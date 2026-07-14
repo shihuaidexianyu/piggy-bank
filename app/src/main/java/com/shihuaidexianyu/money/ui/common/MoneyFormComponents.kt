@@ -2,10 +2,9 @@ package com.shihuaidexianyu.money.ui.common
 
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,15 +28,22 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
@@ -303,6 +309,7 @@ fun MoneyDateTimeFields(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MoneyAmountField(
     value: String,
@@ -315,15 +322,9 @@ fun MoneyAmountField(
 ) {
     val resolvedLabel = label ?: stringResource(R.string.field_amount)
     var showKeypad by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Release) {
-                showKeypad = true
-            }
-        }
-    }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val shape = RoundedCornerShape(12.dp)
 
     if (showKeypad) {
         MoneyAmountKeypadSheet(
@@ -335,30 +336,49 @@ fun MoneyAmountField(
         )
     }
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(resolvedLabel) },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true,
-        readOnly = false,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = if (allowSigned) KeyboardType.Text else KeyboardType.Decimal,
-        ),
-        textStyle = MaterialTheme.typography.displayMedium,
-        interactionSource = interactionSource,
-        isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-        ),
-    )
+    Box(modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text(resolvedLabel) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics {},
+            singleLine = true,
+            readOnly = true,
+            textStyle = MaterialTheme.typography.displayMedium,
+            isError = isError,
+            supportingText = supportingText?.let { { Text(it) } },
+            shape = shape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            ),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(
+                    role = Role.Button,
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                        showKeypad = true
+                    },
+                )
+                .semantics {
+                    contentDescription = resolvedLabel
+                    stateDescription = value.ifBlank { "0" }
+                    if (isError && supportingText != null) {
+                        error(supportingText)
+                    }
+                },
+        )
+    }
 }
 
 @Composable
