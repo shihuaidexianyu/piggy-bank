@@ -1,6 +1,6 @@
 # Money
 
-一个完全离线的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。当前版本为 `2.4.1`（versionCode `106`）。
+一个完全离线的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。当前版本为 `2.4.2`（versionCode `107`）。
 
 仓库地址: [https://github.com/shihuaidexianyu/piggy-bank](https://github.com/shihuaidexianyu/piggy-bank)
 
@@ -96,7 +96,7 @@
 
 ## 📌 当前发布范围
 
-`2.4.1` 将净资产目标融合到自然月分析主卡，并精简账户页的信息层级；同时保留资金流动关系图、每日收支趋势和自动生物识别体验。性能基准自动化和更完整的设备矩阵验证保留到后续版本。详见 [2.4.1 发布说明](RELEASE_NOTES_2.4.1.md)。
+`2.4.2` 修复金额输入框同时启动系统键盘和自定义键盘造成的弹出卡顿，统一使用支持金额运算和实时预览的自定义键盘。性能基准自动化和更完整的设备矩阵验证保留到后续版本。详见 [2.4.2 发布说明](RELEASE_NOTES_2.4.2.md)。
 
 ## 🗂️ 目录结构
 
