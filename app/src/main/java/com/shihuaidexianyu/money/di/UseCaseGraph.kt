@@ -26,7 +26,6 @@ import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCa
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ReopenAccountUseCase
@@ -104,14 +103,6 @@ internal class UseCaseGraph(
         calculateCurrentBalanceUseCase = calculateCurrentBalanceUseCase,
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         clockProvider = SystemClockProvider,
-        zoneIdProvider = SystemZoneIdProvider,
-    )
-
-    val observeStatsDashboardUseCase = ObserveStatsDashboardUseCase(
-        accountRepository = data.accountRepository,
-        portableSettingsRepository = data.portableSettingsRepository,
-        transactionRepository = data.transactionRepository,
-        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         zoneIdProvider = SystemZoneIdProvider,
     )
 

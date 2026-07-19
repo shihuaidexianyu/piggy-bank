@@ -29,16 +29,14 @@ import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun EditBalanceUpdateScreen(
@@ -90,44 +88,12 @@ fun EditBalanceUpdateScreen(
         )
     }
 
-    dateTimeField?.let { currentField ->
-        when (currentField) {
-            MoneyDateTimePickerField.DATE -> {
-                MoneyDatePickerDialogHost(
-                    initialSelectedDateMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { selectedDate ->
-                        selectedDate?.let {
-                            viewModel.updateOccurredAt(
-                                DateTimeTextFormatter.replaceDate(
-                                    baseTimeMillis = state.occurredAtMillis,
-                                    selectedDateMillis = it,
-                                ),
-                            )
-                        }
-                        dateTimeField = null
-                    },
-                )
-            }
-
-            MoneyDateTimePickerField.TIME -> {
-                MoneyTimePickerDialogHost(
-                    initialTimeMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { hour, minute ->
-                        viewModel.updateOccurredAt(
-                            DateTimeTextFormatter.replaceTime(
-                                baseTimeMillis = state.occurredAtMillis,
-                                hour = hour,
-                                minute = minute,
-                            ),
-                        )
-                        dateTimeField = null
-                    },
-                )
-            }
-        }
-    }
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = state.occurredAtMillis,
+        onPick = viewModel::updateOccurredAt,
+        onDismiss = { dateTimeField = null },
+    )
 
     MoneyFormPage(
         title = stringResource(R.string.balance_edit_title),

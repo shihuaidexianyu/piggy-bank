@@ -5,6 +5,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettings
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
+import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
@@ -13,6 +14,7 @@ import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import java.time.Instant
 import java.time.ZoneOffset
@@ -120,13 +122,21 @@ class HomeBudgetViewModelTest {
         )
         val devicePreferences = InMemoryDevicePreferencesRepository()
         val savedStateHandle = SavedStateHandle()
+        val savingsGoal = ObserveSavingsGoalUseCase(
+            accountRepository = accounts,
+            savingsGoalRepository = InMemorySavingsGoalRepository(),
+            transactionRepository = ledger,
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(ledger, clock),
+        )
         return Fixture(
             settings = settings,
             home = home,
+            savingsGoal = savingsGoal,
             devicePreferences = devicePreferences,
             savedStateHandle = savedStateHandle,
             viewModel = HomeViewModel(
                 observeHomeDashboardUseCase = home,
+                observeSavingsGoalUseCase = savingsGoal,
                 devicePreferencesRepository = devicePreferences,
                 portableSettingsRepository = settings,
                 savedStateHandle = savedStateHandle,
@@ -137,12 +147,14 @@ class HomeBudgetViewModelTest {
     private data class Fixture(
         val settings: FailOncePortableSettingsRepository,
         val home: ObserveHomeDashboardUseCase,
+        val savingsGoal: ObserveSavingsGoalUseCase,
         val devicePreferences: InMemoryDevicePreferencesRepository,
         val savedStateHandle: SavedStateHandle,
         val viewModel: HomeViewModel,
     ) {
         fun recreateViewModel() = HomeViewModel(
             observeHomeDashboardUseCase = home,
+            observeSavingsGoalUseCase = savingsGoal,
             devicePreferencesRepository = devicePreferences,
             portableSettingsRepository = settings,
             savedStateHandle = savedStateHandle,

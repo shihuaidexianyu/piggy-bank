@@ -149,9 +149,10 @@ class RoomV14ContractTest {
         ).recordId
 
         assertEquals(4, repository.countHistoryRecords(HistoryRecordFilters()))
-        assertEquals(100, repository.sumCashInflowBetween(0, 1_000))
-        assertEquals(300, repository.sumBalanceUpdateIncreaseBetween(0, 1_000))
-        assertEquals(50, repository.sumManualAdjustmentDecreaseBetween(0, 1_000))
+        val activePeriod = repository.queryHomePeriodLedgerSummary(0, 1_000)
+        assertEquals(100, activePeriod.cashInflow)
+        assertEquals(300, activePeriod.reconciliationIncrease)
+        assertEquals(50, activePeriod.manualAdjustmentDecrease)
         assertEquals(150, repository.ledgerBalanceAt100())
 
         repository.softDeleteCurrentCashFlowRecord(cashId, 100)
@@ -168,9 +169,10 @@ class RoomV14ContractTest {
         assertNull(repository.getBalanceUpdateRecordById(updateId))
         assertNull(repository.getBalanceAdjustmentRecordById(adjustmentId))
         assertEquals(0, repository.countHistoryRecords(HistoryRecordFilters()))
-        assertEquals(0, repository.sumCashInflowBetween(0, 1_000))
-        assertEquals(0, repository.sumBalanceUpdateIncreaseBetween(0, 1_000))
-        assertEquals(0, repository.sumManualAdjustmentDecreaseBetween(0, 1_000))
+        val deletedPeriod = repository.queryHomePeriodLedgerSummary(0, 1_000)
+        assertEquals(0, deletedPeriod.cashInflow)
+        assertEquals(0, deletedPeriod.reconciliationIncrease)
+        assertEquals(0, deletedPeriod.manualAdjustmentDecrease)
         assertEquals(0, repository.ledgerBalanceAt100())
 
         repository.queryAllCashFlowRecords().single().assertDeletedAt(100)

@@ -125,24 +125,6 @@ class LedgerAggregateRepositoryTest {
         Unit
     }
 
-    @Test
-    fun `legacy stats sums purpose and daily paths use shared domain failure`() = runBlocking {
-        val repository = InMemoryTransactionRepository()
-        repository.insertCashFlowRecord(
-            cash(1L, CashFlowDirection.INFLOW, Long.MAX_VALUE, 1L, "purpose-1").copy(note = "same-purpose"),
-        )
-        repository.insertCashFlowRecord(
-            cash(1L, CashFlowDirection.INFLOW, 1L, 2L, "purpose-2").copy(note = "same-purpose"),
-        )
-
-        assertFailsWith<LedgerOverflowException> { repository.sumCashInflowBetween(0L, 3L) }
-        assertFailsWith<LedgerOverflowException> {
-            repository.queryPurposeTotals(CashFlowDirection.INFLOW.value, 0L, 3L)
-        }
-        assertFailsWith<LedgerOverflowException> { repository.queryDailyCashFlowTotals(0L, 3L, 0) }
-        Unit
-    }
-
     private fun account(
         id: Long,
         initialBalance: Long,

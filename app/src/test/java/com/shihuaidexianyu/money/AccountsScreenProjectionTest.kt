@@ -5,7 +5,7 @@ import com.shihuaidexianyu.money.ui.accounts.accountGroups
 import com.shihuaidexianyu.money.ui.accounts.accountClosurePresentation
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailUiState
 import com.shihuaidexianyu.money.ui.accounts.canMutateLedger
-import com.shihuaidexianyu.money.ui.stats.netWorthGoalProgressPresentation
+import com.shihuaidexianyu.money.ui.home.netWorthGoalProgressPresentation
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

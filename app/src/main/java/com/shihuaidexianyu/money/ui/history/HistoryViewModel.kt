@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.ui.history
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
 import com.shihuaidexianyu.money.R
@@ -37,22 +36,9 @@ import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.domain.model.HistoryRecord as DomainHistoryRecord
-import java.math.BigDecimal
 
 private const val HISTORY_PAGE_SIZE = 100
 private const val HISTORY_FILTER_DEBOUNCE_MILLIS = 250L
-private const val EXACT_FILTER_ACTIVE = "history_exact_active"
-private const val EXACT_KEYWORD = "history_exact_keyword"
-private const val EXACT_EXCLUDE = "history_exact_exclude"
-private const val EXACT_TYPES = "history_exact_types"
-private const val EXACT_ACCOUNT = "history_exact_account"
-private const val EXACT_TRANSFER_FROM = "history_exact_transfer_from"
-private const val EXACT_TRANSFER_TO = "history_exact_transfer_to"
-private const val EXACT_START = "history_exact_start"
-private const val EXACT_END = "history_exact_end"
-private const val EXACT_MIN = "history_exact_min"
-private const val EXACT_MAX = "history_exact_max"
-private const val EXACT_DIRECTION = "history_exact_direction"
 
 internal fun shouldApplyHistoryLoadResult(
     requestGeneration: Int,
@@ -89,8 +75,6 @@ data class HistoryRecordUiModel(
     val occurredAt: Long,
     val accountIds: Set<Long>,
     val keywordSource: String,
-    val transferFromAccountId: Long? = null,
-    val transferToAccountId: Long? = null,
 )
 
 data class HistoryUiState(
@@ -100,8 +84,6 @@ data class HistoryUiState(
     val excludeKeyword: String = "",
     val selectedRecordTypes: Set<HistoryRecordType> = emptySet(),
     val selectedAccountId: Long? = null,
-    val transferFromAccountId: Long? = null,
-    val transferToAccountId: Long? = null,
     val dateStartAt: Long? = null,
     val dateEndAt: Long? = null,
     val minAmountText: String = "",
@@ -126,8 +108,6 @@ internal data class HistoryFilterState(
     val excludeKeyword: String = "",
     val selectedRecordTypes: Set<HistoryRecordType> = emptySet(),
     val selectedAccountId: Long? = null,
-    val transferFromAccountId: Long? = null,
-    val transferToAccountId: Long? = null,
     val dateStartAt: Long? = null,
     val dateEndAt: Long? = null,
     val minAmountText: String = "",
@@ -141,7 +121,6 @@ class HistoryViewModel(
     private val transactionRepository: TransactionRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
-    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -220,19 +199,9 @@ class HistoryViewModel(
     fun updateAmountDirectionFilter(filter: AmountDirectionFilter) =
         applyLocalFilter { copy(amountDirectionFilter = filter) }
 
-    fun applyExternalFilters(filters: HistoryRecordFilters) {
-        val updated = filters.toHistoryFilterState()
-        filterState.value = updated
-        persistExactFilterState(updated)
-        applyFiltersToState(updated)
-        scheduleFilterSave(updated)
-        reloadFirstPage()
-    }
-
     fun clearFilters() {
         val cleared = HistoryFilterState()
         filterState.value = cleared
-        clearExactFilterState()
         applyFiltersToState(cleared)
         scheduleFilterSave(cleared)
         reloadFirstPage()
@@ -284,9 +253,7 @@ class HistoryViewModel(
 
     private suspend fun initialize() {
         val initialSettings = portableSettingsRepository.query()
-        val deviceFilters = devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
-        // Re-read after the suspend query so an external drill-down delivered during startup wins.
-        val initialFilters = restoreExactFilterState() ?: deviceFilters
+        val initialFilters = devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
         filterState.value = initialFilters
         applySettings(initialSettings)
         applyFiltersToState(initialFilters)
@@ -344,7 +311,6 @@ class HistoryViewModel(
     ) {
         val updatedFilters = filterState.value.transform()
         filterState.value = updatedFilters
-        if (savedStateHandle.get<Boolean>(EXACT_FILTER_ACTIVE) == true) persistExactFilterState(updatedFilters)
         applyFiltersToState(updatedFilters)
         scheduleFilterSave(updatedFilters)
         reloadFirstPage(
@@ -360,8 +326,6 @@ class HistoryViewModel(
                 excludeKeyword = filters.excludeKeyword,
                 selectedRecordTypes = filters.selectedRecordTypes,
                 selectedAccountId = filters.selectedAccountId,
-                transferFromAccountId = filters.transferFromAccountId,
-                transferToAccountId = filters.transferToAccountId,
                 dateStartAt = filters.dateStartAt,
                 dateEndAt = filters.dateEndAt,
                 minAmountText = filters.minAmountText,
@@ -486,8 +450,6 @@ class HistoryViewModel(
                     setOf(record.accountId, relatedAccountId)
                 },
                 keywordSource = record.keywordSource,
-                transferFromAccountId = record.accountId.takeIf { record.type == HistoryRecordType.TRANSFER },
-                transferToAccountId = record.relatedAccountId.takeIf { record.type == HistoryRecordType.TRANSFER },
             )
         }
     }
@@ -501,57 +463,6 @@ class HistoryViewModel(
         }
     }
 
-    private fun persistExactFilterState(filters: HistoryFilterState) {
-        savedStateHandle[EXACT_FILTER_ACTIVE] = true
-        savedStateHandle[EXACT_KEYWORD] = filters.keyword
-        savedStateHandle[EXACT_EXCLUDE] = filters.excludeKeyword
-        savedStateHandle[EXACT_TYPES] = ArrayList(filters.selectedRecordTypes.map(HistoryRecordType::name))
-        savedStateHandle[EXACT_ACCOUNT] = filters.selectedAccountId
-        savedStateHandle[EXACT_TRANSFER_FROM] = filters.transferFromAccountId
-        savedStateHandle[EXACT_TRANSFER_TO] = filters.transferToAccountId
-        savedStateHandle[EXACT_START] = filters.dateStartAt
-        savedStateHandle[EXACT_END] = filters.dateEndAt
-        savedStateHandle[EXACT_MIN] = filters.minAmountText
-        savedStateHandle[EXACT_MAX] = filters.maxAmountText
-        savedStateHandle[EXACT_DIRECTION] = filters.amountDirectionFilter.value
-    }
-
-    private fun restoreExactFilterState(): HistoryFilterState? {
-        if (savedStateHandle.get<Boolean>(EXACT_FILTER_ACTIVE) != true) return null
-        return HistoryFilterState(
-            keyword = savedStateHandle.get<String>(EXACT_KEYWORD).orEmpty(),
-            excludeKeyword = savedStateHandle.get<String>(EXACT_EXCLUDE).orEmpty(),
-            selectedRecordTypes = savedStateHandle.get<ArrayList<String>>(EXACT_TYPES)
-                .orEmpty()
-                .mapNotNull { stored -> HistoryRecordType.entries.firstOrNull { it.name == stored } }
-                .toSet(),
-            selectedAccountId = savedStateHandle.get<Long>(EXACT_ACCOUNT),
-            transferFromAccountId = savedStateHandle.get<Long>(EXACT_TRANSFER_FROM),
-            transferToAccountId = savedStateHandle.get<Long>(EXACT_TRANSFER_TO),
-            dateStartAt = savedStateHandle.get<Long>(EXACT_START),
-            dateEndAt = savedStateHandle.get<Long>(EXACT_END),
-            minAmountText = savedStateHandle.get<String>(EXACT_MIN).orEmpty(),
-            maxAmountText = savedStateHandle.get<String>(EXACT_MAX).orEmpty(),
-            amountDirectionFilter = AmountDirectionFilter.fromValue(savedStateHandle.get(EXACT_DIRECTION)),
-        )
-    }
-
-    private fun clearExactFilterState() {
-        listOf(
-            EXACT_FILTER_ACTIVE,
-            EXACT_KEYWORD,
-            EXACT_EXCLUDE,
-            EXACT_TYPES,
-            EXACT_ACCOUNT,
-            EXACT_TRANSFER_FROM,
-            EXACT_TRANSFER_TO,
-            EXACT_START,
-            EXACT_END,
-            EXACT_MIN,
-            EXACT_MAX,
-            EXACT_DIRECTION,
-        ).forEach { key -> savedStateHandle.remove<Any>(key) }
-    }
 }
 
 private fun HistoryFilters.toHistoryFilterState(): HistoryFilterState {
@@ -600,8 +511,6 @@ private fun HistoryUiState.hasActiveFilters(): Boolean =
         excludeKeyword.isNotBlank() ||
         selectedRecordTypes.isNotEmpty() ||
         selectedAccountId != null ||
-        transferFromAccountId != null ||
-        transferToAccountId != null ||
         dateStartAt != null ||
         dateEndAt != null ||
         minAmountText.isNotBlank() ||
@@ -636,8 +545,6 @@ private fun HistoryFilterState.toHistoryRecordFiltersOrNull(): HistoryRecordFilt
         excludeKeyword = excludeKeyword,
         recordTypes = selectedRecordTypes,
         accountId = selectedAccountId,
-        transferFromAccountId = transferFromAccountId,
-        transferToAccountId = transferToAccountId,
         dateStartAt = dateStartAt,
         dateEndAt = dateEndAt,
         minAmount = amounts.minAmount,
@@ -680,10 +587,6 @@ internal fun filterHistoryRecords(
         val excludeOk = excludeKeyword.isBlank() || !searchableText.contains(excludeKeyword)
         val typeOk = filters.selectedRecordTypes.isEmpty() || record.kind.toDomainType() in filters.selectedRecordTypes
         val accountOk = filters.selectedAccountId == null || filters.selectedAccountId in record.accountIds
-        val transferFromOk = filters.transferFromAccountId == null ||
-            record.transferFromAccountId == filters.transferFromAccountId
-        val transferToOk = filters.transferToAccountId == null ||
-            record.transferToAccountId == filters.transferToAccountId
         val startOk = startAt == null || record.occurredAt >= startAt
         val endOk = endAt == null || record.occurredAt < endAt
         val minOk = minAmount == null || record.amount >= minAmount || record.amount <= -minAmount
@@ -693,7 +596,7 @@ internal fun filterHistoryRecords(
             AmountDirectionFilter.INCREASE -> record.amount > 0 && record.kind != HistoryRecordKind.TRANSFER
             AmountDirectionFilter.DECREASE -> record.amount < 0 && record.kind != HistoryRecordKind.TRANSFER
         }
-        keywordOk && excludeOk && typeOk && accountOk && transferFromOk && transferToOk &&
+        keywordOk && excludeOk && typeOk && accountOk &&
             startOk && endOk && minOk && maxOk && directionOk
     }
 }
@@ -704,25 +607,3 @@ private fun HistoryRecordKind.toDomainType(): HistoryRecordType = when (this) {
     HistoryRecordKind.BALANCE_UPDATE -> HistoryRecordType.BALANCE_UPDATE
     HistoryRecordKind.BALANCE_ADJUSTMENT -> HistoryRecordType.BALANCE_ADJUSTMENT
 }
-
-private fun HistoryRecordFilters.toHistoryFilterState(): HistoryFilterState = HistoryFilterState(
-    keyword = keyword,
-    excludeKeyword = excludeKeyword,
-    selectedRecordTypes = recordTypes,
-    selectedAccountId = accountId,
-    transferFromAccountId = transferFromAccountId,
-    transferToAccountId = transferToAccountId,
-    dateStartAt = dateStartAt,
-    dateEndAt = dateEndAt,
-    minAmountText = minAmount?.toHistoryAmountInput().orEmpty(),
-    maxAmountText = maxAmount?.toHistoryAmountInput().orEmpty(),
-    amountDirectionFilter = when (amountDirection) {
-        HistoryAmountDirection.ALL -> AmountDirectionFilter.ALL
-        HistoryAmountDirection.INCREASE -> AmountDirectionFilter.INCREASE
-        HistoryAmountDirection.DECREASE -> AmountDirectionFilter.DECREASE
-    },
-)
-
-private fun Long.toHistoryAmountInput(): String = BigDecimal.valueOf(this, 2)
-    .stripTrailingZeros()
-    .toPlainString()

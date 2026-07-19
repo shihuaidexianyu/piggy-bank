@@ -15,7 +15,6 @@ import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import kotlin.test.assertEquals
@@ -40,8 +39,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import androidx.lifecycle.SavedStateHandle
-import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryAsyncRetryRaceTest {
@@ -255,91 +252,6 @@ class HistoryAsyncRetryRaceTest {
             assertEquals("新名称", viewModel.uiState.value.accountOptions.single().name)
         }
 
-    @Test
-    fun `exact transfer path survives view model recreation without broadening`() = runTest(dispatcher) {
-        val handle = SavedStateHandle()
-        val firstRepository = CapturingHistoryRepository(InMemoryTransactionRepository())
-        val exact = HistoryRecordFilters(
-            recordTypes = setOf(HistoryRecordType.TRANSFER),
-            transferFromAccountId = 1L,
-            transferToAccountId = 2L,
-            dateStartAt = 1_000L,
-            dateEndAt = 2_000L,
-        )
-        val first = HistoryViewModel(
-            accountRepository = InMemoryAccountRepository(),
-            transactionRepository = firstRepository,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
-            savedStateHandle = handle,
-        )
-        runCurrent()
-        first.applyExternalFilters(exact)
-        runCurrent()
-        assertEquals(exact, firstRepository.lastFilters)
-
-        val recreatedRepository = CapturingHistoryRepository(InMemoryTransactionRepository())
-        HistoryViewModel(
-            accountRepository = InMemoryAccountRepository(),
-            transactionRepository = recreatedRepository,
-            portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            devicePreferencesRepository = InMemoryDevicePreferencesRepository(
-                DevicePreferences(historyFilters = HistoryFilters(keyword = "会放宽的设备筛选")),
-            ),
-            savedStateHandle = handle,
-        )
-        runCurrent()
-
-        assertEquals(exact, recreatedRepository.lastFilters)
-    }
-
-    @Test
-    fun `external drill-down received during suspended initialization wins over device filters`() =
-        runTest(dispatcher) {
-            val handle = SavedStateHandle()
-            val devicePreferences = BlockingDevicePreferencesRepository(
-                InMemoryDevicePreferencesRepository(
-                    DevicePreferences(historyFilters = HistoryFilters(keyword = "旧设备筛选")),
-                ),
-            )
-            val repository = CapturingHistoryRepository(InMemoryTransactionRepository())
-            val viewModel = HistoryViewModel(
-                accountRepository = InMemoryAccountRepository(),
-                transactionRepository = repository,
-                portableSettingsRepository = InMemoryPortableSettingsRepository(),
-                devicePreferencesRepository = devicePreferences,
-                savedStateHandle = handle,
-            )
-            runCurrent()
-            assertTrue(devicePreferences.queryStarted.isCompleted)
-            val exact = HistoryRecordFilters(
-                recordTypes = setOf(HistoryRecordType.TRANSFER),
-                transferFromAccountId = 1L,
-                transferToAccountId = 2L,
-                dateStartAt = 100L,
-                dateEndAt = 200L,
-            )
-            // Deliver through the same ViewModel instance while DataStore query is suspended.
-            viewModel.applyExternalFilters(exact)
-            runCurrent()
-            devicePreferences.releaseQuery.complete(Unit)
-            runCurrent()
-
-            assertEquals(exact, repository.lastFilters)
-        }
-}
-
-private class BlockingDevicePreferencesRepository(
-    private val delegate: DevicePreferencesRepository,
-) : DevicePreferencesRepository by delegate {
-    val queryStarted = CompletableDeferred<Unit>()
-    val releaseQuery = CompletableDeferred<Unit>()
-
-    override suspend fun query(): DevicePreferences {
-        queryStarted.complete(Unit)
-        releaseQuery.await()
-        return delegate.query()
-    }
 }
 
 private class CapturingHistoryRepository(

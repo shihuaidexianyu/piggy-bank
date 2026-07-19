@@ -99,30 +99,6 @@ interface TransferRecordDao {
     @Query(
         """
         SELECT * FROM transfer_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        ORDER BY occurredAt ASC, id ASC
-        """,
-    )
-    suspend fun queryActiveBetween(startInclusive: Long, endExclusive: Long): List<TransferRecordEntity>
-
-    @Query(
-        """
-        SELECT fromAccountId, toAccountId, SUM(amount) AS amount
-        FROM transfer_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        GROUP BY fromAccountId, toAccountId
-        ORDER BY amount DESC, fromAccountId ASC, toAccountId ASC
-        """,
-    )
-    suspend fun queryPathTotalsBetween(startInclusive: Long, endExclusive: Long): List<TransferPathTotalRow>
-
-    @Query(
-        """
-        SELECT * FROM transfer_records
         WHERE (fromAccountId = :accountId OR toAccountId = :accountId)
             AND deletedAt IS NULL
         ORDER BY occurredAt DESC, id DESC
@@ -165,16 +141,6 @@ interface TransferRecordDao {
         """,
     )
     suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
-
-    @Query(
-        """
-        SELECT COUNT(*) FROM transfer_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """,
-    )
-    suspend fun countActiveBetween(startInclusive: Long, endExclusive: Long): Int
 
     @Query("DELETE FROM transfer_records")
     suspend fun deleteAll()

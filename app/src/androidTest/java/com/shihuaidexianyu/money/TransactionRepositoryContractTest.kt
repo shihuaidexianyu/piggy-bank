@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
-import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
@@ -35,7 +34,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.ZoneOffset
 
 /**
  * 契约测试：保证 [InMemoryTransactionRepository]（用于单元测试）与 [TransactionRepositoryImpl]（真实 Room 实现）
@@ -599,68 +597,6 @@ class TransactionRepositoryContractTest {
     }
 
     @Test
-    fun historyTransferPathFilterMatchesExactSourceAndDestinationInBothImplementations() = runBlocking {
-        seedAccount()
-        listOf(2L to "第二账户", 3L to "第三账户").forEach { (id, name) ->
-            db.accountDao().insert(
-                com.shihuaidexianyu.money.data.entity.AccountEntity(
-                    id = id,
-                    name = name,
-                    initialBalance = 0L,
-                    createdAt = 1_000L,
-                    displayOrder = id.toInt(),
-                ),
-            )
-        }
-        listOf(2L, 3L).forEach { targetId ->
-            val record = TransferRecord(
-                fromAccountId = 1L,
-                toAccountId = targetId,
-                amount = targetId * 100L,
-                note = "路径$targetId",
-                occurredAt = 2_000L + targetId,
-                createdAt = 2_000L + targetId,
-                updatedAt = 2_000L + targetId,
-                operationId = "history-path-$targetId",
-            )
-            roomRepo.insertTransferRecord(record)
-            memoryRepo.insertTransferRecord(record)
-        }
-        val filters = HistoryRecordFilters(
-            recordTypes = setOf(HistoryRecordType.TRANSFER),
-            transferFromAccountId = 1L,
-            transferToAccountId = 2L,
-            dateStartAt = 1_000L,
-            dateEndAt = 3_000L,
-        )
-
-        assertEquals(
-            memoryRepo.queryHistoryRecords(filters, null, 20),
-            roomRepo.queryHistoryRecords(filters, null, 20),
-        )
-        assertEquals(1, roomRepo.countHistoryRecords(filters))
-        assertEquals(
-            memoryRepo.queryTransferPathTotalsBetween(1_000L, 3_000L),
-            roomRepo.queryTransferPathTotalsBetween(1_000L, 3_000L),
-        )
-    }
-
-    @Test
-    fun analysisCashProjectionUsesOnlyActiveHalfOpenRowsWithRoomMemoryParity() = runBlocking {
-        seedAccountAndCashFlows()
-        val start = 1_700_000_000_000L
-        val end = start + 3 * 60_000L
-
-        assertEquals(
-            memoryRepo.queryCashFlowAnalysisEntriesBetween(start, end),
-            roomRepo.queryCashFlowAnalysisEntriesBetween(start, end),
-        )
-        assertTrue(roomRepo.queryCashFlowAnalysisEntriesBetween(start, end).all {
-            it.occurredAt >= start && it.occurredAt < end
-        })
-    }
-
-    @Test
     fun balanceUpdateRecordsByAccountIdAreSortedByOccurredAtDescThenIdDesc() = runBlocking {
         seedAccount()
         val accountId = 1L
@@ -773,43 +709,6 @@ class TransactionRepositoryContractTest {
         val roomRecords = roomRepo.queryBalanceAdjustmentRecordsByAccountId(accountId)
         val memoryRecords = memoryRepo.queryBalanceAdjustmentRecordsByAccountId(accountId)
         assertEquals("InMemory 应与 DAO 排序一致", roomRecords, memoryRecords)
-    }
-
-    @Test
-    fun dailyCashFlowTotalsAtLocalNoon_areEquivalentAcrossImplementations() = runBlocking {
-        seedAccount()
-        val accountId = 1L
-        val zone = ZoneOffset.ofHours(8)
-        val zoneOffsetSeconds = zone.totalSeconds
-        val localNoonUtcMillis = 1_704_062_400_000L // 2024-01-01 00:00 UTC = 2024-01-01 08:00 +08:00
-        val noonLocalMillis = localNoonUtcMillis + 4 * 3600_000L // 12:00 +08:00
-        val record = CashFlowRecord(
-            accountId = accountId,
-            direction = CashFlowDirection.INFLOW.value,
-            amount = 1000,
-            note = "薪水",
-            occurredAt = noonLocalMillis,
-            createdAt = noonLocalMillis,
-            updatedAt = noonLocalMillis,
-            operationId = "daily-cash-noon",
-        )
-        roomRepo.insertCashFlowRecord(record)
-        memoryRepo.insertCashFlowRecord(record)
-
-        val startAt = noonLocalMillis
-        val endAt = noonLocalMillis + 1
-        val roomTotals = roomRepo.queryDailyCashFlowTotals(startAt, endAt, zoneOffsetSeconds)
-        val memoryTotals = memoryRepo.queryDailyCashFlowTotals(startAt, endAt, zoneOffsetSeconds)
-        assertEquals(memoryTotals, roomTotals)
-        assertTrue(roomTotals.isNotEmpty())
-        val expected: List<CashFlowDailyTotal> = listOf(
-            CashFlowDailyTotal(
-                epochDay = 19_723L, // 2024-01-01 epoch day
-                direction = CashFlowDirection.INFLOW.value,
-                amount = 1000,
-            ),
-        )
-        assertEquals(expected, roomTotals)
     }
 
     @Test
@@ -982,19 +881,15 @@ class TransactionRepositoryContractTest {
             )
         }
 
-        assertEquals(100L, roomRepo.sumCashInflowBetween(startInclusive, endExclusive))
+        val roomSummary = roomRepo.queryHomePeriodLedgerSummary(startInclusive, endExclusive)
         assertEquals(
-            memoryRepo.queryActiveTransferRecordsBetween(startInclusive, endExclusive),
-            roomRepo.queryActiveTransferRecordsBetween(startInclusive, endExclusive),
+            memoryRepo.queryHomePeriodLedgerSummary(startInclusive, endExclusive),
+            roomSummary,
         )
-        assertEquals(
-            memoryRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
-            roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
-        )
-        assertEquals(
-            memoryRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
-            roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
-        )
+        assertEquals(100L, roomSummary.cashInflow)
+        assertEquals(500L, roomSummary.reconciliationIncrease)
+        assertEquals(700L, roomSummary.manualAdjustmentIncrease)
+        assertEquals(1, roomSummary.transferRecordCount)
         val filters = HistoryRecordFilters(dateStartAt = startInclusive, dateEndAt = endExclusive)
         assertEquals(
             memoryRepo.queryHistoryRecords(filters, cursor = null, limit = 20),
@@ -1110,17 +1005,6 @@ class TransactionRepositoryContractTest {
         assertEquals(memoryRepo.queryAllActiveTransferRecords(), roomRepo.queryAllActiveTransferRecords())
         assertTrue(roomRepo.queryAllActiveTransferRecords().isEmpty())
         assertEquals(
-            memoryRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
-            roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive),
-        )
-        assertTrue(roomRepo.queryBalanceUpdateRecordsBetween(startInclusive, endExclusive).isEmpty())
-        assertEquals(
-            memoryRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
-            roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive),
-        )
-        assertTrue(roomRepo.queryBalanceAdjustmentRecordsBetween(startInclusive, endExclusive).isEmpty())
-
-        assertEquals(
             memoryRepo.sumInflowBetween(1L, startInclusive, endExclusive),
             roomRepo.sumInflowBetween(1L, startInclusive, endExclusive),
         )
@@ -1141,35 +1025,17 @@ class TransactionRepositoryContractTest {
         )
         assertEquals(0L, roomRepo.sumAdjustmentBetween(1L, startInclusive, endExclusive))
 
+        val roomSummary = roomRepo.queryHomePeriodLedgerSummary(startInclusive, endExclusive)
         assertEquals(
-            memoryRepo.sumCashInflowBetween(startInclusive, endExclusive),
-            roomRepo.sumCashInflowBetween(startInclusive, endExclusive),
+            memoryRepo.queryHomePeriodLedgerSummary(startInclusive, endExclusive),
+            roomSummary,
         )
-        assertEquals(0L, roomRepo.sumCashInflowBetween(startInclusive, endExclusive))
-        assertEquals(
-            memoryRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive),
-            roomRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive),
-        )
-        assertEquals(0L, roomRepo.sumBalanceUpdateIncreaseBetween(startInclusive, endExclusive))
-        assertEquals(
-            memoryRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive),
-            roomRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive),
-        )
-        assertEquals(0L, roomRepo.sumManualAdjustmentDecreaseBetween(startInclusive, endExclusive))
-        assertEquals(
-            memoryRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive),
-            roomRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive),
-        )
-        assertTrue(
-            roomRepo.queryPurposeTotals(CashFlowDirection.INFLOW.value, startInclusive, endExclusive).isEmpty(),
-        )
-        assertEquals(
-            memoryRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds),
-            roomRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds),
-        )
-        assertTrue(
-            roomRepo.queryDailyCashFlowTotals(startInclusive, endExclusive, ZoneOffset.UTC.totalSeconds).isEmpty(),
-        )
+        assertEquals(0L, roomSummary.cashInflow)
+        assertEquals(0L, roomSummary.reconciliationIncrease)
+        assertEquals(0L, roomSummary.manualAdjustmentDecrease)
+        assertEquals(0, roomSummary.cashFlowRecordCount)
+        assertEquals(0, roomSummary.transferRecordCount)
+        assertEquals(0, roomSummary.manualAdjustmentRecordCount)
 
         val filters = HistoryRecordFilters()
         assertEquals(

@@ -100,8 +100,6 @@ internal const val HISTORY_FILTER_FRAGMENT = """
             OR (:includeBalanceAdjustment AND type = 'BALANCE_ADJUSTMENT')
         )
         AND (:accountId IS NULL OR accountId = :accountId OR relatedAccountId = :accountId)
-        AND (:transferFromAccountId IS NULL OR (type = 'TRANSFER' AND accountId = :transferFromAccountId))
-        AND (:transferToAccountId IS NULL OR (type = 'TRANSFER' AND relatedAccountId = :transferToAccountId))
         AND (:dateStartAt IS NULL OR occurredAt >= :dateStartAt)
         AND (:dateEndAt IS NULL OR occurredAt < :dateEndAt)
         AND (:minAmount IS NULL OR amount >= :minAmount OR amount <= -:minAmount)
@@ -138,8 +136,6 @@ interface HistoryRecordDao {
         includeBalanceUpdate: Boolean,
         includeBalanceAdjustment: Boolean,
         accountId: Long?,
-        transferFromAccountId: Long?,
-        transferToAccountId: Long?,
         dateStartAt: Long?,
         dateEndAt: Long?,
         minAmount: Long?,
@@ -166,8 +162,6 @@ interface HistoryRecordDao {
         includeBalanceUpdate: Boolean,
         includeBalanceAdjustment: Boolean,
         accountId: Long?,
-        transferFromAccountId: Long?,
-        transferToAccountId: Long?,
         dateStartAt: Long?,
         dateEndAt: Long?,
         minAmount: Long?,

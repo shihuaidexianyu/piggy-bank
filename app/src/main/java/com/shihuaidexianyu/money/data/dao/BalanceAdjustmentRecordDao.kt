@@ -56,17 +56,6 @@ interface BalanceAdjustmentRecordDao {
     @Query("SELECT * FROM balance_adjustment_records WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<BalanceAdjustmentRecordEntity>
 
-    @Query(
-        """
-        SELECT * FROM balance_adjustment_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        ORDER BY occurredAt ASC, id ASC
-        """,
-    )
-    suspend fun queryBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecordEntity>
-
     @Query("SELECT COUNT(*) FROM balance_adjustment_records WHERE deletedAt IS NULL")
     fun observeCount(): Flow<Int>
 
@@ -89,38 +78,6 @@ interface BalanceAdjustmentRecordDao {
         """,
     )
     suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
-
-    @Query(
-        """
-        SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
-        WHERE deletedAt IS NULL
-            AND delta > 0
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """,
-    )
-    suspend fun sumPositiveManualAdjustmentBetween(startInclusive: Long, endExclusive: Long): Long
-
-    @Query(
-        """
-        SELECT COALESCE(SUM(delta), 0) FROM balance_adjustment_records
-        WHERE deletedAt IS NULL
-            AND delta < 0
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """,
-    )
-    suspend fun sumNegativeManualAdjustmentBetween(startInclusive: Long, endExclusive: Long): Long
-
-    @Query(
-        """
-        SELECT COUNT(*) FROM balance_adjustment_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """
-    )
-    suspend fun countBetween(startInclusive: Long, endExclusive: Long): Int
 
     @Query(
         """

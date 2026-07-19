@@ -5,6 +5,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
@@ -17,7 +18,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
-import com.shihuaidexianyu.money.util.TimeRangeUtils
+import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,13 +26,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home current and opening account lists each use one aggregate read`() = runBlocking {
         val now = Instant.parse("2026-04-10T14:30:00Z").toEpochMilli()
-        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
+        val range = TimeRangeCalculator.currentMonthRange(ZoneId.systemDefault(), now)
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
         repeat(2) { index ->
@@ -120,7 +122,7 @@ class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home dashboard keeps cash flow and reconciliation amounts separate`() = runBlocking {
         val now = System.currentTimeMillis()
-        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
+        val range = TimeRangeCalculator.currentMonthRange(ZoneId.systemDefault(), now)
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val accountId = accountRepository.createAccount(
@@ -204,7 +206,7 @@ class ObserveHomeDashboardUseCaseTest {
     @Test
     fun `home dashboard includes start excludes end and ignores reconciliation and deleted records`() = runBlocking {
         val now = System.currentTimeMillis()
-        val range = TimeRangeUtils.currentMonthRange(nowMillis = now)
+        val range = TimeRangeCalculator.currentMonthRange(ZoneId.systemDefault(), now)
         val accountRepository = InMemoryAccountRepository()
         val transactionRepository = InMemoryTransactionRepository()
         val fromAccountId = accountRepository.createAccount(
@@ -412,5 +414,183 @@ class ObserveHomeDashboardUseCaseTest {
         assertEquals(2_000, snapshot.accountBalances[stalePaymentId])
         assertEquals(4_000, snapshot.accountBalances[closedId])
         assertEquals(19_000, snapshot.totalAssets)
+    }
+
+    @Test
+    fun `home dashboard recent records returns newest five across all ledger types`() = runBlocking {
+        val now = System.currentTimeMillis()
+        val range = TimeRangeCalculator.currentMonthRange(ZoneId.systemDefault(), now)
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val fromAccountId = accountRepository.createAccount(
+            Account(
+                name = "主账户",
+                initialBalance = 10_000,
+                createdAt = range.startInclusive - 60_000,
+            ),
+        )
+        val toAccountId = accountRepository.createAccount(
+            Account(
+                name = "备用账户",
+                initialBalance = 5_000,
+                createdAt = range.startInclusive - 60_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = fromAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100,
+                note = "最早入账",
+                occurredAt = range.startInclusive + 1_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = fromAccountId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 200,
+                note = "午饭",
+                occurredAt = range.startInclusive + 2_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertTransferRecord(
+            TransferRecord(
+                fromAccountId = fromAccountId,
+                toAccountId = toAccountId,
+                amount = 300,
+                note = "转账",
+                occurredAt = range.startInclusive + 3_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = fromAccountId,
+                actualBalance = 10_400,
+                systemBalanceBeforeUpdate = 10_000,
+                delta = 400,
+                occurredAt = range.startInclusive + 4_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertBalanceAdjustmentRecord(
+            BalanceAdjustmentRecord(
+                accountId = fromAccountId,
+                delta = 500,
+                occurredAt = range.startInclusive + 5_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = fromAccountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 600,
+                note = "最新入账",
+                occurredAt = range.startInclusive + 6_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+
+        val useCase = ObserveHomeDashboardUseCase(
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            accountRepository = accountRepository,
+            recurringReminderRepository = InMemoryRecurringReminderRepository(
+                tickerFlow = MutableStateFlow(now).asStateFlow(),
+            ),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            clockProvider = testClockProvider(now),
+            zoneIdProvider = testZoneIdProvider(),
+        )
+
+        val snapshot = useCase().first()
+
+        assertEquals(5, snapshot.recentRecords.size)
+        assertEquals("最新入账", snapshot.recentRecords[0].title)
+        assertEquals(HistoryRecordType.CASH_FLOW, snapshot.recentRecords[0].type)
+        assertEquals(HistoryRecordType.BALANCE_ADJUSTMENT, snapshot.recentRecords[1].type)
+        assertEquals(HistoryRecordType.BALANCE_UPDATE, snapshot.recentRecords[2].type)
+        assertEquals(HistoryRecordType.TRANSFER, snapshot.recentRecords[3].type)
+        assertEquals(toAccountId, snapshot.recentRecords[3].relatedAccountId)
+        assertEquals("午饭", snapshot.recentRecords[4].title)
+        assertEquals(-200L, snapshot.recentRecords[4].amount)
+        assertEquals(emptyList(), snapshot.recentRecords.filter { it.title == "最早入账" })
+    }
+
+    @Test
+    fun `home dashboard recent records passes through fewer than five records`() = runBlocking {
+        val now = System.currentTimeMillis()
+        val range = TimeRangeCalculator.currentMonthRange(ZoneId.systemDefault(), now)
+        val accountRepository = InMemoryAccountRepository()
+        val transactionRepository = InMemoryTransactionRepository()
+        val accountId = accountRepository.createAccount(
+            Account(
+                name = "主账户",
+                initialBalance = 10_000,
+                createdAt = range.startInclusive - 60_000,
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 2_000,
+                note = "工资",
+                occurredAt = range.startInclusive + 1_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+        transactionRepository.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = accountId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 500,
+                note = "午饭",
+                occurredAt = range.startInclusive + 2_000,
+                createdAt = now,
+                updatedAt = now,
+                operationId = testOperationId(),
+            ),
+        )
+
+        val useCase = ObserveHomeDashboardUseCase(
+            accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
+            accountRepository = accountRepository,
+            recurringReminderRepository = InMemoryRecurringReminderRepository(
+                tickerFlow = MutableStateFlow(now).asStateFlow(),
+            ),
+            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
+            transactionRepository = transactionRepository,
+            calculateCurrentBalanceUseCase = CalculateCurrentBalanceUseCase(accountRepository, transactionRepository),
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactionRepository),
+            clockProvider = testClockProvider(now),
+            zoneIdProvider = testZoneIdProvider(),
+        )
+
+        val snapshot = useCase().first()
+
+        assertEquals(2, snapshot.recentRecords.size)
+        assertEquals(listOf("午饭", "工资"), snapshot.recentRecords.map { it.title })
+        assertEquals(listOf(-500L, 2_000L), snapshot.recentRecords.map { it.amount })
     }
 }

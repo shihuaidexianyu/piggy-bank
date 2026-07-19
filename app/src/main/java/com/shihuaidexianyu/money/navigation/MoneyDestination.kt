@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
@@ -17,12 +16,13 @@ sealed class MoneyDestination(
 ) {
     data object Home : MoneyDestination("home", R.string.home_title, Icons.Rounded.Home)
     data object History : MoneyDestination("history", R.string.nav_history, Icons.Rounded.History)
-    data object Stats : MoneyDestination("stats", R.string.stats_title, Icons.Rounded.BarChart)
     data object Accounts : MoneyDestination("accounts", R.string.accounts_title, Icons.Rounded.AccountBalanceWallet)
     data object Settings : MoneyDestination("settings", R.string.settings_title, Icons.Rounded.Settings)
 
     companion object {
-        val topLevel = listOf(Home, History, Stats, Accounts)
+        val topLevel: List<MoneyDestination>
+            get() = listOf(Home, History, Accounts)
+
         const val CreateAccountRoute = "accounts/create"
         const val ReorderAccountsRoute = "accounts/reorder"
         const val EditAccountRoute = "accounts/{accountId}/edit"

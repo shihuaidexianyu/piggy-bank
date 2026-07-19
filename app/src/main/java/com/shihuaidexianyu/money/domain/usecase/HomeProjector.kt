@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ledgerAddExact
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
@@ -32,6 +33,7 @@ internal object HomeProjector {
         cashFlowRecordCount: Int,
         transferRecordCount: Int,
         manualAdjustmentRecordCount: Int,
+        recentRecords: List<HistoryRecord> = emptyList(),
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
     ): HomeDashboardSnapshot {
@@ -75,6 +77,7 @@ internal object HomeProjector {
                 targetAmount = settings.monthlyBudgetAmount,
                 spentAmount = cashOutflow,
             ),
+            recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
         )

@@ -5,7 +5,7 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 /**
  * Hosts the date OR time picker dialog based on [field]. Centralizes the 30-line `when` block that
- * was previously copy-pasted in 6 form screens. The caller keeps the [field] state (so it can be
+ * was previously copy-pasted across form screens. The caller keeps the [field] state (so it can be
  * reset on save/dismiss); this composable just renders the right dialog and forwards the picked
  * timestamp back via [onPick].
  *
@@ -62,4 +62,3 @@ fun MoneyDateTimePickerHost(
         }
     }
 }
-

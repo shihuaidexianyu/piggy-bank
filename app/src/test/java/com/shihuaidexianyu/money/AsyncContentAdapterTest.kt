@@ -10,8 +10,6 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.ui.history.toAsyncContent
 import com.shihuaidexianyu.money.ui.home.HomeUiState
 import com.shihuaidexianyu.money.ui.home.toAsyncContent
-import com.shihuaidexianyu.money.ui.stats.StatsUiState
-import com.shihuaidexianyu.money.ui.stats.toAsyncContent
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import org.junit.Test
@@ -21,7 +19,6 @@ class AsyncContentAdapterTest {
     fun `initial states are loading rather than empty or zero data`() {
         assertIs<AsyncContent.Loading>(HomeUiState().toAsyncContent())
         assertIs<AsyncContent.Loading>(HistoryUiState().toAsyncContent())
-        assertIs<AsyncContent.Loading>(StatsUiState().toAsyncContent())
         assertIs<AsyncContent.Loading>(AccountsUiState().toAsyncContent())
     }
 
@@ -73,13 +70,4 @@ class AsyncContentAdapterTest {
         assertEquals("history:failed", content.retryToken)
     }
 
-    @Test
-    fun `analysis without accounts is an empty branch not zero data`() {
-        val content = StatsUiState(
-            hasCommittedContent = true,
-            hasSourceAccounts = false,
-        ).toAsyncContent()
-
-        assertEquals(EmptyKind.COMPLETELY_EMPTY, (content as AsyncContent.Empty).kind)
-    }
 }

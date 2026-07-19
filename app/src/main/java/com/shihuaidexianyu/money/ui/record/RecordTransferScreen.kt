@@ -10,7 +10,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -31,18 +33,17 @@ import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
-import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyAmountHeroField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 private enum class TransferPickerTarget {
     FROM,
@@ -62,6 +63,7 @@ fun RecordTransferScreen(
     val fromAccount = state.accounts.firstOrNull { it.id == state.fromAccountId }
     val toAccount = state.accounts.firstOrNull { it.id == state.toAccountId }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val moneyColors = LocalMoneyColors.current
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -93,43 +95,12 @@ fun RecordTransferScreen(
         )
     }
 
-    dateTimeField?.let { currentField ->
-        when (currentField) {
-            MoneyDateTimePickerField.DATE -> {
-                MoneyDatePickerDialogHost(
-                    initialSelectedDateMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { selectedDate ->
-                        selectedDate?.let {
-                            viewModel.updateOccurredAt(
-                                DateTimeTextFormatter.replaceDate(
-                                    baseTimeMillis = state.occurredAtMillis,
-                                    selectedDateMillis = it,
-                                ),
-                            )
-                        }
-                        dateTimeField = null
-                    },
-                )
-            }
-            MoneyDateTimePickerField.TIME -> {
-                MoneyTimePickerDialogHost(
-                    initialTimeMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { hour, minute ->
-                        viewModel.updateOccurredAt(
-                            DateTimeTextFormatter.replaceTime(
-                                baseTimeMillis = state.occurredAtMillis,
-                                hour = hour,
-                                minute = minute,
-                            ),
-                        )
-                        dateTimeField = null
-                    },
-                )
-            }
-        }
-    }
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = state.occurredAtMillis,
+        onPick = viewModel::updateOccurredAt,
+        onDismiss = { dateTimeField = null },
+    )
 
     MoneyFormPage(
         title = stringResource(R.string.history_transfer),
@@ -150,12 +121,15 @@ fun RecordTransferScreen(
         }
         item {
             MoneyCard {
-                MoneyAmountField(
+                MoneyAmountHeroField(
                     value = state.amountText,
+                    label = stringResource(R.string.field_amount),
+                    accent = moneyColors.transfer,
                     onValueChange = viewModel::updateAmount,
                     isError = state.amountError != null,
                     supportingText = state.amountError,
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 if ((fromAccount?.balance ?: 0L) > 0L) {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -10,9 +10,9 @@ import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
-class HomeStatsSemanticsTest {
+class HomePeriodLedgerSummaryTest {
     @Test
-    fun `stats split cash flow balance updates and manual adjustments`() = runBlocking {
+    fun `home summary separates cash flow balance updates and manual adjustments`() = runBlocking {
         val repository = InMemoryTransactionRepository()
         val startAt = 1_000L
         val endAt = 10_000L
@@ -88,15 +88,16 @@ class HomeStatsSemanticsTest {
             ),
         )
 
-        assertEquals(2_000L, repository.sumCashInflowBetween(startAt, endAt))
-        assertEquals(500L, repository.sumCashOutflowBetween(startAt, endAt))
-        assertEquals(300L, repository.sumBalanceUpdateIncreaseBetween(startAt, endAt))
-        assertEquals(700L, repository.sumBalanceUpdateDecreaseBetween(startAt, endAt))
-        assertEquals(400L, repository.sumManualAdjustmentIncreaseBetween(startAt, endAt))
-        assertEquals(0L, repository.sumManualAdjustmentDecreaseBetween(startAt, endAt))
-        assertEquals(2, repository.countActiveCashFlowRecordsBetween(startAt, endAt))
-        assertEquals(1, repository.countActiveTransferRecordsBetween(startAt, endAt))
-        assertEquals(1, repository.countManualAdjustmentRecordsBetween(startAt, endAt))
+        val summary = repository.queryHomePeriodLedgerSummary(startAt, endAt)
+        assertEquals(2_000L, summary.cashInflow)
+        assertEquals(500L, summary.cashOutflow)
+        assertEquals(300L, summary.reconciliationIncrease)
+        assertEquals(700L, summary.reconciliationDecrease)
+        assertEquals(400L, summary.manualAdjustmentIncrease)
+        assertEquals(0L, summary.manualAdjustmentDecrease)
+        assertEquals(2, summary.cashFlowRecordCount)
+        assertEquals(1, summary.transferRecordCount)
+        assertEquals(1, summary.manualAdjustmentRecordCount)
     }
 
     @Test
@@ -223,12 +224,12 @@ class HomeStatsSemanticsTest {
             ),
         )
 
-        assertEquals(100L, repository.sumCashInflowBetween(startAt, endAt))
-        assertEquals(listOf(400L), repository.queryActiveTransferRecordsBetween(startAt, endAt).map { it.amount })
-        assertEquals(600L, repository.sumManualAdjustmentIncreaseBetween(startAt, endAt))
-        assertEquals(700L, repository.sumBalanceUpdateIncreaseBetween(startAt, endAt))
-        assertEquals(1, repository.countActiveCashFlowRecordsBetween(startAt, endAt))
-        assertEquals(1, repository.countActiveTransferRecordsBetween(startAt, endAt))
-        assertEquals(1, repository.countManualAdjustmentRecordsBetween(startAt, endAt))
+        val summary = repository.queryHomePeriodLedgerSummary(startAt, endAt)
+        assertEquals(100L, summary.cashInflow)
+        assertEquals(600L, summary.manualAdjustmentIncrease)
+        assertEquals(700L, summary.reconciliationIncrease)
+        assertEquals(1, summary.cashFlowRecordCount)
+        assertEquals(1, summary.transferRecordCount)
+        assertEquals(1, summary.manualAdjustmentRecordCount)
     }
 }

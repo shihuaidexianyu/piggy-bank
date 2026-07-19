@@ -139,8 +139,9 @@ class LedgerDeleteRestoreUseCaseTest {
         assertEquals(0, fixture.transactions.countHistoryRecords(HistoryRecordFilters()))
         assertEquals(0, fixture.balance(sourceId))
         assertEquals(0, fixture.balance(targetId))
-        assertEquals(0, fixture.transactions.sumCashInflowBetween(0, 1_000))
-        assertEquals(0, fixture.transactions.countActiveTransferRecordsBetween(0, 1_000))
+        val deletedPeriod = fixture.transactions.queryHomePeriodLedgerSummary(0, 1_000)
+        assertEquals(0, deletedPeriod.cashInflow)
+        assertEquals(0, deletedPeriod.transferRecordCount)
 
         fixture.clock.now = 200
         tokens.forEach { token ->

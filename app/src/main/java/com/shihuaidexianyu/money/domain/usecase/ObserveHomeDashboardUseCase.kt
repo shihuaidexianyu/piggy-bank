@@ -4,6 +4,8 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -32,6 +34,7 @@ data class HomeDashboardSnapshot(
     val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminder>,
     val monthlyBudget: MonthlyBudgetStatus?,
+    val recentRecords: List<HistoryRecord>,
     val hasAnyAccounts: Boolean,
     val allAccountCount: Int,
 )
@@ -104,6 +107,7 @@ class ObserveHomeDashboardUseCase(
                 cashFlowRecordCount = input.cashFlowRecordCount,
                 transferRecordCount = input.transferRecordCount,
                 manualAdjustmentRecordCount = input.manualAdjustmentRecordCount,
+                recentRecords = input.recentRecords,
                 snapshotTimeMillis = snapshotTimeMillis,
                 zoneId = input.zoneId,
             )
@@ -155,10 +159,17 @@ class ObserveHomeDashboardUseCase(
                 cashFlowRecordCount = periodSummary.cashFlowRecordCount,
                 transferRecordCount = periodSummary.transferRecordCount,
                 manualAdjustmentRecordCount = periodSummary.manualAdjustmentRecordCount,
+                recentRecords = transactionRepository.queryHistoryRecords(
+                    filters = HistoryRecordFilters(),
+                    cursor = null,
+                    limit = HOME_RECENT_RECORD_LIMIT,
+                ),
             )
         }
     }
 }
+
+private const val HOME_RECENT_RECORD_LIMIT = 5
 
 private data class HomeDashboardInput(
     val zoneId: java.time.ZoneId,
@@ -179,4 +190,5 @@ private data class HomeDashboardInput(
     val cashFlowRecordCount: Int,
     val transferRecordCount: Int,
     val manualAdjustmentRecordCount: Int,
+    val recentRecords: List<HistoryRecord>,
 )

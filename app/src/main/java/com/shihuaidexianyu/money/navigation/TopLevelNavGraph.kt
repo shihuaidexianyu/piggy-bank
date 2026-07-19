@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.navigation
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -20,13 +19,7 @@ import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
-import com.shihuaidexianyu.money.ui.stats.StatsScreen
-import com.shihuaidexianyu.money.ui.stats.StatsViewModel
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
-import com.shihuaidexianyu.money.di.SystemClockProvider
-import com.shihuaidexianyu.money.di.SystemZoneIdProvider
-
-private const val HISTORY_FILTER_REQUEST_KEY = "history_filter_request"
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -42,6 +35,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
+                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     savedStateHandle = savedStateHandle,
@@ -69,32 +63,34 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onSaveMonthlyBudget = viewModel::saveMonthlyBudget,
                 onRetryMonthlyBudgetSave = viewModel::retryMonthlyBudgetSave,
                 onCloseMonthlyBudget = viewModel::closeMonthlyBudget,
+                onOpenHistory = {
+                    navController.navigate(MoneyDestination.History.route) { launchSingleTop = true }
+                },
+                onOpenSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
+                onOpenRecord = { record ->
+                    when (record.kind) {
+                        HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
+                        HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                    }
+                },
                 modifier = Modifier,
             )
     }
 
-    composable(MoneyDestination.History.route) { entry ->
+    composable(MoneyDestination.History.route) {
         val viewModel = viewModel<HistoryViewModel>(
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
+            factory = moneyViewModelFactory {
                 HistoryViewModel(
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
-                    savedStateHandle = savedStateHandle,
                 )
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
-        val filterRequest by entry.savedStateHandle
-            .getStateFlow<String?>(HISTORY_FILTER_REQUEST_KEY, null)
-            .collectAsStateWithLifecycle()
-        LaunchedEffect(filterRequest) {
-            val encoded = filterRequest ?: return@LaunchedEffect
-            runCatching { HistoryFilterNavigationRequest.decode(encoded) }
-                .onSuccess(viewModel::applyExternalFilters)
-            entry.savedStateHandle.remove<String>(HISTORY_FILTER_REQUEST_KEY)
-        }
         HistoryScreen(
                 state = state,
                 onKeywordChange = viewModel::updateKeyword,
@@ -117,33 +113,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                         HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
                     }
                 },
-            )
-    }
-
-    composable(MoneyDestination.Stats.route) {
-        val viewModel = viewModel<StatsViewModel>(
-            factory = moneyViewModelFactory {
-                StatsViewModel(
-                    observeStatsDashboardUseCase = container.observeStatsDashboardUseCase,
-                    devicePreferencesRepository = container.devicePreferencesRepository,
-                    savingsGoalRepository = container.savingsGoalRepository,
-                    clockProvider = SystemClockProvider,
-                    zoneIdProvider = SystemZoneIdProvider,
-                )
-            },
-        )
-        val state by viewModel.uiState.collectAsStateWithLifecycle()
-        StatsScreen(
-                state = state,
-                onPreviousRange = viewModel::moveToPreviousRange,
-                onNextRange = viewModel::moveToNextRange,
-                onResetRange = viewModel::resetToCurrentRange,
-                onOpenHistory = { filters ->
-                    navController.navigate(MoneyDestination.History.route) { launchSingleTop = true }
-                    navController.getBackStackEntry(MoneyDestination.History.route)
-                        .savedStateHandle[HISTORY_FILTER_REQUEST_KEY] = HistoryFilterNavigationRequest.create(filters)
-                },
-                onRetry = viewModel::retry,
             )
     }
 

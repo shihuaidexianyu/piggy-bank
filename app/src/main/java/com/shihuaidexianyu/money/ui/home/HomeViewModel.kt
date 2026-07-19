@@ -8,15 +8,19 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
+import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
+import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.AmountInputParser
 import java.math.BigDecimal
@@ -46,6 +50,15 @@ data class StaleAccountUiModel(
     val lastBalanceUpdateAt: Long?,
 )
 
+data class HomeRecentRecordUiModel(
+    val recordId: Long,
+    val kind: HistoryRecordKind,
+    val title: String,
+    val subtitle: String,
+    val amount: Long,
+    val occurredAt: Long,
+)
+
 data class HomeUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -67,6 +80,8 @@ data class HomeUiState(
     val staleAccounts: List<StaleAccountUiModel> = emptyList(),
     val accountOptions: List<AccountOptionUiModel> = emptyList(),
     val dueReminders: List<DueReminderUiModel> = emptyList(),
+    val recentRecords: List<HomeRecentRecordUiModel> = emptyList(),
+    val savingsGoalProgress: SavingsGoalProgress? = null,
     val showMonthlyBudgetEditor: Boolean = false,
     val monthlyBudgetInput: String = "",
     @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
@@ -84,6 +99,7 @@ internal fun HomeUiState.toAsyncContent(errorMessage: String = ""): AsyncContent
 
 class HomeViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
+    private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
@@ -122,11 +138,15 @@ class HomeViewModel(
                 combine(
                     observeHomeDashboardUseCase(),
                     devicePreferencesRepository.observe(),
-                ) { snapshot, devicePreferences -> snapshot to devicePreferences }
-                    .collect { (snapshot, devicePreferences) ->
+                    observeSavingsGoalUseCase(),
+                ) { snapshot, devicePreferences, savingsGoalProgress ->
+                    Triple(snapshot, devicePreferences, savingsGoalProgress)
+                }
+                    .collect { (snapshot, devicePreferences, savingsGoalProgress) ->
                     val visibility = AmountPrivacy.from(devicePreferences)
                         .visibilityFor(AmountSurface.IN_APP)
                     val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
+                    val accountNames = snapshot.openAccounts.associate { it.id to it.name }
                     val editorState = _uiState.value
                     _uiState.value = HomeUiState(
                         isLoading = false,
@@ -173,6 +193,22 @@ class HomeViewModel(
                                 amount = reminder.amount,
                             )
                         },
+                        recentRecords = snapshot.recentRecords.map { record ->
+                            val relatedAccountId = record.relatedAccountId
+                            HomeRecentRecordUiModel(
+                                recordId = record.recordId,
+                                kind = record.type.toHomeRecordKind(),
+                                title = record.title,
+                                subtitle = if (record.type == HistoryRecordType.TRANSFER && relatedAccountId != null) {
+                                    "${accountNames[record.accountId] ?: "—"} → ${accountNames[relatedAccountId] ?: "—"}"
+                                } else {
+                                    accountNames[record.accountId] ?: "—"
+                                },
+                                amount = record.amount,
+                                occurredAt = record.occurredAt,
+                            )
+                        },
+                        savingsGoalProgress = savingsGoalProgress,
                         showMonthlyBudgetEditor = editorState.showMonthlyBudgetEditor,
                         monthlyBudgetInput = editorState.monthlyBudgetInput,
                         monthlyBudgetInputErrorRes = editorState.monthlyBudgetInputErrorRes,
@@ -323,6 +359,15 @@ class HomeViewModel(
         savedStateHandle.remove<String>(KEY_BUDGET_PENDING_ACTION)
         savedStateHandle.remove<Long>(KEY_BUDGET_PENDING_AMOUNT)
         savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
+    }
+
+    private fun HistoryRecordType.toHomeRecordKind(): HistoryRecordKind {
+        return when (this) {
+            HistoryRecordType.CASH_FLOW -> HistoryRecordKind.CASH_FLOW
+            HistoryRecordType.TRANSFER -> HistoryRecordKind.TRANSFER
+            HistoryRecordType.BALANCE_UPDATE -> HistoryRecordKind.BALANCE_UPDATE
+            HistoryRecordType.BALANCE_ADJUSTMENT -> HistoryRecordKind.BALANCE_ADJUSTMENT
+        }
     }
 
     private enum class BudgetPendingAction {

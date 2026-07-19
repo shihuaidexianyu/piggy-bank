@@ -1,6 +1,6 @@
 # Money
 
-一个完全离线的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。当前版本为 `2.4.2`（versionCode `107`）。
+一个完全离线的 Android 个人记账应用，基于 **Kotlin + Jetpack Compose** 实现。当前版本为 `2.4.4`（versionCode `109`）。
 
 仓库地址: [https://github.com/shihuaidexianyu/piggy-bank](https://github.com/shihuaidexianyu/piggy-bank)
 
@@ -13,7 +13,7 @@
 - 期初资产：账户新建的初始余额作为开户时的期初资产处理。
 - 调整记录：支持手动修正余额（独立于自动计算）。
 - 提醒：支持月度、年度、间隔天数等周期，提供应用内到期卡片与后台通知。
-- 首页与分析：展示本月收支、净现金流、月预算、资金流动关系、每日趋势与净资产目标进度。
+- 首页：展示净资产、本月收支、净现金流、月预算与净资产目标进度。
 - 明细与搜索：按账户、类型、日期、金额和关键字筛选，并支持精确下钻。
 - 隐私保护：支持生物识别锁、金额遮罩、最近任务隐藏及 Widget/通知独立遮罩。
 - JSON 备份：导出明文 backup v4，支持旧 v1-v3 导入、导入前安全快照与撤销。
@@ -31,7 +31,6 @@
     <td align="center"><img src="_screenshots/readme/history.png" width="240" alt="历史" /><br />历史</td>
   </tr>
   <tr>
-    <td align="center"><img src="_screenshots/readme/stats.png" width="240" alt="统计" /><br />统计</td>
     <td align="center"><img src="_screenshots/readme/accounts.png" width="240" alt="账户" /><br />账户</td>
   </tr>
   <tr>

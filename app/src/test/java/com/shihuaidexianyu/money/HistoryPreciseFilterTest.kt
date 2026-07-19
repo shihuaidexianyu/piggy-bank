@@ -138,33 +138,6 @@ class HistoryPreciseFilterTest {
         )
     }
 
-    @Test
-    fun `transfer path filter requires exact source and destination`() = runBlocking {
-        val repository = InMemoryTransactionRepository()
-        listOf(1L to 2L, 1L to 3L, 2L to 1L).forEachIndexed { index, (from, to) ->
-            repository.insertTransferRecord(
-                TransferRecord(
-                    fromAccountId = from,
-                    toAccountId = to,
-                    amount = 100L + index,
-                    note = "路径",
-                    occurredAt = 1_000L + index,
-                    createdAt = 1_000L + index,
-                    updatedAt = 1_000L + index,
-                    operationId = testOperationId(),
-                ),
-            )
-        }
-        val filters = HistoryRecordFilters(
-            recordTypes = setOf(HistoryRecordType.TRANSFER),
-            transferFromAccountId = 1L,
-            transferToAccountId = 2L,
-        )
-
-        assertEquals(listOf(100L), repository.queryHistoryRecords(filters, null, 20).map { it.amount })
-        assertEquals(1, repository.countHistoryRecords(filters))
-    }
-
     private suspend fun insertCash(
         repository: InMemoryTransactionRepository,
         accountId: Long,

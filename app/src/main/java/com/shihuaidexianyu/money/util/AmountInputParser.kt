@@ -27,12 +27,6 @@ object AmountInputParser {
         }.getOrNull()
     }
 
-    @Deprecated(
-        message = "Use parseUnsignedToMinor or parseSignedToMinor explicitly",
-        replaceWith = ReplaceWith("parseUnsignedToMinor(text)"),
-    )
-    fun parseToMinor(text: String): Long? = parseUnsignedToMinor(text)
-
     private fun parseExpression(text: String): BigDecimal? {
         var index = 0
         var sign = BigDecimal.ONE

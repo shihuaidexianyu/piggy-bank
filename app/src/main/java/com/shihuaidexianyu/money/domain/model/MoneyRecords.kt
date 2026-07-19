@@ -86,30 +86,6 @@ data class RecurringReminder(
     val updatedAt: Long,
 )
 
-data class PurposeTotal(
-    val purpose: String,
-    val amount: Long,
-)
-
-data class CashFlowDailyTotal(
-    val epochDay: Long,
-    val direction: String,
-    val amount: Long,
-)
-
-data class CashFlowAnalysisEntry(
-    val accountId: Long,
-    val direction: String,
-    val amount: Long,
-    val occurredAt: Long,
-)
-
-data class TransferPathTotal(
-    val fromAccountId: Long,
-    val toAccountId: Long,
-    val amount: Long,
-)
-
 data class HomePeriodLedgerSummary(
     val cashInflow: Long,
     val cashOutflow: Long,
