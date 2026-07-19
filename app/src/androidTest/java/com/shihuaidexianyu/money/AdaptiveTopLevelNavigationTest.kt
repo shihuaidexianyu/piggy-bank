@@ -16,19 +16,19 @@ class AdaptiveTopLevelNavigationTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun compactRendersBottomBarWithExactlyFourDestinations() {
+    fun compactRendersBottomBarWithExactlyThreeDestinations() {
         render(AdaptiveNavigationType.BOTTOM_BAR)
 
         composeRule.onNodeWithTag("top_level_bottom_bar").assertExists()
-        assertExactlyFourDestinations()
+        assertExactlyThreeDestinations()
     }
 
     @Test
-    fun mediumAndExpandedRenderRailWithExactlyFourDestinations() {
+    fun mediumAndExpandedRenderRailWithExactlyThreeDestinations() {
         render(AdaptiveNavigationType.NAVIGATION_RAIL)
 
         composeRule.onNodeWithTag("top_level_navigation_rail").assertExists()
-        assertExactlyFourDestinations()
+        assertExactlyThreeDestinations()
     }
 
     private fun render(type: AdaptiveNavigationType) {
@@ -43,12 +43,12 @@ class AdaptiveTopLevelNavigationTest {
         }
     }
 
-    private fun assertExactlyFourDestinations() {
-        check(MoneyDestination.topLevel.size == 4)
+    private fun assertExactlyThreeDestinations() {
+        check(MoneyDestination.topLevel.size == 3)
         MoneyDestination.topLevel.forEach { destination ->
             val label = ApplicationProvider.getApplicationContext<android.content.Context>()
                 .getString(destination.labelRes)
-            composeRule.onNodeWithContentDescription(label).assertExists()
+            composeRule.onNodeWithContentDescription(label, useUnmergedTree = true).assertExists()
         }
     }
 }

@@ -14,8 +14,6 @@ import com.shihuaidexianyu.money.domain.model.AccountLedgerAggregate
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
-import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
@@ -30,9 +28,7 @@ import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
 import com.shihuaidexianyu.money.domain.model.requireValidAmountBounds
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
-import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
-import com.shihuaidexianyu.money.domain.model.TransferPathTotal
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -221,14 +217,6 @@ class TransactionRepositoryImpl(
         return cashFlowRecordDao.queryRecentNotes(direction = direction, accountId = accountId, limit = limit)
     }
 
-    override suspend fun queryActiveCashFlowRecordsByDirectionBetween(
-        direction: String,
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<CashFlowRecord> {
-        return cashFlowRecordDao.queryActiveByDirectionBetween(direction, startInclusive, endExclusive).map { it.toDomain() }
-    }
-
     override suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult {
         requireInsertableId(record.id)
         requireOperationId(record.operationId)
@@ -287,22 +275,6 @@ class TransactionRepositoryImpl(
     override suspend fun queryAllTransferRecords(): List<TransferRecord> = transferRecordDao.queryAll().map { it.toDomain() }
 
     override suspend fun queryAllActiveTransferRecords(): List<TransferRecord> = transferRecordDao.queryAllActive().map { it.toDomain() }
-
-    override suspend fun queryActiveTransferRecordsBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<TransferRecord> {
-        return transferRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
-    }
-
-    override suspend fun queryTransferPathTotalsBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<TransferPathTotal> = translateLedgerSqlOverflow {
-        transferRecordDao.queryPathTotalsBetween(startInclusive, endExclusive).map {
-            TransferPathTotal(it.fromAccountId, it.toAccountId, it.amount)
-        }
-    }
 
     override suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord> = transferRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
@@ -370,13 +342,6 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryAll().map { it.toDomain() }
 
-    override suspend fun queryBalanceUpdateRecordsBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<BalanceUpdateRecord> {
-        return balanceUpdateRecordDao.queryBetween(startInclusive, endExclusive).map { it.toDomain() }
-    }
-
     override suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord> = balanceUpdateRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
     override suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord? = balanceUpdateRecordDao.getLatestForAccount(accountId)?.toDomain()
@@ -438,13 +403,6 @@ class TransactionRepositoryImpl(
 
     override suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryAll().map { it.toDomain() }
 
-    override suspend fun queryBalanceAdjustmentRecordsBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<BalanceAdjustmentRecord> {
-        return balanceAdjustmentRecordDao.queryBetween(startInclusive, endExclusive).map { it.toDomain() }
-    }
-
     override suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord> = balanceAdjustmentRecordDao.queryByAccountId(accountId).map { it.toDomain() }
 
     override suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long =
@@ -463,42 +421,6 @@ class TransactionRepositoryImpl(
         translateLedgerSqlOverflow {
             balanceAdjustmentRecordDao.sumAdjustmentBetween(accountId, startInclusive, endExclusive)
         }
-
-    override suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow { cashFlowRecordDao.sumCashInflowBetween(startInclusive, endExclusive) }
-
-    override suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow { cashFlowRecordDao.sumCashOutflowBetween(startInclusive, endExclusive) }
-
-    override suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow { balanceUpdateRecordDao.sumPositiveDeltaBetween(startInclusive, endExclusive) }
-
-    override suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow {
-            ledgerSubtractExact(0L, balanceUpdateRecordDao.sumNegativeDeltaBetween(startInclusive, endExclusive))
-        }
-
-    override suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow {
-            balanceAdjustmentRecordDao.sumPositiveManualAdjustmentBetween(startInclusive, endExclusive)
-        }
-
-    override suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long =
-        translateLedgerSqlOverflow {
-            ledgerSubtractExact(
-                0L,
-                balanceAdjustmentRecordDao.sumNegativeManualAdjustmentBetween(startInclusive, endExclusive),
-            )
-        }
-
-    override suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
-        cashFlowRecordDao.countActiveBetween(startInclusive, endExclusive)
-
-    override suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
-        transferRecordDao.countActiveBetween(startInclusive, endExclusive)
-
-    override suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int =
-        balanceAdjustmentRecordDao.countBetween(startInclusive, endExclusive)
 
     override suspend fun queryHomePeriodLedgerSummary(
         startInclusive: Long,
@@ -523,38 +445,6 @@ class TransactionRepositoryImpl(
         )
     }
 
-    override suspend fun queryActiveCashFlowRecordsBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<CashFlowRecord> = cashFlowRecordDao.queryActiveBetween(startInclusive, endExclusive).map { it.toDomain() }
-
-    override suspend fun queryCashFlowAnalysisEntriesBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<CashFlowAnalysisEntry> = cashFlowRecordDao.queryAnalysisEntriesBetween(startInclusive, endExclusive).map {
-        CashFlowAnalysisEntry(it.accountId, it.direction, it.amount, it.occurredAt)
-    }
-
-    override suspend fun queryPurposeTotals(
-        direction: String,
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<PurposeTotal> {
-        return translateLedgerSqlOverflow {
-            cashFlowRecordDao.queryPurposeTotals(direction, startInclusive, endExclusive).map { it.toDomain() }
-        }
-    }
-
-    override suspend fun queryDailyCashFlowTotals(
-        startInclusive: Long,
-        endExclusive: Long,
-        zoneOffsetSeconds: Int,
-    ): List<CashFlowDailyTotal> {
-        return translateLedgerSqlOverflow {
-            cashFlowRecordDao.queryDailyTotals(startInclusive, endExclusive, zoneOffsetSeconds).map { it.toDomain() }
-        }
-    }
-
     override suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,
@@ -570,8 +460,6 @@ class TransactionRepositoryImpl(
             includeBalanceUpdate = HistoryRecordType.BALANCE_UPDATE in filters.recordTypes,
             includeBalanceAdjustment = HistoryRecordType.BALANCE_ADJUSTMENT in filters.recordTypes,
             accountId = filters.accountId,
-            transferFromAccountId = filters.transferFromAccountId,
-            transferToAccountId = filters.transferToAccountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
             minAmount = filters.minAmount,
@@ -595,8 +483,6 @@ class TransactionRepositoryImpl(
             includeBalanceUpdate = HistoryRecordType.BALANCE_UPDATE in filters.recordTypes,
             includeBalanceAdjustment = HistoryRecordType.BALANCE_ADJUSTMENT in filters.recordTypes,
             accountId = filters.accountId,
-            transferFromAccountId = filters.transferFromAccountId,
-            transferToAccountId = filters.transferToAccountId,
             dateStartAt = filters.dateStartAt,
             dateEndAt = filters.dateEndAt,
             minAmount = filters.minAmount,

@@ -93,39 +93,6 @@ interface BalanceUpdateRecordDao {
     @Query("SELECT * FROM balance_update_records WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
     suspend fun queryAllActive(): List<BalanceUpdateRecordEntity>
 
-    @Query(
-        """
-        SELECT * FROM balance_update_records
-        WHERE deletedAt IS NULL
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        ORDER BY occurredAt ASC, id ASC
-        """,
-    )
-    suspend fun queryBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecordEntity>
-
-    @Query(
-        """
-        SELECT COALESCE(SUM(delta), 0) FROM balance_update_records
-        WHERE deletedAt IS NULL
-            AND delta > 0
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """,
-    )
-    suspend fun sumPositiveDeltaBetween(startInclusive: Long, endExclusive: Long): Long
-
-    @Query(
-        """
-        SELECT COALESCE(SUM(delta), 0) FROM balance_update_records
-        WHERE deletedAt IS NULL
-            AND delta < 0
-            AND occurredAt >= :startInclusive
-            AND occurredAt < :endExclusive
-        """,
-    )
-    suspend fun sumNegativeDeltaBetween(startInclusive: Long, endExclusive: Long): Long
-
     @Query("SELECT COUNT(*) FROM balance_update_records WHERE deletedAt IS NULL")
     fun observeCount(): Flow<Int>
 

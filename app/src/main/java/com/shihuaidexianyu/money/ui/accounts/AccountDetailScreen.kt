@@ -219,7 +219,7 @@ fun AccountDetailScreen(
                 ) {
                     Column {
                         Text(
-                            text = stringResource(R.string.stats_income),
+                            text = stringResource(R.string.ledger_income),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -231,7 +231,7 @@ fun AccountDetailScreen(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = stringResource(R.string.stats_expense),
+                            text = stringResource(R.string.ledger_expense),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

@@ -117,21 +117,6 @@ class LedgerAggregateRepositoryContractTest {
     }
 
     @Test
-    fun roomStatsSum_translatesSqliteIntegerOverflowToDomainFailure() = runBlocking {
-        val accountId = accounts.createAccount(Account(name = "统计溢出", initialBalance = 0L, createdAt = 0L))
-        ledger.insertCashFlowRecord(cash(accountId, Long.MAX_VALUE, 1L, "stats-max"))
-        ledger.insertCashFlowRecord(cash(accountId, 1L, 2L, "stats-overflow"))
-
-        var translated = false
-        try {
-            ledger.sumCashInflowBetween(startInclusive = 0L, endExclusive = 3L)
-        } catch (_: LedgerOverflowException) {
-            translated = true
-        }
-        assertTrue(translated)
-    }
-
-    @Test
     fun sqliteIntegerOverflow_isTranslatedToDomainFailure() = runBlocking {
         val accountId = accounts.createAccount(Account(name = "A", initialBalance = 0L, createdAt = 0L))
         val account = requireNotNull(accounts.getAccountById(accountId))

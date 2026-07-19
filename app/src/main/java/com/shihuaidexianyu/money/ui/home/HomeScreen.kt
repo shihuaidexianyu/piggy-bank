@@ -6,13 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,16 +47,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun HomeScreen(
@@ -74,6 +80,9 @@ fun HomeScreen(
     onSaveMonthlyBudget: () -> Unit = {},
     onRetryMonthlyBudgetSave: () -> Unit = {},
     onCloseMonthlyBudget: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onOpenSavingsGoal: () -> Unit = {},
+    onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
 ) {
     var showUpdateBalancePicker by remember { mutableStateOf(false) }
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
@@ -149,42 +158,74 @@ fun HomeScreen(
                 }
             },
             data = { renderedState, _ ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 20.dp),
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        start = MoneyDimens.screenHorizontalPadding,
+                        top = 8.dp,
+                        end = MoneyDimens.screenHorizontalPadding,
+                        bottom = MoneyDimens.bottomNavContentPadding,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    PeriodOverviewBlock(
-                        totalAssets = renderedState.totalAssets,
-                        cashInflow = renderedState.periodCashInflow,
-                        cashOutflow = renderedState.periodCashOutflow,
-                        settings = renderedState.settings,
-                    )
-                    if (renderedState.accountOptions.isEmpty()) {
-                        HomeOpenAccountCta(onManageAccounts = onManageAccounts)
-                    }
-                    MonthlyBudgetBlock(
-                        budget = renderedState.monthlyBudget,
-                        settings = renderedState.settings,
-                        onEdit = onOpenMonthlyBudgetEditor,
-                        onClose = onCloseMonthlyBudget,
-                    )
-                    if (renderedState.dueReminders.isNotEmpty()) {
-                        HomeReminderSection(
-                            reminders = renderedState.dueReminders,
-                            onOpenReminders = onAllRemindersClick,
+                    item {
+                        PeriodOverviewBlock(
+                            totalAssets = renderedState.totalAssets,
+                            cashInflow = renderedState.periodCashInflow,
+                            cashOutflow = renderedState.periodCashOutflow,
+                            settings = renderedState.settings,
                         )
+                    }
+                    if (renderedState.accountOptions.isEmpty()) {
+                        item {
+                            HomeOpenAccountCta(onManageAccounts = onManageAccounts)
+                        }
+                    }
+                    item {
+                        MonthlyBudgetBlock(
+                            budget = renderedState.monthlyBudget,
+                            settings = renderedState.settings,
+                            onEdit = onOpenMonthlyBudgetEditor,
+                            onClose = onCloseMonthlyBudget,
+                        )
+                    }
+                    renderedState.savingsGoalProgress?.let { savingsGoalProgress ->
+                        item {
+                            HomeSavingsGoalBlock(
+                                progress = savingsGoalProgress,
+                                settings = renderedState.settings,
+                                onOpenSavingsGoal = onOpenSavingsGoal,
+                            )
+                        }
+                    }
+                    if (renderedState.dueReminders.isNotEmpty()) {
+                        item {
+                            HomeReminderSection(
+                                reminders = renderedState.dueReminders,
+                                onOpenReminders = onAllRemindersClick,
+                            )
+                        }
                     }
                     if (renderedState.staleAccounts.isNotEmpty()) {
-                        HomeStaleAccountSection(
-                            accounts = renderedState.staleAccounts,
-                            settings = renderedState.settings,
-                            onReconcile = onStartUpdateBalance,
-                            onChooseAccount = { showUpdateBalancePicker = true },
-                            showReconcileAction = renderedState.accountOptions.isNotEmpty(),
-                        )
+                        item {
+                            HomeStaleAccountSection(
+                                accounts = renderedState.staleAccounts,
+                                settings = renderedState.settings,
+                                onReconcile = onStartUpdateBalance,
+                                onChooseAccount = { showUpdateBalancePicker = true },
+                                showReconcileAction = renderedState.accountOptions.isNotEmpty(),
+                            )
+                        }
+                    }
+                    if (renderedState.recentRecords.isNotEmpty()) {
+                        item {
+                            HomeRecentRecordsSection(
+                                records = renderedState.recentRecords,
+                                settings = renderedState.settings,
+                                onOpenHistory = onOpenHistory,
+                                onOpenRecord = onOpenRecord,
+                            )
+                        }
                     }
                 }
             },
@@ -495,6 +536,181 @@ private fun HomeStaleAccountSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeSavingsGoalBlock(
+    progress: SavingsGoalProgress,
+    settings: PortableSettings,
+    onOpenSavingsGoal: () -> Unit,
+) {
+    val presentation = netWorthGoalProgressPresentation(
+        currentAmount = progress.currentAmount,
+        targetAmount = progress.targetAmount,
+    )
+    MoneySectionHeader(title = stringResource(R.string.home_savings_goal))
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenSavingsGoal)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    stringResource(
+                        R.string.home_savings_goal_progress_format,
+                        formatInAppAmount(progress.currentAmount, settings),
+                        formatInAppAmount(progress.targetAmount, settings),
+                    ),
+                )
+                Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
+            }
+            LinearProgressIndicator(
+                progress = { presentation.geometryPercent / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeRecentRecordsSection(
+    records: List<HomeRecentRecordUiModel>,
+    settings: PortableSettings,
+    onOpenHistory: () -> Unit,
+    onOpenRecord: (HomeRecentRecordUiModel) -> Unit,
+) {
+    MoneySectionHeader(
+        title = stringResource(R.string.home_recent_records),
+        trailingContent = {
+            Text(
+                text = stringResource(R.string.home_view_all),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onOpenHistory),
+            )
+        },
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            records.forEachIndexed { index, record ->
+                HomeRecentRecordRow(
+                    record = record,
+                    settings = settings,
+                    onClick = { onOpenRecord(record) },
+                )
+                if (index != records.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeRecentRecordRow(
+    record: HomeRecentRecordUiModel,
+    settings: PortableSettings,
+    onClick: () -> Unit,
+) {
+    val moneyColors = LocalMoneyColors.current
+    val accent = when (record.kind) {
+        HistoryRecordKind.CASH_FLOW ->
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        HistoryRecordKind.TRANSFER -> moneyColors.transfer
+        HistoryRecordKind.BALANCE_UPDATE,
+        HistoryRecordKind.BALANCE_ADJUSTMENT,
+        -> moneyColors.current
+    }
+    val kindLabel = homeRecentRecordKindLabel(record)
+    val amountColor = when (record.kind) {
+        HistoryRecordKind.TRANSFER -> moneyColors.transfer
+        else -> when {
+            record.amount > 0 -> moneyColors.income
+            record.amount < 0 -> moneyColors.expense
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(
+                    color = accent,
+                    shape = CircleShape,
+                ),
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(record.title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "$kindLabel · ${record.subtitle}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = formatInAppAmount(record.amount, settings),
+                style = MaterialTheme.typography.titleLarge,
+                color = amountColor,
+            )
+            Text(
+                text = recentRecordTimeLabel(record.occurredAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun homeRecentRecordKindLabel(record: HomeRecentRecordUiModel): String {
+    return when (record.kind) {
+        HistoryRecordKind.CASH_FLOW -> stringResource(
+            if (record.amount > 0) R.string.history_inflow else R.string.history_outflow,
+        )
+        HistoryRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
+        HistoryRecordKind.BALANCE_UPDATE -> stringResource(
+            if (record.amount == 0L) {
+                R.string.history_balance_update
+            } else {
+                R.string.history_reconciliation_adjustment
+            },
+        )
+        HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
+    }
+}
+
+private fun recentRecordTimeLabel(occurredAt: Long): String {
+    val now = System.currentTimeMillis()
+    return if (DateTimeTextFormatter.formatDateOnly(occurredAt) == DateTimeTextFormatter.formatDateOnly(now)) {
+        DateTimeTextFormatter.formatTimeOnly(occurredAt)
+    } else {
+        DateTimeTextFormatter.formatDateOnly(occurredAt)
     }
 }
 

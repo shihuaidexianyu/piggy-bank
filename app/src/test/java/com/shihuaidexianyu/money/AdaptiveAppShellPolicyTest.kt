@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.navigation.LedgerFabAction
 import com.shihuaidexianyu.money.navigation.LedgerFabDecision
 import com.shihuaidexianyu.money.navigation.MoneyDestination
 import com.shihuaidexianyu.money.navigation.OpenAccountAvailability
-import com.shihuaidexianyu.money.navigation.TopLevelBackStackState
 import com.shihuaidexianyu.money.navigation.adaptiveNavigationType
 import com.shihuaidexianyu.money.navigation.resolveLedgerFabAction
 import com.shihuaidexianyu.money.navigation.shouldRenderLedgerFab
@@ -15,12 +14,12 @@ import org.junit.Test
 
 class AdaptiveAppShellPolicyTest {
     @Test
-    fun `top level exposes exactly home history analysis and accounts`() {
+    fun `top level exposes exactly home history and accounts`() {
         assertEquals(
-            listOf(R.string.home_title, R.string.nav_history, R.string.stats_title, R.string.accounts_title),
+            listOf(R.string.home_title, R.string.nav_history, R.string.accounts_title),
             MoneyDestination.topLevel.map { it.labelRes },
         )
-        assertEquals(4, MoneyDestination.topLevel.map { it.route }.distinct().size)
+        assertEquals(3, MoneyDestination.topLevel.map { it.route }.distinct().size)
     }
 
     @Test
@@ -66,18 +65,4 @@ class AdaptiveAppShellPolicyTest {
         assertEquals(true, shouldRenderLedgerFab(OpenAccountAvailability.Data(1)))
     }
 
-    @Test
-    fun `each top level destination restores its own last route`() {
-        val state = TopLevelBackStackState()
-
-        state.updateCurrentRoute(MoneyDestination.Home, "reminders")
-        state.select(MoneyDestination.History)
-        state.updateCurrentRoute(MoneyDestination.History, "history/cashflow/8")
-        state.select(MoneyDestination.Accounts)
-        state.updateCurrentRoute(MoneyDestination.Accounts, "accounts/3")
-
-        assertEquals("reminders", state.select(MoneyDestination.Home))
-        assertEquals("history/cashflow/8", state.select(MoneyDestination.History))
-        assertEquals("accounts/3", state.select(MoneyDestination.Accounts))
-    }
 }

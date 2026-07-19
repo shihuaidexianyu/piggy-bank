@@ -50,8 +50,6 @@ class MoneyAppContainer(context: Context) {
 
     val observeHomeDashboardUseCase get() = useCaseGraph.observeHomeDashboardUseCase
 
-    val observeStatsDashboardUseCase get() = useCaseGraph.observeStatsDashboardUseCase
-
     fun observeAccountDetailUseCase(accountId: Long) =
         useCaseGraph.observeAccountDetailUseCase(accountId)
 

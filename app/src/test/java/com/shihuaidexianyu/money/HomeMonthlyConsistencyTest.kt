@@ -13,13 +13,10 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.StatsPeriod
-import com.shihuaidexianyu.money.domain.model.StatsRangeSelection
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveStatsDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.home.HomeUiState
@@ -111,7 +108,7 @@ class HomeMonthlyConsistencyTest {
     }
 
     @Test
-    fun `home history analysis and budget share one half-open active cash-flow scope`() = runBlocking {
+    fun `home history and budget share one half-open active cash-flow scope`() = runBlocking {
         val now = Instant.parse("2026-02-15T10:00:00Z").toEpochMilli()
         val range = TimeRangeCalculator.currentMonthRange(ZoneOffset.UTC, now)
         val accounts = InMemoryAccountRepository()
@@ -189,13 +186,6 @@ class HomeMonthlyConsistencyTest {
             clockProvider = clock,
             zoneIdProvider = zone,
         ).invoke().first()
-        val stats = ObserveStatsDashboardUseCase(
-            accountRepository = accounts,
-            portableSettingsRepository = settings,
-            transactionRepository = ledger,
-            calculateAccountBalancesUseCase = balances,
-            zoneIdProvider = zone,
-        ).invoke(MutableStateFlow(StatsRangeSelection(StatsPeriod.MONTH, now))).first()
         val history = ledger.queryHistoryRecords(
             filters = HistoryRecordFilters(
                 dateStartAt = range.startInclusive,
@@ -213,9 +203,6 @@ class HomeMonthlyConsistencyTest {
         assertEquals(historyIncome, home.periodBreakdown.cashInflow)
         assertEquals(historyExpense, home.periodBreakdown.cashOutflow)
         assertEquals(historyIncome - historyExpense, home.periodBreakdown.cashNet)
-        assertEquals(historyIncome, stats.totalInflow)
-        assertEquals(historyExpense, stats.totalOutflow)
-        assertEquals(historyIncome - historyExpense, stats.netCashFlow)
         assertEquals(400L, requireNotNull(home.monthlyBudget).spentAmount)
         assertEquals(-7_100L, home.totalAssets)
     }

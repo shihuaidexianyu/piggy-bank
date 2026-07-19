@@ -85,34 +85,3 @@ fun resolveLedgerFabAction(
         LedgerFabAction.RECONCILE -> LedgerFabDecision.OpenReconcileForm
     }
 }
-
-/**
- * Small serializable-friendly model used by shell tests and saved-state adapters.
- * Navigation Compose remains the owner of the actual back stacks.
- */
-class TopLevelBackStackState(
-    savedRoutes: Map<String, String> = emptyMap(),
-    selectedRoute: String = MoneyDestination.Home.route,
-) {
-    private val lastRoutes = savedRoutes.toMutableMap().apply {
-        MoneyDestination.topLevel.forEach { destination ->
-            putIfAbsent(destination.route, destination.route)
-        }
-    }
-
-    var selectedRoute: String = selectedRoute
-        private set
-
-    fun updateCurrentRoute(destination: MoneyDestination, route: String) {
-        require(destination in MoneyDestination.topLevel)
-        lastRoutes[destination.route] = route
-    }
-
-    fun select(destination: MoneyDestination): String {
-        require(destination in MoneyDestination.topLevel)
-        selectedRoute = destination.route
-        return lastRoutes.getValue(destination.route)
-    }
-
-    fun savedRoutes(): Map<String, String> = lastRoutes.toMap()
-}

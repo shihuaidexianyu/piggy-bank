@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
@@ -26,20 +27,19 @@ import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
-import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyAmountHeroField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 @Composable
 fun EditCashFlowScreen(
@@ -57,6 +57,7 @@ fun EditCashFlowScreen(
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val deletedMessage = stringResource(R.string.ledger_record_deleted)
     val undoLabel = stringResource(R.string.action_undo)
+    val moneyColors = LocalMoneyColors.current
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -105,44 +106,12 @@ fun EditCashFlowScreen(
         )
     }
 
-    dateTimeField?.let { currentField ->
-        when (currentField) {
-            MoneyDateTimePickerField.DATE -> {
-                MoneyDatePickerDialogHost(
-                    initialSelectedDateMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { selectedDate ->
-                        selectedDate?.let {
-                            viewModel.updateOccurredAt(
-                                DateTimeTextFormatter.replaceDate(
-                                    baseTimeMillis = state.occurredAtMillis,
-                                    selectedDateMillis = it,
-                                ),
-                            )
-                        }
-                        dateTimeField = null
-                    },
-                )
-            }
-
-            MoneyDateTimePickerField.TIME -> {
-                MoneyTimePickerDialogHost(
-                    initialTimeMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { hour, minute ->
-                        viewModel.updateOccurredAt(
-                            DateTimeTextFormatter.replaceTime(
-                                baseTimeMillis = state.occurredAtMillis,
-                                hour = hour,
-                                minute = minute,
-                            ),
-                        )
-                        dateTimeField = null
-                    },
-                )
-            }
-        }
-    }
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = state.occurredAtMillis,
+        onPick = viewModel::updateOccurredAt,
+        onDismiss = { dateTimeField = null },
+    )
 
     MoneyFormPage(
         title = when (val titleRes = editCashFlowTitleRes(state)) {
@@ -171,12 +140,19 @@ fun EditCashFlowScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                MoneyAmountField(
+                MoneyAmountHeroField(
                     value = state.amountText,
+                    label = stringResource(R.string.field_amount),
+                    accent = if (state.direction == CashFlowDirection.INFLOW) {
+                        moneyColors.income
+                    } else {
+                        moneyColors.expense
+                    },
                     onValueChange = viewModel::updateAmount,
                     isError = state.amountError != null,
                     supportingText = state.amountError,
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 MoneySelectionField(
                     label = stringResource(R.string.account_single),
                     value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),

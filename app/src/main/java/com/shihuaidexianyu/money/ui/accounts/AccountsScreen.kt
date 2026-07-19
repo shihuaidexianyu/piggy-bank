@@ -56,7 +56,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
@@ -393,12 +392,6 @@ private fun AccountCard(
                         style = balanceStyle,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
-                    if (account.isStale && !account.isClosed) {
-                        MoneyStatusPill(
-                            text = stringResource(R.string.account_stale_badge),
-                            accent = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
                 }
             }
         }

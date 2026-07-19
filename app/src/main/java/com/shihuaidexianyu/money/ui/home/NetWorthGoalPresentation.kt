@@ -1,4 +1,4 @@
-package com.shihuaidexianyu.money.ui.stats
+package com.shihuaidexianyu.money.ui.home
 
 import java.math.BigInteger
 

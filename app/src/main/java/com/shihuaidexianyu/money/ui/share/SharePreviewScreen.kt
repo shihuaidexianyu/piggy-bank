@@ -26,15 +26,13 @@ import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun SharePreviewScreen(
@@ -65,32 +63,12 @@ fun SharePreviewScreen(
             },
         )
     }
-    dateTimeField?.let { field ->
-        when (field) {
-            MoneyDateTimePickerField.DATE -> MoneyDatePickerDialogHost(
-                initialSelectedDateMillis = state.occurredAt,
-                onDismiss = { dateTimeField = null },
-                onConfirm = { selectedDate ->
-                    selectedDate?.let {
-                        viewModel.updateOccurredAt(
-                            DateTimeTextFormatter.replaceDate(state.occurredAt, it),
-                        )
-                    }
-                    dateTimeField = null
-                },
-            )
-            MoneyDateTimePickerField.TIME -> MoneyTimePickerDialogHost(
-                initialTimeMillis = state.occurredAt,
-                onDismiss = { dateTimeField = null },
-                onConfirm = { hour, minute ->
-                    viewModel.updateOccurredAt(
-                        DateTimeTextFormatter.replaceTime(state.occurredAt, hour, minute),
-                    )
-                    dateTimeField = null
-                },
-            )
-        }
-    }
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = state.occurredAt,
+        onPick = viewModel::updateOccurredAt,
+        onDismiss = { dateTimeField = null },
+    )
 
     MoneyFormPage(
         title = stringResource(R.string.share_preview_title),

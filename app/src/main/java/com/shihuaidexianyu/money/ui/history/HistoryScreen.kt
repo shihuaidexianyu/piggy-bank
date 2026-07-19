@@ -70,8 +70,10 @@ import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
+import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
-import com.shihuaidexianyu.money.util.TimeRangeUtils
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -288,7 +290,10 @@ fun HistoryScreen(
                         QuickDateChip(
                             label = stringResource(R.string.history_this_month),
                             onClick = {
-                                val range = TimeRangeUtils.currentMonthRange()
+                                val range = TimeRangeCalculator.currentMonthRange(
+                                    zoneId = ZoneId.systemDefault(),
+                                    nowMillis = System.currentTimeMillis(),
+                                )
                                 onDateRangeChange(range.startInclusive, range.endExclusive)
                             },
                         )
@@ -378,30 +383,35 @@ fun HistoryScreen(
                         onClick = { sheet = HistoryFilterSheet.OVERVIEW },
                         label = { Text(filterChipLabel(state)) },
                     )
-                    if (hasActiveFilters(state)) {
-                        Text(
-                            text = stringResource(R.string.action_clear),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable(onClick = onClearAllFilters),
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (state.hasCommittedContent) {
+                            Text(
+                                text = pluralStringResource(
+                                    R.plurals.history_loaded_count,
+                                    state.records.size,
+                                    state.records.size,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (hasActiveFilters(state)) {
+                            Text(
+                                text = stringResource(R.string.action_clear),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable(onClick = onClearAllFilters),
+                            )
+                        }
                     }
                 }
                 if (hasActiveFilters(state)) {
                     ActiveFilterChips(
                         state = state,
                         onOpenSheet = { sheet = it },
-                    )
-                }
-                if (state.hasCommittedContent) {
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.history_loaded_count,
-                            state.records.size,
-                            state.records.size,
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -434,9 +444,26 @@ fun HistoryScreen(
             is AsyncContent.Data,
             is AsyncContent.Refreshing,
             -> {
+                val nowMillis = System.currentTimeMillis()
                 recordGroups.forEach { (dateLabel, records) ->
                     stickyHeader(key = "history_date_$dateLabel") {
-                        HistoryDateHeader(dateLabel)
+                        HistoryDateHeader(
+                            dateLabel = historyDayLabelText(
+                                HistoryDayLabel.classify(
+                                    occurredAt = records.first().occurredAt,
+                                    nowMillis = nowMillis,
+                                ),
+                            ),
+                            cashIncomeTotal = records
+                                .filter { it.kind == HistoryRecordKind.CASH_FLOW && it.amount > 0L }
+                                .map { it.amount }
+                                .ledgerSumExact(),
+                            cashExpenseTotal = records
+                                .filter { it.kind == HistoryRecordKind.CASH_FLOW && it.amount < 0L }
+                                .map { it.amount }
+                                .ledgerSumExact(),
+                            settings = state.settings,
+                        )
                     }
                     items(records, key = { record -> record.id }) { record ->
                         HistoryRow(
@@ -496,18 +523,63 @@ private fun SearchField(
 }
 
 @Composable
-private fun HistoryDateHeader(dateLabel: String) {
+private fun historyDayLabelText(dayLabel: HistoryDayLabel): String = when (dayLabel) {
+    HistoryDayLabel.Today -> stringResource(R.string.history_today)
+    HistoryDayLabel.Yesterday -> stringResource(R.string.history_yesterday)
+    is HistoryDayLabel.SameYear -> stringResource(
+        R.string.history_day_label_same_year,
+        dayLabel.month,
+        dayLabel.dayOfMonth,
+    )
+    is HistoryDayLabel.OtherYear -> stringResource(
+        R.string.history_day_label_other_year,
+        dayLabel.year,
+        dayLabel.month,
+        dayLabel.dayOfMonth,
+    )
+}
+
+@Composable
+private fun HistoryDateHeader(
+    dateLabel: String,
+    cashIncomeTotal: Long,
+    cashExpenseTotal: Long,
+    settings: PortableSettings,
+) {
+    val moneyColors = LocalMoneyColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
     ) {
-        Text(
-            text = dateLabel,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            if (cashIncomeTotal > 0L) {
+                Text(
+                    text = "+${formatInAppAmount(cashIncomeTotal, settings)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = moneyColors.income,
+                )
+            }
+            if (cashExpenseTotal < 0L) {
+                Text(
+                    text = formatInAppAmount(cashExpenseTotal, settings),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = moneyColors.expense,
+                    modifier = Modifier.padding(start = 10.dp),
+                )
+            }
+        }
     }
 }
 
@@ -540,13 +612,6 @@ private fun ActiveFilterChips(
                 selected = true,
                 onClick = { onOpenSheet(HistoryFilterSheet.ACCOUNT) },
                 label = { Text(accountSheetSummary(state)) },
-            )
-        }
-        if (state.transferFromAccountId != null || state.transferToAccountId != null) {
-            FilterChip(
-                selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.OVERVIEW) },
-                label = { Text(stringResource(R.string.history_transfer_path_filter)) },
             )
         }
         if (state.dateStartAt != null || state.dateEndAt != null) {
@@ -596,7 +661,7 @@ private fun HistoryFilterSheetContent(
 @Composable
 private fun HistoryRow(
     record: HistoryRecordUiModel,
-    settings: com.shihuaidexianyu.money.domain.model.PortableSettings,
+    settings: PortableSettings,
     onClick: () -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current
@@ -766,7 +831,6 @@ private fun activeFilterCount(state: HistoryUiState): Int {
         state.excludeKeyword.isNotBlank(),
         state.selectedRecordTypes.isNotEmpty(),
         state.selectedAccountId != null,
-        state.transferFromAccountId != null || state.transferToAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
         state.amountDirectionFilter != AmountDirectionFilter.ALL,

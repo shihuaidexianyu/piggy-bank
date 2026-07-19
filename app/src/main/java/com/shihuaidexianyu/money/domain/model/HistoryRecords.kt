@@ -18,8 +18,6 @@ data class HistoryRecordFilters(
     val excludeKeyword: String = "",
     val recordTypes: Set<HistoryRecordType> = emptySet(),
     val accountId: Long? = null,
-    val transferFromAccountId: Long? = null,
-    val transferToAccountId: Long? = null,
     val dateStartAt: Long? = null, // Inclusive when present.
     val dateEndAt: Long? = null, // Exclusive when present.
     val minAmount: Long? = null,

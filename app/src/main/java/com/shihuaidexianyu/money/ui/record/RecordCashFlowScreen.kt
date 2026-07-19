@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
@@ -25,18 +27,17 @@ import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
-import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyAmountHeroField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
-import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.MoneyTimePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
-import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 @Composable
 fun RecordCashFlowScreen(
@@ -51,6 +52,7 @@ fun RecordCashFlowScreen(
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val moneyColors = LocalMoneyColors.current
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
@@ -73,44 +75,12 @@ fun RecordCashFlowScreen(
         )
     }
 
-    dateTimeField?.let { currentField ->
-        when (currentField) {
-            MoneyDateTimePickerField.DATE -> {
-                MoneyDatePickerDialogHost(
-                    initialSelectedDateMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { selectedDate ->
-                        selectedDate?.let {
-                            viewModel.updateOccurredAt(
-                                DateTimeTextFormatter.replaceDate(
-                                    baseTimeMillis = state.occurredAtMillis,
-                                    selectedDateMillis = it,
-                                ),
-                            )
-                        }
-                        dateTimeField = null
-                    },
-                )
-            }
-
-            MoneyDateTimePickerField.TIME -> {
-                MoneyTimePickerDialogHost(
-                    initialTimeMillis = state.occurredAtMillis,
-                    onDismiss = { dateTimeField = null },
-                    onConfirm = { hour, minute ->
-                        viewModel.updateOccurredAt(
-                            DateTimeTextFormatter.replaceTime(
-                                baseTimeMillis = state.occurredAtMillis,
-                                hour = hour,
-                                minute = minute,
-                            ),
-                        )
-                        dateTimeField = null
-                    },
-                )
-            }
-        }
-    }
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = state.occurredAtMillis,
+        onPick = viewModel::updateOccurredAt,
+        onDismiss = { dateTimeField = null },
+    )
 
     MoneyFormPage(
         title = state.direction.displayName,
@@ -131,12 +101,19 @@ fun RecordCashFlowScreen(
         }
         item {
             MoneyCard {
-                MoneyAmountField(
+                MoneyAmountHeroField(
                     value = state.amountText,
+                    label = stringResource(R.string.field_amount),
+                    accent = if (state.direction == CashFlowDirection.INFLOW) {
+                        moneyColors.income
+                    } else {
+                        moneyColors.expense
+                    },
                     onValueChange = viewModel::updateAmount,
                     isError = state.amountError != null,
                     supportingText = state.amountError,
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 MoneySelectionField(
                     label = stringResource(R.string.account_single),
                     value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),

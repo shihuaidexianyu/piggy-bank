@@ -3,24 +3,20 @@ package com.shihuaidexianyu.money.domain.repository
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
-import com.shihuaidexianyu.money.domain.model.CashFlowAnalysisEntry
-import com.shihuaidexianyu.money.domain.model.TransferPathTotal
-import com.shihuaidexianyu.money.domain.model.CashFlowDailyTotal
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
-import com.shihuaidexianyu.money.domain.model.PurposeTotal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Composite repository for all transaction-ledger tables.
  *
- * Previously split into 7 sub-interfaces (CashFlow/Transfer/BalanceUpdate/BalanceAdjustment/Stats/History/Change).
- * The split was removed because every consumer was injected with the full composite anyway, so the
- * sub-interfaces were dead documentation. If you want to narrow a use case's dependency, prefer
+ * Previously split into several feature-specific sub-interfaces. The split was removed because every
+ * consumer was injected with the full composite anyway, so the sub-interfaces were dead documentation.
+ * If you want to narrow a use case's dependency, prefer
  * extracting a focused port interface in `domain/repository/` and implementing it against the same
  * DAO layer, rather than reviving the sub-interface hierarchy.
  */
@@ -51,24 +47,6 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun queryAllActiveCashFlowRecords(): List<CashFlowRecord>
     suspend fun queryCashFlowRecordsByAccountId(accountId: Long): List<CashFlowRecord>
     suspend fun queryRecentCashFlowNotes(direction: String, accountId: Long?, limit: Int): List<String>
-    suspend fun queryActiveCashFlowRecordsByDirectionBetween(
-        direction: String,
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<CashFlowRecord>
-
-    suspend fun queryActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): List<CashFlowRecord>
-    suspend fun queryCashFlowAnalysisEntriesBetween(
-        startInclusive: Long,
-        endExclusive: Long,
-    ): List<CashFlowAnalysisEntry>
-    suspend fun queryPurposeTotals(direction: String, startInclusive: Long, endExclusive: Long): List<PurposeTotal>
-    suspend fun queryDailyCashFlowTotals(
-        startInclusive: Long,
-        endExclusive: Long,
-        zoneOffsetSeconds: Int,
-    ): List<CashFlowDailyTotal>
-
     // === Transfer records ===
     suspend fun insertTransferRecord(record: TransferRecord): LedgerInsertResult
     suspend fun updateTransferRecord(record: TransferRecord, expectedUpdatedAt: Long): Boolean
@@ -89,8 +67,6 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun queryTransferRecordByOperationId(operationId: String): TransferRecord?
     suspend fun queryAllTransferRecords(): List<TransferRecord>
     suspend fun queryAllActiveTransferRecords(): List<TransferRecord>
-    suspend fun queryActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): List<TransferRecord>
-    suspend fun queryTransferPathTotalsBetween(startInclusive: Long, endExclusive: Long): List<TransferPathTotal>
     suspend fun queryTransferRecordsByAccountId(accountId: Long): List<TransferRecord>
     suspend fun queryRecentTransferNotes(fromAccountId: Long?, toAccountId: Long?, limit: Int): List<String>
 
@@ -113,7 +89,6 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun queryStoredBalanceUpdateRecordById(id: Long): BalanceUpdateRecord?
     suspend fun queryBalanceUpdateRecordByOperationId(operationId: String): BalanceUpdateRecord?
     suspend fun queryAllBalanceUpdateRecords(): List<BalanceUpdateRecord>
-    suspend fun queryBalanceUpdateRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceUpdateRecord>
     suspend fun queryBalanceUpdateRecordsByAccountId(accountId: Long): List<BalanceUpdateRecord>
     suspend fun getLatestBalanceUpdate(accountId: Long): BalanceUpdateRecord?
 
@@ -136,24 +111,14 @@ interface TransactionRepository : DatabaseTransactionRunner {
     suspend fun queryStoredBalanceAdjustmentRecordById(id: Long): BalanceAdjustmentRecord?
     suspend fun queryBalanceAdjustmentRecordByOperationId(operationId: String): BalanceAdjustmentRecord?
     suspend fun queryAllBalanceAdjustmentRecords(): List<BalanceAdjustmentRecord>
-    suspend fun queryBalanceAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): List<BalanceAdjustmentRecord>
     suspend fun queryBalanceAdjustmentRecordsByAccountId(accountId: Long): List<BalanceAdjustmentRecord>
 
-    // === Aggregated stats ===
+    // === Period aggregates ===
     suspend fun sumInflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
     suspend fun sumOutflowBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
     suspend fun sumTransferInBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
     suspend fun sumTransferOutBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
     suspend fun sumAdjustmentBetween(accountId: Long, startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumCashInflowBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumCashOutflowBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumBalanceUpdateIncreaseBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumBalanceUpdateDecreaseBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumManualAdjustmentIncreaseBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun sumManualAdjustmentDecreaseBetween(startInclusive: Long, endExclusive: Long): Long
-    suspend fun countActiveCashFlowRecordsBetween(startInclusive: Long, endExclusive: Long): Int
-    suspend fun countActiveTransferRecordsBetween(startInclusive: Long, endExclusive: Long): Int
-    suspend fun countManualAdjustmentRecordsBetween(startInclusive: Long, endExclusive: Long): Int
     suspend fun queryHomePeriodLedgerSummary(
         startInclusive: Long,
         endExclusive: Long,
