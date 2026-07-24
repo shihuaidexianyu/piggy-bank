@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -31,6 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -40,7 +45,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,6 +74,11 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
@@ -111,10 +123,42 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
+    onDeleteRecord: (suspend (HistoryRecordUiModel) -> Result<com.shihuaidexianyu.money.domain.model.LedgerUndoToken?>)? = null,
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
+    var pendingDelete by remember { mutableStateOf<HistoryRecordUiModel?>(null) }
+    val scope = rememberCoroutineScope()
+    val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
+    val deletedMessage = stringResource(R.string.ledger_record_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
     val listState = rememberLazyListState()
+    if (pendingDelete != null) {
+        MoneyConfirmDialog(
+            title = stringResource(R.string.ledger_delete_title),
+            message = stringResource(R.string.ledger_delete_balance_warning),
+            onConfirm = {
+                val target = pendingDelete ?: return@MoneyConfirmDialog
+                pendingDelete = null
+                scope.launch {
+                    onDeleteRecord?.invoke(target)?.onSuccess { undoToken ->
+                        undoToken?.let {
+                            rootSnackbarDispatcher?.dispatch(
+                                rootSnackbarEffect(
+                                    message = deletedMessage,
+                                    actionLabel = undoLabel,
+                                    action = RootSnackbarAction.RestoreLedger(it),
+                                ),
+                            )
+                        }
+                    }
+                }
+            },
+            onDismiss = { pendingDelete = null },
+            confirmLabel = stringResource(R.string.action_confirm),
+            dismissLabel = stringResource(R.string.action_cancel),
+        )
+    }
     val canPrefetch = state.hasMoreRecords &&
         !state.isLoading &&
         !state.isLoadingMore &&
@@ -439,6 +483,7 @@ fun HistoryScreen(
                         EmptyKind.COMPLETELY_EMPTY -> stringResource(R.string.history_empty_description)
                         EmptyKind.FILTERED_EMPTY -> stringResource(R.string.history_filtered_empty_description)
                     },
+                    icon = Icons.Rounded.Search,
                 )
             }
             is AsyncContent.Data,
@@ -466,11 +511,51 @@ fun HistoryScreen(
                         )
                     }
                     items(records, key = { record -> record.id }) { record ->
-                        HistoryRow(
-                            record = record,
-                            settings = state.settings,
-                            onClick = { onRecordClick(record) },
-                        )
+                        val deletable = onDeleteRecord != null && record.kind == HistoryRecordKind.CASH_FLOW
+                        if (deletable) {
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value == SwipeToDismissBoxValue.EndToStart ||
+                                        value == SwipeToDismissBoxValue.StartToEnd
+                                    ) {
+                                        pendingDelete = record
+                                    }
+                                    false // never auto-dismiss; deletion is gated by the confirm dialog
+                                },
+                            )
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                modifier = Modifier.animateItem(),
+                                backgroundContent = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.errorContainer)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = stringResource(R.string.ledger_delete_title),
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        )
+                                    }
+                                },
+                            ) {
+                                HistoryRow(
+                                    record = record,
+                                    settings = state.settings,
+                                    onClick = { onRecordClick(record) },
+                                )
+                            }
+                        } else {
+                            HistoryRow(
+                                record = record,
+                                settings = state.settings,
+                                onClick = { onRecordClick(record) },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
                     }
                 }
                 state.loadMoreErrorMessageRes?.let { messageRes ->
@@ -663,16 +748,9 @@ private fun HistoryRow(
     record: HistoryRecordUiModel,
     settings: PortableSettings,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val moneyColors = LocalMoneyColors.current
-    val accent = when (record.kind) {
-        HistoryRecordKind.CASH_FLOW ->
-            if (record.amount > 0) moneyColors.income else moneyColors.expense
-        HistoryRecordKind.TRANSFER -> moneyColors.transfer
-        HistoryRecordKind.BALANCE_UPDATE,
-        HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> moneyColors.current
-    }
     val amountText = formatInAppAmount(record.amount, settings)
     val kindLabel = historyKindLabel(record)
     val amountColor = when (record.kind) {
@@ -684,7 +762,7 @@ private fun HistoryRow(
         }
     }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .semantics(mergeDescendants = true) {
@@ -701,15 +779,8 @@ private fun HistoryRow(
             modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(
-                        color = accent,
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                    ),
-            )
-            Spacer(modifier = Modifier.width(12.dp))
+            RecordKindBadge(kind = record.kind, amount = record.amount)
+            Spacer(modifier = Modifier.width(14.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),

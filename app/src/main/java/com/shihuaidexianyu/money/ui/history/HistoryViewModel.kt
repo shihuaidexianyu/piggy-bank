@@ -11,11 +11,13 @@ import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
@@ -121,6 +123,7 @@ class HistoryViewModel(
     private val transactionRepository: TransactionRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val deleteCashFlowRecordUseCase: DeleteCashFlowRecordUseCase? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -148,6 +151,23 @@ class HistoryViewModel(
         } else {
             initializeSafely()
         }
+    }
+
+    /**
+     * Soft-deletes a cash-flow record, returning the undo token on success so the caller can
+     * surface a snackbar with a restore action. Other record kinds stay read-only here and are
+     * still deleted from their detail screens.
+     */
+    suspend fun deleteCashFlowRecord(recordId: Long): Result<LedgerUndoToken?> {
+        val useCase = deleteCashFlowRecordUseCase
+            ?: return Result.failure(IllegalStateException("delete not available"))
+        val result = runCatching { useCase(recordId) }
+        result.onSuccess {
+            // Room invalidation also reloads, but reload eagerly so the dismissed row disappears
+            // even if the user immediately returns to this tab.
+            if (initialized) reloadFirstPage()
+        }
+        return result
     }
 
     private fun initializeSafely() {

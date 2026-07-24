@@ -122,6 +122,7 @@ class MainActivity : FragmentActivity() {
             MoneyTheme(
                 themeMode = devicePreferences.themeMode,
                 amountColorMode = portableSettings.amountColorMode,
+                useDynamicColor = devicePreferences.useDynamicColor,
             ) {
                 val effectiveLockState = if (loadedDevicePreferences == null) {
                     com.shihuaidexianyu.money.ui.lock.AppLockState.Loading

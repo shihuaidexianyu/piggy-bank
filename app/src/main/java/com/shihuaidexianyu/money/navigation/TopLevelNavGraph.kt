@@ -87,6 +87,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    deleteCashFlowRecordUseCase = container.deleteCashFlowRecordUseCase,
                 )
             },
         )
@@ -105,6 +106,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onLoadMore = viewModel::loadMore,
                 onRetryLoadMore = viewModel::loadMore,
                 onRetry = viewModel::retry,
+                onDeleteRecord = { record -> viewModel.deleteCashFlowRecord(record.recordId) },
                 onRecordClick = { record ->
                     when (record.kind) {
                         HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
@@ -159,6 +161,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             state = state,
             effectFlow = viewModel.effectFlow,
             onThemeModeChange = viewModel::updateThemeMode,
+            onUseDynamicColorChange = viewModel::updateUseDynamicColor,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onBiometricLockChange = onBiometricLockChange,

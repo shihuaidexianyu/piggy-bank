@@ -82,6 +82,7 @@ data class HomeUiState(
     val dueReminders: List<DueReminderUiModel> = emptyList(),
     val recentRecords: List<HomeRecentRecordUiModel> = emptyList(),
     val savingsGoalProgress: SavingsGoalProgress? = null,
+    val netWorthTrend: List<Long> = emptyList(),
     val showMonthlyBudgetEditor: Boolean = false,
     val monthlyBudgetInput: String = "",
     @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
@@ -209,6 +210,7 @@ class HomeViewModel(
                             )
                         },
                         savingsGoalProgress = savingsGoalProgress,
+                        netWorthTrend = snapshot.netWorthTrend,
                         showMonthlyBudgetEditor = editorState.showMonthlyBudgetEditor,
                         monthlyBudgetInput = editorState.monthlyBudgetInput,
                         monthlyBudgetInputErrorRes = editorState.monthlyBudgetInputErrorRes,

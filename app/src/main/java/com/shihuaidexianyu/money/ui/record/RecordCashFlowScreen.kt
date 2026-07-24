@@ -112,6 +112,7 @@ fun RecordCashFlowScreen(
                     onValueChange = viewModel::updateAmount,
                     isError = state.amountError != null,
                     supportingText = state.amountError,
+                    autoOpenKeypad = true,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 MoneySelectionField(

@@ -169,6 +169,7 @@
     <string name="settings_continue_export">继续导出</string>
     <string name="settings_theme_mode">主题模式</string>
     <string name="settings_theme_description">跟随系统，或固定为浅色 / 深色</string>
+    <string name="settings_dynamic_color">跟随系统取色</string>
     <string name="settings_amount_color">金额颜色习惯</string>
     <string name="settings_amount_color_description">统一首页、历史和金额差额的红绿显示</string>
     <string name="settings_currency_symbol">货币符号</string>

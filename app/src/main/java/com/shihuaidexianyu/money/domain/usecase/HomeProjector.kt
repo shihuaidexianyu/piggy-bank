@@ -34,6 +34,7 @@ internal object HomeProjector {
         transferRecordCount: Int,
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
+        netWorthTrend: List<Long> = emptyList(),
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
     ): HomeDashboardSnapshot {
@@ -80,6 +81,7 @@ internal object HomeProjector {
             recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
+            netWorthTrend = netWorthTrend,
         )
     }
 }

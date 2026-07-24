@@ -38,8 +38,9 @@ internal fun MoneyAmountHeroField(
     enabled: Boolean = true,
     isError: Boolean = false,
     supportingText: String? = null,
+    autoOpenKeypad: Boolean = false,
 ) {
-    var showKeypad by remember { mutableStateOf(false) }
+    var showKeypad by remember { mutableStateOf(autoOpenKeypad) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 

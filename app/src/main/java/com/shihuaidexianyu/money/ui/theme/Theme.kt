@@ -2,18 +2,43 @@ package com.shihuaidexianyu.money.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 
+private val BrandLightColorScheme = lightColorScheme(
+    primary = BrandTealPrimary,
+    primaryContainer = BrandTealPrimaryContainer,
+    background = BackgroundCream,
+    surface = SurfaceWhite,
+    surfaceVariant = SurfaceWarm,
+    onBackground = CharcoalWarm,
+    onSurface = CharcoalWarm,
+    onSurfaceVariant = WarmGray,
+    outlineVariant = WarmBorder,
+    outline = WarmBorderFocused,
+)
+
+private val BrandDarkColorScheme = darkColorScheme(
+    primary = BrandTealPrimaryDark,
+    primaryContainer = Night700,
+    background = Night950,
+    surface = Night800,
+    surfaceVariant = Night700,
+    outlineVariant = Night600,
+)
+
 @Composable
 fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
+    useDynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
@@ -23,8 +48,10 @@ fun MoneyTheme(
     }
     val context = LocalContext.current
     val colorScheme = when {
-        darkTheme -> dynamicDarkColorScheme(context)
-        else -> dynamicLightColorScheme(context)
+        useDynamicColor && darkTheme -> dynamicDarkColorScheme(context)
+        useDynamicColor -> dynamicLightColorScheme(context)
+        darkTheme -> BrandDarkColorScheme
+        else -> BrandLightColorScheme
     }
     val moneyColors = moneyColorsFor(
         darkTheme = darkTheme,

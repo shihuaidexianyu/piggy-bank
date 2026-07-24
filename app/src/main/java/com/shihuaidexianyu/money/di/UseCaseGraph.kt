@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.di
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
@@ -104,6 +105,26 @@ internal class UseCaseGraph(
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         clockProvider = SystemClockProvider,
         zoneIdProvider = SystemZoneIdProvider,
+        netWorthTrendProvider = { accounts, nowMillis, zoneId ->
+            val trendMonths = 5
+            val currentMonthStart = java.time.Instant.ofEpochMilli(nowMillis)
+                .atZone(zoneId)
+                .toLocalDate()
+                .withDayOfMonth(1)
+            val monthStartValues = (trendMonths - 1 downTo 0).map { monthsAgo ->
+                val boundary = currentMonthStart
+                    .minusMonths(monthsAgo.toLong())
+                    .atStartOfDay(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+                calculateAccountBalancesUseCase.before(accounts, boundary)
+                    .values
+                    .ledgerSumExact()
+            }
+            monthStartValues + calculateAccountBalancesUseCase(accounts, nowMillis)
+                .values
+                .ledgerSumExact()
+        },
     )
 
     fun observeAccountDetailUseCase(accountId: Long): ObserveAccountDetailUseCase {

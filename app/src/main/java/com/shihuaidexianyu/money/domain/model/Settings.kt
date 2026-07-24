@@ -39,6 +39,7 @@ data class HistoryFilters(
 
 data class DevicePreferences(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val useDynamicColor: Boolean = true,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
     val maskAmountsInApp: Boolean = false,

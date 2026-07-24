@@ -1,5 +1,12 @@
 package com.shihuaidexianyu.money.ui.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
@@ -42,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -57,6 +67,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
@@ -174,6 +185,7 @@ fun HomeScreen(
                             cashInflow = renderedState.periodCashInflow,
                             cashOutflow = renderedState.periodCashOutflow,
                             settings = renderedState.settings,
+                            netWorthTrend = renderedState.netWorthTrend,
                         )
                     }
                     if (renderedState.accountOptions.isEmpty()) {
@@ -239,6 +251,7 @@ private fun HomeOpenAccountCta(
     MoneyEmptyStateCard(
         title = stringResource(R.string.home_open_account_required),
         subtitle = stringResource(R.string.home_open_account_required_description),
+        icon = Icons.Rounded.AccountBalanceWallet,
     ) {
         OutlinedButton(onClick = onManageAccounts) { Text(stringResource(R.string.home_manage_accounts)) }
     }
@@ -311,6 +324,7 @@ private fun PeriodOverviewBlock(
     cashInflow: Long,
     cashOutflow: Long,
     settings: PortableSettings,
+    netWorthTrend: List<Long>,
 ) {
     val moneyColors = LocalMoneyColors.current
     val cashNet = cashInflow - cashOutflow
@@ -347,12 +361,36 @@ private fun PeriodOverviewBlock(
                 recordText.length > 8 -> MaterialTheme.typography.displayMedium
                 else -> MaterialTheme.typography.displayLarge
             }
-            Text(
-                text = recordText,
-                style = recordStyle,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            AnimatedContent(
+                targetState = recordText,
+                transitionSpec = {
+                    (slideInVertically { it / 3 } + fadeIn()) togetherWith
+                        (slideOutVertically { -it / 3 } + fadeOut())
+                },
+                label = "netAssetsAmount",
+            ) { animatedText ->
+                Text(
+                    text = animatedText,
+                    style = recordStyle,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            if (netWorthTrend.size >= 2) {
+                NetWorthSparkline(
+                    values = netWorthTrend,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                )
+            }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+            if (cashInflow > 0L && cashOutflow > 0L) {
+                FlowSplitBar(
+                    cashInflow = cashInflow,
+                    cashOutflow = cashOutflow,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -628,14 +666,6 @@ private fun HomeRecentRecordRow(
     onClick: () -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current
-    val accent = when (record.kind) {
-        HistoryRecordKind.CASH_FLOW ->
-            if (record.amount > 0) moneyColors.income else moneyColors.expense
-        HistoryRecordKind.TRANSFER -> moneyColors.transfer
-        HistoryRecordKind.BALANCE_UPDATE,
-        HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> moneyColors.current
-    }
     val kindLabel = homeRecentRecordKindLabel(record)
     val amountColor = when (record.kind) {
         HistoryRecordKind.TRANSFER -> moneyColors.transfer
@@ -652,15 +682,8 @@ private fun HomeRecentRecordRow(
             .padding(vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(
-                    color = accent,
-                    shape = CircleShape,
-                ),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+        RecordKindBadge(kind = record.kind, amount = record.amount)
+        Spacer(modifier = Modifier.width(14.dp))
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -790,3 +813,84 @@ private fun PeriodMetricCell(
         )
     }
 }
+
+@Composable
+private fun NetWorthSparkline(
+    values: List<Long>,
+    modifier: Modifier = Modifier,
+) {
+    val lineColor = MaterialTheme.colorScheme.primary
+    val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+    Canvas(modifier = modifier) {
+        if (values.size < 2) return@Canvas
+        val minV = values.min()
+        val maxV = values.max()
+        val span = (maxV - minV).coerceAtLeast(1L).toFloat()
+        val horizontalPadding = 2.dp.toPx()
+        val verticalPadding = 6.dp.toPx()
+        val usableWidth = size.width - horizontalPadding * 2
+        val usableHeight = size.height - verticalPadding * 2
+        val stepX = usableWidth / (values.size - 1)
+
+        fun pointAt(index: Int): androidx.compose.ui.geometry.Offset {
+            val x = horizontalPadding + stepX * index
+            val ratio = (values[index] - minV).toFloat() / span
+            val y = verticalPadding + usableHeight * (1f - ratio)
+            return androidx.compose.ui.geometry.Offset(x, y)
+        }
+
+        val linePath = androidx.compose.ui.graphics.Path()
+        values.indices.forEach { index ->
+            val point = pointAt(index)
+            if (index == 0) linePath.moveTo(point.x, point.y) else linePath.lineTo(point.x, point.y)
+        }
+
+        val fillPath = androidx.compose.ui.graphics.Path().apply {
+            addPath(linePath)
+            lineTo(horizontalPadding + usableWidth, size.height)
+            lineTo(horizontalPadding, size.height)
+            close()
+        }
+        drawPath(fillPath, color = fillColor)
+        drawPath(
+            linePath,
+            color = lineColor,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
+        )
+        // Emphasize the latest value with a small dot.
+        val last = pointAt(values.lastIndex)
+        drawCircle(color = lineColor, radius = 3.dp.toPx(), center = last)
+    }
+}
+
+@Composable
+private fun FlowSplitBar(
+    cashInflow: Long,
+    cashOutflow: Long,
+    modifier: Modifier = Modifier,
+) {
+    val moneyColors = LocalMoneyColors.current
+    val total = (cashInflow + cashOutflow).coerceAtLeast(1L)
+    val inflowFraction = cashInflow.toFloat() / total.toFloat()
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp)),
+    ) {
+        val gap = 2.dp.toPx()
+        val inflowWidth = (size.width - gap) * inflowFraction
+        drawRoundRect(
+            color = moneyColors.income,
+            size = androidx.compose.ui.geometry.Size(inflowWidth, size.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
+        )
+        drawRoundRect(
+            color = moneyColors.expense,
+            topLeft = androidx.compose.ui.geometry.Offset(inflowWidth + gap, 0f),
+            size = androidx.compose.ui.geometry.Size(size.width - inflowWidth - gap, size.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
+        )
+    }
+}
+

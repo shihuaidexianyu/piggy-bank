@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.widget.RemoteViews
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -14,6 +15,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.shihuaidexianyu.money.MainActivity
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.util.AmountFormatter
 import java.util.concurrent.TimeUnit
 
@@ -57,9 +59,15 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                 snapshot.visibility,
             )
             val views = baseViews(context, widgetId).apply {
+                val (incomeColor, expenseColor) = widgetFlowColors(
+                    context,
+                    snapshot.settings.amountColorMode,
+                )
                 setTextViewText(R.id.widget_total_assets, total)
                 setTextViewText(R.id.widget_month_income, income)
                 setTextViewText(R.id.widget_month_expense, expense)
+                setTextColor(R.id.widget_month_income, incomeColor)
+                setTextColor(R.id.widget_month_expense, expenseColor)
                 setContentDescription(
                     R.id.widget_total_assets,
                     context.getString(
@@ -99,6 +107,24 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
         fun renderAllSafePlaceholders(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             widgetIds(context).forEach { renderSafePlaceholder(context, manager, it) }
+        }
+
+        // Mirrors ui/theme/Color.kt MoneyColors so the widget matches in-app amount colors,
+        // including the user-selectable income/expense color direction.
+        private const val LIGHT_INCOME: Int = 0xFFA94442.toInt()
+        private const val LIGHT_EXPENSE: Int = 0xFF2F6B4F.toInt()
+        private const val DARK_INCOME: Int = 0xFFE57373.toInt()
+        private const val DARK_EXPENSE: Int = 0xFF66BB6A.toInt()
+
+        private fun widgetFlowColors(context: Context, mode: AmountColorMode): Pair<Int, Int> {
+            val dark = context.resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+            val income = if (dark) DARK_INCOME else LIGHT_INCOME
+            val expense = if (dark) DARK_EXPENSE else LIGHT_EXPENSE
+            return when (mode) {
+                AmountColorMode.RED_INCOME_GREEN_EXPENSE -> income to expense
+                AmountColorMode.GREEN_INCOME_RED_EXPENSE -> expense to income
+            }
         }
 
         fun scheduleUpdate(context: Context) {

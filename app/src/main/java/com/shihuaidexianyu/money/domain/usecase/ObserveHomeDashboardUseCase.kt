@@ -37,6 +37,8 @@ data class HomeDashboardSnapshot(
     val recentRecords: List<HistoryRecord>,
     val hasAnyAccounts: Boolean,
     val allAccountCount: Int,
+    /** Net worth at the start of each of the last several months plus the current value, oldest first. */
+    val netWorthTrend: List<Long> = emptyList(),
 )
 
 data class PeriodAssetBreakdown(
@@ -71,6 +73,9 @@ class ObserveHomeDashboardUseCase(
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
     private val timeSignal: Flow<Long> = clockMinuteTickerFlow(clockProvider),
+    // Optional: computing the trend costs extra aggregate reads, so it is injected only where the
+    // home dashboard wants it. Tests omit it to keep the aggregate-read budget intact.
+    private val netWorthTrendProvider: (suspend (accounts: List<Account>, nowMillis: Long, zoneId: java.time.ZoneId) -> List<Long>)? = null,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(): Flow<HomeDashboardSnapshot> {
@@ -108,6 +113,7 @@ class ObserveHomeDashboardUseCase(
                 transferRecordCount = input.transferRecordCount,
                 manualAdjustmentRecordCount = input.manualAdjustmentRecordCount,
                 recentRecords = input.recentRecords,
+                netWorthTrend = input.netWorthTrend,
                 snapshotTimeMillis = snapshotTimeMillis,
                 zoneId = input.zoneId,
             )
@@ -128,6 +134,7 @@ class ObserveHomeDashboardUseCase(
                 range.startInclusive,
                 range.endExclusive,
             )
+            val balances = calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis)
             HomeDashboardInput(
                 zoneId = zoneId,
                 allAccounts = allAccounts,
@@ -135,7 +142,7 @@ class ObserveHomeDashboardUseCase(
                 reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs(),
                 settings = portableSettingsRepository.query(),
                 dueReminders = recurringReminderRepository.queryDue(snapshotTimeMillis),
-                balances = calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis),
+                balances = balances,
                 openingBalanceByAccount = calculateAccountBalancesUseCase.before(
                     openingAccounts,
                     range.startInclusive,
@@ -164,8 +171,23 @@ class ObserveHomeDashboardUseCase(
                     cursor = null,
                     limit = HOME_RECENT_RECORD_LIMIT,
                 ),
+                netWorthTrend = computeNetWorthTrend(
+                    allAccounts = allAccounts,
+                    snapshotTimeMillis = snapshotTimeMillis,
+                    zoneId = zoneId,
+                ),
             )
         }
+    }
+
+    private suspend fun computeNetWorthTrend(
+        allAccounts: List<Account>,
+        snapshotTimeMillis: Long,
+        zoneId: java.time.ZoneId,
+    ): List<Long> {
+        val provider = netWorthTrendProvider ?: return emptyList()
+        if (allAccounts.isEmpty()) return emptyList()
+        return provider(allAccounts, snapshotTimeMillis, zoneId)
     }
 }
 
@@ -191,4 +213,5 @@ private data class HomeDashboardInput(
     val transferRecordCount: Int,
     val manualAdjustmentRecordCount: Int,
     val recentRecords: List<HistoryRecord>,
+    val netWorthTrend: List<Long>,
 )

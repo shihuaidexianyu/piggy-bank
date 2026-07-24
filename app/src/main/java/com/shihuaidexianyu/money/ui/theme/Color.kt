@@ -1,6 +1,6 @@
 package com.shihuaidexianyu.money.ui.theme
 
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 
@@ -89,4 +89,4 @@ fun moneyColorsFor(
     }
 }
 
-val LocalMoneyColors = staticCompositionLocalOf { LightMoneyColors }
+val LocalMoneyColors = compositionLocalOf { LightMoneyColors }

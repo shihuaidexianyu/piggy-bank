@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
@@ -141,6 +142,7 @@ fun AccountsScreen(
                             subtitle = stringResource(
                                 if (hasClosedAccounts) R.string.accounts_closed_hint else R.string.accounts_empty_hint,
                             ),
+                            icon = Icons.Rounded.AccountBalanceWallet,
                     ) {
                         if (hasClosedAccounts) {
                             OutlinedButton(onClick = onToggleClosedVisibility) {
@@ -180,6 +182,7 @@ fun AccountsScreen(
                             currencySettings = state.settings,
                             positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -200,6 +203,7 @@ fun AccountsScreen(
                             currencySettings = state.settings,
                             positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -239,6 +243,7 @@ fun AccountsScreen(
                         account = account,
                         currencySettings = state.settings,
                         positiveAssetsTotal = 0L,
+                        modifier = Modifier.animateItem(),
                         onClick = { onAccountClick(account.id) },
                     )
                 }
@@ -271,6 +276,7 @@ private fun AccountCard(
     currencySettings: PortableSettings,
     positiveAssetsTotal: Long,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
@@ -305,7 +311,7 @@ private fun AccountCard(
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,

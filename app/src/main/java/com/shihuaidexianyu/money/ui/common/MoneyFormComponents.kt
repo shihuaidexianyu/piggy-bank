@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -246,26 +245,34 @@ fun MoneyDatePickerDialogHost(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoneyTimePickerDialogHost(
     initialTimeMillis: Long,
     onDismiss: () -> Unit,
     onConfirm: (Int, Int) -> Unit,
 ) {
-    val context = LocalContext.current
     val zoneDateTime = java.time.Instant.ofEpochMilli(initialTimeMillis)
         .atZone(java.time.ZoneId.systemDefault())
         .toLocalDateTime()
-    androidx.compose.runtime.LaunchedEffect(initialTimeMillis) {
-        TimePickerDialog(
-            context,
-            { _, hour, minute -> onConfirm(hour, minute) },
-            zoneDateTime.hour,
-            zoneDateTime.minute,
-            true,
-        ).apply {
-            setOnDismissListener { onDismiss() }
-        }.show()
+    val pickerState = androidx.compose.material3.rememberTimePickerState(
+        initialHour = zoneDateTime.hour,
+        initialMinute = zoneDateTime.minute,
+        is24Hour = true,
+    )
+    androidx.compose.material3.TimePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(pickerState.hour, pickerState.minute) }) {
+                Text(stringResource(R.string.action_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        title = { Text(stringResource(R.string.field_time)) },
+    ) {
+        androidx.compose.material3.TimePicker(state = pickerState)
     }
 }
 
@@ -402,10 +409,18 @@ fun MoneySaveButton(
             contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
     ) {
-        Text(
-            text = resolvedLabel,
-            style = MaterialTheme.typography.titleMedium,
-        )
+        if (isSaving) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(
+                text = resolvedLabel,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
     }
 }
 

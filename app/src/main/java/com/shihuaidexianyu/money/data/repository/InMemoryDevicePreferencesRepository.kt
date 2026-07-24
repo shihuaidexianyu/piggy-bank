@@ -37,6 +37,7 @@ class InMemoryDevicePreferencesRepository(
     }
 
     override suspend fun updateThemeMode(mode: ThemeMode) = update { copy(themeMode = mode) }
+    override suspend fun updateUseDynamicColor(enabled: Boolean) = update { copy(useDynamicColor = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = update { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() {
         beforeEnableBiometricLock()
