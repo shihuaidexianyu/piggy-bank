@@ -213,13 +213,7 @@ fun MoneyNavGraph(
     val retryLabel = stringResource(R.string.action_retry)
 
     fun navigateTopLevel(destination: MoneyDestination) {
-        navController.navigate(destination.route) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = true
-            }
-        }
+        navController.navigateToTopLevelTab(destination)
     }
 
     fun handleFabAction(action: LedgerFabAction) {

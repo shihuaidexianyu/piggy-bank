@@ -1,10 +1,7 @@
 package com.shihuaidexianyu.money.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -21,6 +18,7 @@ import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
@@ -74,12 +72,9 @@ fun SavingsGoalScreen(
         }
         if (!state.isLoading) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = stringResource(R.string.savings_goal_amount),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                // One card, one label: the field's own floating label names the amount — the
+                // former standalone caption duplicated it word for word.
+                MoneyCard {
                     MoneyAmountField(
                         value = state.amountText,
                         onValueChange = viewModel::updateAmount,
@@ -90,24 +85,20 @@ fun SavingsGoalScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    MoneySaveButton(
+                        onClick = viewModel::save,
+                        isSaving = state.isSaving,
+                        label = stringResource(
+                            if (state.hasGoal) R.string.savings_goal_edit_action else R.string.savings_goal_set_action,
+                        ),
+                    )
                 }
-            }
-            item {
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    label = stringResource(
-                        if (state.hasGoal) R.string.savings_goal_edit_action else R.string.savings_goal_set_action,
-                    ),
-                )
             }
             if (state.hasGoal) {
                 item {
                     MoneyTonalButton(
                         onClick = viewModel::showClearConfirm,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !state.isSaving,
                     ) {
                         Text(stringResource(R.string.savings_goal_clear_action))

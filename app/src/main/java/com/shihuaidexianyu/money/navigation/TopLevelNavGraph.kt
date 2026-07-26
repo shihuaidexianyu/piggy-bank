@@ -53,7 +53,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
                 onOpenSettings = { navController.navigate(MoneyDestination.Settings.route) },
                 onManageAccounts = {
-                    navController.navigate(MoneyDestination.Accounts.route) { launchSingleTop = true }
+                    navController.navigateToTopLevelTab(MoneyDestination.Accounts)
                 },
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
@@ -65,7 +65,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onRetryMonthlyBudgetSave = viewModel::retryMonthlyBudgetSave,
                 onCloseMonthlyBudget = viewModel::closeMonthlyBudget,
                 onOpenHistory = {
-                    navController.navigate(MoneyDestination.History.route) { launchSingleTop = true }
+                    navController.navigateToTopLevelTab(MoneyDestination.History)
                 },
                 onOpenSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
                 onOpenRecord = { record ->
@@ -176,7 +176,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onOpenNotificationSettings = notificationPermissionGateway.openSettings,
             onManageReminders = { navController.navigate(MoneyDestination.ReminderListRoute) },
             onManageAccountReminderConfigs = {
-                navController.navigate(MoneyDestination.Accounts.route) { launchSingleTop = true }
+                navController.navigateToTopLevelTab(MoneyDestination.Accounts)
             },
             onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onExportData = viewModel::exportData,

@@ -153,15 +153,9 @@ fun UpdateBalanceScreen(
             }
         }
         item {
+            // Verdict card only: the amounts themselves are already visible in the form card
+            // above — repeating them here just made the page read twice as long.
             MoneyCard {
-                MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_system),
-                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
-                )
-                MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_actual),
-                    value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
-                )
                 MoneyInlineLabelValue(
                     label = stringResource(
                         if (isInvestment) R.string.balance_delta_investment else R.string.balance_delta,

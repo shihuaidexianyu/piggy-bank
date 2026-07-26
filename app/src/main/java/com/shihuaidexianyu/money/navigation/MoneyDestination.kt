@@ -1,4 +1,6 @@
 package com.shihuaidexianyu.money.navigation
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Home
@@ -79,5 +81,21 @@ sealed class MoneyDestination(
         fun balanceUpdateResultRoute(accountId: Long): String = "balance/update/$accountId/result"
 
         fun editReminderRoute(reminderId: Long): String = "reminders/$reminderId/edit"
+    }
+}
+
+/**
+ * The cross-tab navigation contract. EVERY programmatic jump to a bottom-bar tab (Home, History,
+ * Accounts) must go through this — the same options the bar itself uses. A plain navigate() to a
+ * tab route pushes a second instance of that tab outside the bar's save/restore system; from then
+ * on the bar's own taps misbehave until the duplicate is popped with the back gesture.
+ */
+fun NavHostController.navigateToTopLevelTab(destination: MoneyDestination) {
+    navigate(destination.route) {
+        launchSingleTop = true
+        restoreState = true
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
     }
 }

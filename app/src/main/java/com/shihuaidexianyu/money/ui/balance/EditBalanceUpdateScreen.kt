@@ -147,10 +147,8 @@ fun EditBalanceUpdateScreen(
                     timeSubtitle = stringResource(R.string.balance_edit_time_description),
                     errorText = state.occurredAtError,
                 )
-                MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_actual),
-                    value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
-                )
+                // The actual balance is the input's own value one card up — only the derived
+                // delta is new information here.
                 MoneyInlineLabelValue(
                     label = stringResource(R.string.balance_delta),
                     value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
