@@ -37,6 +37,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
+import com.shihuaidexianyu.money.domain.usecase.calculatePeriodDelta
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import kotlin.math.abs
@@ -102,6 +103,7 @@ fun UpdateBalanceScreen(
             }
             return@MoneyFormPage
         }
+        val isInvestment = selectedAccount?.isInvestment == true
         item {
             MoneyCard {
                 MoneySelectionField(
@@ -115,6 +117,15 @@ fun UpdateBalanceScreen(
                     label = stringResource(R.string.balance_system),
                     value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
+                if (isInvestment) {
+                    // Freshness matters on investment accounts: the value drifts daily without
+                    // any record existing, so an old check means stale P&L and net worth.
+                    Text(
+                        text = lastCheckedText(selectedAccount?.lastBalanceUpdateAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
@@ -152,19 +163,27 @@ fun UpdateBalanceScreen(
                     value = state.actualBalancePreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
                 MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_delta),
+                    label = stringResource(
+                        if (isInvestment) R.string.balance_delta_investment else R.string.balance_delta,
+                    ),
                     value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
                 )
-                state.deltaPreview?.let {
+                state.deltaPreview?.let { delta ->
                     Text(
-                        text = when {
-                            it > 0 -> stringResource(R.string.balance_above_system)
-                            it < 0 -> stringResource(R.string.balance_below_system)
-                            else -> stringResource(R.string.balance_unchanged_hint)
+                        text = if (isInvestment) {
+                            // On an investment account the difference IS the investment result —
+                            // name it, and quantify it against the pre-check value when possible.
+                            investmentDeltaText(delta, state.systemBalanceBeforeUpdate)
+                        } else {
+                            when {
+                                delta > 0 -> stringResource(R.string.balance_above_system)
+                                delta < 0 -> stringResource(R.string.balance_below_system)
+                                else -> stringResource(R.string.balance_unchanged_hint)
+                            }
                         },
                         color = when {
-                            it > 0 -> LocalMoneyColors.current.income
-                            it < 0 -> LocalMoneyColors.current.expense
+                            delta > 0 -> LocalMoneyColors.current.income
+                            delta < 0 -> LocalMoneyColors.current.expense
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -172,43 +191,54 @@ fun UpdateBalanceScreen(
                 }
                 val nonZeroDelta = state.deltaPreview
                 if (nonZeroDelta != null && nonZeroDelta != 0L) {
-                    Text(
-                        text = stringResource(R.string.balance_correction_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    val accountId = state.selectedAccountId
-                    if (accountId != null) {
-                        val prefillAmount = abs(nonZeroDelta)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    onStartCashFlow(
-                                        CashFlowDirection.INFLOW,
-                                        accountId,
-                                        prefillAmount,
-                                    )
-                                },
-                                enabled = !state.isSaving,
-                                modifier = Modifier.weight(1f),
+                    if (isInvestment) {
+                        // A difference here is the market, not a bookkeeping error: no
+                        // "record the missing income/expense" audit affordances — recording
+                        // market movement as cash flow is exactly the mistake to prevent.
+                        Text(
+                            text = stringResource(R.string.balance_investment_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.balance_correction_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        val accountId = state.selectedAccountId
+                        if (accountId != null) {
+                            val prefillAmount = abs(nonZeroDelta)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Text(stringResource(R.string.balance_record_income))
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    onStartCashFlow(
-                                        CashFlowDirection.OUTFLOW,
-                                        accountId,
-                                        prefillAmount,
-                                    )
-                                },
-                                enabled = !state.isSaving,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(stringResource(R.string.balance_record_expense))
+                                OutlinedButton(
+                                    onClick = {
+                                        onStartCashFlow(
+                                            CashFlowDirection.INFLOW,
+                                            accountId,
+                                            prefillAmount,
+                                        )
+                                    },
+                                    enabled = !state.isSaving,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.balance_record_income))
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        onStartCashFlow(
+                                            CashFlowDirection.OUTFLOW,
+                                            accountId,
+                                            prefillAmount,
+                                        )
+                                    },
+                                    enabled = !state.isSaving,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.balance_record_expense))
+                                }
                             }
                         }
                     }
@@ -218,10 +248,49 @@ fun UpdateBalanceScreen(
                     isSaving = state.isSaving,
                     enabled = state.pendingTerminal == null,
                     label = stringResource(
-                        if (state.deltaPreview == 0L) R.string.balance_confirm_unchanged else R.string.balance_save_reconciliation,
+                        when {
+                            state.deltaPreview == 0L -> R.string.balance_confirm_unchanged
+                            isInvestment -> R.string.balance_save_investment_update
+                            else -> R.string.balance_save_reconciliation
+                        },
                     ),
                 )
             }
         }
     }
 }
+
+/**
+ * Renders the investment result as a gain/loss label plus a signed percentage suffix. The
+ * percentage is measured against the pre-check system balance and omitted when that baseline is
+ * not positive (a percentage against zero or a negative value would be meaningless or read
+ * backwards).
+ */
+@Composable
+private fun investmentDeltaText(delta: Long, systemBalance: Long): String {
+    if (delta == 0L) return stringResource(R.string.balance_unchanged_hint)
+    val base = stringResource(
+        if (delta > 0L) R.string.history_investment_gain else R.string.history_investment_loss,
+    )
+    val percent = calculatePeriodDelta(
+        currentAmount = systemBalance + delta,
+        baselineAmount = systemBalance,
+    ).percentageText ?: return base
+    val sign = if (delta > 0L) "+" else "-"
+    return "$base · $sign$percent"
+}
+
+@Composable
+private fun lastCheckedText(lastBalanceUpdateAt: Long?): String {
+    if (lastBalanceUpdateAt == null) return stringResource(R.string.balance_never_checked)
+    val days = ((System.currentTimeMillis() - lastBalanceUpdateAt) / DAY_MILLIS)
+        .coerceAtLeast(0L)
+        .toInt()
+    return if (days == 0) {
+        stringResource(R.string.balance_checked_today)
+    } else {
+        stringResource(R.string.balance_last_checked_days_format, days)
+    }
+}
+
+private const val DAY_MILLIS = 86_400_000L

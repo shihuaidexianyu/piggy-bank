@@ -28,9 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,6 +90,7 @@ internal fun MoneyAmountKeypadSheet(
         parseAmountKeypadPreview(value, allowSigned)
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptics = LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -118,8 +119,13 @@ internal fun MoneyAmountKeypadSheet(
                                 onClick = {
                                     val key = spec.key
                                     if (key == null) {
+                                        // The done key commits the amount — a firmer confirm tick.
+                                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                         onDismiss()
                                     } else {
+                                        // Custom keypads feel dead without the per-key tick a
+                                        // physical or IME keyboard provides.
+                                        haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
                                         onValueChange(appendAmountKey(value, key, allowSigned))
                                     }
                                 },

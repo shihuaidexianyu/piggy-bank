@@ -36,6 +36,8 @@ data class AccountOptionUiModel(
     val lastUsedAt: Long? = null,
     val isStale: Boolean = false,
     val isHidden: Boolean = false,
+    val isInvestment: Boolean = false,
+    val lastBalanceUpdateAt: Long? = null,
 )
 
 data class AccountPickerSections(

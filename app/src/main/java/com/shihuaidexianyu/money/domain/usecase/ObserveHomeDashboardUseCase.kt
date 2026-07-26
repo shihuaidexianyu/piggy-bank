@@ -40,7 +40,7 @@ data class HomeDashboardSnapshot(
     val hasAnyAccounts: Boolean,
     val allAccountCount: Int,
     /** Net worth at the start of each of the last several periods plus the current value, oldest first. */
-    val netWorthTrend: List<Long> = emptyList(),
+    val netWorthTrend: List<NetWorthTrendPoint> = emptyList(),
     /** Which period the aggregates above cover. */
     val period: DashboardPeriod = DashboardPeriod.DEFAULT,
     /** Net worth now versus net worth at the start of the selected period. */
@@ -57,6 +57,12 @@ data class HomeDashboardSnapshot(
     val investmentAssets: Long = 0L,
     /** Reconciliation deltas on investment accounts within the selected period. */
     val periodInvestmentPnl: Long = 0L,
+)
+
+/** One sample of the net-worth trend: the total at [timeMillis], used for sparkline labels and scrubbing. */
+data class NetWorthTrendPoint(
+    val timeMillis: Long,
+    val value: Long,
 )
 
 data class PeriodAssetBreakdown(
@@ -99,7 +105,7 @@ class ObserveHomeDashboardUseCase(
             nowMillis: Long,
             zoneId: java.time.ZoneId,
             period: DashboardPeriod,
-        ) -> List<Long>
+        ) -> List<NetWorthTrendPoint>
     )? = null,
 ) {
     /**
@@ -260,7 +266,7 @@ class ObserveHomeDashboardUseCase(
         snapshotTimeMillis: Long,
         zoneId: java.time.ZoneId,
         period: DashboardPeriod,
-    ): List<Long> {
+    ): List<NetWorthTrendPoint> {
         val provider = netWorthTrendProvider ?: return emptyList()
         if (allAccounts.isEmpty()) return emptyList()
         return provider(allAccounts, snapshotTimeMillis, zoneId, period)
@@ -294,5 +300,5 @@ private data class HomeDashboardInput(
     val transferRecordCount: Int,
     val manualAdjustmentRecordCount: Int,
     val recentRecords: List<HistoryRecord>,
-    val netWorthTrend: List<Long>,
+    val netWorthTrend: List<NetWorthTrendPoint>,
 )

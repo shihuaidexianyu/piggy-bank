@@ -25,10 +25,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
@@ -50,6 +54,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +72,16 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.BudgetPace
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
+import com.shihuaidexianyu.money.domain.usecase.NetWorthTrendPoint
 import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToInt
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -100,6 +117,7 @@ fun HomeScreen(
     onOpenSavingsGoal: () -> Unit = {},
     onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
+    onToggleOverviewExpanded: () -> Unit = {},
 ) {
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val homeLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
@@ -188,7 +206,9 @@ fun HomeScreen(
                             hasInvestmentAccounts = renderedState.hasInvestmentAccounts,
                             investmentAssets = renderedState.investmentAssets,
                             periodInvestmentPnl = renderedState.periodInvestmentPnl,
+                            isExpanded = renderedState.isOverviewExpanded,
                             onSelectPeriod = onSelectPeriod,
+                            onToggleExpanded = onToggleOverviewExpanded,
                         )
                     }
                     if (renderedState.accountOptions.isEmpty()) {
@@ -325,7 +345,7 @@ private fun PeriodOverviewBlock(
     cashInflow: Long,
     cashOutflow: Long,
     settings: PortableSettings,
-    netWorthTrend: List<Long>,
+    netWorthTrend: List<NetWorthTrendPoint>,
     period: DashboardPeriod,
     selectedPeriod: DashboardPeriod,
     netWorthDelta: PeriodDelta,
@@ -334,7 +354,9 @@ private fun PeriodOverviewBlock(
     hasInvestmentAccounts: Boolean,
     investmentAssets: Long,
     periodInvestmentPnl: Long,
+    isExpanded: Boolean,
     onSelectPeriod: (DashboardPeriod) -> Unit,
+    onToggleExpanded: () -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current
     val cashNet = cashInflow - cashOutflow
@@ -357,7 +379,9 @@ private fun PeriodOverviewBlock(
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 22.dp)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
@@ -399,7 +423,7 @@ private fun PeriodOverviewBlock(
                 increaseIsPositive = true,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (hasInvestmentAccounts) {
+            if (isExpanded && hasInvestmentAccounts) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -418,16 +442,16 @@ private fun PeriodOverviewBlock(
                     )
                 }
             }
-            if (netWorthTrend.size >= 2) {
+            if (isExpanded && netWorthTrend.size >= 2) {
                 NetWorthSparkline(
-                    values = netWorthTrend,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                    points = netWorthTrend,
+                    period = period,
+                    settings = settings,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-            if (cashInflow > 0L && cashOutflow > 0L) {
+            if (isExpanded && cashInflow > 0L && cashOutflow > 0L) {
                 FlowSplitBar(
                     cashInflow = cashInflow,
                     cashOutflow = cashOutflow,
@@ -467,7 +491,7 @@ private fun PeriodOverviewBlock(
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (hasInvestmentAccounts) {
+            if (isExpanded && hasInvestmentAccounts) {
                 val pnlColor = when {
                     periodInvestmentPnl > 0L -> moneyColors.income
                     periodInvestmentPnl < 0L -> moneyColors.expense
@@ -491,7 +515,41 @@ private fun PeriodOverviewBlock(
                     )
                 }
             }
+            OverviewExpandToggle(
+                isExpanded = isExpanded,
+                onToggle = onToggleExpanded,
+            )
         }
+    }
+}
+
+/**
+ * Bottom chevron that collapses the card's analysis rows (asset split, sparkline, flow bar,
+ * investment P&L) down to the essentials: headline, delta, and the three flow metrics.
+ */
+@Composable
+private fun OverviewExpandToggle(
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val label = stringResource(
+        if (isExpanded) R.string.home_overview_collapse else R.string.home_overview_expand,
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onToggle)
+            .semantics { contentDescription = label }
+            .padding(vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -509,13 +567,17 @@ private fun PeriodSwitcher(
 ) {
     val options = DashboardPeriod.entries
     val selectorDescription = stringResource(R.string.home_period_selector)
+    val haptics = LocalHapticFeedback.current
     SingleChoiceSegmentedButtonRow(
         modifier = Modifier.semantics { contentDescription = selectorDescription },
     ) {
         options.forEachIndexed { index, period ->
             SegmentedButton(
                 selected = period == selected,
-                onClick = { onSelect(period) },
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    onSelect(period)
+                },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
@@ -1106,53 +1168,210 @@ private fun DashboardPeriod.versusPreviousLabelRes(): Int = when (this) {
     DashboardPeriod.YEAR -> R.string.home_vs_previous_year
 }
 
+/**
+ * Net-worth trend with enough context to actually read it: extreme-value labels, a hairline at
+ * the window's starting value, endpoint time labels, and drag-to-scrub inspection of every point.
+ * The y-scale is clamped to a minimum span (1% of the current magnitude) so bookkeeping noise on
+ * a flat net worth cannot render as a dramatic mountain range — the shape only gets loud when
+ * the data is.
+ */
 @Composable
 private fun NetWorthSparkline(
-    values: List<Long>,
+    points: List<NetWorthTrendPoint>,
+    period: DashboardPeriod,
+    settings: PortableSettings,
     modifier: Modifier = Modifier,
 ) {
     val lineColor = MaterialTheme.colorScheme.primary
     val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-    Canvas(modifier = modifier) {
-        if (values.size < 2) return@Canvas
-        val minV = values.min()
-        val maxV = values.max()
-        val span = (maxV - minV).coerceAtLeast(1L).toFloat()
-        val horizontalPadding = 2.dp.toPx()
-        val verticalPadding = 6.dp.toPx()
-        val usableWidth = size.width - horizontalPadding * 2
-        val usableHeight = size.height - verticalPadding * 2
-        val stepX = usableWidth / (values.size - 1)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val baselineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+    val scrubColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val haptics = LocalHapticFeedback.current
 
-        fun pointAt(index: Int): androidx.compose.ui.geometry.Offset {
-            val x = horizontalPadding + stepX * index
-            val ratio = (values[index] - minV).toFloat() / span
-            val y = verticalPadding + usableHeight * (1f - ratio)
-            return androidx.compose.ui.geometry.Offset(x, y)
-        }
+    var scrubIndex by remember(points) { mutableStateOf<Int?>(null) }
 
-        val linePath = androidx.compose.ui.graphics.Path()
-        values.indices.forEach { index ->
-            val point = pointAt(index)
-            if (index == 0) linePath.moveTo(point.x, point.y) else linePath.lineTo(point.x, point.y)
-        }
+    val minValue = points.minOf { it.value }
+    val maxValue = points.maxOf { it.value }
+    // Honest scale: never stretch a span smaller than 1% of the current magnitude to full height.
+    val magnitude = maxOf(kotlin.math.abs(maxValue), kotlin.math.abs(minValue), 1L)
+    val honestSpan = maxOf(maxValue - minValue, magnitude / 100L, 100L)
+    val midValue = (minValue / 2) + (maxValue / 2)
 
-        val fillPath = androidx.compose.ui.graphics.Path().apply {
-            addPath(linePath)
-            lineTo(horizontalPadding + usableWidth, size.height)
-            lineTo(horizontalPadding, size.height)
-            close()
-        }
-        drawPath(fillPath, color = fillColor)
-        drawPath(
-            linePath,
-            color = lineColor,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
-        )
-        // Emphasize the latest value with a small dot.
-        val last = pointAt(values.lastIndex)
-        drawCircle(color = lineColor, radius = 3.dp.toPx(), center = last)
+    val highText = stringResource(R.string.home_trend_high, formatInAppAmount(maxValue, settings))
+    val lowText = stringResource(R.string.home_trend_low, formatInAppAmount(minValue, settings))
+    val trendSemantics = stringResource(
+        R.string.home_trend_semantics,
+        formatInAppAmount(maxValue, settings),
+        formatInAppAmount(minValue, settings),
+    )
+    val datePattern = stringResource(period.trendDatePatternRes())
+    val dateFormatter = remember(datePattern) {
+        DateTimeFormatter.ofPattern(datePattern, Locale.SIMPLIFIED_CHINESE)
     }
+
+    fun timeLabel(index: Int): String = if (index == points.lastIndex) {
+        // The final sample is "now", not a period boundary.
+        ""
+    } else {
+        dateFormatter.format(Instant.ofEpochMilli(points[index].timeMillis).atZone(ZoneId.systemDefault()))
+    }
+
+    Column(
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = trendSemantics },
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Labels wear text tokens; the line alone carries the series color.
+            Text(
+                text = highText,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            scrubIndex?.let { index ->
+                val point = points[index]
+                val dateText = if (index == points.lastIndex) {
+                    stringResource(R.string.history_today)
+                } else {
+                    timeLabel(index)
+                }
+                Text(
+                    text = "$dateText · ${formatInAppAmount(point.value, settings)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .pointerInput(points) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            scrubIndex = nearestTrendIndex(offset.x, size.width, points.size)
+                        },
+                        onDragEnd = { scrubIndex = null },
+                        onDragCancel = { scrubIndex = null },
+                    ) { change, _ ->
+                        val next = nearestTrendIndex(change.position.x, size.width, points.size)
+                        if (next != scrubIndex) {
+                            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                            scrubIndex = next
+                        }
+                        change.consume()
+                    }
+                },
+        ) {
+            val horizontalPadding = 2.dp.toPx()
+            val verticalPadding = 6.dp.toPx()
+            val usableWidth = size.width - horizontalPadding * 2
+            val usableHeight = size.height - verticalPadding * 2
+            val stepX = usableWidth / (points.size - 1)
+            val effMin = midValue - honestSpan / 2
+
+            fun pointAt(index: Int): androidx.compose.ui.geometry.Offset {
+                val x = horizontalPadding + stepX * index
+                val ratio = (points[index].value - effMin).toFloat() / honestSpan.toFloat()
+                val y = verticalPadding + usableHeight * (1f - ratio.coerceIn(0f, 1f))
+                return androidx.compose.ui.geometry.Offset(x, y)
+            }
+
+            val linePath = androidx.compose.ui.graphics.Path()
+            points.indices.forEach { index ->
+                val point = pointAt(index)
+                if (index == 0) linePath.moveTo(point.x, point.y) else linePath.lineTo(point.x, point.y)
+            }
+            val fillPath = androidx.compose.ui.graphics.Path().apply {
+                addPath(linePath)
+                lineTo(horizontalPadding + usableWidth, size.height)
+                lineTo(horizontalPadding, size.height)
+                close()
+            }
+            drawPath(fillPath, color = fillColor)
+
+            // Reference hairline at the window's starting value — solid and recessive.
+            val baselineY = pointAt(0).y
+            drawLine(
+                color = baselineColor,
+                start = androidx.compose.ui.geometry.Offset(horizontalPadding, baselineY),
+                end = androidx.compose.ui.geometry.Offset(horizontalPadding + usableWidth, baselineY),
+                strokeWidth = 1.dp.toPx(),
+            )
+
+            drawPath(
+                linePath,
+                color = lineColor,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 2.dp.toPx(),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                ),
+            )
+
+            // Scrub crosshair + highlighted sample.
+            scrubIndex?.let { index ->
+                val selected = pointAt(index)
+                drawLine(
+                    color = scrubColor,
+                    start = androidx.compose.ui.geometry.Offset(selected.x, verticalPadding),
+                    end = androidx.compose.ui.geometry.Offset(selected.x, verticalPadding + usableHeight),
+                    strokeWidth = 1.dp.toPx(),
+                )
+                drawCircle(color = surfaceColor, radius = 6.dp.toPx(), center = selected)
+                drawCircle(color = lineColor, radius = 4.dp.toPx(), center = selected)
+            }
+
+            // End marker with a surface ring so it stays legible over the line.
+            val last = pointAt(points.lastIndex)
+            drawCircle(color = surfaceColor, radius = 6.dp.toPx(), center = last)
+            drawCircle(color = lineColor, radius = 4.dp.toPx(), center = last)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = timeLabel(0),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(
+                text = lowText,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(
+                text = stringResource(R.string.history_today),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Maps a touch x-position to the nearest sample index. */
+private fun nearestTrendIndex(x: Float, widthPx: Int, pointCount: Int): Int {
+    if (pointCount < 2 || widthPx <= 0) return 0
+    val fraction = (x / widthPx).coerceIn(0f, 1f)
+    return (fraction * (pointCount - 1)).roundToInt().coerceIn(0, pointCount - 1)
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.trendDatePatternRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_trend_pattern_week
+    DashboardPeriod.MONTH -> R.string.home_trend_pattern_month
+    DashboardPeriod.YEAR -> R.string.home_trend_pattern_year
 }
 
 @Composable

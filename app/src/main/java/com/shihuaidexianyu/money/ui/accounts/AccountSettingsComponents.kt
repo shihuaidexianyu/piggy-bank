@@ -1,10 +1,23 @@
 package com.shihuaidexianyu.money.ui.accounts
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -12,8 +25,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AccountKind
@@ -24,6 +41,7 @@ import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.ui.common.AccountColorOptions
 import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
+import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AccountIconOptions
 import com.shihuaidexianyu.money.ui.common.accountIconLabel
@@ -60,13 +78,10 @@ internal fun AccountSettingsPickerDialog(
 ) {
     when (picker) {
         AccountSettingsPicker.COLOR -> {
-            MoneyChoiceDialog(
-                title = stringResource(R.string.account_color_title),
-                options = AccountColorOptions,
-                selected = AccountColorOptions.firstOrNull { it.name == normalizeAccountColorName(colorName) },
-                label = { stringResource(it.labelRes) },
+            AccountColorChoiceDialog(
+                selectedColorName = colorName,
                 onSelect = {
-                    onColorSelected(it.name)
+                    onColorSelected(it)
                     onDismiss()
                 },
                 onDismiss = onDismiss,
@@ -146,6 +161,10 @@ internal fun AccountSettingsPickerDialog(
     }
 }
 
+/**
+ * Icon picker as a scrollable 4-column grid: 19 options no longer fit the old full-width list
+ * inside a dialog, and a grid shows every glyph at once instead of behind labels.
+ */
 @Composable
 private fun AccountIconChoiceDialog(
     selectedIconName: String,
@@ -156,16 +175,46 @@ private fun AccountIconChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.account_icon_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                AccountIconOptions.forEach { option ->
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                modifier = Modifier.heightIn(max = 360.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(AccountIconOptions, key = { it.name }) { option ->
                     val selected = option.name == normalizeAccountIconName(selectedIconName)
-                    TextButton(
-                        onClick = { onSelect(option.name) },
-                        modifier = Modifier.fillMaxWidth(),
+                    val label = stringResource(option.labelRes)
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSelect(option.name) }
+                            .semantics { contentDescription = label }
+                            .padding(vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .then(
+                                    if (selected) {
+                                        Modifier.border(
+                                            width = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = CircleShape,
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .padding(4.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary.copy(
+                                        alpha = if (selected) 0.14f else 0.07f,
+                                    ),
+                                    shape = CircleShape,
+                                ),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = option.icon,
@@ -175,16 +224,96 @@ private fun AccountIconChoiceDialog(
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
-                            )
-                            Text(
-                                text = stringResource(option.labelRes),
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
+                                modifier = Modifier.size(20.dp),
                             )
                         }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            // Text tokens for labels; selection is carried by the ring + tint.
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
+    )
+}
+
+/**
+ * Color picker as a swatch grid — the previous text-only name list asked users to imagine the
+ * colors it was offering. Each cell shows the real theme-resolved swatch; the selected one
+ * carries a ring plus a contrast-safe check glyph, never color alone.
+ */
+@Composable
+private fun AccountColorChoiceDialog(
+    selectedColorName: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.account_color_title)) },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                modifier = Modifier.heightIn(max = 360.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(AccountColorOptions, key = { it.name }) { option ->
+                    val selected = option.name == normalizeAccountColorName(selectedColorName)
+                    val label = stringResource(option.labelRes)
+                    val swatchColor = accountVisualColor(option.name)
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { onSelect(option.name) }
+                            .semantics { contentDescription = label }
+                            .padding(vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .then(
+                                    if (selected) {
+                                        Modifier.border(
+                                            width = 2.dp,
+                                            color = swatchColor,
+                                            shape = CircleShape,
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .padding(if (selected) 5.dp else 3.dp)
+                                .background(color = swatchColor, shape = CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (selected) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = null,
+                                    // Swatches passed the 3:1 floor against the surface, so
+                                    // surface-colored glyphs stay legible on every swatch.
+                                    tint = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
                     }
                 }
             }

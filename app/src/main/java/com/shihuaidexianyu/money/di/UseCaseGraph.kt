@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.NetWorthTrendPoint
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
@@ -115,18 +116,24 @@ internal class UseCaseGraph(
                 DashboardPeriod.MONTH -> 5 to { ago: Long -> today.withDayOfMonth(1).minusMonths(ago) }
                 DashboardPeriod.YEAR -> 5 to { ago: Long -> today.withDayOfYear(1).minusYears(ago) }
             }
-            val historicalValues = (pointCount - 1L downTo 0L).map { ago ->
+            val historicalPoints = (pointCount - 1L downTo 0L).map { ago ->
                 val boundary = boundaryAt(ago)
                     .atStartOfDay(zoneId)
                     .toInstant()
                     .toEpochMilli()
-                calculateAccountBalancesUseCase.before(accounts, boundary)
-                    .values
-                    .ledgerSumExact()
+                NetWorthTrendPoint(
+                    timeMillis = boundary,
+                    value = calculateAccountBalancesUseCase.before(accounts, boundary)
+                        .values
+                        .ledgerSumExact(),
+                )
             }
-            historicalValues + calculateAccountBalancesUseCase(accounts, nowMillis)
-                .values
-                .ledgerSumExact()
+            historicalPoints + NetWorthTrendPoint(
+                timeMillis = nowMillis,
+                value = calculateAccountBalancesUseCase(accounts, nowMillis)
+                    .values
+                    .ledgerSumExact(),
+            )
         },
     )
 

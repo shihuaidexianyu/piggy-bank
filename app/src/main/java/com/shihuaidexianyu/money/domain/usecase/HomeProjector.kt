@@ -35,7 +35,7 @@ internal object HomeProjector {
         transferRecordCount: Int,
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
-        netWorthTrend: List<Long> = emptyList(),
+        netWorthTrend: List<NetWorthTrendPoint> = emptyList(),
         period: DashboardPeriod = DashboardPeriod.DEFAULT,
         previousCashInflow: Long = 0L,
         previousCashOutflow: Long = 0L,

@@ -6,13 +6,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.BusinessCenter
+import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.CurrencyExchange
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.Flight
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.MedicalServices
 import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material.icons.rounded.Pets
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Icon
@@ -55,10 +65,15 @@ val AccountIconOptions = ACCOUNT_ICON_NAMES.map { name ->
 fun accountColorLabelRes(name: String): Int {
     return when (normalizeAccountColorName(name)) {
         "green" -> R.string.account_color_green
-        "orange" -> R.string.account_color_orange
         "purple" -> R.string.account_color_purple
-        "red" -> R.string.account_color_red
+        "gold" -> R.string.account_color_gold
+        "orange" -> R.string.account_color_orange
         "teal" -> R.string.account_color_teal
+        "red" -> R.string.account_color_red
+        "cyan" -> R.string.account_color_cyan
+        "rose" -> R.string.account_color_rose
+        "indigo" -> R.string.account_color_indigo
+        "brown" -> R.string.account_color_brown
         "gray" -> R.string.account_color_gray
         else -> R.string.account_color_blue
     }
@@ -72,9 +87,19 @@ fun accountIconLabelRes(name: String): Int {
         "credit_card" -> R.string.account_icon_credit_card
         "savings" -> R.string.account_icon_savings
         "investment" -> R.string.account_icon_investment
+        "chart" -> R.string.account_icon_chart
+        "currency" -> R.string.account_icon_currency
         "home" -> R.string.account_icon_home
         "phone" -> R.string.account_icon_phone
         "shopping" -> R.string.account_icon_shopping
+        "restaurant" -> R.string.account_icon_restaurant
+        "car" -> R.string.account_icon_car
+        "flight" -> R.string.account_icon_flight
+        "gift" -> R.string.account_icon_gift
+        "school" -> R.string.account_icon_school
+        "medical" -> R.string.account_icon_medical
+        "pets" -> R.string.account_icon_pets
+        "work" -> R.string.account_icon_work
         else -> R.string.account_icon_wallet
     }
 }
@@ -130,17 +155,28 @@ fun AccountIconBadge(
     }
 }
 
+/**
+ * Both palettes were validated with the dataviz six-checks validator against the app's real
+ * surfaces (light: #FFFFFF, dark: #201C18) in the exact order of [ACCOUNT_COLOR_NAMES] — every
+ * value clears the lightness band, chroma floor, adjacent-pair CVD separation, and the 3:1
+ * contrast floor. Change a hex or the order only together with a re-run of the validator.
+ */
 @Composable
 internal fun accountVisualColor(name: String): Color {
     val isDark = isSystemInDarkTheme()
     return when (normalizeAccountColorName(name)) {
-        "green" -> if (isDark) Color(0xFF6EA67A) else Color(0xFF2E7D32)
-        "orange" -> if (isDark) Color(0xFFEC9F5A) else Color(0xFFE87124)
-        "purple" -> if (isDark) Color(0xFFA48BD0) else Color(0xFF7E57C2)
-        "red" -> if (isDark) Color(0xFFD8726A) else Color(0xFFC62828)
-        "teal" -> if (isDark) Color(0xFF4DB0A4) else Color(0xFF00897B)
+        "green" -> if (isDark) Color(0xFF43A047) else Color(0xFF2E7D32)
+        "purple" -> if (isDark) Color(0xFF9575CD) else Color(0xFF7E57C2)
+        "gold" -> if (isDark) Color(0xFFB8821A) else Color(0xFFA16207)
+        "orange" -> if (isDark) Color(0xFFD66F1B) else Color(0xFFE87124)
+        "teal" -> if (isDark) Color(0xFF26A69A) else Color(0xFF00897B)
+        "red" -> if (isDark) Color(0xFFE15451) else Color(0xFFC62828)
+        "cyan" -> if (isDark) Color(0xFF2193B3) else Color(0xFF0891B2)
+        "rose" -> if (isDark) Color(0xFFE0447C) else Color(0xFFC2185B)
+        "indigo" -> if (isDark) Color(0xFF7986F8) else Color(0xFF4F46E5)
+        "brown" -> if (isDark) Color(0xFFB0682A) else Color(0xFF92400E)
         "gray" -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> if (isDark) Color(0xFF6691E8) else Color(0xFF2563EB)
+        else -> if (isDark) Color(0xFF5B8DEF) else Color(0xFF2563EB)
     }
 }
 
@@ -151,9 +187,19 @@ private fun accountIconVector(name: String): ImageVector {
         "credit_card" -> Icons.Rounded.CreditCard
         "savings" -> Icons.Rounded.Savings
         "investment" -> Icons.AutoMirrored.Rounded.TrendingUp
+        "chart" -> Icons.AutoMirrored.Rounded.ShowChart
+        "currency" -> Icons.Rounded.CurrencyExchange
         "home" -> Icons.Rounded.Home
         "phone" -> Icons.Rounded.Smartphone
         "shopping" -> Icons.Rounded.ShoppingBag
+        "restaurant" -> Icons.Rounded.Restaurant
+        "car" -> Icons.Rounded.DirectionsCar
+        "flight" -> Icons.Rounded.Flight
+        "gift" -> Icons.Rounded.CardGiftcard
+        "school" -> Icons.Rounded.School
+        "medical" -> Icons.Rounded.MedicalServices
+        "pets" -> Icons.Rounded.Pets
+        "work" -> Icons.Rounded.BusinessCenter
         else -> Icons.Rounded.AccountBalanceWallet
     }
 }

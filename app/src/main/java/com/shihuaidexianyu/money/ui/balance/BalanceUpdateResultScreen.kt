@@ -42,14 +42,16 @@ fun BalanceUpdateResultScreen(
                     value = formatInAppAmount(result.actualBalance, settings),
                 )
                 MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_delta),
+                    label = stringResource(
+                        if (result.isInvestmentAccount) R.string.balance_delta_investment else R.string.balance_delta,
+                    ),
                     value = formatInAppAmount(result.delta, settings),
                 )
                 Text(
-                    if (result.delta == 0L) {
-                        stringResource(R.string.balance_result_reconciliation_saved)
-                    } else {
-                        stringResource(R.string.balance_result_adjustment_saved)
+                    when {
+                        result.delta == 0L -> stringResource(R.string.balance_result_reconciliation_saved)
+                        result.isInvestmentAccount -> stringResource(R.string.balance_result_investment_saved)
+                        else -> stringResource(R.string.balance_result_adjustment_saved)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

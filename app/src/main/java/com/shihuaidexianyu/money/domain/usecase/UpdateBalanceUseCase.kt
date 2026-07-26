@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
@@ -17,6 +18,8 @@ data class UpdateBalanceResult(
     val systemBalanceBeforeUpdate: Long,
     val actualBalance: Long,
     val delta: Long,
+    /** On investment accounts the delta is investment P&L, and result copy says so. */
+    val isInvestmentAccount: Boolean = false,
 ) : Serializable
 
 class UpdateBalanceUseCase(
@@ -50,7 +53,7 @@ class UpdateBalanceUseCase(
                     ),
                 )
                 val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
-                return@runInTransaction existing.toResult(replay, account.name)
+                return@runInTransaction existing.toResult(replay, account)
             }
 
             val now = clockProvider.nowMillis()
@@ -78,7 +81,7 @@ class UpdateBalanceUseCase(
             if (insertResult.inserted) {
                 refreshAccountActivityStateUseCase(accountId)
             }
-            stored.toResult(insertResult, account.name)
+            stored.toResult(insertResult, account)
         }
         runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }
         return result
@@ -86,15 +89,16 @@ class UpdateBalanceUseCase(
 
     private fun BalanceUpdateRecord.toResult(
         insertResult: LedgerInsertResult,
-        accountName: String,
+        account: Account,
     ): UpdateBalanceResult {
         return UpdateBalanceResult(
             insertResult = insertResult,
             accountId = accountId,
-            accountName = accountName,
+            accountName = account.name,
             systemBalanceBeforeUpdate = systemBalanceBeforeUpdate,
             actualBalance = actualBalance,
             delta = delta,
+            isInvestmentAccount = account.isInvestment,
         )
     }
 }

@@ -46,6 +46,14 @@
     <string name="home_period_week">周</string>
     <string name="home_period_month">月</string>
     <string name="home_period_year">年</string>
+    <string name="home_overview_collapse">收起概览详情</string>
+    <string name="home_overview_expand">展开概览详情</string>
+    <string name="home_trend_high">最高 %1$s</string>
+    <string name="home_trend_low">最低 %1$s</string>
+    <string name="home_trend_semantics">净资产走势，最高 %1$s，最低 %2$s，可左右滑动查看各时点数值</string>
+    <string name="home_trend_pattern_week" translatable="false">M月d日</string>
+    <string name="home_trend_pattern_month" translatable="false">M月</string>
+    <string name="home_trend_pattern_year" translatable="false">yyyy年</string>
     <string name="home_funding_assets">现金资产</string>
     <string name="home_investment_assets">投资资产</string>
     <string name="home_week_investment_pnl">本周投资损益</string>
@@ -357,6 +365,11 @@
     <string name="account_color_purple">紫色</string>
     <string name="account_color_red">红色</string>
     <string name="account_color_teal">青色</string>
+    <string name="account_color_gold">金色</string>
+    <string name="account_color_cyan">湖蓝</string>
+    <string name="account_color_rose">玫红</string>
+    <string name="account_color_indigo">靛蓝</string>
+    <string name="account_color_brown">棕色</string>
     <string name="account_color_gray">灰色</string>
     <string name="account_icon_wallet">钱包</string>
     <string name="account_icon_bank">银行</string>
@@ -367,6 +380,16 @@
     <string name="account_icon_home">房产</string>
     <string name="account_icon_phone">手机</string>
     <string name="account_icon_shopping">消费</string>
+    <string name="account_icon_chart">证券</string>
+    <string name="account_icon_currency">外币</string>
+    <string name="account_icon_restaurant">餐饮</string>
+    <string name="account_icon_car">车辆</string>
+    <string name="account_icon_flight">旅行</string>
+    <string name="account_icon_gift">礼金</string>
+    <string name="account_icon_school">教育</string>
+    <string name="account_icon_medical">医疗</string>
+    <string name="account_icon_pets">宠物</string>
+    <string name="account_icon_work">工作</string>
 
     <!-- Ledger forms -->
     <string name="field_please_choose">请选择</string>
@@ -404,6 +427,13 @@
     <string name="balance_below_system">低于系统记录</string>
     <string name="balance_unchanged_hint">余额无变化，可直接确认</string>
     <string name="balance_correction_hint">如果这是漏记的收支，可以先补记一笔；如果只是实际余额修正，可直接保存本次核对。</string>
+    <string name="balance_delta_investment">本次损益</string>
+    <string name="balance_investment_hint">市值涨跌直接保存即可，将计入投资损益；资金转入或转出请使用转账记录。</string>
+    <string name="balance_save_investment_update">保存市值更新</string>
+    <string name="balance_never_checked">首次核对该账户</string>
+    <string name="balance_checked_today">今天已核对过</string>
+    <string name="balance_last_checked_days_format">距上次核对 %1$d 天</string>
+    <string name="balance_result_investment_saved">市值已更新，本次差额已计入投资损益。</string>
     <string name="balance_record_income">补记收入</string>
     <string name="balance_record_expense">补记支出</string>
     <string name="balance_confirm_unchanged">确认无变化</string>

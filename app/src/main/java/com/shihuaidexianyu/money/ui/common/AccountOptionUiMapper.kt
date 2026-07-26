@@ -10,6 +10,8 @@ fun Account.toAccountOptionUiModel(): AccountOptionUiModel {
         iconName = iconName,
         lastUsedAt = lastUsedAt,
         isHidden = isHidden,
+        isInvestment = isInvestment,
+        lastBalanceUpdateAt = lastBalanceUpdateAt,
     )
 }
 
@@ -18,29 +20,12 @@ fun List<Account>.toAccountOptionUiModels(): List<AccountOptionUiModel> {
 }
 
 fun Account.toAccountOptionUiModel(balance: Long): AccountOptionUiModel {
-    return AccountOptionUiModel(
-        id = id,
-        name = name,
-        colorName = colorName,
-        iconName = iconName,
-        balance = balance,
-        lastUsedAt = lastUsedAt,
-        isHidden = isHidden,
-    )
+    return toAccountOptionUiModel().copy(balance = balance)
 }
 
 fun Account.toAccountOptionUiModel(
     balance: Long,
     isStale: Boolean,
 ): AccountOptionUiModel {
-    return AccountOptionUiModel(
-        id = id,
-        name = name,
-        colorName = colorName,
-        iconName = iconName,
-        balance = balance,
-        lastUsedAt = lastUsedAt,
-        isStale = isStale,
-        isHidden = isHidden,
-    )
+    return toAccountOptionUiModel().copy(balance = balance, isStale = isStale)
 }
