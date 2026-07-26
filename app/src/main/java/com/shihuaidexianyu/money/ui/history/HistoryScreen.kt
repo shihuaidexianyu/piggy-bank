@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -24,7 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -33,9 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -45,9 +40,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -74,11 +67,6 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
-import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
-import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
-import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
-import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
@@ -123,42 +111,10 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
-    onDeleteRecord: (suspend (HistoryRecordUiModel) -> Result<com.shihuaidexianyu.money.domain.model.LedgerUndoToken?>)? = null,
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
-    var pendingDelete by remember { mutableStateOf<HistoryRecordUiModel?>(null) }
-    val scope = rememberCoroutineScope()
-    val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
-    val deletedMessage = stringResource(R.string.ledger_record_deleted)
-    val undoLabel = stringResource(R.string.action_undo)
     val listState = rememberLazyListState()
-    if (pendingDelete != null) {
-        MoneyConfirmDialog(
-            title = stringResource(R.string.ledger_delete_title),
-            message = stringResource(R.string.ledger_delete_balance_warning),
-            onConfirm = {
-                val target = pendingDelete ?: return@MoneyConfirmDialog
-                pendingDelete = null
-                scope.launch {
-                    onDeleteRecord?.invoke(target)?.onSuccess { undoToken ->
-                        undoToken?.let {
-                            rootSnackbarDispatcher?.dispatch(
-                                rootSnackbarEffect(
-                                    message = deletedMessage,
-                                    actionLabel = undoLabel,
-                                    action = RootSnackbarAction.RestoreLedger(it),
-                                ),
-                            )
-                        }
-                    }
-                }
-            },
-            onDismiss = { pendingDelete = null },
-            confirmLabel = stringResource(R.string.action_confirm),
-            dismissLabel = stringResource(R.string.action_cancel),
-        )
-    }
     val canPrefetch = state.hasMoreRecords &&
         !state.isLoading &&
         !state.isLoadingMore &&
@@ -511,51 +467,12 @@ fun HistoryScreen(
                         )
                     }
                     items(records, key = { record -> record.id }) { record ->
-                        val deletable = onDeleteRecord != null && record.kind == HistoryRecordKind.CASH_FLOW
-                        if (deletable) {
-                            val dismissState = rememberSwipeToDismissBoxState(
-                                confirmValueChange = { value ->
-                                    if (value == SwipeToDismissBoxValue.EndToStart ||
-                                        value == SwipeToDismissBoxValue.StartToEnd
-                                    ) {
-                                        pendingDelete = record
-                                    }
-                                    false // never auto-dismiss; deletion is gated by the confirm dialog
-                                },
-                            )
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                modifier = Modifier.animateItem(),
-                                backgroundContent = {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.errorContainer)
-                                            .padding(horizontal = 20.dp),
-                                        contentAlignment = Alignment.CenterEnd,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Delete,
-                                            contentDescription = stringResource(R.string.ledger_delete_title),
-                                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        )
-                                    }
-                                },
-                            ) {
-                                HistoryRow(
-                                    record = record,
-                                    settings = state.settings,
-                                    onClick = { onRecordClick(record) },
-                                )
-                            }
-                        } else {
-                            HistoryRow(
-                                record = record,
-                                settings = state.settings,
-                                onClick = { onRecordClick(record) },
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
+                        HistoryRow(
+                            record = record,
+                            settings = state.settings,
+                            onClick = { onRecordClick(record) },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
                 state.loadMoreErrorMessageRes?.let { messageRes ->
@@ -636,33 +553,38 @@ private fun HistoryDateHeader(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
                 text = dateLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
             )
-            if (cashIncomeTotal > 0L) {
-                Text(
-                    text = "+${formatInAppAmount(cashIncomeTotal, settings)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = moneyColors.income,
-                )
-            }
-            if (cashExpenseTotal < 0L) {
-                Text(
-                    text = formatInAppAmount(cashExpenseTotal, settings),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = moneyColors.expense,
-                    modifier = Modifier.padding(start = 10.dp),
-                )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (cashIncomeTotal > 0L) {
+                    Text(
+                        text = "+${formatInAppAmount(cashIncomeTotal, settings)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = moneyColors.income,
+                        maxLines = 1,
+                    )
+                }
+                if (cashExpenseTotal < 0L) {
+                    Text(
+                        text = formatInAppAmount(cashExpenseTotal, settings),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = moneyColors.expense,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
@@ -751,7 +673,20 @@ private fun HistoryRow(
     modifier: Modifier = Modifier,
 ) {
     val moneyColors = LocalMoneyColors.current
+    val accent = when (record.kind) {
+        HistoryRecordKind.CASH_FLOW ->
+            if (record.amount > 0) moneyColors.income else moneyColors.expense
+        HistoryRecordKind.TRANSFER -> moneyColors.transfer
+        HistoryRecordKind.BALANCE_UPDATE,
+        HistoryRecordKind.BALANCE_ADJUSTMENT,
+        -> moneyColors.current
+    }
     val amountText = formatInAppAmount(record.amount, settings)
+    val amountStyle = when {
+        amountText.length > 16 -> MaterialTheme.typography.labelMedium
+        amountText.length > 12 -> MaterialTheme.typography.bodyMedium
+        else -> MaterialTheme.typography.titleMedium
+    }
     val kindLabel = historyKindLabel(record)
     val amountColor = when (record.kind) {
         HistoryRecordKind.TRANSFER -> moneyColors.transfer
@@ -779,29 +714,47 @@ private fun HistoryRow(
             modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RecordKindBadge(kind = record.kind, amount = record.amount)
-            Spacer(modifier = Modifier.width(14.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(color = accent, shape = RoundedCornerShape(4.dp)),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(0.56f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(record.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = record.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
                 Text(
                     text = "$kindLabel · ${record.subtitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(0.44f),
+                horizontalAlignment = Alignment.End,
+            ) {
                 Text(
                     text = amountText,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = amountStyle,
                     color = amountColor,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(
                     text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
@@ -916,10 +869,12 @@ private fun historyKindLabel(record: HistoryRecordUiModel): String {
         )
         HistoryRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
         HistoryRecordKind.BALANCE_UPDATE -> stringResource(
-            if (record.amount == 0L) {
-                R.string.history_balance_update
-            } else {
-                R.string.history_reconciliation_adjustment
+            when {
+                record.amount == 0L -> R.string.history_balance_update
+                // On an investment account the reconciliation delta IS the investment result.
+                record.isInvestmentAccount && record.amount > 0L -> R.string.history_investment_gain
+                record.isInvestmentAccount -> R.string.history_investment_loss
+                else -> R.string.history_reconciliation_adjustment
             },
         )
         HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)

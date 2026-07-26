@@ -11,18 +11,18 @@ import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
-import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModel
 import com.shihuaidexianyu.money.util.AmountInputParser
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -77,6 +77,8 @@ data class HistoryRecordUiModel(
     val occurredAt: Long,
     val accountIds: Set<Long>,
     val keywordSource: String,
+    /** Reconciliation deltas on investment accounts read as investment P&L, not error correction. */
+    val isInvestmentAccount: Boolean = false,
 )
 
 data class HistoryUiState(
@@ -123,7 +125,6 @@ class HistoryViewModel(
     private val transactionRepository: TransactionRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
-    private val deleteCashFlowRecordUseCase: DeleteCashFlowRecordUseCase? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -151,23 +152,6 @@ class HistoryViewModel(
         } else {
             initializeSafely()
         }
-    }
-
-    /**
-     * Soft-deletes a cash-flow record, returning the undo token on success so the caller can
-     * surface a snackbar with a restore action. Other record kinds stay read-only here and are
-     * still deleted from their detail screens.
-     */
-    suspend fun deleteCashFlowRecord(recordId: Long): Result<LedgerUndoToken?> {
-        val useCase = deleteCashFlowRecordUseCase
-            ?: return Result.failure(IllegalStateException("delete not available"))
-        val result = runCatching { useCase(recordId) }
-        result.onSuccess {
-            // Room invalidation also reloads, but reload eagerly so the dismissed row disappears
-            // even if the user immediately returns to this tab.
-            if (initialized) reloadFirstPage()
-        }
-        return result
     }
 
     private fun initializeSafely() {
@@ -205,13 +189,8 @@ class HistoryViewModel(
     fun updateRecordTypes(value: Set<HistoryRecordType>) = applyLocalFilter { copy(selectedRecordTypes = value) }
     fun updateAccount(accountId: Long?) = applyLocalFilter { copy(selectedAccountId = accountId) }
     fun updateDateRange(startAt: Long?, endAt: Long?) {
-        val normalizedStart = startAt
-        val normalizedEnd = endAt
-        if (normalizedStart != null && normalizedEnd != null && normalizedStart > normalizedEnd) {
-            applyLocalFilter { copy(dateStartAt = normalizedEnd, dateEndAt = normalizedStart) }
-        } else {
-            applyLocalFilter { copy(dateStartAt = normalizedStart, dateEndAt = normalizedEnd) }
-        }
+        val (normalizedStart, normalizedEnd) = normalizeHistoryDateRange(startAt, endAt)
+        applyLocalFilter { copy(dateStartAt = normalizedStart, dateEndAt = normalizedEnd) }
     }
 
     fun updateMinAmount(value: String) = applyLocalFilter(debounceReload = true) { copy(minAmountText = value) }
@@ -470,6 +449,7 @@ class HistoryViewModel(
                     setOf(record.accountId, relatedAccountId)
                 },
                 keywordSource = record.keywordSource,
+                isInvestmentAccount = accountMap[record.accountId]?.isInvestment == true,
             )
         }
     }
@@ -626,4 +606,22 @@ private fun HistoryRecordKind.toDomainType(): HistoryRecordType = when (this) {
     HistoryRecordKind.TRANSFER -> HistoryRecordType.TRANSFER
     HistoryRecordKind.BALANCE_UPDATE -> HistoryRecordType.BALANCE_UPDATE
     HistoryRecordKind.BALANCE_ADJUSTMENT -> HistoryRecordType.BALANCE_ADJUSTMENT
+}
+
+/**
+ * The date pickers hand over a day-start millis for the start field but a day-end-EXCLUSIVE
+ * millis for the end field. When the picked days are inverted, swapping the raw millis therefore
+ * builds a range that excludes both picked days, and an off-by-one pick (start day directly after
+ * the end day) makes the two millis equal — an empty range no `>` comparison catches. Swap the
+ * *days* instead: the picked end day becomes the range start, the picked start day becomes the
+ * range's displayed end, keeping both picked days inside the filter.
+ */
+internal fun normalizeHistoryDateRange(
+    startAt: Long?,
+    endAt: Long?,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+): Pair<Long?, Long?> {
+    if (startAt == null || endAt == null || startAt < endAt) return startAt to endAt
+    return DateTimeTextFormatter.startOfDisplayedEndDateMillis(endAt, zoneId) to
+        DateTimeTextFormatter.endExclusiveOfDayMillis(startAt, zoneId)
 }

@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -22,6 +23,7 @@ class UpdateAccountUseCase(
         balanceUpdateReminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
         colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
         iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+        kind: AccountKind = AccountKind.DEFAULT,
     ) {
         accountLifecycleCoordinator.withLifecycleLock {
             transactionRunner.runInTransaction {
@@ -37,6 +39,7 @@ class UpdateAccountUseCase(
                         name = normalizedName,
                         colorName = normalizeAccountColorName(colorName),
                         iconName = normalizeAccountIconName(iconName),
+                        kind = kind,
                     ),
                 )
                 accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)

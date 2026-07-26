@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
+import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
@@ -182,7 +183,7 @@ class BuildExportJsonUseCaseTest {
         )(exportedAt = 42L)
 
         val snapshot = BackupJsonCodec.decode(json)
-        assertEquals(4, snapshot.metadata.schemaVersion)
+        assertEquals(MONEY_BACKUP_SCHEMA_VERSION, snapshot.metadata.schemaVersion)
         assertEquals(10, snapshot.metadata.databaseVersion)
         assertEquals(42L, snapshot.metadata.exportedAt)
         assertEquals("元", snapshot.portableSettings.currencySymbol)

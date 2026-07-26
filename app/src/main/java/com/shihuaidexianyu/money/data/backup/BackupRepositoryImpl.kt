@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
@@ -111,6 +112,7 @@ private fun BackupAccount.toDomain() = Account(
     displayOrder = displayOrder,
     colorName = colorName,
     iconName = normalizeAccountIconName(iconName),
+    kind = AccountKind.fromValue(kind),
 )
 
 private fun BackupCashFlowRecord.toDomain() = CashFlowRecord(

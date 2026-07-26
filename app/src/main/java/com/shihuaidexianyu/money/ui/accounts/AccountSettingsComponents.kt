@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -245,6 +247,49 @@ internal fun AccountVisualFields(
         value = accountColorLabel(colorName),
         modifier = Modifier.clickable(onClick = onColorClick),
     )
+}
+
+/**
+ * Account-kind selector (日常/投资). A single choice made once per account — deliberately not a
+ * per-record category system: the kind reinterprets the account's whole ledger history at read
+ * time (reconciliation deltas on 投资 accounts read as investment P&L).
+ */
+@Composable
+internal fun AccountKindField(
+    kind: AccountKind,
+    onKindSelected: (AccountKind) -> Unit,
+    enabled: Boolean = true,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = stringResource(R.string.account_kind_title),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AccountKind.entries.forEach { option ->
+                FilterChip(
+                    selected = kind == option,
+                    enabled = enabled,
+                    onClick = { onKindSelected(option) },
+                    label = { Text(accountKindLabel(option)) },
+                )
+            }
+        }
+        if (kind == AccountKind.INVESTMENT) {
+            Text(
+                text = stringResource(R.string.account_kind_investment_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun accountKindLabel(kind: AccountKind): String = when (kind) {
+    AccountKind.FUNDING -> stringResource(R.string.account_kind_funding)
+    AccountKind.INVESTMENT -> stringResource(R.string.account_kind_investment)
 }
 
 @Composable

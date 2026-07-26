@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -23,6 +24,7 @@ data class CreateAccountUiState(
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    val kind: AccountKind = AccountKind.DEFAULT,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val amountText: String = "",
     val isSaving: Boolean = false,
@@ -54,6 +56,10 @@ class CreateAccountViewModel(
 
     fun updateIconName(value: String) {
         _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
+    }
+
+    fun updateKind(value: AccountKind) {
+        _uiState.value = _uiState.value.copy(kind = value)
     }
 
     fun updateReminderPeriod(value: BalanceUpdateReminderPeriod) {
@@ -100,6 +106,7 @@ class CreateAccountViewModel(
                     balanceUpdateReminderConfig = _uiState.value.reminderConfig,
                     colorName = _uiState.value.colorName,
                     iconName = _uiState.value.iconName,
+                    kind = _uiState.value.kind,
                 )
             }.onSuccess {
                 effects.emit(CreateAccountEffect.Saved)

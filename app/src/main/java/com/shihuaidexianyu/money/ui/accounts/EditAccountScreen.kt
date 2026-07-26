@@ -1,7 +1,10 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -15,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -135,6 +139,28 @@ fun EditAccountScreen(
                         iconName = state.iconName,
                         onColorClick = { picker = AccountSettingsPicker.COLOR },
                         onIconClick = { picker = AccountSettingsPicker.ICON },
+                    )
+                    MoneySectionDivider()
+                    MoneyListRow(
+                        title = stringResource(R.string.account_kind_title),
+                        subtitle = if (state.kind == AccountKind.INVESTMENT) {
+                            stringResource(R.string.account_kind_investment_hint)
+                        } else {
+                            null
+                        },
+                        showChevron = false,
+                        accessory = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                AccountKind.entries.forEach { option ->
+                                    FilterChip(
+                                        selected = state.kind == option,
+                                        enabled = !state.isSaving,
+                                        onClick = { viewModel.updateKind(option) },
+                                        label = { Text(accountKindLabel(option)) },
+                                    )
+                                }
+                            }
+                        },
                     )
                     MoneySectionDivider()
                     MoneyListRow(

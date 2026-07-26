@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.di
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
@@ -105,15 +106,17 @@ internal class UseCaseGraph(
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         clockProvider = SystemClockProvider,
         zoneIdProvider = SystemZoneIdProvider,
-        netWorthTrendProvider = { accounts, nowMillis, zoneId ->
-            val trendMonths = 5
-            val currentMonthStart = java.time.Instant.ofEpochMilli(nowMillis)
-                .atZone(zoneId)
-                .toLocalDate()
-                .withDayOfMonth(1)
-            val monthStartValues = (trendMonths - 1 downTo 0).map { monthsAgo ->
-                val boundary = currentMonthStart
-                    .minusMonths(monthsAgo.toLong())
+        netWorthTrendProvider = { accounts, nowMillis, zoneId, period ->
+            // The sparkline follows the selected period so its slope means the same thing as the
+            // headline number: daily points for a week, monthly for a month, yearly for a year.
+            val today = java.time.Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+            val (pointCount, boundaryAt) = when (period) {
+                DashboardPeriod.WEEK -> 7 to { ago: Long -> today.minusDays(ago) }
+                DashboardPeriod.MONTH -> 5 to { ago: Long -> today.withDayOfMonth(1).minusMonths(ago) }
+                DashboardPeriod.YEAR -> 5 to { ago: Long -> today.withDayOfYear(1).minusYears(ago) }
+            }
+            val historicalValues = (pointCount - 1L downTo 0L).map { ago ->
+                val boundary = boundaryAt(ago)
                     .atStartOfDay(zoneId)
                     .toInstant()
                     .toEpochMilli()
@@ -121,7 +124,7 @@ internal class UseCaseGraph(
                     .values
                     .ledgerSumExact()
             }
-            monthStartValues + calculateAccountBalancesUseCase(accounts, nowMillis)
+            historicalValues + calculateAccountBalancesUseCase(accounts, nowMillis)
                 .values
                 .ledgerSumExact()
         },

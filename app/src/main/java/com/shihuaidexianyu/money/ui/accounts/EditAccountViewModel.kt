@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -32,6 +33,7 @@ data class EditAccountUiState(
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    val kind: AccountKind = AccountKind.DEFAULT,
     val isClosed: Boolean = false,
     val isHidden: Boolean = false,
     val currentBalance: Long = 0L,
@@ -133,6 +135,7 @@ class EditAccountViewModel(
                     name = account.name,
                     colorName = account.colorName,
                     iconName = account.iconName,
+                    kind = account.kind,
                     isClosed = account.isClosed,
                     isHidden = account.isHidden,
                     currentBalance = calculateCurrentBalanceUseCase(accountId),
@@ -160,6 +163,10 @@ class EditAccountViewModel(
 
     fun updateIconName(value: String) {
         _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
+    }
+
+    fun updateKind(value: AccountKind) {
+        _uiState.value = _uiState.value.copy(kind = value)
     }
 
     fun setHidden(hidden: Boolean) {
@@ -220,6 +227,7 @@ class EditAccountViewModel(
                     balanceUpdateReminderConfig = state.reminderConfig,
                     colorName = state.colorName,
                     iconName = state.iconName,
+                    kind = state.kind,
                 )
             }.onSuccess {
                 effects.emit(EditAccountEffect.Saved)

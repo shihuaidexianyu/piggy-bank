@@ -1,11 +1,12 @@
 package com.shihuaidexianyu.money.domain.model.backup
 
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD
 import kotlinx.serialization.Serializable
 
-const val MONEY_BACKUP_SCHEMA_VERSION = 4
+const val MONEY_BACKUP_SCHEMA_VERSION = 5
 
 /**
  * Portable, user-controlled data only. Device preferences, notification de-duplication state and
@@ -54,6 +55,9 @@ data class BackupAccount(
     val displayOrder: Int,
     val colorName: String,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    // v5: account kind (日常/投资). The serial default keeps v1–v4 backups decodable — absent
+    // means the everyday kind, matching the DB migration default.
+    val kind: String = AccountKind.DEFAULT.value,
 )
 
 @Serializable

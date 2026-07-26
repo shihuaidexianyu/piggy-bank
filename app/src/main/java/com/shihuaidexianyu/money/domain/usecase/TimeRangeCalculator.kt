@@ -1,9 +1,12 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.TimeRange
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 
 /**
  * Domain policy: computes [TimeRange]s for dashboard periods. Moved out of `util/`
@@ -14,10 +17,75 @@ object TimeRangeCalculator {
         zoneId: ZoneId,
         nowMillis: Long,
     ): TimeRange {
-        val nowDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        val nowDate = localDate(zoneId, nowMillis)
         val start = nowDate.withDayOfMonth(1)
         return buildRange(start, start.plusMonths(1), zoneId)
     }
+
+    /** The range covering [nowMillis] for the given [period]. */
+    fun rangeFor(
+        period: DashboardPeriod,
+        zoneId: ZoneId,
+        nowMillis: Long,
+    ): TimeRange {
+        val start = periodStart(period, localDate(zoneId, nowMillis))
+        return buildRange(start, nextPeriodStart(period, start), zoneId)
+    }
+
+    /**
+     * The range immediately preceding [rangeFor], used as the comparison baseline. Adjacent by
+     * construction: the previous range's end is exactly the current range's start.
+     */
+    fun previousRangeFor(
+        period: DashboardPeriod,
+        zoneId: ZoneId,
+        nowMillis: Long,
+    ): TimeRange {
+        val start = periodStart(period, localDate(zoneId, nowMillis))
+        return buildRange(previousPeriodStart(period, start), start, zoneId)
+    }
+
+    /**
+     * Days elapsed in the current period including today, and the period's total day count.
+     * Used by the budget burn-down to project spending pace.
+     */
+    fun periodProgressDays(
+        period: DashboardPeriod,
+        zoneId: ZoneId,
+        nowMillis: Long,
+    ): PeriodProgressDays {
+        val today = localDate(zoneId, nowMillis)
+        val start = periodStart(period, today)
+        val end = nextPeriodStart(period, start)
+        val total = (end.toEpochDay() - start.toEpochDay()).toInt()
+        val elapsed = (today.toEpochDay() - start.toEpochDay()).toInt() + 1
+        return PeriodProgressDays(
+            elapsed = elapsed.coerceIn(1, total),
+            total = total,
+        )
+    }
+
+    private fun periodStart(period: DashboardPeriod, date: LocalDate): LocalDate = when (period) {
+        // Weeks start on Monday, matching the calendar convention used in Simplified Chinese locales.
+        DashboardPeriod.WEEK -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        DashboardPeriod.MONTH -> date.withDayOfMonth(1)
+        DashboardPeriod.YEAR -> date.withDayOfYear(1)
+    }
+
+    private fun nextPeriodStart(period: DashboardPeriod, start: LocalDate): LocalDate = when (period) {
+        DashboardPeriod.WEEK -> start.plusWeeks(1)
+        DashboardPeriod.MONTH -> start.plusMonths(1)
+        DashboardPeriod.YEAR -> start.plusYears(1)
+    }
+
+    private fun previousPeriodStart(period: DashboardPeriod, start: LocalDate): LocalDate = when (period) {
+        DashboardPeriod.WEEK -> start.minusWeeks(1)
+        DashboardPeriod.MONTH -> start.minusMonths(1)
+        DashboardPeriod.YEAR -> start.minusYears(1)
+    }
+
+    private fun localDate(zoneId: ZoneId, millis: Long): LocalDate =
+        Instant.ofEpochMilli(millis).atZone(zoneId).toLocalDate()
 
     private fun buildRange(
         startInclusive: LocalDate,
@@ -29,4 +97,11 @@ object TimeRangeCalculator {
             endExclusive = endExclusive.atStartOfDay(zoneId).toInstant().toEpochMilli(),
         )
     }
+}
+
+data class PeriodProgressDays(
+    val elapsed: Int,
+    val total: Int,
+) {
+    val remaining: Int get() = (total - elapsed).coerceAtLeast(0)
 }

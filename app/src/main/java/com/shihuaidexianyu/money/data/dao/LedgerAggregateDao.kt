@@ -30,6 +30,11 @@ data class HomePeriodLedgerSummaryProjection(
     val manualAdjustmentRecordCount: Long,
 )
 
+data class AccountReconciliationNetProjection(
+    val accountId: Long,
+    val net: Long,
+)
+
 @Dao
 interface LedgerAggregateDao {
     @Query(
@@ -86,6 +91,19 @@ interface LedgerAggregateDao {
         inflowDirection: String,
         outflowDirection: String,
     ): HomePeriodLedgerSummaryProjection
+
+    @Query(
+        """
+        SELECT accountId, COALESCE(SUM(delta), 0) AS net
+        FROM balance_update_records
+        WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+        GROUP BY accountId
+        """,
+    )
+    suspend fun queryReconciliationNetByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): List<AccountReconciliationNetProjection>
 
     @Query(
         """

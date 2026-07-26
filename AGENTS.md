@@ -21,7 +21,7 @@ It supports multi-account management (ordering, hiding, closing, reopening), cas
 | ------- | ------------ |
 | UI | Jetpack Compose (BOM 2025.10.01) + Material 3 |
 | Architecture | Clean Architecture (Domain / Data / UI) + MVVM |
-| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 14 |
+| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 15 |
 | Settings | Room (`portable_settings`, backupable) + DataStore Preferences 1.1.7 (device-local) |
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON backup export/import) |
@@ -122,7 +122,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   └── repository/              # Repository implementations + InMemory* test variants
 ├── domain/
 │   ├── model/                   # Enums, value objects, settings models, backup/
-│   │                            #   (@Serializable DTOs: MoneyBackupSnapshot, schema version 4)
+│   │                            #   (@Serializable DTOs: MoneyBackupSnapshot, schema version 5)
 │   ├── repository/              # Repository interfaces only (see Architecture Rules)
 │   ├── usecase/                 # Business logic: use cases + calculators/projectors/policies
 │   ├── launch/                  # AppLaunchRequest model (external entry points)
@@ -164,7 +164,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 ### Clean Architecture Layers
 
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
-   - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, `MONEY_BACKUP_SCHEMA_VERSION = 4`).
+   - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, `MONEY_BACKUP_SCHEMA_VERSION = 5`).
    - `repository/`: Interfaces only — `AccountRepository`, `TransactionRepository`, `LedgerAggregateRepository`, `PortableSettingsRepository`, `DevicePreferencesRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `SavingsGoalRepository`, `BackupRepository`, `BackupJsonEncoder`, `DatabaseTransactionRunner`. (The former monolithic `SettingsRepository` was split: portable settings live in Room and travel with backups; device preferences live in DataStore and never leave the device.)
    - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `MonthlyBudgetPolicy`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
 
@@ -247,7 +247,7 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **14**.
+Room schema is exported to `app/schemas/`. Current database version is **15**.
 
 Existing migrations:
 
@@ -264,6 +264,7 @@ Existing migrations:
 - `11 → 12`: Re-created `savings_goals` without the `colorName` column (savings goals use the app primary color).
 - `12 → 13`: Removed savings-goal account links and reduced the goal model to a net-worth target.
 - `13 → 14`: Rebuilt accounts and ledger tables for hidden/closed lifecycle state, tombstones, operation IDs, reminder anchors, portable settings, reminder configs, and migration state.
+- `14 → 15`: Added `accounts.kind` (`funding`/`investment`, default `funding`). Reconciliation deltas on investment accounts are presented as investment P&L at read time.
 
 When modifying entities:
 
@@ -276,6 +277,7 @@ When modifying entities:
 ## Key Domain Concepts
 
 - **Accounts**: Open accounts are user-ordered and may be hidden without changing calculations. A zero-balance account may be closed and later reopened; closed accounts are read-only.
+- **Account kind**: Each account is `FUNDING` (日常) or `INVESTMENT` (投资) — a single account-level attribute, deliberately not a per-record category system. Meaning is derived at read time: a reconciliation delta on an investment account is presented as 投资收益/投资亏损 (and summed into the home 投资损益 line), while the same delta on a funding account remains 对账调整. Reclassifying an account retroactively reinterprets its whole history. Ledger arithmetic is unchanged by kind.
 - **Account creation**: The account's `initialBalance` is the opening asset event. For period dashboards, accounts opened inside the selected period contribute their initial balance to opening assets, not cash inflow or asset adjustment.
 - **Transaction types**:
   - `CashFlow`: Inflow / outflow with an optional note.
@@ -284,7 +286,7 @@ When modifying entities:
   - `BalanceAdjustment`: Manual correction ledger event.
 - **Balance calculation**: Uses `LedgerBalanceCalculator` semantics: before account opening the balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`.
 - **Reminders**: Recurring reminders use `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods anchored to the first due time. WorkManager performs a 15-minute periodic check plus debounced one-time synchronization. No exact-alarm permission is used.
-- **Export/import**: Backup schema v4 contains portable settings, accounts, all four ledger record types (including tombstones and operation IDs), reminders, account reminder configs, and the optional singleton savings goal. Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
+- **Export/import**: Backup schema v5 contains portable settings, accounts (including account kind since v5), all four ledger record types (including tombstones and operation IDs), reminders, account reminder configs, and the optional singleton savings goal. v1–v4 files import with defaults (v4 accounts default to the funding kind). Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
 - **Savings goal**: A nullable singleton (`id = 1`) represents one net-worth target. Progress uses total current net assets and has no deadline.
 - **Settings split**: `PortableSettings` (Room `portable_settings` table) travel with backups; `DevicePreferences` (DataStore: biometric lock, amount masks, recents hiding, widget/notification privacy) are device-local and never exported.
 - **External entry points**: App shortcuts, share-to-record (`ACTION_SEND` `text/plain`), widget, and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
@@ -311,4 +313,4 @@ When modifying entities:
 - Do not touch the ledger before `StartupMigrationCoordinator` reports `Ready`; use `withReadyLedgerAccess` where applicable.
 - All new UI strings must be in Chinese (Simplified).
 - If changing Room entities, always provide a migration, update the schema export, and extend the androidTest migration test.
-- `CLAUDE.md` is a legacy snapshot and partially outdated (e.g. it references a removed `SettingsRepository` and an old database version); treat this `AGENTS.md` as the source of truth.
+- `CLAUDE.md` is a condensed summary of this file for Claude Code. Keep it in sync when the facts below change, but treat this `AGENTS.md` as the source of truth.

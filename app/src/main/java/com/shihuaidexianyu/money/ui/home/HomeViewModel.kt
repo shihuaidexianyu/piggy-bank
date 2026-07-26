@@ -8,14 +8,18 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.domain.usecase.BudgetPace
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
+import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
+import com.shihuaidexianyu.money.domain.usecase.calculatePeriodDelta
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
@@ -28,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -57,6 +62,7 @@ data class HomeRecentRecordUiModel(
     val subtitle: String,
     val amount: Long,
     val occurredAt: Long,
+    val isInvestmentAccount: Boolean = false,
 )
 
 data class HomeUiState(
@@ -83,6 +89,20 @@ data class HomeUiState(
     val recentRecords: List<HomeRecentRecordUiModel> = emptyList(),
     val savingsGoalProgress: SavingsGoalProgress? = null,
     val netWorthTrend: List<Long> = emptyList(),
+    /** Drives the switcher, so a tap highlights immediately. */
+    val selectedPeriod: DashboardPeriod = DashboardPeriod.DEFAULT,
+    /**
+     * The period the aggregates below actually cover. Lags [selectedPeriod] by one snapshot, which
+     * keeps the labels honest: a week label never sits above a month's numbers.
+     */
+    val period: DashboardPeriod = DashboardPeriod.DEFAULT,
+    val netWorthDelta: PeriodDelta = calculatePeriodDelta(0L, 0L),
+    val cashInflowDelta: PeriodDelta = calculatePeriodDelta(0L, 0L),
+    val cashOutflowDelta: PeriodDelta = calculatePeriodDelta(0L, 0L),
+    val budgetPace: BudgetPace? = null,
+    val hasInvestmentAccounts: Boolean = false,
+    val investmentAssets: Long = 0L,
+    val periodInvestmentPnl: Long = 0L,
     val showMonthlyBudgetEditor: Boolean = false,
     val monthlyBudgetInput: String = "",
     @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
@@ -107,6 +127,7 @@ class HomeViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         HomeUiState(
+            selectedPeriod = DashboardPeriod.fromName(savedStateHandle[KEY_SELECTED_PERIOD]),
             showMonthlyBudgetEditor = savedStateHandle[KEY_BUDGET_EDITOR_OPEN] ?: false,
             monthlyBudgetInput = savedStateHandle.get<String>(KEY_BUDGET_INPUT).orEmpty(),
             monthlyBudgetInputErrorRes = savedStateHandle.get<Int>(KEY_BUDGET_INPUT_ERROR),
@@ -117,12 +138,28 @@ class HomeViewModel(
     private var observationJob: Job? = null
     private var retryGeneration = 0
 
+    /**
+     * Kept as its own flow rather than derived from [_uiState] so switching periods re-queries
+     * without tearing down and restarting the whole dashboard subscription.
+     */
+    private val selectedPeriod = MutableStateFlow(
+        DashboardPeriod.fromName(savedStateHandle[KEY_SELECTED_PERIOD]),
+    )
+
     init {
         observeDashboard()
     }
 
     fun retry() {
         observeDashboard()
+    }
+
+    fun selectPeriod(period: DashboardPeriod) {
+        if (selectedPeriod.value == period) return
+        savedStateHandle[KEY_SELECTED_PERIOD] = period.name
+        // Highlight the tab immediately; labels and numbers follow together on the next snapshot.
+        _uiState.value = _uiState.value.copy(selectedPeriod = period, isRefreshing = true)
+        selectedPeriod.value = period
     }
 
     private fun observeDashboard() {
@@ -137,7 +174,7 @@ class HomeViewModel(
         observationJob = viewModelScope.launch {
             try {
                 combine(
-                    observeHomeDashboardUseCase(),
+                    observeHomeDashboardUseCase(selectedPeriod),
                     devicePreferencesRepository.observe(),
                     observeSavingsGoalUseCase(),
                 ) { snapshot, devicePreferences, savingsGoalProgress ->
@@ -148,75 +185,90 @@ class HomeViewModel(
                         .visibilityFor(AmountSurface.IN_APP)
                     val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
                     val accountNames = snapshot.openAccounts.associate { it.id to it.name }
-                    val editorState = _uiState.value
-                    _uiState.value = HomeUiState(
-                        isLoading = false,
-                        hasCommittedContent = true,
-                        settings = snapshot.settings,
-                        totalAssets = snapshot.totalAssets,
-                        hasAnyAccounts = snapshot.hasAnyAccounts,
-                        allAccountCount = snapshot.allAccountCount,
-                        monthlyBudget = snapshot.monthlyBudget,
-                        periodRecordCount = snapshot.periodRecordCount,
-                        periodAssetChange = snapshot.periodBreakdown.assetChange,
-                        periodCashInflow = snapshot.periodBreakdown.cashInflow,
-                        periodCashOutflow = snapshot.periodBreakdown.cashOutflow,
-                        periodManualAdjustmentNet = snapshot.periodBreakdown.manualAdjustmentNet,
-                        periodReconciliationNet = snapshot.periodBreakdown.reconciliationNet,
-                        staleAccountCount = snapshot.staleAccountCount,
-                        staleAccounts = snapshot.staleAccounts.map { account ->
-                            StaleAccountUiModel(
-                                accountId = account.id,
-                                name = account.name,
-                                colorName = account.colorName,
-                                currentBalance = snapshot.accountBalances[account.id] ?: 0L,
-                                lastBalanceUpdateAt = account.lastBalanceUpdateAt,
-                            )
-                        },
-                        accountOptions = snapshot.openAccounts.map { account ->
-                            account.toAccountOptionUiModel(
-                                balance = snapshot.accountBalances[account.id] ?: 0L,
-                                isStale = account.id in staleAccountIds,
-                            )
-                        },
-                        dueReminders = snapshot.dueReminders.map { reminder ->
-                            DueReminderUiModel(
-                                id = reminder.id,
-                                name = reminder.name,
-                                type = ReminderType.fromValue(reminder.type),
-                                amountFormatted = AmountFormatter.format(
-                                    reminder.amount,
-                                    snapshot.settings,
-                                    visibility,
-                                ),
-                                accountId = reminder.accountId,
-                                direction = reminder.direction,
-                                amount = reminder.amount,
-                            )
-                        },
-                        recentRecords = snapshot.recentRecords.map { record ->
-                            val relatedAccountId = record.relatedAccountId
-                            HomeRecentRecordUiModel(
-                                recordId = record.recordId,
-                                kind = record.type.toHomeRecordKind(),
-                                title = record.title,
-                                subtitle = if (record.type == HistoryRecordType.TRANSFER && relatedAccountId != null) {
-                                    "${accountNames[record.accountId] ?: "—"} → ${accountNames[relatedAccountId] ?: "—"}"
-                                } else {
-                                    accountNames[record.accountId] ?: "—"
-                                },
-                                amount = record.amount,
-                                occurredAt = record.occurredAt,
-                            )
-                        },
-                        savingsGoalProgress = savingsGoalProgress,
-                        netWorthTrend = snapshot.netWorthTrend,
-                        showMonthlyBudgetEditor = editorState.showMonthlyBudgetEditor,
-                        monthlyBudgetInput = editorState.monthlyBudgetInput,
-                        monthlyBudgetInputErrorRes = editorState.monthlyBudgetInputErrorRes,
-                        monthlyBudgetSaveErrorRes = editorState.monthlyBudgetSaveErrorRes,
-                        isMonthlyBudgetSaving = editorState.isMonthlyBudgetSaving,
-                    )
+                    val investmentAccountIds = snapshot.openAccounts
+                        .filter { it.isInvestment }
+                        .map { it.id }
+                        .toSet()
+                    // copy() instead of a fresh HomeUiState: unrelated state (budget editor,
+                    // selected period) survives structurally instead of by being hand-threaded —
+                    // a fresh constructor call silently resets any field someone forgets to list.
+                    _uiState.update { current ->
+                        current.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            hasCommittedContent = true,
+                            errorMessageRes = null,
+                            retryToken = null,
+                            settings = snapshot.settings,
+                            totalAssets = snapshot.totalAssets,
+                            hasAnyAccounts = snapshot.hasAnyAccounts,
+                            allAccountCount = snapshot.allAccountCount,
+                            monthlyBudget = snapshot.monthlyBudget,
+                            periodRecordCount = snapshot.periodRecordCount,
+                            periodAssetChange = snapshot.periodBreakdown.assetChange,
+                            periodCashInflow = snapshot.periodBreakdown.cashInflow,
+                            periodCashOutflow = snapshot.periodBreakdown.cashOutflow,
+                            periodManualAdjustmentNet = snapshot.periodBreakdown.manualAdjustmentNet,
+                            periodReconciliationNet = snapshot.periodBreakdown.reconciliationNet,
+                            staleAccountCount = snapshot.staleAccountCount,
+                            staleAccounts = snapshot.staleAccounts.map { account ->
+                                StaleAccountUiModel(
+                                    accountId = account.id,
+                                    name = account.name,
+                                    colorName = account.colorName,
+                                    currentBalance = snapshot.accountBalances[account.id] ?: 0L,
+                                    lastBalanceUpdateAt = account.lastBalanceUpdateAt,
+                                )
+                            },
+                            accountOptions = snapshot.openAccounts.map { account ->
+                                account.toAccountOptionUiModel(
+                                    balance = snapshot.accountBalances[account.id] ?: 0L,
+                                    isStale = account.id in staleAccountIds,
+                                )
+                            },
+                            dueReminders = snapshot.dueReminders.map { reminder ->
+                                DueReminderUiModel(
+                                    id = reminder.id,
+                                    name = reminder.name,
+                                    type = ReminderType.fromValue(reminder.type),
+                                    amountFormatted = AmountFormatter.format(
+                                        reminder.amount,
+                                        snapshot.settings,
+                                        visibility,
+                                    ),
+                                    accountId = reminder.accountId,
+                                    direction = reminder.direction,
+                                    amount = reminder.amount,
+                                )
+                            },
+                            recentRecords = snapshot.recentRecords.map { record ->
+                                val relatedAccountId = record.relatedAccountId
+                                HomeRecentRecordUiModel(
+                                    recordId = record.recordId,
+                                    kind = record.type.toHomeRecordKind(),
+                                    title = record.title,
+                                    subtitle = if (record.type == HistoryRecordType.TRANSFER && relatedAccountId != null) {
+                                        "${accountNames[record.accountId] ?: "—"} → ${accountNames[relatedAccountId] ?: "—"}"
+                                    } else {
+                                        accountNames[record.accountId] ?: "—"
+                                    },
+                                    amount = record.amount,
+                                    occurredAt = record.occurredAt,
+                                    isInvestmentAccount = record.accountId in investmentAccountIds,
+                                )
+                            },
+                            savingsGoalProgress = savingsGoalProgress,
+                            netWorthTrend = snapshot.netWorthTrend,
+                            period = snapshot.period,
+                            netWorthDelta = snapshot.netWorthDelta,
+                            cashInflowDelta = snapshot.cashInflowDelta,
+                            cashOutflowDelta = snapshot.cashOutflowDelta,
+                            budgetPace = snapshot.budgetPace,
+                            hasInvestmentAccounts = snapshot.hasInvestmentAccounts,
+                            investmentAssets = snapshot.investmentAssets,
+                            periodInvestmentPnl = snapshot.periodInvestmentPnl,
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -384,5 +436,6 @@ class HomeViewModel(
         const val KEY_BUDGET_SAVE_ERROR = "home_budget_save_error"
         const val KEY_BUDGET_PENDING_ACTION = "home_budget_pending_action"
         const val KEY_BUDGET_PENDING_AMOUNT = "home_budget_pending_amount"
+        const val KEY_SELECTED_PERIOD = "home_selected_period"
     }
 }

@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.widget.RemoteViews
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -59,15 +58,17 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
                 snapshot.visibility,
             )
             val views = baseViews(context, widgetId).apply {
-                val (incomeColor, expenseColor) = widgetFlowColors(
-                    context,
-                    snapshot.settings.amountColorMode,
-                )
+                val (incomeColor, expenseColor) = widgetFlowColors(snapshot.settings.amountColorMode)
                 setTextViewText(R.id.widget_total_assets, total)
                 setTextViewText(R.id.widget_month_income, income)
                 setTextViewText(R.id.widget_month_expense, expense)
-                setTextColor(R.id.widget_month_income, incomeColor)
-                setTextColor(R.id.widget_month_expense, expenseColor)
+                // setColorInt lets the LAUNCHER resolve light vs night when it (re)inflates the
+                // views. Baking a single Int chosen from this process's uiMode goes stale the
+                // moment the system theme flips: the night-qualified background resource updates
+                // immediately, but a plain setTextColor would keep the old theme's text color
+                // until the next widget refresh (up to 30 minutes of mismatched contrast).
+                setColorInt(R.id.widget_month_income, "setTextColor", incomeColor.light, incomeColor.night)
+                setColorInt(R.id.widget_month_expense, "setTextColor", expenseColor.light, expenseColor.night)
                 setContentDescription(
                     R.id.widget_total_assets,
                     context.getString(
@@ -111,19 +112,13 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
 
         // Mirrors ui/theme/Color.kt MoneyColors so the widget matches in-app amount colors,
         // including the user-selectable income/expense color direction.
-        private const val LIGHT_INCOME: Int = 0xFFA94442.toInt()
-        private const val LIGHT_EXPENSE: Int = 0xFF2F6B4F.toInt()
-        private const val DARK_INCOME: Int = 0xFFE57373.toInt()
-        private const val DARK_EXPENSE: Int = 0xFF66BB6A.toInt()
+        private val WIDGET_RED = WidgetDayNightColor(light = 0xFFA94442.toInt(), night = 0xFFE57373.toInt())
+        private val WIDGET_GREEN = WidgetDayNightColor(light = 0xFF2F6B4F.toInt(), night = 0xFF66BB6A.toInt())
 
-        private fun widgetFlowColors(context: Context, mode: AmountColorMode): Pair<Int, Int> {
-            val dark = context.resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-            val income = if (dark) DARK_INCOME else LIGHT_INCOME
-            val expense = if (dark) DARK_EXPENSE else LIGHT_EXPENSE
+        private fun widgetFlowColors(mode: AmountColorMode): Pair<WidgetDayNightColor, WidgetDayNightColor> {
             return when (mode) {
-                AmountColorMode.RED_INCOME_GREEN_EXPENSE -> income to expense
-                AmountColorMode.GREEN_INCOME_RED_EXPENSE -> expense to income
+                AmountColorMode.RED_INCOME_GREEN_EXPENSE -> WIDGET_RED to WIDGET_GREEN
+                AmountColorMode.GREEN_INCOME_RED_EXPENSE -> WIDGET_GREEN to WIDGET_RED
             }
         }
 
@@ -172,6 +167,9 @@ class BalanceOverviewWidgetProvider : AppWidgetProvider() {
         }
     }
 }
+
+/** A light/night color pair handed to [RemoteViews.setColorInt] so the launcher themes it. */
+private data class WidgetDayNightColor(val light: Int, val night: Int)
 
 object WidgetUpdateRequester {
     const val DEBOUNCE_MILLIS = 750L

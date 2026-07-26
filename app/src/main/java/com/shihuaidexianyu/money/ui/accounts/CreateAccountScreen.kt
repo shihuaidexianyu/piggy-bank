@@ -64,6 +64,10 @@ fun CreateAccountScreen(
                     label = stringResource(R.string.account_current_balance),
                     allowSigned = true,
                 )
+                AccountKindField(
+                    kind = state.kind,
+                    onKindSelected = viewModel::updateKind,
+                )
                 AccountVisualFields(
                     colorName = state.colorName,
                     iconName = state.iconName,

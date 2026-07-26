@@ -537,7 +537,8 @@ class MoneyDatabaseMigrationTest {
 
         database.beginTransaction()
         try {
-            MONEY_DATABASE_MIGRATIONS.last().migrate(database)
+            // Explicitly the 13→14 rebuild — `last()` would silently drift to newer migrations.
+            MONEY_DATABASE_MIGRATIONS.single { it.startVersion == 13 }.migrate(database)
             database.setTransactionSuccessful()
         } finally {
             database.endTransaction()
@@ -648,6 +649,35 @@ class MoneyDatabaseMigrationTest {
         }
         migrated.query("PRAGMA foreign_key_check").use { cursor ->
             assertEquals("Foreign-key violations after isolated candidate migration", 0, cursor.count)
+        }
+        migrated.close()
+    }
+
+    @Test
+    fun migrateFromVersion14To15DefaultsExistingAccountsToFundingKind() {
+        val dbName = "$TEST_DB-v14-kind"
+        helper.createDatabase(dbName, 14).apply {
+            execSQL(
+                """
+                INSERT INTO accounts (
+                    id, name, initialBalance, createdAt, isHidden, closedAt,
+                    lastUsedAt, lastBalanceUpdateAt, displayOrder, colorName, iconName
+                ) VALUES (1, '招商银行', 120000, 1000, 0, NULL, 2000, NULL, 0, 'blue', 'wallet')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 15,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query("SELECT kind FROM accounts WHERE id = 1").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("funding", cursor.getString(0))
         }
         migrated.close()
     }

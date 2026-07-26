@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
@@ -40,26 +42,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
+import com.shihuaidexianyu.money.domain.usecase.BudgetPace
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
-import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
+import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
@@ -94,8 +99,8 @@ fun HomeScreen(
     onOpenHistory: () -> Unit = {},
     onOpenSavingsGoal: () -> Unit = {},
     onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
+    onSelectPeriod: (DashboardPeriod) -> Unit = {},
 ) {
-    var showUpdateBalancePicker by remember { mutableStateOf(false) }
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val homeLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
 
@@ -106,17 +111,6 @@ fun HomeScreen(
         }
     }
 
-    if (showUpdateBalancePicker) {
-        AccountPickerDialog(
-            title = stringResource(R.string.home_choose_reconcile_account),
-            accounts = state.accountOptions,
-            onDismiss = { showUpdateBalancePicker = false },
-            onPick = { accountId ->
-                showUpdateBalancePicker = false
-                onStartUpdateBalance(accountId)
-            },
-        )
-    }
     if (state.showMonthlyBudgetEditor) {
         MonthlyBudgetEditorDialog(
             input = state.monthlyBudgetInput,
@@ -186,6 +180,15 @@ fun HomeScreen(
                             cashOutflow = renderedState.periodCashOutflow,
                             settings = renderedState.settings,
                             netWorthTrend = renderedState.netWorthTrend,
+                            period = renderedState.period,
+                            selectedPeriod = renderedState.selectedPeriod,
+                            netWorthDelta = renderedState.netWorthDelta,
+                            cashInflowDelta = renderedState.cashInflowDelta,
+                            cashOutflowDelta = renderedState.cashOutflowDelta,
+                            hasInvestmentAccounts = renderedState.hasInvestmentAccounts,
+                            investmentAssets = renderedState.investmentAssets,
+                            periodInvestmentPnl = renderedState.periodInvestmentPnl,
+                            onSelectPeriod = onSelectPeriod,
                         )
                     }
                     if (renderedState.accountOptions.isEmpty()) {
@@ -196,9 +199,9 @@ fun HomeScreen(
                     item {
                         MonthlyBudgetBlock(
                             budget = renderedState.monthlyBudget,
+                            pace = renderedState.budgetPace,
                             settings = renderedState.settings,
                             onEdit = onOpenMonthlyBudgetEditor,
-                            onClose = onCloseMonthlyBudget,
                         )
                     }
                     renderedState.savingsGoalProgress?.let { savingsGoalProgress ->
@@ -224,8 +227,6 @@ fun HomeScreen(
                                 accounts = renderedState.staleAccounts,
                                 settings = renderedState.settings,
                                 onReconcile = onStartUpdateBalance,
-                                onChooseAccount = { showUpdateBalancePicker = true },
-                                showReconcileAction = renderedState.accountOptions.isNotEmpty(),
                             )
                         }
                     }
@@ -325,6 +326,15 @@ private fun PeriodOverviewBlock(
     cashOutflow: Long,
     settings: PortableSettings,
     netWorthTrend: List<Long>,
+    period: DashboardPeriod,
+    selectedPeriod: DashboardPeriod,
+    netWorthDelta: PeriodDelta,
+    cashInflowDelta: PeriodDelta,
+    cashOutflowDelta: PeriodDelta,
+    hasInvestmentAccounts: Boolean,
+    investmentAssets: Long,
+    periodInvestmentPnl: Long,
+    onSelectPeriod: (DashboardPeriod) -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current
     val cashNet = cashInflow - cashOutflow
@@ -350,11 +360,18 @@ private fun PeriodOverviewBlock(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(
-                text = stringResource(R.string.home_current_net_assets),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_current_net_assets),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                PeriodSwitcher(selected = selectedPeriod, onSelect = onSelectPeriod)
+            }
             val recordText = formatInAppAmount(totalAssets, settings)
             val recordStyle = when {
                 recordText.length > 12 -> MaterialTheme.typography.headlineSmall
@@ -375,6 +392,32 @@ private fun PeriodOverviewBlock(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
             }
+            DeltaLabel(
+                delta = netWorthDelta,
+                settings = settings,
+                baselineLabel = stringResource(period.sinceStartLabelRes()),
+                increaseIsPositive = true,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (hasInvestmentAccounts) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    PeriodMetricCell(
+                        label = stringResource(R.string.home_funding_assets),
+                        value = formatInAppAmount(totalAssets - investmentAssets, settings),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    PeriodMetricCell(
+                        label = stringResource(R.string.home_investment_assets),
+                        value = formatInAppAmount(investmentAssets, settings),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
             if (netWorthTrend.size >= 2) {
                 NetWorthSparkline(
                     values = netWorthTrend,
@@ -391,41 +434,183 @@ private fun PeriodOverviewBlock(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            val comparisonLabel = stringResource(period.versusPreviousLabelRes())
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 PeriodMetricCell(
-                    label = stringResource(R.string.home_month_income),
+                    label = stringResource(period.incomeLabelRes()),
                     value = formatInAppAmount(cashInflow, settings),
                     color = moneyColors.income,
+                    delta = cashInflowDelta,
+                    // More income than last period is good news; more spending is not.
+                    increaseIsPositive = true,
+                    baselineLabel = comparisonLabel,
+                    settings = settings,
                     modifier = Modifier.weight(1f),
                 )
                 PeriodMetricCell(
-                    label = stringResource(R.string.home_month_expense),
+                    label = stringResource(period.expenseLabelRes()),
                     value = formatInAppAmount(cashOutflow, settings),
                     color = moneyColors.expense,
+                    delta = cashOutflowDelta,
+                    increaseIsPositive = false,
+                    baselineLabel = comparisonLabel,
+                    settings = settings,
                     modifier = Modifier.weight(1f),
                 )
                 PeriodMetricCell(
-                    label = stringResource(R.string.home_month_net_cash_flow),
+                    label = stringResource(period.netCashFlowLabelRes()),
                     value = formatInAppAmount(cashNet, settings),
                     color = netColor,
                     modifier = Modifier.weight(1f),
+                )
+            }
+            if (hasInvestmentAccounts) {
+                val pnlColor = when {
+                    periodInvestmentPnl > 0L -> moneyColors.income
+                    periodInvestmentPnl < 0L -> moneyColors.expense
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(period.investmentPnlLabelRes()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = signedAmountText(periodInvestmentPnl, settings),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = pnlColor,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** "+¥820" / "-¥12" — investment P&L is a signed quantity, so the plus sign carries meaning. */
+@Composable
+private fun signedAmountText(amount: Long, settings: PortableSettings): String {
+    val formatted = formatInAppAmount(amount, settings)
+    return if (amount > 0L) "+$formatted" else formatted
+}
+
+@Composable
+private fun PeriodSwitcher(
+    selected: DashboardPeriod,
+    onSelect: (DashboardPeriod) -> Unit,
+) {
+    val options = DashboardPeriod.entries
+    val selectorDescription = stringResource(R.string.home_period_selector)
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.semantics { contentDescription = selectorDescription },
+    ) {
+        options.forEachIndexed { index, period ->
+            SegmentedButton(
+                selected = period == selected,
+                onClick = { onSelect(period) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                    activeContentColor = MaterialTheme.colorScheme.primary,
+                    inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                icon = {},
+            ) {
+                Text(
+                    text = stringResource(period.shortLabelRes()),
+                    style = MaterialTheme.typography.labelLarge,
                 )
             }
         }
     }
 }
 
+/**
+ * Renders a signed change as an arrow, an absolute amount, an optional percentage, and a baseline
+ * label. The arrow direction always follows the sign of the change, but the colour follows
+ * [increaseIsPositive] — spending more than last month is an increase and should still read as a
+ * warning, not as growth.
+ */
+@Composable
+private fun DeltaLabel(
+    delta: PeriodDelta,
+    settings: PortableSettings,
+    baselineLabel: String,
+    increaseIsPositive: Boolean,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodySmall,
+) {
+    val moneyColors = LocalMoneyColors.current
+    if (delta.isUnchanged) {
+        Text(
+            text = stringResource(R.string.home_change_none_format, baselineLabel),
+            style = style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = modifier,
+        )
+        return
+    }
+    val isFavourable = delta.isIncrease == increaseIsPositive
+    val color = if (isFavourable) moneyColors.income else moneyColors.expense
+    val amountText = formatInAppAmount(kotlin.math.abs(delta.deltaAmount), settings)
+    val text = delta.percentageText?.let { percentage ->
+        stringResource(R.string.home_change_with_percent_format, amountText, percentage, baselineLabel)
+    } ?: stringResource(R.string.home_change_format, amountText, baselineLabel)
+    val directionDescription = stringResource(
+        if (delta.isIncrease) R.string.home_change_increase else R.string.home_change_decrease,
+    )
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Icon(
+            imageVector = if (delta.isIncrease) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+            contentDescription = directionDescription,
+            tint = color,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = text,
+            style = style,
+            color = color,
+            maxLines = 1,
+        )
+    }
+}
+
 @Composable
 private fun MonthlyBudgetBlock(
     budget: MonthlyBudgetStatus?,
+    pace: BudgetPace?,
     settings: PortableSettings,
     onEdit: () -> Unit,
-    onClose: () -> Unit,
 ) {
-    MoneySectionHeader(title = stringResource(R.string.home_monthly_budget))
+    MoneySectionHeader(
+        title = stringResource(R.string.home_monthly_budget),
+        trailingContent = if (budget != null) {
+            {
+                Text(
+                    text = stringResource(R.string.action_edit),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onEdit),
+                )
+            }
+        } else {
+            null
+        },
+    )
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -451,8 +636,14 @@ private fun MonthlyBudgetBlock(
                 )
             }
         } else {
+            // The whole card opens the editor (mirroring the savings-goal card); closing the
+            // budget lives inside the editor dialog, keeping a destructive-leaning action off
+            // the always-visible dashboard.
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onEdit)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Column(
@@ -482,15 +673,75 @@ private fun MonthlyBudgetBlock(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.home_edit_monthly_budget)) }
-                    TextButton(onClick = onClose) { Text(stringResource(R.string.home_close_monthly_budget)) }
-                }
+                pace?.let { BudgetPaceRows(pace = it, budget = budget, settings = settings) }
             }
         }
     }
 }
 
+/**
+ * The burn-down lines under the budget bar: how fast the month is being spent, and where that
+ * pace lands. Once the budget is already blown, the projection is redundant with the over-budget
+ * line above, so only the pace is shown.
+ */
+@Composable
+private fun BudgetPaceRows(
+    pace: BudgetPace,
+    budget: MonthlyBudgetStatus,
+    settings: PortableSettings,
+) {
+    val moneyColors = LocalMoneyColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = if (pace.daysRemaining > 0) {
+                stringResource(
+                    R.string.home_budget_pace_format,
+                    pace.daysRemaining,
+                    formatInAppAmount(pace.dailyAverageSpent, settings),
+                )
+            } else {
+                stringResource(
+                    R.string.home_budget_last_day,
+                    formatInAppAmount(pace.dailyAverageSpent, settings),
+                )
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val alreadyOverBudget = budget.overBudgetAmount != null
+        when {
+            alreadyOverBudget -> Unit
+            pace.projectedOverspend != null -> Text(
+                text = stringResource(
+                    R.string.home_budget_projected_overspend_format,
+                    formatInAppAmount(pace.projectedOverspend, settings),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = moneyColors.expense,
+            )
+            else -> Text(
+                text = stringResource(
+                    R.string.home_budget_projected_surplus_format,
+                    formatInAppAmount(budget.targetAmount - pace.projectedTotalSpend, settings),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = moneyColors.income,
+            )
+        }
+        pace.safeDailySpend?.let { safeDaily ->
+            Text(
+                text = stringResource(
+                    R.string.home_budget_safe_daily_format,
+                    formatInAppAmount(safeDaily, settings),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Only rendered when there are due reminders — the caller hides the whole section otherwise. */
 @Composable
 private fun HomeReminderSection(
     reminders: List<DueReminderUiModel>,
@@ -502,41 +753,30 @@ private fun HomeReminderSection(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(12.dp),
     ) {
-        if (reminders.isEmpty()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.home_no_due_reminders), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = onOpenReminders) { Text(stringResource(R.string.home_manage_reminders)) }
-            }
-        } else {
-            Column {
-                reminders.forEachIndexed { index, reminder ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onOpenReminders)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(reminder.name)
-                        Text(reminder.amountFormatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (index != reminders.lastIndex) HorizontalDivider()
+        Column {
+            reminders.forEachIndexed { index, reminder ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onOpenReminders)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(reminder.name)
+                    Text(reminder.amountFormatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (index != reminders.lastIndex) HorizontalDivider()
             }
         }
     }
 }
 
+/** Only rendered when there are stale accounts — the caller hides the whole section otherwise. */
 @Composable
 private fun HomeStaleAccountSection(
     accounts: List<StaleAccountUiModel>,
     settings: PortableSettings,
     onReconcile: (Long) -> Unit,
-    onChooseAccount: () -> Unit,
-    showReconcileAction: Boolean,
 ) {
     MoneySectionHeader(title = stringResource(R.string.home_stale_accounts))
     Surface(
@@ -544,34 +784,22 @@ private fun HomeStaleAccountSection(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(12.dp),
     ) {
-        if (accounts.isEmpty()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.home_no_stale_accounts), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (showReconcileAction) {
-                    TextButton(onClick = onChooseAccount) { Text(stringResource(R.string.home_reconcile_account)) }
+        Column {
+            accounts.forEachIndexed { index, account ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onReconcile(account.accountId) }
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(account.name)
+                    Text(
+                        formatInAppAmount(account.currentBalance, settings),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-            }
-        } else {
-            Column {
-                accounts.forEachIndexed { index, account ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onReconcile(account.accountId) }
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(account.name)
-                        Text(
-                            formatInAppAmount(account.currentBalance, settings),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (index != accounts.lastIndex) HorizontalDivider()
-                }
+                if (index != accounts.lastIndex) HorizontalDivider()
             }
         }
     }
@@ -718,10 +946,11 @@ private fun homeRecentRecordKindLabel(record: HomeRecentRecordUiModel): String {
         )
         HistoryRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
         HistoryRecordKind.BALANCE_UPDATE -> stringResource(
-            if (record.amount == 0L) {
-                R.string.history_balance_update
-            } else {
-                R.string.history_reconciliation_adjustment
+            when {
+                record.amount == 0L -> R.string.history_balance_update
+                record.isInvestmentAccount && record.amount > 0L -> R.string.history_investment_gain
+                record.isInvestmentAccount -> R.string.history_investment_loss
+                else -> R.string.history_reconciliation_adjustment
             },
         )
         HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
@@ -795,6 +1024,10 @@ private fun PeriodMetricCell(
     value: String,
     color: Color,
     modifier: Modifier = Modifier,
+    delta: PeriodDelta? = null,
+    increaseIsPositive: Boolean = true,
+    baselineLabel: String = "",
+    settings: PortableSettings = PortableSettings(),
 ) {
     Column(
         modifier = modifier,
@@ -811,7 +1044,66 @@ private fun PeriodMetricCell(
             color = color,
             maxLines = 1,
         )
+        // Only shown when there is a prior period to compare against — a first-ever month would
+        // otherwise report a meaningless "up 100%" against a baseline that never existed.
+        if (delta != null && delta.baselineAmount > 0L) {
+            DeltaLabel(
+                delta = delta,
+                settings = settings,
+                baselineLabel = baselineLabel,
+                increaseIsPositive = increaseIsPositive,
+            )
+        }
     }
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.shortLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_period_week
+    DashboardPeriod.MONTH -> R.string.home_period_month
+    DashboardPeriod.YEAR -> R.string.home_period_year
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.incomeLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_week_income
+    DashboardPeriod.MONTH -> R.string.home_month_income
+    DashboardPeriod.YEAR -> R.string.home_year_income
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.expenseLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_week_expense
+    DashboardPeriod.MONTH -> R.string.home_month_expense
+    DashboardPeriod.YEAR -> R.string.home_year_expense
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.netCashFlowLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_week_net_cash_flow
+    DashboardPeriod.MONTH -> R.string.home_month_net_cash_flow
+    DashboardPeriod.YEAR -> R.string.home_year_net_cash_flow
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.investmentPnlLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_week_investment_pnl
+    DashboardPeriod.MONTH -> R.string.home_month_investment_pnl
+    DashboardPeriod.YEAR -> R.string.home_year_investment_pnl
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.sinceStartLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_since_week_start
+    DashboardPeriod.MONTH -> R.string.home_since_month_start
+    DashboardPeriod.YEAR -> R.string.home_since_year_start
+}
+
+@androidx.annotation.StringRes
+private fun DashboardPeriod.versusPreviousLabelRes(): Int = when (this) {
+    DashboardPeriod.WEEK -> R.string.home_vs_previous_week
+    DashboardPeriod.MONTH -> R.string.home_vs_previous_month
+    DashboardPeriod.YEAR -> R.string.home_vs_previous_year
 }
 
 @Composable

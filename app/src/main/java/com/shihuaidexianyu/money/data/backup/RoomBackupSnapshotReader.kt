@@ -50,6 +50,7 @@ internal class RoomBackupSnapshotReader(
                     displayOrder = it.displayOrder,
                     colorName = it.colorName,
                     iconName = it.iconName,
+                    kind = it.kind,
                 )
             },
             cashFlowRecords = database.cashFlowRecordDao().queryAll().sortedBy { it.id }.map {

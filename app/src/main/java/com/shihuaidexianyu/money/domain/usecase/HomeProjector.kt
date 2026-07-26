@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
@@ -35,6 +36,12 @@ internal object HomeProjector {
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
         netWorthTrend: List<Long> = emptyList(),
+        period: DashboardPeriod = DashboardPeriod.DEFAULT,
+        previousCashInflow: Long = 0L,
+        previousCashOutflow: Long = 0L,
+        monthCashOutflow: Long = cashOutflow,
+        monthProgressDays: PeriodProgressDays = PeriodProgressDays(elapsed = 1, total = 1),
+        reconciliationNetByAccount: Map<Long, Long> = emptyMap(),
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
     ): HomeDashboardSnapshot {
@@ -64,6 +71,10 @@ internal object HomeProjector {
                 zoneId = zoneId,
             )
         }
+        val monthlyBudget = calculateMonthlyBudgetStatus(
+            targetAmount = settings.monthlyBudgetAmount,
+            spentAmount = monthCashOutflow,
+        )
         return HomeDashboardSnapshot(
             settings = settings,
             totalAssets = totalAssets,
@@ -74,14 +85,45 @@ internal object HomeProjector {
             staleAccounts = staleAccounts,
             accountBalances = balances,
             dueReminders = dueReminders,
-            monthlyBudget = calculateMonthlyBudgetStatus(
-                targetAmount = settings.monthlyBudgetAmount,
-                spentAmount = cashOutflow,
-            ),
+            monthlyBudget = monthlyBudget,
             recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
             netWorthTrend = netWorthTrend,
+            period = period,
+            // Measured against the period's own opening rather than the previous period's closing:
+            // both numbers are already known here, so the comparison costs no extra ledger reads.
+            netWorthDelta = calculatePeriodDelta(
+                currentAmount = totalAssets,
+                baselineAmount = openingTotalAssets,
+            ),
+            cashInflowDelta = calculatePeriodDelta(
+                currentAmount = cashInflow,
+                baselineAmount = previousCashInflow,
+            ),
+            cashOutflowDelta = calculatePeriodDelta(
+                currentAmount = cashOutflow,
+                baselineAmount = previousCashOutflow,
+            ),
+            budgetPace = monthlyBudget?.let { budget ->
+                calculateBudgetPace(
+                    targetAmount = budget.targetAmount,
+                    spentAmount = budget.spentAmount,
+                    daysElapsed = monthProgressDays.elapsed,
+                    daysTotal = monthProgressDays.total,
+                )
+            },
+            hasInvestmentAccounts = accounts.any(Account::isInvestment),
+            // Closed investment accounts still count toward the split (their balance is zero by
+            // the closing rule) and their historical deltas still count as P&L for past periods.
+            investmentAssets = accounts
+                .filter(Account::isInvestment)
+                .map { balances[it.id] ?: 0L }
+                .ledgerSumExact(),
+            periodInvestmentPnl = accounts
+                .filter(Account::isInvestment)
+                .map { reconciliationNetByAccount[it.id] ?: 0L }
+                .ledgerSumExact(),
         )
     }
 }

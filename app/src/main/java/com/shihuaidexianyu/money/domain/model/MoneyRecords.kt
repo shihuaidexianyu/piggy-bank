@@ -12,9 +12,13 @@ data class Account(
     val displayOrder: Int = 0,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    val kind: AccountKind = AccountKind.DEFAULT,
 ) {
     val isClosed: Boolean
         get() = closedAt != null
+
+    val isInvestment: Boolean
+        get() = kind == AccountKind.INVESTMENT
 }
 
 data class CashFlowRecord(

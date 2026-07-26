@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
+import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -25,7 +26,6 @@ import app.cash.turbine.test
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,18 +34,77 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class HomeMonthlyConsistencyTest {
+    /**
+     * The dashboard period is selectable, but the budget is not: it is a monthly commitment and
+     * must keep measuring the calendar month whichever period the user is looking at. This
+     * replaces an earlier guard that forbade a period selector outright — the invariant that guard
+     * protected was budget/aggregate scope consistency, which is what is asserted here.
+     */
     @Test
-    fun `home contract has no selectable period type or field`() {
-        assertFailsWith<ClassNotFoundException> {
-            Class.forName("com.shihuaidexianyu.money.domain.model.HomePeriod")
-        }
-        val forbidden = setOf("period", "homePeriod", "selectedPeriod")
+    fun `selecting a shorter period rescopes cash flow but leaves the budget on the calendar month`() = runBlocking {
+        // 2026-02-19 is a Thursday; its week starts Monday 2026-02-16, well inside February.
+        val now = Instant.parse("2026-02-19T10:00:00Z").toEpochMilli()
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        val settings = InMemoryPortableSettingsRepository(PortableSettings(monthlyBudgetAmount = 100_000L))
+        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
+        val earlierInMonth = Instant.parse("2026-02-03T09:00:00Z").toEpochMilli()
+        val insideThisWeek = Instant.parse("2026-02-17T09:00:00Z").toEpochMilli()
+        insertCash(ledger, accountId, CashFlowDirection.OUTFLOW, 400L, earlierInMonth, "月初支出")
+        insertCash(ledger, accountId, CashFlowDirection.OUTFLOW, 250L, insideThisWeek, "本周支出")
+
+        val weekSnapshot = homeUseCase(
+            now = now,
+            accounts = accounts,
+            ledger = ledger,
+            settings = settings,
+            timeSignal = MutableStateFlow(now),
+            period = DashboardPeriod.WEEK,
+        ).first()
+
+        assertEquals(DashboardPeriod.WEEK, weekSnapshot.period)
+        assertEquals(250L, weekSnapshot.periodBreakdown.cashOutflow)
+        // The budget still counts the whole month, not just the selected week.
+        assertEquals(650L, requireNotNull(weekSnapshot.monthlyBudget).spentAmount)
+
+        val monthSnapshot = homeUseCase(
+            now = now,
+            accounts = accounts,
+            ledger = ledger,
+            settings = settings,
+            timeSignal = MutableStateFlow(now),
+            period = DashboardPeriod.MONTH,
+        ).first()
+
+        assertEquals(650L, monthSnapshot.periodBreakdown.cashOutflow)
         assertEquals(
-            emptySet(),
-            com.shihuaidexianyu.money.ui.home.HomeUiState::class.java.declaredFields
-                .map { it.name }
-                .filterTo(mutableSetOf()) { it in forbidden },
+            requireNotNull(weekSnapshot.monthlyBudget).spentAmount,
+            requireNotNull(monthSnapshot.monthlyBudget).spentAmount,
         )
+    }
+
+    @Test
+    fun `previous period comparison uses the adjacent period of the same length`() = runBlocking {
+        val now = Instant.parse("2026-02-19T10:00:00Z").toEpochMilli()
+        val accounts = InMemoryAccountRepository()
+        val ledger = InMemoryTransactionRepository()
+        val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
+        // Last week (2026-02-09..02-15) versus this week (2026-02-16..02-22).
+        insertCash(ledger, accountId, CashFlowDirection.OUTFLOW, 500L, Instant.parse("2026-02-11T09:00:00Z").toEpochMilli(), "上周支出")
+        insertCash(ledger, accountId, CashFlowDirection.OUTFLOW, 250L, Instant.parse("2026-02-17T09:00:00Z").toEpochMilli(), "本周支出")
+
+        val snapshot = homeUseCase(
+            now = now,
+            accounts = accounts,
+            ledger = ledger,
+            settings = InMemoryPortableSettingsRepository(),
+            timeSignal = MutableStateFlow(now),
+            period = DashboardPeriod.WEEK,
+        ).first()
+
+        assertEquals(250L, snapshot.cashOutflowDelta.currentAmount)
+        assertEquals(500L, snapshot.cashOutflowDelta.baselineAmount)
+        assertEquals(-250L, snapshot.cashOutflowDelta.deltaAmount)
     }
 
     @Test
@@ -235,6 +294,7 @@ class HomeMonthlyConsistencyTest {
         ledger: InMemoryTransactionRepository,
         settings: InMemoryPortableSettingsRepository,
         timeSignal: MutableStateFlow<Long>,
+        period: DashboardPeriod = DashboardPeriod.MONTH,
     ): kotlinx.coroutines.flow.Flow<com.shihuaidexianyu.money.domain.usecase.HomeDashboardSnapshot> {
         val clock = testClockProvider(now)
         return ObserveHomeDashboardUseCase(
@@ -250,6 +310,6 @@ class HomeMonthlyConsistencyTest {
             clockProvider = clock,
             zoneIdProvider = testZoneIdProvider(ZoneOffset.UTC),
             timeSignal = timeSignal,
-        ).invoke()
+        ).invoke(MutableStateFlow(period))
     }
 }

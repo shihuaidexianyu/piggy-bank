@@ -24,7 +24,6 @@
     <string name="home_load_failed">首页加载失败，请重试</string>
     <string name="home_budget_positive_error">月预算必须大于 0</string>
     <string name="home_budget_save_failed">月预算保存失败，请重试</string>
-    <string name="home_choose_reconcile_account">选择核对余额账户</string>
     <string name="home_create_first_account">创建第一个账户</string>
     <string name="home_create_first_account_description">创建账户后，就能开始记录收入、支出和转账。</string>
     <string name="home_create_now">立即创建</string>
@@ -37,6 +36,32 @@
     <string name="home_month_income">本月收入</string>
     <string name="home_month_expense">本月支出</string>
     <string name="home_month_net_cash_flow">本月净现金流</string>
+    <string name="home_week_income">本周收入</string>
+    <string name="home_week_expense">本周支出</string>
+    <string name="home_week_net_cash_flow">本周净现金流</string>
+    <string name="home_year_income">今年收入</string>
+    <string name="home_year_expense">今年支出</string>
+    <string name="home_year_net_cash_flow">今年净现金流</string>
+    <string name="home_period_selector">统计周期</string>
+    <string name="home_period_week">周</string>
+    <string name="home_period_month">月</string>
+    <string name="home_period_year">年</string>
+    <string name="home_funding_assets">现金资产</string>
+    <string name="home_investment_assets">投资资产</string>
+    <string name="home_week_investment_pnl">本周投资损益</string>
+    <string name="home_month_investment_pnl">本月投资损益</string>
+    <string name="home_year_investment_pnl">今年投资损益</string>
+    <string name="home_since_week_start">较周初</string>
+    <string name="home_since_month_start">较月初</string>
+    <string name="home_since_year_start">较年初</string>
+    <string name="home_vs_previous_week">较上周</string>
+    <string name="home_vs_previous_month">较上月</string>
+    <string name="home_vs_previous_year">较去年</string>
+    <string name="home_change_with_percent_format">%1$s (%2$s) %3$s</string>
+    <string name="home_change_format">%1$s %2$s</string>
+    <string name="home_change_none_format">持平 %1$s</string>
+    <string name="home_change_increase">增加</string>
+    <string name="home_change_decrease">减少</string>
     <string name="home_monthly_budget">月预算</string>
     <string name="home_budget_not_set_description">尚未设置本月支出预算</string>
     <string name="home_set_monthly_budget">设置月预算</string>
@@ -44,12 +69,13 @@
     <string name="home_close_monthly_budget">关闭月预算</string>
     <string name="home_budget_spent_format">已支出 %1$s / %2$s</string>
     <string name="home_budget_over_format">超支 %1$s · %2$s</string>
+    <string name="home_budget_pace_format">剩余 %1$d 天 · 日均 %2$s</string>
+    <string name="home_budget_last_day">最后一天 · 日均 %1$s</string>
+    <string name="home_budget_projected_overspend_format">按此速度将超支 %1$s</string>
+    <string name="home_budget_projected_surplus_format">按此速度可结余 %1$s</string>
+    <string name="home_budget_safe_daily_format">剩余每天可用 %1$s</string>
     <string name="home_due_reminders">待处理提醒</string>
-    <string name="home_no_due_reminders">暂无到期提醒</string>
-    <string name="home_manage_reminders">管理提醒</string>
     <string name="home_stale_accounts">待核对账户</string>
-    <string name="home_no_stale_accounts">暂无待核对账户</string>
-    <string name="home_reconcile_account">核对账户</string>
     <string name="home_monthly_budget_field">每月支出预算</string>
     <string name="home_savings_goal">储蓄目标</string>
     <string name="home_savings_goal_progress_format">已存 %1$s / %2$s</string>
@@ -154,6 +180,8 @@
     <string name="history_inflow">入账</string>
     <string name="history_outflow">出账</string>
     <string name="history_reconciliation_adjustment">对账调整</string>
+    <string name="history_investment_gain">投资收益</string>
+    <string name="history_investment_loss">投资亏损</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>
@@ -297,6 +325,10 @@
     <!-- Account appearance and reconciliation reminders -->
     <string name="account_color_title">账户颜色</string>
     <string name="account_icon_title">账户图标</string>
+    <string name="account_kind_title">账户类型</string>
+    <string name="account_kind_funding">日常</string>
+    <string name="account_kind_investment">投资</string>
+    <string name="account_kind_investment_hint">对账差额将计为投资收益或亏损</string>
     <string name="account_reminder_period">提醒周期</string>
     <string name="account_reminder_weekday_dialog">每周提醒日</string>
     <string name="account_reminder_month_day_dialog">每月提醒日</string>

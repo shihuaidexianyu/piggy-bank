@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import java.io.InputStream
@@ -92,11 +93,37 @@ class BackupJsonCodecTest {
 
     @Test
     fun `future schema is rejected instead of being decoded optimistically`() {
-        val future = fixture("v4.json").replace("\"schemaVersion\":4", "\"schemaVersion\":5")
+        val future = fixture("v4.json").replace(
+            "\"schemaVersion\":4",
+            "\"schemaVersion\":${MONEY_BACKUP_SCHEMA_VERSION + 1}",
+        )
 
         val error = assertFailsWith<IllegalArgumentException> { BackupJsonCodec.decode(future) }
 
         assertTrue(error.message.orEmpty().contains("不支持的备份版本"))
+    }
+
+    @Test
+    fun `v4 fixture upgrades to v5 with the default account kind`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v4.json"))
+
+        assertEquals(MONEY_BACKUP_SCHEMA_VERSION, snapshot.metadata.schemaVersion)
+        // kind was introduced in v5; every v4 account must land on the everyday default.
+        assertTrue(snapshot.accounts.all { it.kind == AccountKind.FUNDING.value })
+        // Re-encoding persists the field explicitly so a v5 export is self-describing.
+        assertTrue(BackupJsonCodec.encode(snapshot).contains("\"kind\""))
+    }
+
+    @Test
+    fun `v5 backup round trips a non-default account kind`() {
+        val snapshot = BackupJsonCodec.decode(fixture("v4.json"))
+        val withInvestment = snapshot.copy(
+            accounts = snapshot.accounts.map { it.copy(kind = AccountKind.INVESTMENT.value) },
+        )
+
+        val decoded = BackupJsonCodec.decode(BackupJsonCodec.encode(withInvestment))
+
+        assertTrue(decoded.accounts.all { it.kind == AccountKind.INVESTMENT.value })
     }
 
     @Test

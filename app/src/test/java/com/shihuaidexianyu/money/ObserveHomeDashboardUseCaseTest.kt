@@ -114,7 +114,9 @@ class ObserveHomeDashboardUseCaseTest {
         val snapshot = useCase().first()
 
         assertEquals(1, transactionRepository.transactionInvocationCount)
-        assertEquals(1, transactionRepository.homePeriodSummaryInvocationCount)
+        // Two reads in month view: the selected period plus the previous period it is compared
+        // against. Both run inside the single transaction asserted above.
+        assertEquals(2, transactionRepository.homePeriodSummaryInvocationCount)
         assertEquals(0, snapshot.staleAccountCount)
         assertEquals(emptyList(), snapshot.staleAccounts)
     }

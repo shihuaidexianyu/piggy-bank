@@ -57,6 +57,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 },
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
+                onSelectPeriod = viewModel::selectPeriod,
                 onOpenMonthlyBudgetEditor = viewModel::openMonthlyBudgetEditor,
                 onDismissMonthlyBudgetEditor = viewModel::dismissMonthlyBudgetEditor,
                 onMonthlyBudgetInputChange = viewModel::updateMonthlyBudgetInput,
@@ -87,7 +88,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
-                    deleteCashFlowRecordUseCase = container.deleteCashFlowRecordUseCase,
                 )
             },
         )
@@ -106,7 +106,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onLoadMore = viewModel::loadMore,
                 onRetryLoadMore = viewModel::loadMore,
                 onRetry = viewModel::retry,
-                onDeleteRecord = { record -> viewModel.deleteCashFlowRecord(record.recordId) },
                 onRecordClick = { record ->
                     when (record.kind) {
                         HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))

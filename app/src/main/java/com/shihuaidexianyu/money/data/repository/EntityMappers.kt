@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
@@ -28,6 +29,7 @@ internal fun AccountEntity.toDomain(): Account = Account(
     displayOrder = displayOrder,
     colorName = colorName,
     iconName = iconName,
+    kind = AccountKind.fromValue(kind),
 )
 
 fun Account.toEntity(): AccountEntity = AccountEntity(
@@ -42,6 +44,7 @@ fun Account.toEntity(): AccountEntity = AccountEntity(
     displayOrder = displayOrder,
     colorName = colorName,
     iconName = iconName,
+    kind = kind.value,
 )
 
 internal fun CashFlowRecordEntity.toDomain(): CashFlowRecord = CashFlowRecord(

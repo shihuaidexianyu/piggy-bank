@@ -92,6 +92,7 @@ private fun Account.toBackup() = BackupAccount(
     displayOrder = displayOrder,
     colorName = colorName,
     iconName = iconName,
+    kind = kind.value,
 )
 
 private fun CashFlowRecord.toBackup() = BackupCashFlowRecord(

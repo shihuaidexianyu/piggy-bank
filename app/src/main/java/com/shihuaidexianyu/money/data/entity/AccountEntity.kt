@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.data.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_COLOR_NAME
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 
@@ -27,5 +28,6 @@ data class AccountEntity(
     val displayOrder: Int = 0,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
+    val kind: String = AccountKind.DEFAULT.value,
 )
 

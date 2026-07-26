@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
 /**
@@ -33,7 +35,7 @@ import androidx.compose.ui.unit.dp
  * loading state echoes the page layout instead of a bare spinner.
  */
 @Composable
-fun MoneySkeleton(modifier: Modifier = Modifier) {
+fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val base = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
     val highlight = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
     val transition = rememberInfiniteTransition(label = "skeleton")
@@ -46,14 +48,19 @@ fun MoneySkeleton(modifier: Modifier = Modifier) {
         ),
         label = "skeletonProgress",
     )
+    // Sweep across the measured width, not a hardcoded pixel span — a fixed span leaves the right
+    // side of wider screens without any shimmer.
+    val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+    val bandPx = widthPx * 0.35f
+    val bandStart = -bandPx + (widthPx + bandPx) * progress
     val brush = Brush.linearGradient(
         colors = listOf(base, highlight, base),
-        start = Offset(x = -200f + 800f * progress, y = 0f),
-        end = Offset(x = 0f + 800f * progress, y = 0f),
+        start = Offset(x = bandStart, y = 0f),
+        end = Offset(x = bandStart + bandPx, y = 0f),
     )
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

@@ -713,6 +713,16 @@ class InMemoryTransactionRepository(
         )
     }
 
+    override suspend fun queryReconciliationNetByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long> = synchronized(ledgerLock) {
+        balanceUpdates
+            .filter { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+            .groupBy { it.accountId }
+            .mapValues { (_, records) -> records.map { it.delta }.ledgerSumExact() }
+    }
+
     override suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,

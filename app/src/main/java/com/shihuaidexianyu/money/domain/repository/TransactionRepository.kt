@@ -124,6 +124,16 @@ interface TransactionRepository : DatabaseTransactionRunner {
         endExclusive: Long,
     ): HomePeriodLedgerSummary
 
+    /**
+     * Net reconciliation delta per account within [startInclusive, endExclusive). Read together
+     * with account kinds so deltas on investment accounts can be reported as investment P&L
+     * instead of anonymous reconciliation noise.
+     */
+    suspend fun queryReconciliationNetByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long>
+
     // === Unified history ===
     suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,

@@ -445,6 +445,14 @@ class TransactionRepositoryImpl(
         )
     }
 
+    override suspend fun queryReconciliationNetByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long> = translateLedgerSqlOverflow {
+        ledgerAggregateDao.queryReconciliationNetByAccount(startInclusive, endExclusive)
+            .associate { it.accountId to it.net }
+    }
+
     override suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,

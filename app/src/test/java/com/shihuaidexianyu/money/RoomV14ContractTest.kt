@@ -18,13 +18,28 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
+/**
+ * WHY THIS GUARD EXISTS: the v13→14 rebuild is the riskiest migration in the app (it recreates
+ * every ledger table). These structural checks — reflection over entity classes, source scans of
+ * MoneyDatabase.kt — pin the v14 shape so a refactor can't silently drop a tombstone column,
+ * reminder anchor, or the legacy_alter_table pragma that keeps foreign keys rewritten. If one of
+ * these fires, the fix is normally a new migration (bump the version, see AGENTS.md), not editing
+ * v14 in place: v14 is already shipped on user devices.
+ */
 class RoomV14ContractTest {
     @Test
-    fun `database exposes the single 13 to 14 migration`() {
-        assertEquals(14, MONEY_DATABASE_VERSION)
+    fun `database version has a complete migration chain`() {
+        assertEquals(15, MONEY_DATABASE_VERSION)
         val migration = MONEY_DATABASE_MIGRATIONS.last()
-        assertEquals(13, migration.startVersion)
-        assertEquals(14, migration.endVersion)
+        assertEquals(14, migration.startVersion)
+        assertEquals(15, migration.endVersion)
+        // Every step from 1 to the current version must be covered — a gap would strand
+        // upgrading installations on Room's fallback (which this app does not allow).
+        val covered = MONEY_DATABASE_MIGRATIONS.map { it.startVersion to it.endVersion }
+        assertEquals(
+            (1 until MONEY_DATABASE_VERSION).map { it to it + 1 },
+            covered,
+        )
     }
 
     @Test

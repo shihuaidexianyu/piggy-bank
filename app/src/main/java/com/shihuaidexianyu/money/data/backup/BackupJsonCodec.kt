@@ -45,7 +45,12 @@ object BackupJsonCodec : BackupJsonEncoder {
         require(schemaVersion in 1..MONEY_BACKUP_SCHEMA_VERSION) {
             "不支持的备份版本：$schemaVersion"
         }
-        if (schemaVersion < MONEY_BACKUP_SCHEMA_VERSION) root.requireLegacyShape(schemaVersion)
+        // The pre-v4 formats share one shape family ("settings" object, "savingsGoals" array) that
+        // kotlinx decoding no longer sees after migration, so it is checked up front. v4+ files
+        // already have the modern shape ("portableSettings", "savingsGoal") and are fully
+        // validated by decoding itself — running the legacy check against them would reject
+        // valid backups.
+        if (schemaVersion <= 3) root.requireLegacyShape(schemaVersion)
         var current = root
         var currentVersion = schemaVersion
         while (currentVersion < MONEY_BACKUP_SCHEMA_VERSION) {
@@ -88,6 +93,14 @@ object BackupJsonCodec : BackupJsonEncoder {
             override val to = 4
 
             override fun transform(root: JsonObject): JsonObject = migrateV3ToV4(root)
+        },
+        object : BackupMigration {
+            override val from = 4
+            override val to = 5
+
+            // v5 only adds the optional account `kind` field, whose serial default (funding)
+            // covers its absence — the payload itself needs no transformation.
+            override fun transform(root: JsonObject): JsonObject = root
         },
     )
 }

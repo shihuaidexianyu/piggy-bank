@@ -4,6 +4,14 @@ import java.io.File
 import kotlin.test.assertTrue
 import org.junit.Test
 
+/**
+ * WHY THIS GUARD EXISTS: all user-facing copy must live in strings.xml/plurals.xml so it stays
+ * greppable and consistent (AGENTS.md: UI text is Chinese, code is English). A hardcoded Chinese
+ * literal in runtime Compose code silently bypasses that. This regex scan is a proxy, not a
+ * compiler: it strips `//` comments but NOT KDoc, so a Chinese example inside a doc comment will
+ * false-positive — reword the doc, don't weaken the scan. If this fires on a genuine new file
+ * category (e.g. a new naming suffix), extend the file filters rather than inlining the string.
+ */
 class RuntimeComposeStringResourceTest {
     @Test
     fun `runtime compose copy is stored in Android resources`() {
