@@ -25,8 +25,8 @@ android {
         applicationId = "com.shihuaidexianyu.money"
         minSdk = 31
         targetSdk = 36
-        versionCode = 114
-        versionName = "2.5.4"
+        versionCode = 116
+        versionName = "2.5.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -134,6 +134,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+
+
 
 
 
