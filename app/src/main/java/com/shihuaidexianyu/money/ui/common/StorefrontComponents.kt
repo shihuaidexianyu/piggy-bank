@@ -18,6 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,23 +75,22 @@ fun MoneyGradientBackground(
     }
 }
 
+/**
+ * DESIGN LANGUAGE (applies to every container in the app): separation comes from TONE, never
+ * from borders — surface-colored cards sit on the tinted background, tonal fills mark inset
+ * controls, and a soft primary ring appears only on focus or selection. Radius scale: 16dp for
+ * cards/sections, 12dp for inset fields, 10dp for buttons, small pills 8dp.
+ */
 @Composable
 fun MoneyCard(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
-                shape = shape,
-            ),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shape = shape,
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -98,6 +100,35 @@ fun MoneyCard(
             content = content,
         )
     }
+}
+
+/**
+ * Secondary action in the tonal language: a primary-tinted fill with primary content — the
+ * borderless replacement for every former OutlinedButton.
+ */
+@Composable
+fun MoneyTonalButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        contentPadding = contentPadding,
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            contentColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        ),
+        elevation = null,
+        content = content,
+    )
 }
 
 @Composable
@@ -290,17 +321,10 @@ fun MoneyListSection(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f),
-                shape = shape,
-            ),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shape = shape,
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -378,7 +402,7 @@ fun MoneyListRow(
 
 @Composable
 fun MoneySectionDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
 
 @Composable
@@ -394,16 +418,15 @@ fun MoneySelectionField(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = if (isError) {
-                    MaterialTheme.colorScheme.error
+            .then(
+                // Errors keep a hard signal; the resting state is a tonal inset, not an outline.
+                if (isError) {
+                    Modifier.border(width = 1.dp, color = MaterialTheme.colorScheme.error, shape = shape)
                 } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)
+                    Modifier
                 },
-                shape = shape,
             ),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         contentColor = MaterialTheme.colorScheme.onSurface,
         shape = shape,
     ) {

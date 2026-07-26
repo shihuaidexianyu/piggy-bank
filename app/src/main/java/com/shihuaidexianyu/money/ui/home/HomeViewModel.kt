@@ -18,7 +18,6 @@ import com.shihuaidexianyu.money.domain.usecase.BudgetPace
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
-import com.shihuaidexianyu.money.domain.usecase.NetWorthTrendPoint
 import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
 import com.shihuaidexianyu.money.domain.usecase.calculatePeriodDelta
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -89,7 +88,6 @@ data class HomeUiState(
     val dueReminders: List<DueReminderUiModel> = emptyList(),
     val recentRecords: List<HomeRecentRecordUiModel> = emptyList(),
     val savingsGoalProgress: SavingsGoalProgress? = null,
-    val netWorthTrend: List<NetWorthTrendPoint> = emptyList(),
     /** Drives the switcher, so a tap highlights immediately. */
     val selectedPeriod: DashboardPeriod = DashboardPeriod.DEFAULT,
     /**
@@ -104,8 +102,6 @@ data class HomeUiState(
     val hasInvestmentAccounts: Boolean = false,
     val investmentAssets: Long = 0L,
     val periodInvestmentPnl: Long = 0L,
-    /** Whether the overview card shows its analysis section; persisted as a device preference. */
-    val isOverviewExpanded: Boolean = true,
     val showMonthlyBudgetEditor: Boolean = false,
     val monthlyBudgetInput: String = "",
     @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
@@ -155,16 +151,6 @@ class HomeViewModel(
 
     fun retry() {
         observeDashboard()
-    }
-
-    fun toggleOverviewExpanded() {
-        val expanded = !_uiState.value.isOverviewExpanded
-        // Optimistic flip so the animation starts immediately; the DataStore round-trip
-        // re-emits the same value through the dashboard combine.
-        _uiState.update { it.copy(isOverviewExpanded = expanded) }
-        viewModelScope.launch {
-            runCatching { devicePreferencesRepository.updateHomeOverviewExpanded(expanded) }
-        }
     }
 
     fun selectPeriod(period: DashboardPeriod) {
@@ -271,7 +257,6 @@ class HomeViewModel(
                                 )
                             },
                             savingsGoalProgress = savingsGoalProgress,
-                            netWorthTrend = snapshot.netWorthTrend,
                             period = snapshot.period,
                             netWorthDelta = snapshot.netWorthDelta,
                             cashInflowDelta = snapshot.cashInflowDelta,
@@ -280,7 +265,6 @@ class HomeViewModel(
                             hasInvestmentAccounts = snapshot.hasInvestmentAccounts,
                             investmentAssets = snapshot.investmentAssets,
                             periodInvestmentPnl = snapshot.periodInvestmentPnl,
-                            isOverviewExpanded = devicePreferences.homeOverviewExpanded,
                         )
                     }
                 }

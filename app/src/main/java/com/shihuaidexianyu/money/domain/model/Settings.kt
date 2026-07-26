@@ -40,8 +40,6 @@ data class HistoryFilters(
 data class DevicePreferences(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val useDynamicColor: Boolean = true,
-    /** Whether the home overview card shows its analysis section (split, sparkline, P&L). */
-    val homeOverviewExpanded: Boolean = true,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
     val maskAmountsInApp: Boolean = false,

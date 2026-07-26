@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
@@ -740,6 +741,42 @@ class InMemoryTransactionRepository(
     override suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int {
         filters.requireValidAmountBounds()
         return buildHistoryRecords().count { it.matches(filters) }
+    }
+
+    override suspend fun queryHistoryFilterSummary(filters: HistoryRecordFilters): HistoryFilterSummary {
+        filters.requireValidAmountBounds()
+        val matched = buildHistoryRecords().filter { it.matches(filters) }
+        val cashInflow = matched
+            .filter { it.type == HistoryRecordType.CASH_FLOW && it.amount > 0L }
+            .map { it.amount }
+            .ledgerSumExact()
+        val cashOutflow = matched
+            .filter { it.type == HistoryRecordType.CASH_FLOW && it.amount < 0L }
+            .map { ledgerSubtractExact(0L, it.amount) }
+            .ledgerSumExact()
+        var netChange = 0L
+        matched.forEach { record ->
+            val effect = if (record.type == HistoryRecordType.TRANSFER) {
+                // A transfer moves money between own pockets: zero effect without an account
+                // scope, the signed leg when the filter pins one account.
+                val scope = filters.accountId
+                when {
+                    scope == null -> 0L
+                    record.relatedAccountId == scope && record.accountId == scope -> 0L
+                    record.relatedAccountId == scope -> record.amount
+                    record.accountId == scope -> ledgerSubtractExact(0L, record.amount)
+                    else -> 0L
+                }
+            } else {
+                record.amount
+            }
+            netChange = ledgerAddExact(netChange, effect)
+        }
+        return HistoryFilterSummary(
+            cashInflow = cashInflow,
+            cashOutflow = cashOutflow,
+            netChange = netChange,
+        )
     }
 
     private fun buildHistoryRecords(): List<HistoryRecord> {

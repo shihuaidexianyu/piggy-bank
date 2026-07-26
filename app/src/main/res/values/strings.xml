@@ -46,14 +46,6 @@
     <string name="home_period_week">周</string>
     <string name="home_period_month">月</string>
     <string name="home_period_year">年</string>
-    <string name="home_overview_collapse">收起概览详情</string>
-    <string name="home_overview_expand">展开概览详情</string>
-    <string name="home_trend_high">最高 %1$s</string>
-    <string name="home_trend_low">最低 %1$s</string>
-    <string name="home_trend_semantics">净资产走势，最高 %1$s，最低 %2$s，可左右滑动查看各时点数值</string>
-    <string name="home_trend_pattern_week" translatable="false">M月d日</string>
-    <string name="home_trend_pattern_month" translatable="false">M月</string>
-    <string name="home_trend_pattern_year" translatable="false">yyyy年</string>
     <string name="home_funding_assets">现金资产</string>
     <string name="home_investment_assets">投资资产</string>
     <string name="home_week_investment_pnl">本周投资损益</string>
@@ -188,6 +180,9 @@
     <string name="history_inflow">入账</string>
     <string name="history_outflow">出账</string>
     <string name="history_reconciliation_adjustment">对账调整</string>
+    <string name="history_summary_inflow">收入</string>
+    <string name="history_summary_outflow">支出</string>
+    <string name="history_summary_net_change">实际变动</string>
     <string name="history_investment_gain">投资收益</string>
     <string name="history_investment_loss">投资亏损</string>
 

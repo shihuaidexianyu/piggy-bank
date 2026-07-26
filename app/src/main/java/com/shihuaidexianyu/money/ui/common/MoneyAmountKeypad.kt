@@ -158,13 +158,7 @@ private fun AmountKeypadDisplay(
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(12.dp),
-            ),
+        modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
         shape = RoundedCornerShape(12.dp),
     ) {

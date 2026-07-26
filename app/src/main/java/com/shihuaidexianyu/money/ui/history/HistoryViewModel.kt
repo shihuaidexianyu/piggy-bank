@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
@@ -96,6 +97,8 @@ data class HistoryUiState(
     @param:StringRes val maxAmountErrorRes: Int? = null,
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
     val records: List<HistoryRecordUiModel> = emptyList(),
+    /** Totals over the WHOLE filtered set (not just loaded pages); null when no filter is active. */
+    val filterSummary: HistoryFilterSummary? = null,
     val totalRecordCount: Int = 0,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -117,7 +120,9 @@ internal data class HistoryFilterState(
     val minAmountText: String = "",
     val maxAmountText: String = "",
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
-)
+) {
+    fun hasAnyFilter(): Boolean = this != HistoryFilterState()
+}
 
 @OptIn(FlowPreview::class)
 class HistoryViewModel(
@@ -357,6 +362,7 @@ class HistoryViewModel(
             _uiState.update {
                 it.copy(
                     records = emptyList(),
+                    filterSummary = null,
                     totalRecordCount = 0,
                     isLoading = false,
                     isRefreshing = false,
@@ -383,12 +389,20 @@ class HistoryViewModel(
                 )
             }
             runCatching {
-                transactionRepository.queryHistoryRecords(
+                val page = transactionRepository.queryHistoryRecords(
                     filters = filters,
                     cursor = null,
                     limit = HISTORY_PAGE_SIZE + 1,
                 )
-            }.onSuccess { queriedRecords ->
+                // Whole-set totals: summing the visible page would misreport whenever more pages
+                // exist. Skipped when no filter is active — the row only shows for filtered views.
+                val summary = if (filterState.value.hasAnyFilter()) {
+                    transactionRepository.queryHistoryFilterSummary(filters)
+                } else {
+                    null
+                }
+                page to summary
+            }.onSuccess { (queriedRecords, summary) ->
                 if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
                 val records = queriedRecords.take(HISTORY_PAGE_SIZE)
                 val hasMore = queriedRecords.size > HISTORY_PAGE_SIZE
@@ -399,6 +413,7 @@ class HistoryViewModel(
                 _uiState.update {
                     it.copy(
                         records = records.toUiModels(),
+                        filterSummary = summary,
                         totalRecordCount = total,
                         isLoading = false,
                         isRefreshing = false,

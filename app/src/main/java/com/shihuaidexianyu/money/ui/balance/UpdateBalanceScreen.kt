@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +21,7 @@ import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -135,7 +135,7 @@ fun UpdateBalanceScreen(
                     supportingText = state.actualBalanceError,
                 )
                 if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
-                    OutlinedButton(
+                    MoneyTonalButton(
                         onClick = viewModel::resetActualBalanceToSystem,
                         enabled = !state.isSaving,
                         modifier = Modifier.fillMaxWidth(),
@@ -213,7 +213,7 @@ fun UpdateBalanceScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                OutlinedButton(
+                                MoneyTonalButton(
                                     onClick = {
                                         onStartCashFlow(
                                             CashFlowDirection.INFLOW,
@@ -226,7 +226,7 @@ fun UpdateBalanceScreen(
                                 ) {
                                     Text(stringResource(R.string.balance_record_income))
                                 }
-                                OutlinedButton(
+                                MoneyTonalButton(
                                     onClick = {
                                         onStartCashFlow(
                                             CashFlowDirection.OUTFLOW,

@@ -35,7 +35,6 @@ internal object HomeProjector {
         transferRecordCount: Int,
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
-        netWorthTrend: List<NetWorthTrendPoint> = emptyList(),
         period: DashboardPeriod = DashboardPeriod.DEFAULT,
         previousCashInflow: Long = 0L,
         previousCashOutflow: Long = 0L,
@@ -89,7 +88,6 @@ internal object HomeProjector {
             recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
-            netWorthTrend = netWorthTrend,
             period = period,
             // Measured against the period's own opening rather than the previous period's closing:
             // both numbers are already known here, so the comparison costs no extra ledger reads.

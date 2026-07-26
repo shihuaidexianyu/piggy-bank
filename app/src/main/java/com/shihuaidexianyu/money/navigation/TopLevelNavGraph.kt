@@ -58,7 +58,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
-                onToggleOverviewExpanded = viewModel::toggleOverviewExpanded,
                 onOpenMonthlyBudgetEditor = viewModel::openMonthlyBudgetEditor,
                 onDismissMonthlyBudgetEditor = viewModel::dismissMonthlyBudgetEditor,
                 onMonthlyBudgetInputChange = viewModel::updateMonthlyBudgetInput,

@@ -3,10 +3,7 @@ package com.shihuaidexianyu.money.di
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
-import com.shihuaidexianyu.money.domain.model.DashboardPeriod
-import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
-import com.shihuaidexianyu.money.domain.usecase.NetWorthTrendPoint
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
@@ -107,34 +104,6 @@ internal class UseCaseGraph(
         calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
         clockProvider = SystemClockProvider,
         zoneIdProvider = SystemZoneIdProvider,
-        netWorthTrendProvider = { accounts, nowMillis, zoneId, period ->
-            // The sparkline follows the selected period so its slope means the same thing as the
-            // headline number: daily points for a week, monthly for a month, yearly for a year.
-            val today = java.time.Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
-            val (pointCount, boundaryAt) = when (period) {
-                DashboardPeriod.WEEK -> 7 to { ago: Long -> today.minusDays(ago) }
-                DashboardPeriod.MONTH -> 5 to { ago: Long -> today.withDayOfMonth(1).minusMonths(ago) }
-                DashboardPeriod.YEAR -> 5 to { ago: Long -> today.withDayOfYear(1).minusYears(ago) }
-            }
-            val historicalPoints = (pointCount - 1L downTo 0L).map { ago ->
-                val boundary = boundaryAt(ago)
-                    .atStartOfDay(zoneId)
-                    .toInstant()
-                    .toEpochMilli()
-                NetWorthTrendPoint(
-                    timeMillis = boundary,
-                    value = calculateAccountBalancesUseCase.before(accounts, boundary)
-                        .values
-                        .ledgerSumExact(),
-                )
-            }
-            historicalPoints + NetWorthTrendPoint(
-                timeMillis = nowMillis,
-                value = calculateAccountBalancesUseCase(accounts, nowMillis)
-                    .values
-                    .ledgerSumExact(),
-            )
-        },
     )
 
     fun observeAccountDetailUseCase(accountId: Long): ObserveAccountDetailUseCase {

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -162,7 +162,7 @@ fun EditBalanceUpdateScreen(
                     label = stringResource(R.string.action_save_changes),
                 )
                 if (state.hasConflict) {
-                    OutlinedButton(
+                    MoneyTonalButton(
                         onClick = viewModel::reload,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -173,7 +173,7 @@ fun EditBalanceUpdateScreen(
         }
         item {
             MoneyCard {
-                OutlinedButton(
+                MoneyTonalButton(
                     onClick = viewModel::showDeleteConfirm,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,

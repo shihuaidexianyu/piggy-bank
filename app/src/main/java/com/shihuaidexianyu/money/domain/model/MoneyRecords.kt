@@ -90,6 +90,18 @@ data class RecurringReminder(
     val updatedAt: Long,
 )
 
+/**
+ * Totals over the FULL filtered history set (not just loaded pages). [netChange] is the real
+ * effect of the matched records: signed cash flows plus reconciliation and adjustment deltas;
+ * transfers contribute zero without an account filter (money moving between own pockets) and
+ * their signed leg when the filter scopes to one account.
+ */
+data class HistoryFilterSummary(
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val netChange: Long,
+)
+
 data class HomePeriodLedgerSummary(
     val cashInflow: Long,
     val cashOutflow: Long,

@@ -28,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -69,6 +69,8 @@ import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
@@ -260,7 +262,7 @@ fun HistoryScreen(
                         }
                     }
                     if (state.selectedRecordTypes.isNotEmpty()) {
-                        OutlinedButton(onClick = { onRecordTypesChange(emptySet()) }) {
+                        MoneyTonalButton(onClick = { onRecordTypesChange(emptySet()) }) {
                             Text(stringResource(R.string.history_show_all_types))
                         }
                     }
@@ -414,6 +416,9 @@ fun HistoryScreen(
                         onOpenSheet = { sheet = it },
                     )
                 }
+                state.filterSummary?.let { summary ->
+                    HistoryFilterSummaryRow(summary = summary, settings = state.settings)
+                }
             }
         }
         when (val content = state.toAsyncContent(historyLoadErrorMessage)) {
@@ -481,7 +486,7 @@ fun HistoryScreen(
                         title = stringResource(messageRes),
                         subtitle = stringResource(R.string.history_loaded_records_retained),
                     ) {
-                        OutlinedButton(onClick = onRetryLoadMore) {
+                        MoneyTonalButton(onClick = onRetryLoadMore) {
                             Text(stringResource(R.string.action_retry))
                         }
                     }
@@ -489,6 +494,81 @@ fun HistoryScreen(
             }
             }
         }
+    }
+}
+
+/**
+ * Whole-filtered-set totals shown while any filter is active: cash in, cash out, and the real
+ * net change those records caused (cash plus reconciliation/adjustment deltas; transfers count
+ * only when the filter scopes to a single account). Values come from an aggregate query over
+ * the FULL match set, so they stay correct however many pages are loaded.
+ */
+@Composable
+private fun HistoryFilterSummaryRow(
+    summary: HistoryFilterSummary,
+    settings: PortableSettings,
+) {
+    val moneyColors = LocalMoneyColors.current
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            HistorySummaryCell(
+                label = stringResource(R.string.history_summary_inflow),
+                value = formatInAppAmount(summary.cashInflow, settings),
+                color = moneyColors.income,
+                modifier = Modifier.weight(1f),
+            )
+            HistorySummaryCell(
+                label = stringResource(R.string.history_summary_outflow),
+                value = formatInAppAmount(summary.cashOutflow, settings),
+                color = moneyColors.expense,
+                modifier = Modifier.weight(1f),
+            )
+            HistorySummaryCell(
+                label = stringResource(R.string.history_summary_net_change),
+                value = signedFormatInAppAmount(summary.netChange, settings),
+                color = when {
+                    summary.netChange > 0L -> moneyColors.income
+                    summary.netChange < 0L -> moneyColors.expense
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistorySummaryCell(
+    label: String,
+    value: String,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            color = color,
+            maxLines = 1,
+        )
     }
 }
 

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
@@ -145,7 +145,7 @@ fun AccountsScreen(
                             icon = Icons.Rounded.AccountBalanceWallet,
                     ) {
                         if (hasClosedAccounts) {
-                            OutlinedButton(onClick = onToggleClosedVisibility) {
+                            MoneyTonalButton(onClick = onToggleClosedVisibility) {
                                 Text(
                                     stringResource(
                                         if (state.showClosed) {
@@ -157,7 +157,7 @@ fun AccountsScreen(
                                 )
                             }
                         } else {
-                            OutlinedButton(onClick = onCreateAccount) {
+                            MoneyTonalButton(onClick = onCreateAccount) {
                                 Text(stringResource(R.string.accounts_create_first))
                             }
                         }
@@ -279,7 +279,6 @@ private fun AccountCard(
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.44f)
     val balanceText = formatInAppAmount(account.balance, currencySettings)
     val showAssetShare = !account.isClosed && account.balance > 0 && positiveAssetsTotal > 0
     // Fraction is for UI layout only (a horizontal rectangle width). Compose draw APIs take Float,
@@ -313,12 +312,7 @@ private fun AccountCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(12.dp),
-            )
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .semantics(mergeDescendants = true) {
                 contentDescription = buildString {
@@ -329,7 +323,7 @@ private fun AccountCard(
                 role = Role.Button
             },
         color = cardColor,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {

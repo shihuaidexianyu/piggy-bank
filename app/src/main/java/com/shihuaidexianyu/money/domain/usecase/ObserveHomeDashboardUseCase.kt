@@ -39,8 +39,6 @@ data class HomeDashboardSnapshot(
     val recentRecords: List<HistoryRecord>,
     val hasAnyAccounts: Boolean,
     val allAccountCount: Int,
-    /** Net worth at the start of each of the last several periods plus the current value, oldest first. */
-    val netWorthTrend: List<NetWorthTrendPoint> = emptyList(),
     /** Which period the aggregates above cover. */
     val period: DashboardPeriod = DashboardPeriod.DEFAULT,
     /** Net worth now versus net worth at the start of the selected period. */
@@ -57,12 +55,6 @@ data class HomeDashboardSnapshot(
     val investmentAssets: Long = 0L,
     /** Reconciliation deltas on investment accounts within the selected period. */
     val periodInvestmentPnl: Long = 0L,
-)
-
-/** One sample of the net-worth trend: the total at [timeMillis], used for sparkline labels and scrubbing. */
-data class NetWorthTrendPoint(
-    val timeMillis: Long,
-    val value: Long,
 )
 
 data class PeriodAssetBreakdown(
@@ -97,16 +89,6 @@ class ObserveHomeDashboardUseCase(
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
     private val timeSignal: Flow<Long> = clockMinuteTickerFlow(clockProvider),
-    // Optional: computing the trend costs extra aggregate reads, so it is injected only where the
-    // home dashboard wants it. Tests omit it to keep the aggregate-read budget intact.
-    private val netWorthTrendProvider: (
-        suspend (
-            accounts: List<Account>,
-            nowMillis: Long,
-            zoneId: java.time.ZoneId,
-            period: DashboardPeriod,
-        ) -> List<NetWorthTrendPoint>
-    )? = null,
 ) {
     /**
      * @param periodSignal the period the user selected on the dashboard. Defaults to a constant
@@ -150,7 +132,6 @@ class ObserveHomeDashboardUseCase(
                 transferRecordCount = input.transferRecordCount,
                 manualAdjustmentRecordCount = input.manualAdjustmentRecordCount,
                 recentRecords = input.recentRecords,
-                netWorthTrend = input.netWorthTrend,
                 period = period,
                 previousCashInflow = input.previousCashInflow,
                 previousCashOutflow = input.previousCashOutflow,
@@ -251,25 +232,8 @@ class ObserveHomeDashboardUseCase(
                     cursor = null,
                     limit = HOME_RECENT_RECORD_LIMIT,
                 ),
-                netWorthTrend = computeNetWorthTrend(
-                    allAccounts = allAccounts,
-                    snapshotTimeMillis = snapshotTimeMillis,
-                    zoneId = zoneId,
-                    period = period,
-                ),
             )
         }
-    }
-
-    private suspend fun computeNetWorthTrend(
-        allAccounts: List<Account>,
-        snapshotTimeMillis: Long,
-        zoneId: java.time.ZoneId,
-        period: DashboardPeriod,
-    ): List<NetWorthTrendPoint> {
-        val provider = netWorthTrendProvider ?: return emptyList()
-        if (allAccounts.isEmpty()) return emptyList()
-        return provider(allAccounts, snapshotTimeMillis, zoneId, period)
     }
 }
 
@@ -300,5 +264,4 @@ private data class HomeDashboardInput(
     val transferRecordCount: Int,
     val manualAdjustmentRecordCount: Int,
     val recentRecords: List<HistoryRecord>,
-    val netWorthTrend: List<NetWorthTrendPoint>,
 )

@@ -18,3 +18,13 @@ fun formatInAppAmount(
     settings = settings,
     visibility = LocalAmountPrivacy.current.visibilityFor(AmountSurface.IN_APP),
 )
+
+/** Signed presentation for quantities where the plus sign carries meaning (P&L, net change). */
+@Composable
+fun signedFormatInAppAmount(
+    amountInMinor: Long,
+    settings: PortableSettings,
+): String {
+    val formatted = formatInAppAmount(amountInMinor, settings)
+    return if (amountInMinor > 0L) "+$formatted" else formatted
+}

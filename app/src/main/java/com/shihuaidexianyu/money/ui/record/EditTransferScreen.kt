@@ -12,7 +12,6 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -231,7 +231,7 @@ fun EditTransferScreen(
                     label = stringResource(R.string.action_save_changes),
                 )
                 if (state.hasConflict) {
-                    OutlinedButton(
+                    MoneyTonalButton(
                         onClick = viewModel::reload,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -242,7 +242,7 @@ fun EditTransferScreen(
         }
         item {
             MoneyCard {
-                OutlinedButton(
+                MoneyTonalButton(
                     onClick = viewModel::showDeleteConfirm,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,

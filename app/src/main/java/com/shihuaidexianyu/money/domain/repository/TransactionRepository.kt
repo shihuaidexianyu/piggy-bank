@@ -5,6 +5,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
@@ -142,4 +143,7 @@ interface TransactionRepository : DatabaseTransactionRunner {
     ): List<HistoryRecord>
 
     suspend fun countHistoryRecords(filters: HistoryRecordFilters): Int
+
+    /** Aggregates the whole filtered set — pagination-safe totals for the history summary row. */
+    suspend fun queryHistoryFilterSummary(filters: HistoryRecordFilters): HistoryFilterSummary
 }

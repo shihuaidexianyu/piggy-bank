@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -76,21 +76,21 @@ fun ReorderAccountsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedButton(
+                        MoneyTonalButton(
                             onClick = viewModel::sortByBalance,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         ) {
                             Text(stringResource(R.string.accounts_sort_balance))
                         }
-                        OutlinedButton(
+                        MoneyTonalButton(
                             onClick = viewModel::sortByRecentUse,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         ) {
                             Text(stringResource(R.string.accounts_sort_recent))
                         }
-                        OutlinedButton(
+                        MoneyTonalButton(
                             onClick = viewModel::sortByName,
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
@@ -119,14 +119,14 @@ fun ReorderAccountsScreen(
                             },
                             accessory = {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
+                                    MoneyTonalButton(
                                         onClick = { viewModel.moveAccountUp(account.id) },
                                         enabled = index > 0,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                     ) {
                                         Text(stringResource(R.string.action_move_up))
                                     }
-                                    OutlinedButton(
+                                    MoneyTonalButton(
                                         onClick = { viewModel.moveAccountDown(account.id) },
                                         enabled = index < state.accounts.lastIndex,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),

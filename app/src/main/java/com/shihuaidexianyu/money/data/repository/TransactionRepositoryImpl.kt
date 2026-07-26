@@ -17,6 +17,7 @@ import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.HomePeriodLedgerSummary
@@ -497,6 +498,32 @@ class TransactionRepositoryImpl(
             maxAmount = filters.maxAmount,
             amountDirection = filters.amountDirection.name,
         )
+    }
+
+    override suspend fun queryHistoryFilterSummary(filters: HistoryRecordFilters): HistoryFilterSummary {
+        filters.requireValidAmountBounds()
+        return translateLedgerSqlOverflow {
+            val row = historyRecordDao.summarize(
+                keyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.keyword.trim())),
+                excludeKeyword = escapeHistoryLikeLiteral(normalizeHistorySearchText(filters.excludeKeyword.trim())),
+                allTypes = filters.recordTypes.isEmpty(),
+                includeCashFlow = HistoryRecordType.CASH_FLOW in filters.recordTypes,
+                includeTransfer = HistoryRecordType.TRANSFER in filters.recordTypes,
+                includeBalanceUpdate = HistoryRecordType.BALANCE_UPDATE in filters.recordTypes,
+                includeBalanceAdjustment = HistoryRecordType.BALANCE_ADJUSTMENT in filters.recordTypes,
+                accountId = filters.accountId,
+                dateStartAt = filters.dateStartAt,
+                dateEndAt = filters.dateEndAt,
+                minAmount = filters.minAmount,
+                maxAmount = filters.maxAmount,
+                amountDirection = filters.amountDirection.name,
+            )
+            HistoryFilterSummary(
+                cashInflow = row.cashInflow,
+                cashOutflow = row.cashOutflow,
+                netChange = row.netChange,
+            )
+        }
     }
 
     private fun Int.changed(): Boolean {

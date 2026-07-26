@@ -168,4 +168,47 @@ interface HistoryRecordDao {
         maxAmount: Long?,
         amountDirection: String,
     ): Int
+
+    @Query(
+        """
+        SELECT
+            COALESCE(SUM(CASE WHEN type = 'CASH_FLOW' AND amount > 0 THEN amount ELSE 0 END), 0) AS cashInflow,
+            COALESCE(SUM(CASE WHEN type = 'CASH_FLOW' AND amount < 0 THEN -amount ELSE 0 END), 0) AS cashOutflow,
+            COALESCE(SUM(
+                CASE WHEN type = 'TRANSFER' THEN
+                    CASE
+                        WHEN :accountId IS NULL THEN 0
+                        WHEN relatedAccountId = :accountId AND accountId = :accountId THEN 0
+                        WHEN relatedAccountId = :accountId THEN amount
+                        WHEN accountId = :accountId THEN -amount
+                        ELSE 0
+                    END
+                ELSE amount END
+            ), 0) AS netChange
+        FROM ($HISTORY_UNION_FRAGMENT)
+        WHERE $HISTORY_FILTER_FRAGMENT
+        """,
+    )
+    suspend fun summarize(
+        keyword: String,
+        excludeKeyword: String,
+        allTypes: Boolean,
+        includeCashFlow: Boolean,
+        includeTransfer: Boolean,
+        includeBalanceUpdate: Boolean,
+        includeBalanceAdjustment: Boolean,
+        accountId: Long?,
+        dateStartAt: Long?,
+        dateEndAt: Long?,
+        minAmount: Long?,
+        maxAmount: Long?,
+        amountDirection: String,
+    ): HistoryFilterSummaryProjection
 }
+
+/** Column order must match the SELECT — Room maps by position for data-class results. */
+data class HistoryFilterSummaryProjection(
+    val cashInflow: Long,
+    val cashOutflow: Long,
+    val netChange: Long,
+)
