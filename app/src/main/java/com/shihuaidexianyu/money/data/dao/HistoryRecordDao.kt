@@ -19,7 +19,7 @@ data class HistoryRecordRow(
  * Shared SQL fragment: `UNION ALL` of the four ledger tables projected into the unified history
  * shape. Both [HistoryRecordDao.queryPage] and [HistoryRecordDao.count] include this fragment so
  * the 4-table projection lives in exactly one place. Keep the column order in sync with
- * [HistoryRecordRow] — Room maps by position, not name, when the @Query result type is a data class.
+ * [HistoryRecordRow] — Room maps result columns BY NAME to the data class properties — keep them in sync.
  *
  * Every ledger table retains soft-deleted rows, so each branch filters on `deletedAt IS NULL`.
  */
@@ -206,7 +206,7 @@ interface HistoryRecordDao {
     ): HistoryFilterSummaryProjection
 }
 
-/** Column order must match the SELECT — Room maps by position for data-class results. */
+/** Property names must match the SELECT aliases — Room maps data-class results by column name. */
 data class HistoryFilterSummaryProjection(
     val cashInflow: Long,
     val cashOutflow: Long,

@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.time.ClockProvider
@@ -45,7 +46,7 @@ class UpdateBalanceUpdateRecordUseCase(
             val updated = existing.copy(
                 actualBalance = actualBalance,
                 systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
-                delta = actualBalance - context.systemBalanceBeforeUpdate,
+                delta = ledgerSubtractExact(actualBalance, context.systemBalanceBeforeUpdate),
                 occurredAt = occurredAt,
                 updatedAt = nextMutationTimestamp(now, existing.updatedAt),
             )

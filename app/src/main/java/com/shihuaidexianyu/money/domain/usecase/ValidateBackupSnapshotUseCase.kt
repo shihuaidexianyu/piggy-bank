@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_ICON_NAMES
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_COLOR_NAMES
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
@@ -100,6 +101,9 @@ class ValidateBackupSnapshotUseCase(
             }
             requireKnown(account.iconName, ACCOUNT_ICON_NAMES, "accounts[${account.id}].iconName")
             requireKnown(account.colorName, ACCOUNT_COLOR_NAMES, "accounts[${account.id}].colorName")
+            // Unvalidated kind would pass preview, get canonicalized on persist, and then fail
+            // the re-read hash check with a misleading internal-consistency error.
+            requireKnown(account.kind, AccountKind.entries.map { it.value }, "accounts[${account.id}].kind")
             account.id
         }
 

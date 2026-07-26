@@ -193,6 +193,9 @@ class BatchReconcileViewModel(
             }
 
             if (failedIds.isEmpty()) {
+                // Re-arm before the terminal: if the screen survives the ack, save must not
+                // stay a silent no-op.
+                saveInFlight = false
                 setPendingTerminal(
                     pendingFormTerminal(
                         kind = FormTerminalKind.SAVED,
@@ -265,6 +268,12 @@ class BatchReconcileViewModel(
             )
         }
         val balances = calculateAccountBalancesUseCase(staleAccounts)
+        // Rebuilds are triggered by every ledger change — including the partial-save's own
+        // successful writes. Carry the failure markers over, or the rebuild that follows a
+        // partial failure erases them and the user sees "部分账户保存失败" with nothing marked.
+        val failedIds = _uiState.value.accounts
+            .filter(BatchReconcileAccountUiModel::isFailed)
+            .mapTo(mutableSetOf(), BatchReconcileAccountUiModel::accountId)
         staleAccounts.map { account ->
             BatchReconcileAccountUiModel(
                 accountId = account.id,
@@ -272,6 +281,7 @@ class BatchReconcileViewModel(
                 systemBalance = balances[account.id] ?: account.initialBalance,
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                 isSelected = !draft.isDirty || account.id in draft.selectedAccountIds,
+                isFailed = account.id in failedIds,
             )
         }
     }

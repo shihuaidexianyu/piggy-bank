@@ -239,10 +239,9 @@ private fun AmountKeypadButton(
         modifier = modifier
             .height(58.dp)
             .clip(shape)
-            .clickable {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
-            },
+            // Haptics fire in the caller (VirtualKey per key, Confirm on done) — a second pulse
+            // here made every press buzz twice.
+            .clickable(onClick = onClick),
         color = containerColor,
         border = BorderStroke(1.dp, borderColor),
         shape = shape,

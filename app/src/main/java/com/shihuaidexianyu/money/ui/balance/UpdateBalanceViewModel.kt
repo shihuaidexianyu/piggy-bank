@@ -65,7 +65,8 @@ class UpdateBalanceViewModel(
     private val restoredDraft = savedStateHandle.get<BalanceFormDraft>(DRAFT_KEY)
     private val restoredTerminal = savedStateHandle.get<PendingFormTerminal>(PENDING_FORM_TERMINAL_KEY)
     private val restoredResult = savedStateHandle.get<UpdateBalanceResult>(LATEST_RESULT_KEY)
-    private val operationId = savedOperationId(
+    private val operationIdFactory: LedgerOperationIdFactory = operationIdFactory
+    private var operationId = savedOperationId(
         existing = restoredDraft?.operationId ?: savedStateHandle[OPERATION_ID_KEY],
         factory = operationIdFactory,
     ).also { savedStateHandle[OPERATION_ID_KEY] = it }
@@ -219,16 +220,28 @@ class UpdateBalanceViewModel(
                     operationId = operationId,
                 )
             }.onSuccess { result ->
+                // Re-arm the form: without these, a user who backs out of the result screen
+                // finds a save button that silently does nothing (saveInFlight stays true), and
+                // even if it fired, the reused operationId would replay the ORIGINAL result and
+                // ignore any edits.
+                saveInFlight = false
+                operationId = operationIdFactory.create().also { savedStateHandle[OPERATION_ID_KEY] = it }
                 savedStateHandle[LATEST_RESULT_KEY] = result
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    latestResult = result,
-                    actualBalanceText = AmountFormatter.formatPlain(result.actualBalance),
-                    systemBalanceBeforeUpdate = result.actualBalance,
-                    actualBalancePreview = result.actualBalance,
-                    deltaPreview = 0,
-                    actualBalanceEdited = false,
-                )
+                // updateDraft (not a bare state write) so the persisted draft carries the fresh
+                // operationId — otherwise a process death would restore the consumed id and the
+                // next save would replay the OLD result, ignoring edits.
+                updateDraft {
+                    copy(
+                        isSaving = false,
+                        isDirty = false,
+                        latestResult = result,
+                        actualBalanceText = AmountFormatter.formatPlain(result.actualBalance),
+                        systemBalanceBeforeUpdate = result.actualBalance,
+                        actualBalancePreview = result.actualBalance,
+                        deltaPreview = 0,
+                        actualBalanceEdited = false,
+                    )
+                }
                 setPendingTerminal(
                     pendingFormTerminal(
                         kind = FormTerminalKind.SAVED,
@@ -299,12 +312,16 @@ class UpdateBalanceViewModel(
                 return@launch
             }
 
-            val actualBalanceText = if (resetActualBalanceToSystem) {
+            // A reset requested before the balance query must NOT overwrite an amount the user
+            // typed while the query was running — that would silently discard their input and
+            // let them save a zero-delta reconciliation they never intended.
+            val applyReset = resetActualBalanceToSystem && !current.actualBalanceEdited
+            val actualBalanceText = if (applyReset) {
                 AmountFormatter.formatPlain(systemBalance)
             } else {
                 current.actualBalanceText
             }
-            val actualBalancePreview = if (resetActualBalanceToSystem) {
+            val actualBalancePreview = if (applyReset) {
                 systemBalance
             } else {
                 AmountInputParser.parseSignedToMinor(actualBalanceText)
@@ -315,7 +332,7 @@ class UpdateBalanceViewModel(
                 systemBalanceBeforeUpdate = systemBalance,
                 actualBalancePreview = actualBalancePreview,
                 deltaPreview = actualBalancePreview?.minus(systemBalance),
-                actualBalanceEdited = if (resetActualBalanceToSystem) false else current.actualBalanceEdited,
+                actualBalanceEdited = if (applyReset) false else current.actualBalanceEdited,
             )
         }
     }

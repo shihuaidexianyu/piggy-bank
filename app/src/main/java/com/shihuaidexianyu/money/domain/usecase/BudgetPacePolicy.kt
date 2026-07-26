@@ -42,7 +42,9 @@ fun calculateBudgetPace(
     val dailyAverage = BigDecimal.valueOf(spent)
         .divide(BigDecimal.valueOf(elapsed.toLong()), 0, RoundingMode.HALF_UP)
     val projectedTotal = dailyAverage.multiply(BigDecimal.valueOf(daysTotal.toLong()))
-    val projectedTotalLong = projectedTotal.toClampedLong()
+    // A projection can never be below what is already spent — per-day rounding otherwise lets
+    // the card claim "within budget at this pace" on a budget that is already exceeded.
+    val projectedTotalLong = projectedTotal.toClampedLong().coerceAtLeast(spent)
     val overspend = (projectedTotalLong - targetAmount).takeIf { it > 0L }
     val remainingBudget = targetAmount - spent
     val safeDailySpend = if (remainingDays > 0 && remainingBudget > 0L) {

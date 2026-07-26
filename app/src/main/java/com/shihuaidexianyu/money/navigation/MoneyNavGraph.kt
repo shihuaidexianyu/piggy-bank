@@ -253,10 +253,7 @@ fun MoneyNavGraph(
         val request = appLaunchRequest ?: return@LaunchedEffect
         var showNotificationStateChanged = false
         when (val requested = request.destination) {
-            AppLaunchDestination.Home -> navController.navigate(MoneyDestination.Home.route) {
-                launchSingleTop = true
-                popUpTo(navController.graph.startDestinationId)
-            }
+            AppLaunchDestination.Home -> navController.navigateToTopLevelTab(MoneyDestination.Home)
             AppLaunchDestination.BatchReconcile ->
                 navController.navigate(MoneyDestination.BatchReconcileRoute)
             AppLaunchDestination.Transfer ->

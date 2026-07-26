@@ -96,6 +96,14 @@ class InMemoryTransactionRepository(
         )
     }
 
+    /**
+     * KNOWN LIMITATION (test infrastructure only): the whole-ledger snapshot is restored on ANY
+     * throwable, including cancellation. A mutator committing on another coroutine DURING this
+     * transaction (mutators take only ledgerLock, not transactionMutex) will have its write
+     * rolled back if the block subsequently fails or is cancelled — e.g. a mapLatest-cancelled
+     * dashboard read. Room's implementation does not behave this way; avoid concurrent
+     * mutate-during-read patterns in tests that assert on ledger contents.
+     */
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = transactionMutex.withLock {
         transactionInvocationCount++
         val snapshot = synchronized(ledgerLock) { snapshot() }
@@ -779,7 +787,7 @@ class InMemoryTransactionRepository(
         )
     }
 
-    private fun buildHistoryRecords(): List<HistoryRecord> {
+    private fun buildHistoryRecords(): List<HistoryRecord> = synchronized(ledgerLock) {
         val cashRecords = cashFlowRecords.filter { it.deletedAt == null }.map { record ->
             val title = record.note.ifBlank { "未填写备注" }
             HistoryRecord(
@@ -842,7 +850,7 @@ class InMemoryTransactionRepository(
                 keywordSource = listOfNotNull(title, "余额校正", accountNameLookup(record.accountId)).joinToString(" "),
             )
         }
-        return (cashRecords + transferHistoryRecords + updateHistoryRecords + adjustmentHistoryRecords)
+        (cashRecords + transferHistoryRecords + updateHistoryRecords + adjustmentHistoryRecords)
             .sortedWith(
                 compareByDescending<HistoryRecord> { it.occurredAt }
                     .thenByDescending { it.sourceOrder }

@@ -61,6 +61,7 @@ private sealed interface SettingsDialog {
 fun SettingsScreen(
     state: SettingsUiState,
     effectFlow: SharedFlow<SettingsEffect>,
+    onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onUseDynamicColorChange: (Boolean) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
@@ -251,6 +252,9 @@ fun SettingsScreen(
         title = stringResource(R.string.settings_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
+        // Settings is a pushed sub-page (not a bottom-bar tab) — without this it was the only
+        // sub-page with no visible way back.
+        onBack = onBack,
     ) {
         item { MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[0].titleRes)) }
         item {

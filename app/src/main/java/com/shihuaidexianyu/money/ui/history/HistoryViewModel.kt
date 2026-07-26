@@ -213,6 +213,11 @@ class HistoryViewModel(
 
     fun loadMore() {
         if (_uiState.value.isLoading || _uiState.value.isLoadingMore || !_uiState.value.hasMoreRecords) return
+        // A pending reload (including its debounce window) has already bumped loadGeneration:
+        // a loadMore started now would capture the NEW generation with the OLD cursor and
+        // records, pass the staleness guard, and append across filter changes — worst case
+        // duplicate record ids, which crashes the LazyColumn on duplicate keys.
+        if (reloadJob?.isActive == true) return
         val cursor = nextCursor ?: return
         val filters = filterState.value.toHistoryRecordFiltersOrNull() ?: return
         val generation = loadGeneration
@@ -388,20 +393,26 @@ class HistoryViewModel(
                     loadMoreErrorMessageRes = null,
                 )
             }
+            val summaryNeeded = filterState.value.hasAnyFilter()
             runCatching {
-                val page = transactionRepository.queryHistoryRecords(
-                    filters = filters,
-                    cursor = null,
-                    limit = HISTORY_PAGE_SIZE + 1,
-                )
-                // Whole-set totals: summing the visible page would misreport whenever more pages
-                // exist. Skipped when no filter is active — the row only shows for filtered views.
-                val summary = if (filterState.value.hasAnyFilter()) {
-                    transactionRepository.queryHistoryFilterSummary(filters)
-                } else {
-                    null
+                // One transaction for page + totals: two separate reads could straddle a ledger
+                // write and show a summary that contradicts the visible rows.
+                transactionRepository.runInTransaction {
+                    val page = transactionRepository.queryHistoryRecords(
+                        filters = filters,
+                        cursor = null,
+                        limit = HISTORY_PAGE_SIZE + 1,
+                    )
+                    // Whole-set totals: summing the visible page would misreport whenever more
+                    // pages exist. Skipped when no filter is active — the row only shows for
+                    // filtered views.
+                    val summary = if (summaryNeeded) {
+                        transactionRepository.queryHistoryFilterSummary(filters)
+                    } else {
+                        null
+                    }
+                    page to summary
                 }
-                page to summary
             }.onSuccess { (queriedRecords, summary) ->
                 if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
                 val records = queriedRecords.take(HISTORY_PAGE_SIZE)

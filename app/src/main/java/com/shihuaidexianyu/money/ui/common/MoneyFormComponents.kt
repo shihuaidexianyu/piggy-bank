@@ -341,6 +341,7 @@ fun MoneyAmountField(
     allowSigned: Boolean = false,
     isError: Boolean = false,
     supportingText: String? = null,
+    enabled: Boolean = true,
 ) {
     val resolvedLabel = label ?: stringResource(R.string.field_amount)
     var showKeypad by remember { mutableStateOf(false) }
@@ -378,6 +379,9 @@ fun MoneyAmountField(
             modifier = Modifier
                 .matchParentSize()
                 .clickable(
+                    // Gate on enabled so a form mid-save can't reopen the keypad and have the
+                    // edit silently overwritten by the save's success state.
+                    enabled = enabled,
                     role = Role.Button,
                     onClick = {
                         keyboardController?.hide()

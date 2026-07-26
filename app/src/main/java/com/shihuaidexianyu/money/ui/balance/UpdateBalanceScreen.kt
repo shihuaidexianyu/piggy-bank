@@ -40,6 +40,9 @@ import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.domain.usecase.calculatePeriodDelta
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 
 @Composable
@@ -133,6 +136,7 @@ fun UpdateBalanceScreen(
                     allowSigned = true,
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
+                    enabled = !state.isSaving,
                 )
                 if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
                     MoneyTonalButton(
@@ -277,14 +281,15 @@ private fun investmentDeltaText(delta: Long, systemBalance: Long): String {
 @Composable
 private fun lastCheckedText(lastBalanceUpdateAt: Long?): String {
     if (lastBalanceUpdateAt == null) return stringResource(R.string.balance_never_checked)
-    val days = ((System.currentTimeMillis() - lastBalanceUpdateAt) / DAY_MILLIS)
-        .coerceAtLeast(0L)
-        .toInt()
+    // Calendar days, not rolling 24h windows — a check done yesterday evening must read as
+    // yesterday this morning, not as "checked today".
+    val zone = ZoneId.systemDefault()
+    val lastDate = Instant.ofEpochMilli(lastBalanceUpdateAt).atZone(zone).toLocalDate()
+    val today = Instant.ofEpochMilli(System.currentTimeMillis()).atZone(zone).toLocalDate()
+    val days = ChronoUnit.DAYS.between(lastDate, today).coerceAtLeast(0L).toInt()
     return if (days == 0) {
         stringResource(R.string.balance_checked_today)
     } else {
         stringResource(R.string.balance_last_checked_days_format, days)
     }
 }
-
-private const val DAY_MILLIS = 86_400_000L

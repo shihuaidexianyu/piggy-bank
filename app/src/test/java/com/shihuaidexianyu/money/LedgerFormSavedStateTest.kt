@@ -305,7 +305,10 @@ class LedgerFormSavedStateTest {
         advanceUntilIdle()
 
         assertEquals(listOf("form-op-1", "form-op-1"), repository.balanceCalls.map { it.operationId })
-        assertEquals(1, ids.createCount)
+        // Double click and failure retry reuse the saved id (both calls above), but a SUCCESSFUL
+        // save consumes it: the form re-arms with a fresh id so a later, edited save cannot
+        // replay the already-persisted result.
+        assertEquals(2, ids.createCount)
         assertEquals(1, delegate.queryAllBalanceUpdateRecords().size)
         val terminal = requireNotNull(recreated.uiState.value.pendingTerminal)
         assertEquals(FormTerminalKind.SAVED, terminal.kind)

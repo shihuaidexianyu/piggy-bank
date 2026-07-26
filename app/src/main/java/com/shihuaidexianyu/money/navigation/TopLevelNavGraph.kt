@@ -26,11 +26,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     container: MoneyAppContainer,
     onBiometricLockChange: (Boolean) -> Unit,
 ) {
-    composable(MoneyDestination.Home.route) {
-        val entry = navController.currentBackStackEntry
-        val batchReconcileMessage = entry
-            ?.savedStateHandle
-            ?.get<String>("batch_reconcile_message")
+    composable(MoneyDestination.Home.route) { homeEntry ->
+        // Read from THIS destination's entry — navController.currentBackStackEntry points at
+        // whichever screen is on top during transitions/recompositions, so reading (and worse,
+        // clearing) the message there could hit the wrong SavedStateHandle.
+        val batchReconcileMessage = homeEntry
+            .savedStateHandle
+            .get<String>("batch_reconcile_message")
         val viewModel = viewModel<HomeViewModel>(
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HomeViewModel(
@@ -47,11 +49,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 state = state,
                 snackbarMessage = batchReconcileMessage,
                 onSnackbarMessageShown = {
-                    entry?.savedStateHandle?.remove<String>("batch_reconcile_message")
+                    homeEntry.savedStateHandle.remove<String>("batch_reconcile_message")
                 },
                 onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
                 onAllRemindersClick = { navController.navigate(MoneyDestination.ReminderListRoute) },
-                onOpenSettings = { navController.navigate(MoneyDestination.Settings.route) },
+                onOpenSettings = {
+                    navController.navigate(MoneyDestination.Settings.route) { launchSingleTop = true }
+                },
                 onManageAccounts = {
                     navController.navigateToTopLevelTab(MoneyDestination.Accounts)
                 },
@@ -159,6 +163,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         SettingsScreen(
             state = state,
             effectFlow = viewModel.effectFlow,
+            onBack = { navController.popBackStack() },
             onThemeModeChange = viewModel::updateThemeMode,
             onUseDynamicColorChange = viewModel::updateUseDynamicColor,
             onAmountColorModeChange = viewModel::updateAmountColorMode,

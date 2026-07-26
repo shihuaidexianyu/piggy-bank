@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.domain.usecase
 
+import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
@@ -66,7 +67,7 @@ class UpdateBalanceUseCase(
                 accountId = accountId,
                 actualBalance = actualBalance,
                 systemBalanceBeforeUpdate = context.systemBalanceBeforeUpdate,
-                delta = actualBalance - context.systemBalanceBeforeUpdate,
+                delta = ledgerSubtractExact(actualBalance, context.systemBalanceBeforeUpdate),
                 occurredAt = occurredAt,
                 createdAt = now,
                 updatedAt = now,
