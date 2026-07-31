@@ -416,9 +416,9 @@ fun MoneySaveButton(
         },
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 50.dp),
+            .heightIn(min = 54.dp),
         enabled = enabled && !isSaving,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

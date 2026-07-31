@@ -9,6 +9,9 @@ import com.shihuaidexianyu.money.util.AmountFormatter
 
 val LocalAmountPrivacy = compositionLocalOf { AmountPrivacy.Visible }
 
+/** User-configured currency symbol ("¥" by default), provided app-wide from PortableSettings. */
+val LocalCurrencySymbol = compositionLocalOf { "¥" }
+
 @Composable
 fun formatInAppAmount(
     amountInMinor: Long,

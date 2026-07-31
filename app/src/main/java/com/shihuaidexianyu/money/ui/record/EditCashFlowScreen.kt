@@ -1,9 +1,11 @@
 package com.shihuaidexianyu.money.ui.record
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -13,8 +15,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,18 +32,19 @@ import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyAmountHeroField
-import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
-import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneyInsetDivider
+import com.shihuaidexianyu.money.ui.common.MoneyInsetGroup
+import com.shihuaidexianyu.money.ui.common.MoneyInsetRow
+import com.shihuaidexianyu.money.ui.common.MoneyInsetTextRow
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
-import com.shihuaidexianyu.money.ui.common.MoneySelectionField
-import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun EditCashFlowScreen(
@@ -134,74 +139,98 @@ fun EditCashFlowScreen(
             return@MoneyFormPage
         }
         item {
-            MoneyCard {
-                Text(
-                    text = stringResource(R.string.cash_flow_edit_balance_warning),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                MoneyAmountHeroField(
-                    value = state.amountText,
-                    label = stringResource(R.string.field_amount),
-                    accent = if (state.direction == CashFlowDirection.INFLOW) {
-                        moneyColors.income
-                    } else {
-                        moneyColors.expense
-                    },
-                    onValueChange = viewModel::updateAmount,
-                    isError = state.amountError != null,
-                    supportingText = state.amountError,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-                MoneySelectionField(
+            Text(
+                text = stringResource(R.string.cash_flow_edit_balance_warning),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            MoneyAmountHeroField(
+                value = state.amountText,
+                label = stringResource(R.string.field_amount),
+                accent = if (state.direction == CashFlowDirection.INFLOW) {
+                    moneyColors.income
+                } else {
+                    moneyColors.expense
+                },
+                onValueChange = viewModel::updateAmount,
+                isError = state.amountError != null,
+                supportingText = state.amountError,
+            )
+        }
+        item {
+            MoneyInsetGroup {
+                MoneyInsetRow(
                     label = stringResource(R.string.account_single),
                     value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
-                    modifier = Modifier.clickable { showAccountPicker = true },
+                    onClick = { showAccountPicker = true },
+                    showChevron = true,
                     isError = state.accountError != null,
                     supportingText = state.accountError,
+                )
+                MoneyInsetDivider()
+                MoneyInsetTextRow(
+                    label = stringResource(R.string.field_optional_note),
+                    value = state.note,
+                    onValueChange = viewModel::updateNote,
+                    isError = state.noteError != null,
+                    supportingText = state.noteError,
+                )
+                MoneyInsetDivider()
+                MoneyInsetRow(
+                    label = stringResource(R.string.field_date),
+                    value = DateTimeTextFormatter.formatDateOnly(state.occurredAtMillis),
+                    onClick = { dateTimeField = MoneyDateTimePickerField.DATE },
+                    isError = state.occurredAtError != null,
+                )
+                MoneyInsetDivider()
+                MoneyInsetRow(
+                    label = stringResource(R.string.field_time),
+                    value = DateTimeTextFormatter.formatTimeOnly(state.occurredAtMillis),
+                    onClick = { dateTimeField = MoneyDateTimePickerField.TIME },
+                    isError = state.occurredAtError != null,
+                    supportingText = state.occurredAtError,
                 )
             }
         }
         item {
-            MoneyCard {
-                MoneySingleLineField(
-                    value = state.note,
-                    onValueChange = viewModel::updateNote,
-                    label = stringResource(R.string.field_optional_note),
-                    isError = state.noteError != null,
-                    supportingText = state.noteError,
-                )
-                MoneyDateTimeFields(
-                    valueMillis = state.occurredAtMillis,
-                    onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
-                    onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = stringResource(R.string.ledger_edit_time_description),
-                    errorText = state.occurredAtError,
-                )
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = stringResource(R.string.action_save_changes),
-                )
-                if (state.hasConflict) {
-                    MoneyTonalButton(
-                        onClick = viewModel::reload,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.ledger_reload_latest))
-                    }
+            MoneySaveButton(
+                onClick = viewModel::save,
+                isSaving = state.isSaving,
+                enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
+                label = stringResource(R.string.action_save_changes),
+            )
+        }
+        if (state.hasConflict) {
+            item {
+                MoneyTonalButton(
+                    onClick = viewModel::reload,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.ledger_reload_latest))
                 }
             }
         }
         item {
-            MoneyCard {
-                MoneyTonalButton(
-                    onClick = viewModel::showDeleteConfirm,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
+            MoneyInsetGroup {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clickable(
+                            enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
+                            role = Role.Button,
+                            onClick = viewModel::showDeleteConfirm,
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(stringResource(R.string.ledger_delete_title))
+                    Text(
+                        text = stringResource(R.string.ledger_delete_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
         }

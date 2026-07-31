@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
+import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
 
 private val BrandLightColorScheme = lightColorScheme(
     primary = BrandTealPrimary,
@@ -32,6 +33,10 @@ private val BrandDarkColorScheme = darkColorScheme(
     background = Color.Black,
     surface = Color.Black,
     surfaceVariant = Night700,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onSurfaceVariant = Color(0xFFB0B0B0),
+    outline = Color(0xFF4A4A4A),
     outlineVariant = Night600,
 )
 
@@ -40,6 +45,7 @@ fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
     useDynamicColor: Boolean = true,
+    currencySymbol: String = "¥",
     content: @Composable () -> Unit,
 ) {
     val darkTheme = when (themeMode) {
@@ -59,7 +65,10 @@ fun MoneyTheme(
         amountColorMode = amountColorMode,
     )
 
-    CompositionLocalProvider(LocalMoneyColors provides moneyColors) {
+    CompositionLocalProvider(
+        LocalMoneyColors provides moneyColors,
+        LocalCurrencySymbol provides currencySymbol,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MoneyTypography,

@@ -1,7 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +51,9 @@ import com.shihuaidexianyu.money.util.parseAmountKeypadPreview
 private data class AmountKeypadButtonSpec(
     val label: String? = null,
     val key: AmountKey? = null,
-    val isPrimary: Boolean = false,
+    val isOperator: Boolean = false,
+    val isClear: Boolean = false,
+    val weight: Float = 1f,
     @param:StringRes val labelRes: Int? = null,
 )
 
@@ -61,19 +68,19 @@ private val amountKeypadRows = listOf(
         AmountKeypadButtonSpec("4", AmountKey.Digit(4)),
         AmountKeypadButtonSpec("5", AmountKey.Digit(5)),
         AmountKeypadButtonSpec("6", AmountKey.Digit(6)),
-        AmountKeypadButtonSpec("+", AmountKey.Plus),
+        AmountKeypadButtonSpec("+", AmountKey.Plus, isOperator = true),
     ),
     listOf(
         AmountKeypadButtonSpec("1", AmountKey.Digit(1)),
         AmountKeypadButtonSpec("2", AmountKey.Digit(2)),
         AmountKeypadButtonSpec("3", AmountKey.Digit(3)),
-        AmountKeypadButtonSpec("-", AmountKey.Minus),
+        AmountKeypadButtonSpec("-", AmountKey.Minus, isOperator = true),
     ),
     listOf(
-        AmountKeypadButtonSpec("C", AmountKey.Clear),
-        AmountKeypadButtonSpec("0", AmountKey.Digit(0)),
+        AmountKeypadButtonSpec("C", AmountKey.Clear, isClear = true),
+        // iOS-style wide zero: a capsule spanning two grid columns, left-aligned label.
+        AmountKeypadButtonSpec("0", AmountKey.Digit(0), weight = 2f),
         AmountKeypadButtonSpec(".", AmountKey.Decimal),
-        AmountKeypadButtonSpec(labelRes = R.string.action_done, isPrimary = true),
     ),
 )
 
@@ -86,6 +93,7 @@ internal fun MoneyAmountKeypadSheet(
     onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val currencySymbol = LocalCurrencySymbol.current
     val previewAmount = remember(value, allowSigned) {
         parseAmountKeypadPreview(value, allowSigned)
     }
@@ -99,41 +107,49 @@ internal fun MoneyAmountKeypadSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 30.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             AmountKeypadDisplay(
                 label = label,
                 value = value,
                 previewAmount = previewAmount,
+                currencySymbol = currencySymbol,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 amountKeypadRows.forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         row.forEach { spec ->
                             AmountKeypadButton(
                                 spec = spec,
                                 onClick = {
-                                    val key = spec.key
-                                    if (key == null) {
-                                        // The done key commits the amount — a firmer confirm tick.
-                                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                                        onDismiss()
-                                    } else {
-                                        // Custom keypads feel dead without the per-key tick a
-                                        // physical or IME keyboard provides.
-                                        haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        onValueChange(appendAmountKey(value, key, allowSigned))
-                                    }
+                                    haptics.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                                    onValueChange(appendAmountKey(value, spec.key!!, allowSigned))
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(spec.weight),
                             )
                         }
                     }
                 }
+            }
+            Button(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    onDismiss()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.action_done),
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
         }
     }
@@ -144,54 +160,51 @@ private fun AmountKeypadDisplay(
     label: String,
     value: String,
     previewAmount: Long?,
+    currencySymbol: String,
 ) {
     val expressionScrollState = rememberScrollState()
     val hasPreview = previewAmount != null && value.isNotBlank()
     val previewText = if (hasPreview) {
-        "= ${AmountFormatter.formatPlain(requireNotNull(previewAmount))}"
+        "= $currencySymbol${AmountFormatter.formatPlain(requireNotNull(previewAmount))}"
     } else {
-        " "
+        ""
     }
 
     LaunchedEffect(value, expressionScrollState.maxValue) {
         expressionScrollState.scrollTo(expressionScrollState.maxValue)
     }
 
-    Surface(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f),
-        shape = RoundedCornerShape(12.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.CenterEnd,
         ) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End,
+                text = value.ifBlank { "0" },
+                modifier = Modifier
+                    .horizontalScroll(expressionScrollState)
+                    .clearAndSetSemantics {},
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
             )
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Text(
-                    text = value.ifBlank { "0" },
-                    modifier = Modifier.horizontalScroll(expressionScrollState),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                )
-            }
+        }
+        if (previewText.isNotEmpty()) {
             Text(
                 text = previewText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (hasPreview) MaterialTheme.colorScheme.primary else Color.Transparent,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 1,
                 textAlign = TextAlign.End,
@@ -208,63 +221,45 @@ private fun AmountKeypadButton(
     modifier: Modifier = Modifier,
 ) {
     val resolvedLabel = spec.labelRes?.let { stringResource(it) } ?: requireNotNull(spec.label)
-    val hapticFeedback = LocalHapticFeedback.current
-    val shape = RoundedCornerShape(12.dp)
-    val isOperator = spec.key == AmountKey.Plus || spec.key == AmountKey.Minus
-    val isClear = spec.key == AmountKey.Clear
     val isDelete = spec.key == AmountKey.Delete
-    val containerColor = when {
-        spec.isPrimary -> MaterialTheme.colorScheme.primary
-        isClear -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-        isOperator -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        isDelete -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f)
-        else -> MaterialTheme.colorScheme.surface
-    }
     val contentColor = when {
-        spec.isPrimary -> MaterialTheme.colorScheme.onPrimary
-        isClear -> MaterialTheme.colorScheme.error
-        isOperator -> MaterialTheme.colorScheme.primary
+        spec.isClear -> MaterialTheme.colorScheme.error
+        spec.isOperator -> MaterialTheme.colorScheme.onSurfaceVariant
         isDelete -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.onSurface
     }
-    val borderColor = when {
-        spec.isPrimary -> MaterialTheme.colorScheme.primary
-        isClear -> MaterialTheme.colorScheme.error.copy(alpha = 0.22f)
-        isOperator -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-        isDelete -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    }
+    val keyHeight = 74.dp
 
     Surface(
         modifier = modifier
-            .height(58.dp)
-            .clip(shape)
-            // Haptics fire in the caller (VirtualKey per key, Confirm on done) — a second pulse
-            // here made every press buzz twice.
+            .height(keyHeight)
+            .clip(CircleShape)
+            .semantics {
+                contentDescription = resolvedLabel
+                role = Role.Button
+            }
             .clickable(onClick = onClick),
-        color = containerColor,
-        border = BorderStroke(1.dp, borderColor),
-        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = KeypadKeyBackgroundAlpha),
+        shape = CircleShape,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (spec.key == AmountKey.Delete) {
+            if (isDelete) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.Backspace,
-                    contentDescription = resolvedLabel,
+                    contentDescription = null,
                     tint = contentColor,
+                    modifier = Modifier.size(26.dp),
                 )
             } else {
                 Text(
                     text = resolvedLabel,
-                    style = if (spec.isPrimary) {
-                        MaterialTheme.typography.titleMedium
-                    } else {
-                        MaterialTheme.typography.titleLarge
-                    },
+                    style = MaterialTheme.typography.headlineMedium,
                     color = contentColor,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
             }
         }
     }
 }
+
+private val KeypadKeyBackgroundAlpha = 0.34f
