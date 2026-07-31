@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew lintDebug
 ./gradlew connectedAndroidTest          # instrumented tests (device/emulator)
 ./gradlew :benchmark:connectedCheck     # macrobenchmarks (device/emulator)
+./gradlew kspDebugKotlin                # export Room schema JSON after entity changes
 
 # single test class / method
 ./gradlew test --tests "com.shihuaidexianyu.money.CalculateCurrentBalanceUseCaseTest"
@@ -33,6 +34,8 @@ Release packaging goes through `scripts/build-release.ps1` (auto version bump, i
 ```powershell
 .\scripts\build-release.ps1 -RunTests -Commit -Push -Tag
 ```
+
+The script expects `JAVA_HOME` at `C:\Program Files\Android\Android Studio\jbr` and verifies the APK signature so a debug-signed release can never ship unnoticed.
 
 `gradle.properties` sets `android.disallowKotlinSourceSets=false` — a documented KSP-2.x-under-AGP-9.1 compatibility bridge. Configuration fails without it; only remove it as part of an atomic toolchain upgrade.
 
@@ -53,7 +56,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
 ### Startup gating
 
-`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before scheduling workers/widget refresh and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`.
+`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before scheduling workers/widget refresh and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`. Debug sample data is seeded only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
 
 ### Ledger invariants
 
@@ -62,10 +65,32 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - Balance = `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`; zero before the account's opening. A `BalanceUpdate` stores `actualBalance`/`systemBalanceBeforeUpdate` only as evidence — **its `delta` is fixed**. Editing older records must not rewrite later reconciliation deltas, and balances must not be re-anchored on the latest reconciliation.
 - After any mutation, call `RefreshAccountActivityStateUseCase` for the affected accounts.
 - Closed accounts are read-only; go through the lifecycle use case rather than the repository to reopen.
+- **Account kind** is `FUNDING` (default) or `INVESTMENT`. Ledger arithmetic is unchanged, but a reconciliation delta on an investment account is presented as investment P&L at read time; reclassifying an account retroactively reinterprets its whole history.
+
+### External entry points
+
+App shortcuts, share-to-record (`ACTION_SEND` `text/plain`), the widget, and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
 
 ### Settings are split in two
 
 `PortableSettings` live in the Room `portable_settings` table and travel with backups. `DevicePreferences` live in DataStore (biometric lock, amount masks, recents hiding, widget/notification privacy) and never leave the device. There is no single `SettingsRepository`.
+
+### Savings goal
+
+A nullable singleton (`id = 1`) represents one net-worth target. Progress uses total current net assets and has no deadline.
+
+### Widget and notification refresh
+
+- The widget is refreshed through `WidgetRefreshCoordinator`, with periodic `WidgetUpdateWorker` plus Room `InvalidationTracker` and a `hideWidgetAmounts` observer as triggers.
+- Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic unique work plus debounced one-time syncs). Legacy unique work names are cancelled at startup. Amounts can be masked independently via `hideNotificationAmounts`.
+
+## Code style
+
+- 4-space indentation, official Kotlin code style.
+- Explicit imports; avoid wildcard imports.
+- `viewModelScope` in ViewModels; `runBlocking` only in tests or initialization.
+- All UI strings in Chinese (Simplified).
+- Amounts as `Long` (cents/fen); never `Float`/`Double`.
 
 ## Database migrations
 
@@ -87,3 +112,4 @@ Room schema version **15**, exported to `app/schemas/` (bundled as androidTest a
 - Import stages the URI into private cache, validates/previews the same bytes, writes a verified safety snapshot under `filesDir/pre_import_backups/`, then replaces portable data in one Room transaction, with durable receipts enabling rollback.
 - Release signing reads `signing/keystore.properties` (gitignored, as is all of `signing/`), falling back to `../timeline/keystore.properties`. Never commit keystores.
 - `allowBackup="false"` — the app deliberately does not use Android cloud/device-transfer backup.
+- Biometric app lock and amount privacy masking (in-app, widget, and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.

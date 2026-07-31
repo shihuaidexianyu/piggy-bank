@@ -1,15 +1,12 @@
 package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,20 +16,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -43,43 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
-@Composable
-fun MoneyGradientBackground(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-    ) {
-        val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-        Box(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDarkTheme) 0.10f else 0.16f),
-                                MaterialTheme.colorScheme.background,
-                                MaterialTheme.colorScheme.background,
-                            ),
-                        ),
-                    ),
-            )
-            content()
-        }
-    }
-}
-
 /**
- * DESIGN LANGUAGE (applies to every container in the app): separation comes from TONE, never
- * from borders — surface-colored cards sit on the tinted background, tonal fills mark inset
- * controls, and a soft primary ring appears only on focus or selection. Radius scale: 16dp for
- * cards/sections, 12dp for inset fields, 10dp for buttons, small pills 8dp.
+ * Standard Material 3 surface card: neutral background, 12dp corners, default tonal elevation.
  */
 @Composable
 fun MoneyCard(
@@ -90,9 +51,7 @@ fun MoneyCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
@@ -103,8 +62,7 @@ fun MoneyCard(
 }
 
 /**
- * Secondary action in the tonal language: a primary-tinted fill with primary content — the
- * borderless replacement for every former OutlinedButton.
+ * Standard Material 3 tonal button wrapper so every secondary action uses the same shape.
  */
 @Composable
 fun MoneyTonalButton(
@@ -114,19 +72,12 @@ fun MoneyTonalButton(
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit,
 ) {
-    Button(
+    FilledTonalButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
         contentPadding = contentPadding,
-        shape = RoundedCornerShape(10.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            contentColor = MaterialTheme.colorScheme.primary,
-            disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
-            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-        ),
-        elevation = null,
+        shape = RoundedCornerShape(8.dp),
         content = content,
     )
 }
@@ -216,7 +167,7 @@ fun MoneyStatusPill(
     Surface(
         modifier = modifier,
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(8.dp),
     ) {
         Text(
             text = text,
@@ -237,9 +188,7 @@ fun MoneyMetricTile(
     Surface(
         modifier = modifier,
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        shape = RoundedCornerShape(8.dp),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -342,6 +291,7 @@ fun MoneyListRow(
     isClickable: Boolean = showChevron,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
 ) {
     // Build a single spoken description so Talkback reads the row as one item, e.g.
     // "招商银行 最近核对 2024-01-15 余额 12345 元".
@@ -353,7 +303,7 @@ fun MoneyListRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(contentPadding)
             .semantics(mergeDescendants = true) {
                 contentDescription = rowDescription
                 if (isClickable) role = Role.Button
@@ -414,62 +364,24 @@ fun MoneySelectionField(
     isError: Boolean = false,
     supportingText: String? = null,
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                // Errors keep a hard signal; the resting state is a tonal inset, not an outline.
-                if (isError) {
-                    Modifier.border(width = 1.dp, color = MaterialTheme.colorScheme.error, shape = shape)
-                } else {
-                    Modifier
-                },
-            ),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = shape,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                subtitle?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                supportingText?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        modifier = modifier.fillMaxWidth(),
+        readOnly = true,
+        enabled = true,
+        singleLine = true,
+        label = { Text(label) },
+        supportingText = (supportingText ?: subtitle)?.let { text -> { Text(text) } },
+        isError = isError,
+        trailingIcon = {
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
+        },
+        shape = RoundedCornerShape(4.dp),
+        colors = moneyFieldColors(),
+    )
 }

@@ -62,7 +62,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier =
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // Hero block.

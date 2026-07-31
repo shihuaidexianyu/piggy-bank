@@ -43,7 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -58,7 +57,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.ui.common.MoneyGradientBackground
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
@@ -335,7 +333,7 @@ fun MoneyNavGraph(
         },
     ) {
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
@@ -368,12 +366,11 @@ fun MoneyNavGraph(
                     onDestinationClick = ::navigateTopLevel,
                 )
             }
-            MoneyGradientBackground(modifier = Modifier.weight(1f)) {
-                NavHost(
-                    navController = navController,
-                    startDestination = MoneyDestination.Home.route,
-                    modifier = Modifier.fillMaxSize(),
-                enterTransition = {
+            NavHost(
+                navController = navController,
+                startDestination = MoneyDestination.Home.route,
+                modifier = Modifier.fillMaxSize(),
+            enterTransition = {
                     val initial = initialState.destination.route
                     val target = targetState.destination.route
                     if (isTopLevelTransition(initial, target)) {
@@ -422,7 +419,6 @@ fun MoneyNavGraph(
                 }
             }
         }
-    }
     }
 }
 

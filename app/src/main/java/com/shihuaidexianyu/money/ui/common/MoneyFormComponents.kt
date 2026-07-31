@@ -64,7 +64,7 @@ fun MoneyFormPage(
     onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     listState: LazyListState? = null,
-    contentPadding: PaddingValues = PaddingValues(start = 20.dp, top = 8.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
+    contentPadding: PaddingValues = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
     content: LazyListScope.() -> Unit,
 ) {
@@ -76,7 +76,7 @@ fun MoneyFormPage(
             title = title,
             leading = onBack?.let { { MoneyBackButton(onClick = it) } },
             trailing = trailing,
-            modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 4.dp),
         )
         LazyColumn(
             state = resolvedListState,
@@ -170,28 +170,26 @@ fun MoneySingleLineField(
         keyboardOptions = keyboardOptions,
         isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(4.dp),
         colors = moneyFieldColors(),
     )
 }
 
 /**
- * Tonal input styling shared by every text field: no resting outline (the tonal fill IS the
- * field), a soft primary ring only while focused, and a hard error ring — the same
- * tone-over-border language as the rest of the app.
+ * Standard Material 3 outlined field colors: a visible resting outline on the neutral surface.
  */
 @Composable
 fun moneyFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
-    unfocusedBorderColor = Color.Transparent,
-    disabledBorderColor = Color.Transparent,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
     errorBorderColor = MaterialTheme.colorScheme.error,
     focusedLabelColor = MaterialTheme.colorScheme.primary,
     unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-    errorContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    errorContainerColor = Color.Transparent,
 )
 
 @Composable
@@ -347,7 +345,7 @@ fun MoneyAmountField(
     var showKeypad by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(4.dp)
 
     if (showKeypad) {
         MoneyAmountKeypadSheet(
@@ -420,7 +418,7 @@ fun MoneySaveButton(
             .fillMaxWidth()
             .heightIn(min = 50.dp),
         enabled = enabled && !isSaving,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

@@ -85,7 +85,7 @@ fun AccountPickerDialog(
             onClearSelection = onClearSelection,
             onPick = onPick,
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
         )
     }
 }

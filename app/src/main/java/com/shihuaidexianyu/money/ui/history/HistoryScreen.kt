@@ -67,6 +67,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
@@ -362,7 +363,7 @@ fun HistoryScreen(
         title = stringResource(R.string.history_title),
         modifier = modifier,
         listState = listState,
-        contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
+        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         item {
@@ -736,7 +737,7 @@ private fun HistoryFilterSheetContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MoneySectionHeader(title = title)
@@ -753,14 +754,6 @@ private fun HistoryRow(
     modifier: Modifier = Modifier,
 ) {
     val moneyColors = LocalMoneyColors.current
-    val accent = when (record.kind) {
-        HistoryRecordKind.CASH_FLOW ->
-            if (record.amount > 0) moneyColors.income else moneyColors.expense
-        HistoryRecordKind.TRANSFER -> moneyColors.transfer
-        HistoryRecordKind.BALANCE_UPDATE,
-        HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> moneyColors.current
-    }
     val amountText = formatInAppAmount(record.amount, settings)
     val amountStyle = when {
         amountText.length > 16 -> MaterialTheme.typography.labelMedium
@@ -794,12 +787,8 @@ private fun HistoryRow(
             modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(color = accent, shape = RoundedCornerShape(4.dp)),
-            )
-            Spacer(modifier = Modifier.width(10.dp))
+            RecordKindBadge(kind = record.kind, amount = record.amount)
+            Spacer(modifier = Modifier.width(14.dp))
             Column(
                 modifier = Modifier.weight(0.56f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),

@@ -99,7 +99,7 @@ internal fun MoneyAmountKeypadSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 30.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 30.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AmountKeypadDisplay(

@@ -122,10 +122,10 @@ fun ReminderListScreen(
             MoneyPageTitle(
                 title = stringResource(R.string.reminder_center_title),
                 leading = { MoneyBackButton(onClick = onBack) },
-                modifier = Modifier.padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 8.dp),
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
             )
             LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (notificationPermissionState != NotificationPermissionUiState.Granted) {

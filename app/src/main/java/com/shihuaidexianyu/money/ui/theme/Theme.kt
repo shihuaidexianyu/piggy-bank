@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
@@ -15,21 +16,21 @@ import com.shihuaidexianyu.money.domain.model.ThemeMode
 private val BrandLightColorScheme = lightColorScheme(
     primary = BrandTealPrimary,
     primaryContainer = BrandTealPrimaryContainer,
-    background = BackgroundCream,
-    surface = SurfaceWhite,
-    surfaceVariant = SurfaceWarm,
-    onBackground = CharcoalWarm,
-    onSurface = CharcoalWarm,
-    onSurfaceVariant = WarmGray,
-    outlineVariant = WarmBorder,
-    outline = WarmBorderFocused,
+    background = BackgroundPure,
+    surface = SurfacePure,
+    surfaceVariant = SurfaceVariantNeutral,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
+    outlineVariant = BorderNeutral,
+    outline = BorderFocusedNeutral,
 )
 
 private val BrandDarkColorScheme = darkColorScheme(
     primary = BrandTealPrimaryDark,
     primaryContainer = Night700,
-    background = Night950,
-    surface = Night800,
+    background = Color.Black,
+    surface = Color.Black,
     surfaceVariant = Night700,
     outlineVariant = Night600,
 )

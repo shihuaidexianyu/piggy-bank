@@ -14,5 +14,5 @@ object MoneyDimens {
     val bottomNavContentPadding: androidx.compose.ui.unit.Dp = 112.dp
 
     /** Standard horizontal content padding for screen edges. */
-    val screenHorizontalPadding: androidx.compose.ui.unit.Dp = 20.dp
+    val screenHorizontalPadding: androidx.compose.ui.unit.Dp = 16.dp
 }

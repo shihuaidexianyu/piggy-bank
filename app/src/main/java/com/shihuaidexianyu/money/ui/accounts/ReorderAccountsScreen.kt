@@ -48,7 +48,7 @@ fun ReorderAccountsScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
-        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = MoneyDimens.bottomNavContentPadding),
+        contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         if (state.isLoading || state.loadErrorMessage != null) {
