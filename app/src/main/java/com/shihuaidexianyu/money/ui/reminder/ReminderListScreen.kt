@@ -23,6 +23,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,12 +46,12 @@ import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
-import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import kotlinx.coroutines.flow.Flow
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderListScreen(
     state: ReminderListUiState,
@@ -119,10 +120,9 @@ fun ReminderListScreen(
         Column(
             modifier = modifier.padding(innerPadding),
         ) {
-            MoneyPageTitle(
-                title = stringResource(R.string.reminder_center_title),
-                leading = { MoneyBackButton(onClick = onBack) },
-                modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
+            TopAppBar(
+                title = { Text(stringResource(R.string.reminder_center_title)) },
+                navigationIcon = { MoneyBackButton(onClick = onBack) },
             )
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),

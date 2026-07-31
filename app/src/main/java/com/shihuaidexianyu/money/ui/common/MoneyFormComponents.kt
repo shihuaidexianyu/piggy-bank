@@ -16,17 +16,17 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.R
@@ -56,6 +57,7 @@ enum class MoneyDateTimePickerField {
     TIME,
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoneyFormPage(
     title: String,
@@ -70,13 +72,24 @@ fun MoneyFormPage(
 ) {
     val defaultListState = rememberLazyListState()
     val resolvedListState = listState ?: defaultListState
+    val appBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    Column(modifier = modifier) {
-        MoneyPageTitle(
-            title = title,
-            leading = onBack?.let { { MoneyBackButton(onClick = it) } },
-            trailing = trailing,
-            modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 4.dp),
+    Column(modifier = modifier.nestedScroll(appBarScrollBehavior.nestedScrollConnection)) {
+        TopAppBar(
+            title = {
+                Text(
+                    text = title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            navigationIcon = {
+                if (onBack != null) {
+                    MoneyBackButton(onClick = onBack)
+                }
+            },
+            actions = { trailing?.invoke() },
+            scrollBehavior = appBarScrollBehavior,
         )
         LazyColumn(
             state = resolvedListState,
@@ -170,27 +183,8 @@ fun MoneySingleLineField(
         keyboardOptions = keyboardOptions,
         isError = isError,
         supportingText = supportingText?.let { { Text(it) } },
-        shape = RoundedCornerShape(4.dp),
-        colors = moneyFieldColors(),
     )
 }
-
-/**
- * Standard Material 3 outlined field colors: a visible resting outline on the neutral surface.
- */
-@Composable
-fun moneyFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
-    errorBorderColor = MaterialTheme.colorScheme.error,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    disabledContainerColor = Color.Transparent,
-    errorContainerColor = Color.Transparent,
-)
 
 @Composable
 fun <T> MoneyChoiceDialog(
@@ -345,7 +339,6 @@ fun MoneyAmountField(
     var showKeypad by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val shape = RoundedCornerShape(4.dp)
 
     if (showKeypad) {
         MoneyAmountKeypadSheet(
@@ -370,8 +363,6 @@ fun MoneyAmountField(
             textStyle = MaterialTheme.typography.displayMedium,
             isError = isError,
             supportingText = supportingText?.let { { Text(it) } },
-            shape = shape,
-            colors = moneyFieldColors(),
         )
         Box(
             modifier = Modifier
@@ -419,10 +410,6 @@ fun MoneySaveButton(
             .heightIn(min = 54.dp),
         enabled = enabled && !isSaving,
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-        ),
     ) {
         if (isSaving) {
             androidx.compose.material3.CircularProgressIndicator(

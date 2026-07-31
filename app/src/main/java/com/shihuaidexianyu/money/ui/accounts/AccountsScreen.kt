@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +48,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
-import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
@@ -69,6 +69,7 @@ fun accountGroups(
     closed = closedAccounts,
 )
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AccountsScreen(
     state: AccountsUiState,
@@ -86,9 +87,8 @@ fun AccountsScreen(
         .ledgerSumExact()
 
     Column(modifier = modifier) {
-        MoneyPageTitle(
-            title = stringResource(R.string.accounts_title),
-            modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
+        TopAppBar(
+            title = { Text(stringResource(R.string.accounts_title)) },
         )
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),

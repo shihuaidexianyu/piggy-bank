@@ -20,10 +20,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -46,7 +50,8 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
 /**
- * Standard Material 3 surface card: neutral background, 12dp corners, default tonal elevation.
+ * Stock Material 3 filled card on the app's pure background: [ColorScheme.surfaceContainer]
+ * fill so it stays visible on pure white/black, default 12dp shape, zero elevation.
  */
 @Composable
 fun MoneyCard(
@@ -54,10 +59,9 @@ fun MoneyCard(
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        colors = moneyGroupCardColors(),
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
@@ -67,8 +71,14 @@ fun MoneyCard(
     }
 }
 
+/** Stock M3 card colors for every grouped container in the app. */
+@Composable
+private fun moneyGroupCardColors() = CardDefaults.cardColors(
+    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+)
+
 /**
- * Standard Material 3 tonal button wrapper so every secondary action uses the same shape.
+ * Stock Material 3 tonal button wrapper so every secondary action uses the same component.
  */
 @Composable
 fun MoneyTonalButton(
@@ -83,41 +93,8 @@ fun MoneyTonalButton(
         modifier = modifier,
         enabled = enabled,
         contentPadding = contentPadding,
-        shape = RoundedCornerShape(8.dp),
         content = content,
     )
-}
-
-@Composable
-fun MoneyPageTitle(
-    title: String,
-    modifier: Modifier = Modifier,
-    leading: (@Composable () -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                leading?.invoke()
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            trailing?.invoke()
-        }
-    }
 }
 
 @Composable
@@ -276,12 +253,9 @@ fun MoneyListSection(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        colors = moneyGroupCardColors(),
     ) {
         Column(content = content)
     }
@@ -297,7 +271,6 @@ fun MoneyListRow(
     isClickable: Boolean = showChevron,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
 ) {
     // Build a single spoken description so Talkback reads the row as one item, e.g.
     // "招商银行 最近核对 2024-01-15 余额 12345 元".
@@ -306,59 +279,50 @@ fun MoneyListRow(
         subtitle?.let { append("，$it") }
         trailing?.let { append("，$it") }
     }
-    Row(
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = subtitle?.let { text -> { Text(text) } },
+        leadingContent = leading,
+        trailingContent = if (trailing != null || accessory != null || showChevron) {
+            {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    trailing?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    accessory?.invoke()
+                    if (showChevron) {
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        } else {
+            null
+        },
         modifier = modifier
             .fillMaxWidth()
-            .padding(contentPadding)
             .semantics(mergeDescendants = true) {
                 contentDescription = rowDescription
                 if (isClickable) role = Role.Button
             },
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        leading?.let {
-            Box(modifier = Modifier.padding(end = 12.dp)) {
-                it()
-            }
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            subtitle?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            trailing?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            accessory?.invoke()
-            if (showChevron) {
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
-            }
-        }
-    }
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
 }
 
 @Composable
 fun MoneySectionDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    HorizontalDivider()
 }
 
 @Composable
@@ -387,13 +351,11 @@ fun MoneySelectionField(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
-        shape = RoundedCornerShape(4.dp),
-        colors = moneyFieldColors(),
     )
 }
 
 /**
- * iOS-style inset grouped container: a tinted, borderless group on the pure background.
+ * Grouped container for form rows on the pure background: a stock M3 filled card.
  * Rows inside use [MoneyInsetRow]/[MoneyInsetTextRow] separated by [MoneyInsetDivider].
  */
 @Composable
@@ -401,23 +363,18 @@ fun MoneyInsetGroup(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-        shape = RoundedCornerShape(12.dp),
+        colors = moneyGroupCardColors(),
     ) {
         Column(content = content)
     }
 }
 
-/** Hairline divider between inset-group rows, inset from the leading edge like iOS. */
+/** Divider between inset-group rows, inset from the leading edge to align with row labels. */
 @Composable
 fun MoneyInsetDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
 }
 
 /**

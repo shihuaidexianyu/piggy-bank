@@ -101,7 +101,7 @@ object DevicePreferencesMapper {
         )
         return DevicePreferences(
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
-            useDynamicColor = preferences[Keys.UseDynamicColor] ?: true,
+            useDynamicColor = preferences[Keys.UseDynamicColor] ?: false,
             biometricLock = preferences[Keys.BiometricLock] ?: false,
             relockDelay = AppRelockDelay.fromValue(preferences[Keys.RelockDelay]),
             maskAmountsInApp = preferences[Keys.MaskAmountsInApp] ?: false,

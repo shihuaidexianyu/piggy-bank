@@ -267,14 +267,12 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_theme_description),
                     trailing = devicePreferences.themeMode.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
                     checked = devicePreferences.useDynamicColor,
                     onCheckedChange = onUseDynamicColorChange,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -282,7 +280,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_amount_color_description),
                     trailing = settings.amountColorMode.displayName,
                     modifier = Modifier.clickable { dialog = SettingsDialog.AmountColorMode },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -293,21 +290,18 @@ fun SettingsScreen(
                         currencyDraft = settings.currencySymbol
                         dialog = SettingsDialog.CurrencySymbol
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.accounts_order),
                     subtitle = stringResource(R.string.settings_account_order_description),
                     modifier = Modifier.clickable(onClick = onManageAccountOrder),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_mask_in_app),
                     checked = devicePreferences.maskAmountsInApp,
                     onCheckedChange = onMaskAmountsInAppChange,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
         }
@@ -327,7 +321,6 @@ fun SettingsScreen(
                             onCheckedChange = onBiometricLockChange,
                         )
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -335,28 +328,24 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_relock_description),
                     trailing = relockDelayLabels.getValue(devicePreferences.relockDelay),
                     modifier = Modifier.clickable { dialog = SettingsDialog.RelockDelay },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_hide_recents),
                     checked = devicePreferences.hideRecentTasks,
                     onCheckedChange = onHideRecentTasksChange,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_hide_widget),
                     checked = devicePreferences.hideWidgetAmounts,
                     onCheckedChange = onHideWidgetAmountsChange,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_hide_notifications),
                     checked = devicePreferences.hideNotificationAmounts,
                     onCheckedChange = onHideNotificationAmountsChange,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
         }
@@ -382,7 +371,6 @@ fun SettingsScreen(
                             )
                         }
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -392,7 +380,6 @@ fun SettingsScreen(
                     modifier = Modifier.clickable {
                         onOpenNotificationSettings(NotificationSettingsTarget.RECURRING_CHANNEL)
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -402,21 +389,18 @@ fun SettingsScreen(
                     modifier = Modifier.clickable {
                         onOpenNotificationSettings(NotificationSettingsTarget.BALANCE_CHANNEL)
                     },
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_reminder_management),
                     subtitle = stringResource(R.string.settings_reminder_management_description),
                     modifier = Modifier.clickable(onClick = onManageReminders),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_account_reminder_config),
                     subtitle = stringResource(R.string.settings_account_reminder_description),
                     modifier = Modifier.clickable(onClick = onManageAccountReminderConfigs),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
         }
@@ -431,7 +415,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_plaintext_warning),
                     trailing = "JSON",
                     showChevron = false,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -442,7 +425,6 @@ fun SettingsScreen(
                         enabled = !state.isExporting && !state.isImporting,
                         onClick = { dialog = SettingsDialog.ExportWarning },
                     ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
@@ -455,7 +437,6 @@ fun SettingsScreen(
                             openDocumentLauncher.launch(arrayOf("application/json", "text/*"))
                         },
                     ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 if (state.isLoadingImportHistory) {
@@ -464,7 +445,6 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_import_history_checking),
                         trailing = stringResource(R.string.settings_loading),
                         showChevron = false,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     )
                 } else if (state.importHistoryErrorMessage != null) {
                     MoneyListRow(
@@ -472,14 +452,12 @@ fun SettingsScreen(
                         subtitle = state.importHistoryErrorMessage,
                         trailing = stringResource(R.string.action_retry),
                         modifier = Modifier.clickable(onClick = onRetryImportHistory),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     )
                 } else if (importReceiptRows.isEmpty()) {
                     MoneyListRow(
                         title = stringResource(R.string.settings_import_history),
                         subtitle = stringResource(R.string.settings_import_history_empty),
                         showChevron = false,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     )
                 } else {
                     importReceiptRows.forEachIndexed { index, row ->
@@ -506,7 +484,6 @@ fun SettingsScreen(
                             },
                             showChevron = row.canRollback,
                             isClickable = row.canRollback,
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                         )
                         if (index != importReceiptRows.lastIndex) MoneySectionDivider()
                     }
@@ -523,14 +500,12 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_version),
                     trailing = versionText,
                     showChevron = false,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_offline_safety),
                     subtitle = stringResource(R.string.settings_offline_safety_copy),
                     showChevron = false,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
         }
@@ -542,12 +517,10 @@ private fun PrivacySwitchRow(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    contentPadding: androidx.compose.foundation.layout.PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
 ) {
     MoneyListRow(
         title = title,
         showChevron = false,
-        contentPadding = contentPadding,
         accessory = {
             Switch(
                 checked = checked,

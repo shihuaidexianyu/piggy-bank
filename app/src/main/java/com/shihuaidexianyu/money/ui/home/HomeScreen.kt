@@ -41,9 +41,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -67,7 +71,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
-import com.shihuaidexianyu.money.ui.common.MoneyPageTitle
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -75,10 +78,10 @@ import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
-import com.shihuaidexianyu.money.ui.common.moneyFieldColors
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: HomeUiState,
@@ -130,16 +133,15 @@ fun HomeScreen(
         )
     }
     Column(modifier = modifier) {
-        MoneyPageTitle(
-            title = stringResource(R.string.home_title),
-            trailing = {
+        TopAppBar(
+            title = { Text(stringResource(R.string.home_title)) },
+            actions = {
                 HomeHeaderActions(
                     dueCount = state.dueReminders.size + state.staleAccountCount,
                     onOpenSettings = onOpenSettings,
                     onOpenReminders = onAllRemindersClick,
                 )
             },
-            modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
         )
         AsyncContentRenderer(
             content = state.toAsyncContent(homeLoadErrorMessage),
@@ -272,7 +274,7 @@ fun HomeHeaderActions(
             Icon(
                 imageVector = Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.home_settings),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -290,12 +292,7 @@ private fun ReminderHeaderButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier
-            .size(48.dp)
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                shape = CircleShape,
-            ),
+        modifier = Modifier.size(48.dp),
     ) {
         BadgedBox(
             badge = {
@@ -307,7 +304,7 @@ private fun ReminderHeaderButton(
             Icon(
                 imageVector = Icons.Rounded.Notifications,
                 contentDescription = stringResource(R.string.home_reminders),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -475,9 +472,7 @@ private fun PeriodOverviewBlock(
 
 
 /**
- * Compact pill tabs replacing the stock segmented buttons: an inset track in the surface-variant
- * tone, with the selected label lifted on its own surface pill — no borders, no checkmarks,
- * roughly half the visual weight in the card header.
+ * Official M3 segmented-button period selector.
  */
 @Composable
 private fun PeriodSwitcher(
@@ -486,41 +481,28 @@ private fun PeriodSwitcher(
 ) {
     val selectorDescription = stringResource(R.string.home_period_selector)
     val haptics = LocalHapticFeedback.current
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-            .padding(3.dp)
-            .semantics { contentDescription = selectorDescription },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.semantics { contentDescription = selectorDescription },
     ) {
-        DashboardPeriod.entries.forEach { period ->
+        DashboardPeriod.entries.forEachIndexed { index, period ->
             val isSelected = period == selected
-            Text(
-                text = stringResource(period.shortLabelRes()),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+            SegmentedButton(
+                selected = isSelected,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    onSelect(period)
                 },
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .then(
-                        if (isSelected) {
-                            Modifier.background(MaterialTheme.colorScheme.surface)
-                        } else {
-                            Modifier
-                        },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = DashboardPeriod.entries.size,
+                ),
+                icon = {},
+                label = {
+                    Text(
+                        text = stringResource(period.shortLabelRes()),
+                        style = MaterialTheme.typography.labelMedium,
                     )
-                    .selectable(
-                        selected = isSelected,
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            onSelect(period)
-                        },
-                    )
-                    .padding(horizontal = 12.dp, vertical = 5.dp),
+                },
             )
         }
     }
@@ -987,8 +969,6 @@ private fun MonthlyBudgetEditorDialog(
                     enabled = !isSaving,
                     label = { Text(stringResource(R.string.home_monthly_budget_field)) },
                     isError = inputErrorRes != null || saveErrorRes != null,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = moneyFieldColors(),
                     supportingText = {
                         (inputErrorRes ?: saveErrorRes)?.let { Text(stringResource(it)) }
                     },
