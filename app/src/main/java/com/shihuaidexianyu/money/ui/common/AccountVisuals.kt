@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
@@ -116,10 +116,11 @@ fun AccountColorSwatch(
     modifier: Modifier = Modifier,
     size: Dp = 20.dp,
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .background(color = accountVisualColor(colorName), shape = CircleShape),
+    Surface(
+        modifier = modifier.size(size),
+        color = accountVisualColor(colorName),
+        shape = CircleShape,
+        content = {},
     )
 }
 
@@ -137,21 +138,22 @@ fun AccountIconBadge(
     } else {
         accountVisualColor(colorName)
     }
-    Box(
-        modifier = modifier
-            .size(size)
-            .background(
-                color = accent.copy(alpha = if (isClosed) 0.10f else 0.12f),
-                shape = CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
+    Surface(
+        modifier = modifier.size(size),
+        color = accent.copy(alpha = if (isClosed) 0.10f else 0.12f),
+        shape = CircleShape,
     ) {
-        Icon(
-            imageVector = accountIconVector(iconName),
-            contentDescription = stringResource(accountIconLabelRes(iconName)),
-            tint = accent,
-            modifier = Modifier.size(iconSize),
-        )
+        Box(
+            modifier = Modifier.size(size),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = accountIconVector(iconName),
+                contentDescription = stringResource(accountIconLabelRes(iconName)),
+                tint = accent,
+                modifier = Modifier.size(iconSize),
+            )
+        }
     }
 }
 

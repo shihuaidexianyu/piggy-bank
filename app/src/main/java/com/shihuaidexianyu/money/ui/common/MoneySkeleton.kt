@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,7 +69,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier =
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.large)
                 .background(brush),
         )
         // Section rows.
@@ -78,7 +77,7 @@ fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier =
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(brush)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -96,14 +95,14 @@ fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier =
                         modifier = Modifier
                             .width(120.dp)
                             .height(14.dp)
-                            .clip(RoundedCornerShape(4.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                     )
                     Box(
                         modifier = Modifier
                             .width(80.dp)
                             .height(11.dp)
-                            .clip(RoundedCornerShape(4.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                     )
                 }

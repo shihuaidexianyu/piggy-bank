@@ -4,6 +4,8 @@ import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 class DateTimeTextFormatterTest {
@@ -60,6 +62,36 @@ class DateTimeTextFormatterTest {
         val base = 1712140200000L
         val result = DateTimeTextFormatter.replaceTime(base, 14, 45, utc)
         assertEquals("2024-04-03 14:45", DateTimeTextFormatter.format(result, utc))
+    }
+
+    @Test
+    fun `date picker conversion preserves local date east of UTC near midnight`() {
+        val shanghai = ZoneId.of("Asia/Shanghai")
+        val localTime = LocalDateTime.of(2026, 8, 1, 1, 30)
+            .atZone(shanghai)
+            .toInstant()
+            .toEpochMilli()
+
+        val pickerMillis = DateTimeTextFormatter.toDatePickerMillis(localTime, shanghai)
+        assertEquals("2026-08-01 00:00", DateTimeTextFormatter.format(pickerMillis, utc))
+
+        val restored = DateTimeTextFormatter.fromDatePickerMillis(pickerMillis, shanghai)
+        assertEquals("2026-08-01 00:00", DateTimeTextFormatter.format(restored, shanghai))
+    }
+
+    @Test
+    fun `date picker conversion preserves local date west of UTC`() {
+        val losAngeles = ZoneId.of("America/Los_Angeles")
+        val localTime = LocalDateTime.of(2026, 8, 1, 23, 30)
+            .atZone(losAngeles)
+            .toInstant()
+            .toEpochMilli()
+
+        val pickerMillis = DateTimeTextFormatter.toDatePickerMillis(localTime, losAngeles)
+        assertEquals("2026-08-01 00:00", DateTimeTextFormatter.format(pickerMillis, utc))
+
+        val restored = DateTimeTextFormatter.fromDatePickerMillis(pickerMillis, losAngeles)
+        assertEquals("2026-08-01 00:00", DateTimeTextFormatter.format(restored, losAngeles))
     }
 
     @Test

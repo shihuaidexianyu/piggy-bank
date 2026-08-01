@@ -1,12 +1,12 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -23,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,14 +33,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
@@ -74,29 +75,48 @@ fun MoneyFormPage(
     val resolvedListState = listState ?: defaultListState
     val appBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    Column(modifier = modifier.nestedScroll(appBarScrollBehavior.nestedScrollConnection)) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            navigationIcon = {
-                if (onBack != null) {
-                    MoneyBackButton(onClick = onBack)
-                }
-            },
-            actions = { trailing?.invoke() },
-            scrollBehavior = appBarScrollBehavior,
-        )
-        LazyColumn(
-            state = resolvedListState,
-            contentPadding = contentPadding,
-            verticalArrangement = verticalArrangement,
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(appBarScrollBehavior.nestedScrollConnection),
         ) {
-            content()
+            TopAppBar(
+                title = {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = {
+                    if (onBack != null) {
+                        MoneyBackButton(onClick = onBack)
+                    }
+                },
+                actions = { trailing?.invoke() },
+                scrollBehavior = appBarScrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+            LazyColumn(
+                state = resolvedListState,
+                modifier = Modifier.weight(1f),
+                contentPadding = contentPadding,
+                verticalArrangement = verticalArrangement,
+            ) {
+                content()
+            }
+        }
+        snackbarHostState?.let { hostState ->
+            SnackbarHost(
+                hostState = hostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            )
         }
     }
 }
@@ -234,13 +254,24 @@ fun MoneyDatePickerDialogHost(
     onDismiss: () -> Unit,
     onConfirm: (Long?) -> Unit,
 ) {
+    val pickerInitialSelection = initialSelectedDateMillis?.let(
+        DateTimeTextFormatter::toDatePickerMillis,
+    )
     val pickerState = androidx.compose.material3.rememberDatePickerState(
-        initialSelectedDateMillis = initialSelectedDateMillis,
+        initialSelectedDateMillis = pickerInitialSelection,
     )
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = { onConfirm(pickerState.selectedDateMillis) }) {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        pickerState.selectedDateMillis?.let(
+                            DateTimeTextFormatter::fromDatePickerMillis,
+                        ),
+                    )
+                },
+            ) {
                 Text(stringResource(R.string.action_confirm))
             }
         },
@@ -248,7 +279,23 @@ fun MoneyDatePickerDialogHost(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     ) {
-        DatePicker(state = pickerState)
+        DatePicker(
+            state = pickerState,
+            title = {
+                Text(
+                    text = stringResource(R.string.date_picker_title),
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp),
+                )
+            },
+            headline = {
+                Text(
+                    text = pickerState.selectedDateMillis?.let {
+                        DateTimeTextFormatter.formatDateOnly(it, java.time.ZoneOffset.UTC)
+                    } ?: stringResource(R.string.date_picker_no_selection),
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                )
+            },
+        )
     }
 }
 
@@ -303,7 +350,7 @@ fun MoneyDateTimeFields(
         MoneySelectionField(
             label = resolvedDateLabel,
             value = DateTimeTextFormatter.formatDateOnly(valueMillis),
-            modifier = Modifier.clickable(onClick = onDateClick),
+            onClick = onDateClick,
             isError = errorText != null,
         )
         errorText?.let {
@@ -317,7 +364,7 @@ fun MoneyDateTimeFields(
             label = resolvedTimeLabel,
             value = DateTimeTextFormatter.formatTimeOnly(valueMillis),
             subtitle = timeSubtitle,
-            modifier = Modifier.clickable(onClick = onTimeClick),
+            onClick = onTimeClick,
             isError = errorText != null,
         )
     }
@@ -334,9 +381,10 @@ fun MoneyAmountField(
     isError: Boolean = false,
     supportingText: String? = null,
     enabled: Boolean = true,
+    autoOpenKeypad: Boolean = false,
 ) {
     val resolvedLabel = label ?: stringResource(R.string.field_amount)
-    var showKeypad by remember { mutableStateOf(false) }
+    var showKeypad by remember { mutableStateOf(autoOpenKeypad) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -364,20 +412,14 @@ fun MoneyAmountField(
             isError = isError,
             supportingText = supportingText?.let { { Text(it) } },
         )
-        Box(
+        Surface(
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus(force = true)
+                showKeypad = true
+            },
             modifier = Modifier
                 .matchParentSize()
-                .clickable(
-                    // Gate on enabled so a form mid-save can't reopen the keypad and have the
-                    // edit silently overwritten by the save's success state.
-                    enabled = enabled,
-                    role = Role.Button,
-                    onClick = {
-                        keyboardController?.hide()
-                        focusManager.clearFocus(force = true)
-                        showKeypad = true
-                    },
-                )
                 .semantics {
                     contentDescription = resolvedLabel
                     stateDescription = value.ifBlank { "0" }
@@ -385,6 +427,10 @@ fun MoneyAmountField(
                         error(supportingText)
                     }
                 },
+            enabled = enabled,
+            color = Color.Transparent,
+            shape = MaterialTheme.shapes.extraSmall,
+            content = {},
         )
     }
 }
@@ -409,7 +455,7 @@ fun MoneySaveButton(
             .fillMaxWidth()
             .heightIn(min = 54.dp),
         enabled = enabled && !isSaving,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
     ) {
         if (isSaving) {
             androidx.compose.material3.CircularProgressIndicator(
@@ -456,6 +502,7 @@ fun <T> MoneyPickerField(
     MoneySelectionField(
         label = label,
         value = value,
-        modifier = modifier.clickable { showDialog = true },
+        modifier = modifier,
+        onClick = { showDialog = true },
     )
 }

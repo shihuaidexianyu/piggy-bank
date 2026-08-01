@@ -7,10 +7,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -149,23 +150,15 @@ private fun BatchReconcileAccountRow(
     state: BatchReconcileUiState,
     onToggle: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !state.isSaving, onClick = onToggle)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = account.isSelected,
-            onCheckedChange = { onToggle() },
-            enabled = !state.isSaving,
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    ListItem(
+        leadingContent = {
+            Checkbox(
+                checked = account.isSelected,
+                onCheckedChange = null,
+                enabled = !state.isSaving,
+            )
+        },
+        headlineContent = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -189,18 +182,22 @@ private fun BatchReconcileAccountRow(
                     },
                 )
             }
+        },
+        supportingContent = {
             Text(
                 text = account.lastBalanceUpdateAt?.let {
                     stringResource(R.string.batch_reconcile_last_format, DateTimeTextFormatter.format(it))
                 } ?: stringResource(R.string.batch_reconcile_never),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        Text(
-            text = formatInAppAmount(account.systemBalance, state.settings),
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-        )
-    }
+        },
+        trailingContent = {
+            Text(
+                text = formatInAppAmount(account.systemBalance, state.settings),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+            )
+        },
+        modifier = Modifier.clickable(enabled = !state.isSaving, onClick = onToggle),
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+    )
 }

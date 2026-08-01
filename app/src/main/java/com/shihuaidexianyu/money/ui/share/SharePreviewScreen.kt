@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.share
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -130,7 +129,7 @@ fun SharePreviewScreen(
                     MoneySelectionField(
                         label = stringResource(R.string.account_single),
                         value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
-                        modifier = Modifier.clickable { showAccountPicker = true },
+                        onClick = { showAccountPicker = true },
                     )
                 }
                 MoneySingleLineField(

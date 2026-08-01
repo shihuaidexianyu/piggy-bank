@@ -20,11 +20,11 @@ val TransferBlue = Color(0xFF5B8DB8)
 val ReminderPurple = Color(0xFF9B7CB6)
 
 // ===== Backgrounds =====
-// Neutral surfaces: pure white in light, neutral grays for variants/inputs. No warm tints.
-val BackgroundPure = Color(0xFFFFFFFF)
+// A quiet cool tint separates the page canvas from white cards without adding warm/yellow cast.
+val BackgroundSoft = Color(0xFFF5F7F7)
 val SurfacePure = Color(0xFFFFFFFF)
-val SurfaceVariantNeutral = Color(0xFFF5F5F5)
-val InputSurfaceNeutral = Color(0xFFF5F5F5)
+val SurfaceVariantNeutral = Color(0xFFEEF2F2)
+val InputSurfaceNeutral = Color(0xFFF1F4F4)
 
 // ===== Text =====
 val TextPrimary = Color(0xFF202124)
@@ -46,6 +46,13 @@ val Night600 = Color(0xFF2A2A2A)
 val BrandTealPrimary = Color(0xFF256F70)
 val BrandTealPrimaryContainer = Color(0xFFDCEEEF)
 val BrandTealPrimaryDark = Color(0xFF72CCCB)
+val BrandTealOnPrimaryContainer = Color(0xFF0A3535)
+val BrandTealSecondary = Color(0xFF4B6363)
+val BrandTealSecondaryContainer = Color(0xFFCDE8E7)
+val BrandTealOnSecondaryContainer = Color(0xFF071F1F)
+val BrandSlateTertiary = Color(0xFF4A607C)
+val BrandSlateTertiaryContainer = Color(0xFFD3E4FF)
+val BrandSlateOnTertiaryContainer = Color(0xFF031C35)
 
 data class MoneyColors(
     val income: Color,

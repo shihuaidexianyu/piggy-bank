@@ -1,7 +1,5 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,12 +10,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -175,13 +174,13 @@ fun AccountDetailScreen(
                     MoneyListRow(
                         title = stringResource(R.string.account_detail_record_income),
                         subtitle = stringResource(R.string.account_detail_preselected),
-                        modifier = Modifier.clickable(onClick = onRecordIncome),
+                        onClick = onRecordIncome,
                     )
                     MoneySectionDivider()
                     MoneyListRow(
                         title = stringResource(R.string.account_detail_record_expense),
                         subtitle = stringResource(R.string.account_detail_preselected),
-                        modifier = Modifier.clickable(onClick = onRecordExpense),
+                        onClick = onRecordExpense,
                     )
                     MoneySectionDivider()
                     MoneyListRow(
@@ -191,16 +190,14 @@ fun AccountDetailScreen(
                         } else {
                             stringResource(R.string.account_detail_transfer_unavailable)
                         },
-                        modifier = Modifier.clickable(
-                            enabled = state.openAccountCount >= 2,
-                            onClick = onRecordTransfer,
-                        ),
+                        onClick = onRecordTransfer,
+                        enabled = state.openAccountCount >= 2,
                     )
                     MoneySectionDivider()
                     MoneyListRow(
                         title = stringResource(R.string.account_detail_reconcile),
                         subtitle = stringResource(R.string.account_detail_reconcile_description),
-                        modifier = Modifier.clickable(onClick = onStartUpdateBalance),
+                        onClick = onStartUpdateBalance,
                     )
                 }
             }
@@ -301,11 +298,13 @@ private fun RecentRecordRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Left accent bar
-        Box(
+        Surface(
             modifier = Modifier
                 .width(4.dp)
-                .height(36.dp)
-                .background(color = accent, shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp)),
+                .height(36.dp),
+            color = accent,
+            shape = CircleShape,
+            content = {},
         )
         Spacer(modifier = Modifier.width(12.dp))
         // Title + type label

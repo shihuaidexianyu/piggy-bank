@@ -18,6 +18,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,6 +48,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
@@ -261,28 +264,13 @@ private fun BalanceReminderSection(
             )
             MoneySectionDivider()
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onBatchReconcile)
-                .padding(horizontal = 16.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.reminder_batch_confirm_unchanged), style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = stringResource(R.string.reminder_batch_confirm_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = stringResource(R.string.reminder_go_reconcile),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
+        MoneyListRow(
+            title = stringResource(R.string.reminder_batch_confirm_unchanged),
+            subtitle = stringResource(R.string.reminder_batch_confirm_description),
+            trailing = stringResource(R.string.reminder_go_reconcile),
+            showChevron = false,
+            onClick = onBatchReconcile,
+        )
     }
 }
 
@@ -291,18 +279,8 @@ private fun BalanceReminderRow(
     reminder: BalanceReminderUiModel,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    ListItem(
+        headlineContent = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -316,28 +294,32 @@ private fun BalanceReminderRow(
                     accent = MaterialTheme.colorScheme.secondary,
                 )
             }
+        },
+        supportingContent = {
             Text(
                 text = reminder.lastBalanceUpdateText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                text = reminder.currentBalanceFormatted,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-            )
-            Text(
-                text = stringResource(R.string.account_detail_kind_reconciliation),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
+        },
+        trailingContent = {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = reminder.currentBalanceFormatted,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+                Text(
+                    text = stringResource(R.string.account_detail_kind_reconciliation),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+    )
 }
 
 @Composable
@@ -351,8 +333,9 @@ private fun ReminderListItem(
     modifier: Modifier = Modifier,
 ) {
     MoneyCard(
-        modifier = modifier.clickable(onClick = onEdit),
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        onClick = onEdit,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

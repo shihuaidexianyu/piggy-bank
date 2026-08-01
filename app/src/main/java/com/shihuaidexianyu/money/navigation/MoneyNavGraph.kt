@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FactCheck
 import androidx.compose.material.icons.rounded.Add
@@ -25,9 +24,11 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,8 +48,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -423,72 +422,64 @@ fun MoneyNavGraph(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun LedgerActionDialog(
     onDismiss: () -> Unit,
     onAction: (LedgerFabAction) -> Unit,
 ) {
-    Dialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        androidx.compose.material3.Surface(
+        Column(
             modifier = Modifier
-                .padding(horizontal = 28.dp)
-                .widthIn(max = 420.dp)
-                .fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp,
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.ledger_fab_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = stringResource(R.string.ledger_action_menu_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = stringResource(R.string.ledger_fab_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Text(
-                        text = stringResource(R.string.ledger_action_menu_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    LedgerActionButton(
-                        label = stringResource(R.string.ledger_income),
-                        icon = Icons.Rounded.ArrowDownward,
-                        onClick = { onAction(LedgerFabAction.INCOME) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    LedgerActionButton(
-                        label = stringResource(R.string.ledger_expense),
-                        icon = Icons.Rounded.ArrowUpward,
-                        onClick = { onAction(LedgerFabAction.EXPENSE) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    LedgerActionButton(
-                        label = stringResource(R.string.history_transfer),
-                        icon = Icons.Rounded.SwapHoriz,
-                        onClick = { onAction(LedgerFabAction.TRANSFER) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    LedgerActionButton(
-                        label = stringResource(R.string.ledger_reconcile),
-                        icon = Icons.AutoMirrored.Rounded.FactCheck,
-                        onClick = { onAction(LedgerFabAction.RECONCILE) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                LedgerActionButton(
+                    label = stringResource(R.string.ledger_income),
+                    icon = Icons.Rounded.ArrowDownward,
+                    onClick = { onAction(LedgerFabAction.INCOME) },
+                    modifier = Modifier.weight(1f),
+                )
+                LedgerActionButton(
+                    label = stringResource(R.string.ledger_expense),
+                    icon = Icons.Rounded.ArrowUpward,
+                    onClick = { onAction(LedgerFabAction.EXPENSE) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                LedgerActionButton(
+                    label = stringResource(R.string.history_transfer),
+                    icon = Icons.Rounded.SwapHoriz,
+                    onClick = { onAction(LedgerFabAction.TRANSFER) },
+                    modifier = Modifier.weight(1f),
+                )
+                LedgerActionButton(
+                    label = stringResource(R.string.ledger_reconcile),
+                    icon = Icons.AutoMirrored.Rounded.FactCheck,
+                    onClick = { onAction(LedgerFabAction.RECONCILE) },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }

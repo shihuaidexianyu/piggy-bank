@@ -1,7 +1,5 @@
 package com.shihuaidexianyu.money.ui.history
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +9,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -21,16 +18,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -67,7 +66,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
+import com.shihuaidexianyu.money.ui.common.RecordKindDot
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
@@ -213,31 +212,31 @@ fun HistoryScreen(
                         MoneyListRow(
                             title = stringResource(R.string.history_type),
                             trailing = typeSheetSummary(state),
-                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.TYPE },
+                            onClick = { sheet = HistoryFilterSheet.TYPE },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
                             title = stringResource(R.string.accounts_title),
                             trailing = accountSheetSummary(state),
-                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.ACCOUNT },
+                            onClick = { sheet = HistoryFilterSheet.ACCOUNT },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
                             title = stringResource(R.string.field_date),
                             trailing = dateSheetSummary(state),
-                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.DATE },
+                            onClick = { sheet = HistoryFilterSheet.DATE },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
                             title = stringResource(R.string.field_amount),
                             trailing = amountChipLabel(state),
-                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.AMOUNT },
+                            onClick = { sheet = HistoryFilterSheet.AMOUNT },
                         )
                         MoneySectionDivider()
                         MoneyListRow(
                             title = stringResource(R.string.history_direction),
                             trailing = directionChipLabel(state),
-                            modifier = Modifier.clickable { sheet = HistoryFilterSheet.DIRECTION },
+                            onClick = { sheet = HistoryFilterSheet.DIRECTION },
                         )
                     }
                 }
@@ -309,7 +308,7 @@ fun HistoryScreen(
                         label = stringResource(R.string.history_start_date),
                         value = state.dateStartAt?.let(DateTimeTextFormatter::formatDateOnly)
                             ?: stringResource(R.string.history_unlimited),
-                        modifier = Modifier.clickable { dateField = HistoryDateField.START },
+                        onClick = { dateField = HistoryDateField.START },
                     )
                     MoneySelectionField(
                         label = stringResource(R.string.history_end_date),
@@ -317,7 +316,7 @@ fun HistoryScreen(
                             state.dateEndAt,
                             unlimitedLabel = stringResource(R.string.history_unlimited),
                         ),
-                        modifier = Modifier.clickable { dateField = HistoryDateField.END },
+                        onClick = { dateField = HistoryDateField.END },
                     )
                 }
                 HistoryFilterSheet.AMOUNT -> {
@@ -402,12 +401,9 @@ fun HistoryScreen(
                             )
                         }
                         if (hasActiveFilters(state)) {
-                            Text(
-                                text = stringResource(R.string.action_clear),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable(onClick = onClearAllFilters),
-                            )
+                            TextButton(onClick = onClearAllFilters) {
+                                Text(stringResource(R.string.action_clear))
+                            }
                         }
                     }
                 }
@@ -510,10 +506,10 @@ private fun HistoryFilterSummaryRow(
     settings: PortableSettings,
 ) {
     val moneyColors = LocalMoneyColors.current
-    Surface(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Row(
             modifier = Modifier
@@ -601,7 +597,7 @@ private fun SearchField(
             disabledIndicatorColor = Color.Transparent,
             errorIndicatorColor = Color.Transparent,
         ),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
     )
 }
 
@@ -769,11 +765,11 @@ private fun HistoryRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .semantics(mergeDescendants = true) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            onClick = onClick,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            modifier = Modifier.semantics(mergeDescendants = true) {
                 contentDescription = buildString {
                     append(record.title)
                     append("，$kindLabel")
@@ -782,17 +778,19 @@ private fun HistoryRow(
                 }
                 role = Role.Button
             },
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            RecordKindBadge(kind = record.kind, amount = record.amount)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(
-                modifier = Modifier.weight(0.56f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                RecordKindDot(kind = record.kind, amount = record.amount)
+                Column(
+                    modifier = Modifier.weight(0.58f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
                 Text(
                     text = record.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -806,25 +804,25 @@ private fun HistoryRow(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(0.44f),
-                horizontalAlignment = Alignment.End,
-            ) {
-                Text(
-                    text = amountText,
-                    style = amountStyle,
-                    color = amountColor,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+                }
+                Column(
+                    modifier = Modifier.weight(0.42f),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    Text(
+                        text = amountText,
+                        style = amountStyle,
+                        color = amountColor,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))

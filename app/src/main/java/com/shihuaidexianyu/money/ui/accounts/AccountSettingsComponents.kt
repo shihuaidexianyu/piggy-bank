@@ -1,13 +1,12 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -15,13 +14,15 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -185,57 +186,68 @@ private fun AccountIconChoiceDialog(
                 items(AccountIconOptions, key = { it.name }) { option ->
                     val selected = option.name == normalizeAccountIconName(selectedIconName)
                     val label = stringResource(option.labelRes)
-                    Column(
+                    Card(
+                        onClick = { onSelect(option.name) },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onSelect(option.name) }
-                            .semantics { contentDescription = label }
-                            .padding(vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                            .fillMaxWidth()
+                            .semantics { contentDescription = label },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            },
+                        ),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .then(
-                                    if (selected) {
-                                        Modifier.border(
-                                            width = 2.dp,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            shape = CircleShape,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .padding(4.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primary.copy(
-                                        alpha = if (selected) 0.14f else 0.07f,
-                                    ),
-                                    shape = CircleShape,
-                                ),
-                            contentAlignment = Alignment.Center,
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Icon(
-                                imageVector = option.icon,
-                                contentDescription = null,
-                                tint = if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(20.dp),
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .then(
+                                        if (selected) {
+                                            Modifier.border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = CircleShape,
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .padding(4.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(
+                                    alpha = if (selected) 0.14f else 0.07f,
+                                ),
+                                shape = CircleShape,
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = option.icon,
+                                        contentDescription = null,
+                                        tint = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            // Text tokens for labels; selection is carried by the ring + tint.
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
                 }
             }
@@ -272,51 +284,64 @@ private fun AccountColorChoiceDialog(
                     val selected = option.name == normalizeAccountColorName(selectedColorName)
                     val label = stringResource(option.labelRes)
                     val swatchColor = accountVisualColor(option.name)
-                    Column(
+                    Card(
+                        onClick = { onSelect(option.name) },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onSelect(option.name) }
-                            .semantics { contentDescription = label }
-                            .padding(vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                            .fillMaxWidth()
+                            .semantics { contentDescription = label },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            },
+                        ),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .then(
-                                    if (selected) {
-                                        Modifier.border(
-                                            width = 2.dp,
-                                            color = swatchColor,
-                                            shape = CircleShape,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .padding(if (selected) 5.dp else 3.dp)
-                                .background(color = swatchColor, shape = CircleShape),
-                            contentAlignment = Alignment.Center,
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            if (selected) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    // Swatches passed the 3:1 floor against the surface, so
-                                    // surface-colored glyphs stay legible on every swatch.
-                                    tint = MaterialTheme.colorScheme.surface,
-                                    modifier = Modifier.size(18.dp),
-                                )
+                            Surface(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .then(
+                                        if (selected) {
+                                            Modifier.border(
+                                                width = 2.dp,
+                                                color = swatchColor,
+                                                shape = CircleShape,
+                                            )
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .padding(if (selected) 5.dp else 3.dp),
+                                color = swatchColor,
+                                shape = CircleShape,
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (selected) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
                             }
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
                 }
             }
@@ -340,25 +365,25 @@ internal fun AccountReminderFields(
         label = stringResource(R.string.account_reminder_period),
         value = reminderConfig.period.displayName,
         subtitle = stringResource(R.string.account_reminder_description),
-        modifier = Modifier.clickable(onClick = onReminderPeriodClick),
+        onClick = onReminderPeriodClick,
     )
     when (reminderConfig.period) {
         BalanceUpdateReminderPeriod.WEEKLY -> MoneySelectionField(
             label = stringResource(R.string.account_reminder_weekday),
             value = reminderConfig.weekday.displayName,
-            modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+            onClick = onReminderWeekdayClick,
         )
 
         BalanceUpdateReminderPeriod.MONTHLY -> MoneySelectionField(
             label = stringResource(R.string.account_reminder_month_day),
             value = stringResource(R.string.account_month_day_format, reminderConfig.monthDay),
-            modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
+            onClick = onReminderMonthDayClick,
         )
     }
     MoneySelectionField(
         label = stringResource(R.string.account_reminder_time),
         value = reminderConfig.timeText,
-        modifier = Modifier.clickable(onClick = onReminderTimeClick),
+        onClick = onReminderTimeClick,
     )
 }
 
@@ -372,12 +397,12 @@ internal fun AccountVisualFields(
     MoneySelectionField(
         label = stringResource(R.string.account_icon_title),
         value = accountIconLabel(iconName),
-        modifier = Modifier.clickable(onClick = onIconClick),
+        onClick = onIconClick,
     )
     MoneySelectionField(
         label = stringResource(R.string.account_color_title),
         value = accountColorLabel(colorName),
-        modifier = Modifier.clickable(onClick = onColorClick),
+        onClick = onColorClick,
     )
 }
 
@@ -437,27 +462,27 @@ internal fun AccountReminderListSection(
             title = stringResource(R.string.account_reminder_period),
             subtitle = stringResource(R.string.account_reminder_description),
             trailing = reminderConfig.period.displayName,
-            modifier = Modifier.clickable(onClick = onReminderPeriodClick),
+            onClick = onReminderPeriodClick,
         )
         MoneySectionDivider()
         when (reminderConfig.period) {
             BalanceUpdateReminderPeriod.WEEKLY -> MoneyListRow(
                 title = stringResource(R.string.account_reminder_weekday),
                 trailing = reminderConfig.weekday.displayName,
-                modifier = Modifier.clickable(onClick = onReminderWeekdayClick),
+                onClick = onReminderWeekdayClick,
             )
 
             BalanceUpdateReminderPeriod.MONTHLY -> MoneyListRow(
                 title = stringResource(R.string.account_reminder_month_day),
                 trailing = stringResource(R.string.account_month_day_format, reminderConfig.monthDay),
-                modifier = Modifier.clickable(onClick = onReminderMonthDayClick),
+                onClick = onReminderMonthDayClick,
             )
         }
         MoneySectionDivider()
         MoneyListRow(
             title = stringResource(R.string.account_reminder_time),
             trailing = reminderConfig.timeText,
-            modifier = Modifier.clickable(onClick = onReminderTimeClick),
+            onClick = onReminderTimeClick,
         )
     }
 }
@@ -474,13 +499,13 @@ internal fun AccountVisualListRows(
         title = stringResource(R.string.account_icon_title),
         trailing = accountIconLabel(iconName),
         leading = { AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp) },
-        modifier = Modifier.clickable(onClick = onIconClick),
+        onClick = onIconClick,
     )
     MoneySectionDivider()
     MoneyListRow(
         title = stringResource(R.string.account_color_title),
         trailing = accountColorLabel(colorName),
         leading = { AccountColorSwatch(colorName = colorName, size = 18.dp) },
-        modifier = Modifier.clickable(onClick = onColorClick),
+        onClick = onColorClick,
     )
 }

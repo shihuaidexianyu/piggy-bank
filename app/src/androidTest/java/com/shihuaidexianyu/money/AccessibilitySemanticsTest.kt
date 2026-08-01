@@ -18,11 +18,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.home.HomeHeaderActions
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Assert.assertEquals
 
 class AccessibilitySemanticsTest {
     @get:Rule
@@ -58,6 +60,7 @@ class AccessibilitySemanticsTest {
                 MoneyListRow(
                     title = "隐藏金额",
                     showChevron = false,
+                    onClick = {},
                     accessory = {
                         Switch(checked = true, onCheckedChange = {})
                     },
@@ -89,5 +92,29 @@ class AccessibilitySemanticsTest {
         composeRule.onNodeWithContentDescription("提醒")
             .assertWidthIsAtLeast(48.dp)
             .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun dateAndTimeSelectionFieldsDispatchClicksThroughOutlinedTextFields() {
+        var pickedField: String? = null
+        composeRule.setContent {
+            MoneyTheme {
+                MoneyDateTimeFields(
+                    valueMillis = 1_712_140_200_000L,
+                    onDateClick = { pickedField = "date" },
+                    onTimeClick = { pickedField = "time" },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("日期", substring = true)
+            .assertHasClickAction()
+            .performClick()
+        composeRule.runOnIdle { assertEquals("date", pickedField) }
+
+        composeRule.onNodeWithContentDescription("时间", substring = true)
+            .assertHasClickAction()
+            .performClick()
+        composeRule.runOnIdle { assertEquals("time", pickedField) }
     }
 }

@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.reminder
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -99,7 +98,7 @@ fun CreateReminderScreen(
                 MoneySelectionField(
                     label = stringResource(R.string.account_single),
                     value = selectedAccount?.name ?: stringResource(R.string.field_please_choose),
-                    modifier = Modifier.clickable { showAccountPicker = true },
+                    onClick = { showAccountPicker = true },
                 )
                 MoneyPickerField(
                     label = stringResource(R.string.field_direction),

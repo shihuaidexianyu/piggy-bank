@@ -1,12 +1,11 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,16 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+/**
+ * Primary amount input for ledger forms. The Material 3 clickable surface preserves proper
+ * interaction semantics while the large centred amount restores the form's visual hierarchy.
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun MoneyAmountHeroField(
@@ -46,7 +46,6 @@ internal fun MoneyAmountHeroField(
     var showKeypad by remember { mutableStateOf(autoOpenKeypad) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val currencySymbol = LocalCurrencySymbol.current
 
     if (showKeypad) {
         MoneyAmountKeypadSheet(
@@ -67,48 +66,31 @@ internal fun MoneyAmountHeroField(
     val amountColor = when {
         isError -> MaterialTheme.colorScheme.error
         value.isBlank() -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    val symbolColor = when {
-        isError -> MaterialTheme.colorScheme.error
-        value.isBlank() -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> accent
     }
 
-    Column(
+    Surface(
+        onClick = {
+            keyboardController?.hide()
+            focusManager.clearFocus(force = true)
+            showKeypad = true
+        },
         modifier = modifier
             .fillMaxWidth()
-            .clickable(
-                enabled = enabled,
-                role = Role.Button,
-                onClick = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus(force = true)
-                    showKeypad = true
-                },
-            )
             .semantics {
                 contentDescription = label
                 stateDescription = displayValue
-                if (isError && supportingText != null) {
-                    error(supportingText)
-                }
-            }
-            .padding(vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+                if (isError && supportingText != null) error(supportingText)
+            },
+        enabled = enabled,
+        color = Color.Transparent,
+        shape = MaterialTheme.shapes.large,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        Column(
+            modifier = Modifier.padding(vertical = 24.dp, horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = currencySymbol,
-                style = MaterialTheme.typography.headlineMedium,
-                color = symbolColor.copy(alpha = if (value.isBlank()) 0.6f else 1f),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
             Text(
                 text = displayValue,
                 style = amountStyle,
@@ -116,15 +98,14 @@ internal fun MoneyAmountHeroField(
                 maxLines = 1,
                 modifier = Modifier.clearAndSetSemantics {},
             )
-        }
-        if (isError && supportingText != null) {
-            Text(
-                text = supportingText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
+            if (isError && supportingText != null) {
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.clearAndSetSemantics {},
+                )
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -121,7 +120,7 @@ private fun AccountPickerList(
                         title = noSelectionLabel,
                         showChevron = false,
                         isClickable = true,
-                        modifier = Modifier.clickable { onClearSelection() },
+                        onClick = onClearSelection,
                         accessory = {
                             if (selectedAccountId == null) {
                                 Icon(
@@ -159,7 +158,7 @@ private fun AccountPickerList(
                         },
                         showChevron = false,
                         isClickable = true,
-                        modifier = Modifier.clickable { hiddenExpanded = !sections.hiddenExpanded },
+                        onClick = { hiddenExpanded = !sections.hiddenExpanded },
                         accessory = {
                             Icon(
                                 imageVector = if (sections.hiddenExpanded) {
@@ -215,9 +214,9 @@ private fun AccountPickerSection(
                         iconSize = 17.dp,
                     )
                 },
-                modifier = Modifier
-                    .alpha(if (isDisabled) 0.45f else 1f)
-                    .clickable(enabled = !isDisabled) { onPick(account.id) },
+                modifier = Modifier.alpha(if (isDisabled) 0.45f else 1f),
+                onClick = { onPick(account.id) },
+                enabled = !isDisabled,
                 accessory = {
                     when {
                         selectedAccountId == account.id -> {

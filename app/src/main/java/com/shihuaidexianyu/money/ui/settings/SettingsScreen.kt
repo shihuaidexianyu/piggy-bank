@@ -8,8 +8,6 @@ import android.os.Build
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
@@ -39,6 +37,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
@@ -261,12 +260,12 @@ fun SettingsScreen(
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[0].titleRes))
         }
         item {
-            Column {
+            MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_theme_mode),
                     subtitle = stringResource(R.string.settings_theme_description),
                     trailing = devicePreferences.themeMode.displayName,
-                    modifier = Modifier.clickable { dialog = SettingsDialog.ThemeMode },
+                    onClick = { dialog = SettingsDialog.ThemeMode },
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
@@ -279,14 +278,14 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_amount_color),
                     subtitle = stringResource(R.string.settings_amount_color_description),
                     trailing = settings.amountColorMode.displayName,
-                    modifier = Modifier.clickable { dialog = SettingsDialog.AmountColorMode },
+                    onClick = { dialog = SettingsDialog.AmountColorMode },
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_currency_symbol),
                     subtitle = stringResource(R.string.settings_currency_description),
                     trailing = settings.currencySymbol,
-                    modifier = Modifier.clickable {
+                    onClick = {
                         currencyDraft = settings.currencySymbol
                         dialog = SettingsDialog.CurrencySymbol
                     },
@@ -295,7 +294,7 @@ fun SettingsScreen(
                 MoneyListRow(
                     title = stringResource(R.string.accounts_order),
                     subtitle = stringResource(R.string.settings_account_order_description),
-                    modifier = Modifier.clickable(onClick = onManageAccountOrder),
+                    onClick = onManageAccountOrder,
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
@@ -310,11 +309,12 @@ fun SettingsScreen(
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[1].titleRes))
         }
         item {
-            Column {
+            MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_biometric_lock),
                     subtitle = stringResource(R.string.settings_biometric_description),
                     showChevron = false,
+                    onClick = { onBiometricLockChange(!devicePreferences.biometricLock) },
                     accessory = {
                         Switch(
                             checked = devicePreferences.biometricLock,
@@ -327,7 +327,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_relock_time),
                     subtitle = stringResource(R.string.settings_relock_description),
                     trailing = relockDelayLabels.getValue(devicePreferences.relockDelay),
-                    modifier = Modifier.clickable { dialog = SettingsDialog.RelockDelay },
+                    onClick = { dialog = SettingsDialog.RelockDelay },
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
@@ -354,7 +354,7 @@ fun SettingsScreen(
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[2].titleRes))
         }
         item {
-            Column {
+            MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_notification_permission_channels),
                     subtitle = stringResource(notificationPresentation.statusRes),
@@ -363,7 +363,7 @@ fun SettingsScreen(
                     } else {
                         stringResource(R.string.settings_open_system_settings)
                     },
-                    modifier = Modifier.clickable {
+                    onClick = {
                         when (notificationPresentation.action) {
                             NotificationSettingsAction.REQUEST_PERMISSION -> onRequestNotificationPermission()
                             NotificationSettingsAction.OPEN_SETTINGS -> onOpenNotificationSettings(
@@ -377,7 +377,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_recurring_channel),
                     subtitle = stringResource(R.string.settings_recurring_channel_description),
                     trailing = stringResource(notificationChannelStatusRes(recurringNotificationChannelEnabled)),
-                    modifier = Modifier.clickable {
+                    onClick = {
                         onOpenNotificationSettings(NotificationSettingsTarget.RECURRING_CHANNEL)
                     },
                 )
@@ -386,7 +386,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_balance_channel),
                     subtitle = stringResource(R.string.settings_balance_channel_description),
                     trailing = stringResource(notificationChannelStatusRes(balanceNotificationChannelEnabled)),
-                    modifier = Modifier.clickable {
+                    onClick = {
                         onOpenNotificationSettings(NotificationSettingsTarget.BALANCE_CHANNEL)
                     },
                 )
@@ -394,13 +394,13 @@ fun SettingsScreen(
                 MoneyListRow(
                     title = stringResource(R.string.settings_reminder_management),
                     subtitle = stringResource(R.string.settings_reminder_management_description),
-                    modifier = Modifier.clickable(onClick = onManageReminders),
+                    onClick = onManageReminders,
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_account_reminder_config),
                     subtitle = stringResource(R.string.settings_account_reminder_description),
-                    modifier = Modifier.clickable(onClick = onManageAccountReminderConfigs),
+                    onClick = onManageAccountReminderConfigs,
                 )
             }
         }
@@ -409,7 +409,7 @@ fun SettingsScreen(
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
         }
         item {
-            Column {
+            MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_backup_format),
                     subtitle = stringResource(R.string.settings_plaintext_warning),
@@ -421,22 +421,18 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_export_data),
                     subtitle = stringResource(R.string.settings_plaintext_warning),
                     trailing = if (state.isExporting) stringResource(R.string.settings_exporting) else "JSON",
-                    modifier = Modifier.clickable(
-                        enabled = !state.isExporting && !state.isImporting,
-                        onClick = { dialog = SettingsDialog.ExportWarning },
-                    ),
+                    onClick = { dialog = SettingsDialog.ExportWarning },
+                    enabled = !state.isExporting && !state.isImporting,
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_import_data),
                     subtitle = stringResource(R.string.settings_import_description),
                     trailing = if (state.isImporting) stringResource(R.string.settings_importing) else "JSON",
-                    modifier = Modifier.clickable(
-                        enabled = !state.isImporting && !state.isExporting,
-                        onClick = {
-                            openDocumentLauncher.launch(arrayOf("application/json", "text/*"))
-                        },
-                    ),
+                    onClick = {
+                        openDocumentLauncher.launch(arrayOf("application/json", "text/*"))
+                    },
+                    enabled = !state.isImporting && !state.isExporting,
                 )
                 MoneySectionDivider()
                 if (state.isLoadingImportHistory) {
@@ -451,7 +447,7 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_import_history_error),
                         subtitle = state.importHistoryErrorMessage,
                         trailing = stringResource(R.string.action_retry),
-                        modifier = Modifier.clickable(onClick = onRetryImportHistory),
+                        onClick = onRetryImportHistory,
                     )
                 } else if (importReceiptRows.isEmpty()) {
                     MoneyListRow(
@@ -474,14 +470,12 @@ fun SettingsScreen(
                             trailing = stringResource(
                                 if (row.canRollback) R.string.settings_rollback else R.string.settings_history,
                             ),
-                            modifier = if (row.canRollback) {
-                                Modifier.clickable(
-                                    enabled = !state.isImporting && !state.isExporting,
-                                    onClick = { onRollbackImport(receipt.id) },
-                                )
+                            onClick = if (row.canRollback) {
+                                { onRollbackImport(receipt.id) }
                             } else {
-                                Modifier
+                                null
                             },
+                            enabled = !state.isImporting && !state.isExporting,
                             showChevron = row.canRollback,
                             isClickable = row.canRollback,
                         )
@@ -495,7 +489,7 @@ fun SettingsScreen(
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
         }
         item {
-            Column {
+            MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_version),
                     trailing = versionText,
@@ -521,6 +515,7 @@ private fun PrivacySwitchRow(
     MoneyListRow(
         title = title,
         showChevron = false,
+        onClick = { onCheckedChange(!checked) },
         accessory = {
             Switch(
                 checked = checked,

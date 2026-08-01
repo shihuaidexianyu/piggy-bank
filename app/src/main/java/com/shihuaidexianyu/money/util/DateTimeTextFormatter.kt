@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.util
 import com.shihuaidexianyu.money.domain.model.TimeMath
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -62,6 +63,36 @@ object DateTimeTextFormatter {
         return baseDate
             .atTime(hour, minute)
             .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    /**
+     * Material 3's date picker encodes a calendar date as midnight UTC rather than as an instant
+     * in the device time zone. Convert a real timestamp before handing it to the picker so dates
+     * near local midnight do not appear as the previous or next day.
+     */
+    fun toDatePickerMillis(
+        timeMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Long {
+        return Instant.ofEpochMilli(timeMillis)
+            .atZone(zoneId)
+            .toLocalDate()
+            .atStartOfDay(ZoneOffset.UTC)
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    /** Converts Material 3's UTC date encoding back to local midnight on the selected date. */
+    fun fromDatePickerMillis(
+        selectedDateMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Long {
+        return Instant.ofEpochMilli(selectedDateMillis)
+            .atZone(ZoneOffset.UTC)
+            .toLocalDate()
+            .atStartOfDay(zoneId)
             .toInstant()
             .toEpochMilli()
     }

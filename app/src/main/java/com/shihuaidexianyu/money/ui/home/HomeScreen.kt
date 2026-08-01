@@ -7,15 +7,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -24,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -35,6 +30,8 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -71,10 +69,13 @@ import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
+import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
+import com.shihuaidexianyu.money.ui.common.RecordKindDot
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
@@ -142,6 +143,10 @@ fun HomeScreen(
                     onOpenReminders = onAllRemindersClick,
                 )
             },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                scrolledContainerColor = MaterialTheme.colorScheme.surface,
+            ),
         )
         AsyncContentRenderer(
             content = state.toAsyncContent(homeLoadErrorMessage),
@@ -334,10 +339,10 @@ private fun PeriodOverviewBlock(
         cashNet < 0 -> moneyColors.expense
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Surface(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -482,11 +487,14 @@ private fun PeriodSwitcher(
     val selectorDescription = stringResource(R.string.home_period_selector)
     val haptics = LocalHapticFeedback.current
     SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.semantics { contentDescription = selectorDescription },
+        modifier = Modifier
+            .width(164.dp)
+            .semantics { contentDescription = selectorDescription },
     ) {
         DashboardPeriod.entries.forEachIndexed { index, period ->
             val isSelected = period == selected
             SegmentedButton(
+                modifier = Modifier.height(34.dp),
                 selected = isSelected,
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -497,6 +505,7 @@ private fun PeriodSwitcher(
                     count = DashboardPeriod.entries.size,
                 ),
                 icon = {},
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                 label = {
                     Text(
                         text = stringResource(period.shortLabelRes()),
@@ -574,27 +583,22 @@ private fun MonthlyBudgetBlock(
         title = stringResource(R.string.home_monthly_budget),
         trailingContent = if (budget != null) {
             {
-                Text(
-                    text = stringResource(R.string.action_edit),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onEdit),
-                )
+                TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
             }
         } else {
             null
         },
     )
-    Surface(
+    Card(
+        onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = MaterialTheme.shapes.medium,
     ) {
         if (budget == null) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onEdit)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -616,7 +620,6 @@ private fun MonthlyBudgetBlock(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onEdit)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -722,24 +725,16 @@ private fun HomeReminderSection(
     onOpenReminders: () -> Unit,
 ) {
     MoneySectionHeader(title = stringResource(R.string.home_due_reminders))
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column {
-            reminders.forEachIndexed { index, reminder ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onOpenReminders)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(reminder.name)
-                    Text(reminder.amountFormatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (index != reminders.lastIndex) HorizontalDivider()
+    MoneyListSection {
+        reminders.forEachIndexed { index, reminder ->
+            MoneyListRow(
+                title = reminder.name,
+                subtitle = reminder.amountFormatted,
+                showChevron = false,
+                onClick = onOpenReminders,
+            )
+            if (index != reminders.lastIndex) {
+                MoneySectionDivider()
             }
         }
     }
@@ -753,27 +748,16 @@ private fun HomeStaleAccountSection(
     onReconcile: (Long) -> Unit,
 ) {
     MoneySectionHeader(title = stringResource(R.string.home_stale_accounts))
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column {
-            accounts.forEachIndexed { index, account ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onReconcile(account.accountId) }
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(account.name)
-                    Text(
-                        formatInAppAmount(account.currentBalance, settings),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (index != accounts.lastIndex) HorizontalDivider()
+    MoneyListSection {
+        accounts.forEachIndexed { index, account ->
+            MoneyListRow(
+                title = account.name,
+                subtitle = formatInAppAmount(account.currentBalance, settings),
+                showChevron = false,
+                onClick = { onReconcile(account.accountId) },
+            )
+            if (index != accounts.lastIndex) {
+                MoneySectionDivider()
             }
         }
     }
@@ -790,15 +774,15 @@ private fun HomeSavingsGoalBlock(
         targetAmount = progress.targetAmount,
     )
     MoneySectionHeader(title = stringResource(R.string.home_savings_goal))
-    Surface(
+    Card(
+        onClick = onOpenSavingsGoal,
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onOpenSavingsGoal)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -833,29 +817,18 @@ private fun HomeRecentRecordsSection(
     MoneySectionHeader(
         title = stringResource(R.string.home_recent_records),
         trailingContent = {
-            Text(
-                text = stringResource(R.string.home_view_all),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onOpenHistory),
-            )
+            TextButton(onClick = onOpenHistory) { Text(stringResource(R.string.home_view_all)) }
         },
     )
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            records.forEachIndexed { index, record ->
-                HomeRecentRecordRow(
-                    record = record,
-                    settings = settings,
-                    onClick = { onOpenRecord(record) },
-                )
-                if (index != records.lastIndex) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
-                }
+    MoneyListSection {
+        records.forEachIndexed { index, record ->
+            HomeRecentRecordRow(
+                record = record,
+                settings = settings,
+                onClick = { onOpenRecord(record) },
+            )
+            if (index != records.lastIndex) {
+                MoneySectionDivider()
             }
         }
     }
@@ -877,37 +850,47 @@ private fun HomeRecentRecordRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
     ) {
-        RecordKindBadge(kind = record.kind, amount = record.amount)
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(record.title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = "$kindLabel · ${record.subtitle}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = formatInAppAmount(record.amount, settings),
-                style = MaterialTheme.typography.titleLarge,
-                color = amountColor,
-            )
-            Text(
-                text = recentRecordTimeLabel(record.occurredAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            RecordKindDot(kind = record.kind, amount = record.amount)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = record.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+                Text(
+                    text = "$kindLabel · ${record.subtitle}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = formatInAppAmount(record.amount, settings),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = amountColor,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = recentRecordTimeLabel(record.occurredAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+            }
         }
     }
 }
@@ -1093,7 +1076,7 @@ private fun FlowSplitBar(
         modifier = modifier
             .fillMaxWidth()
             .height(6.dp)
-            .clip(RoundedCornerShape(3.dp)),
+            .clip(CircleShape),
     ) {
         val gap = 2.dp.toPx()
         val inflowWidth = (size.width - gap) * inflowFraction
@@ -1110,4 +1093,3 @@ private fun FlowSplitBar(
         )
     }
 }
-

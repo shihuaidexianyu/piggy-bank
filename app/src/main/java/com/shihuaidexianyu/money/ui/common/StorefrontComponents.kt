@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,12 +9,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -36,37 +32,49 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
 /**
- * Stock Material 3 filled card on the app's pure background: [ColorScheme.surfaceContainer]
- * fill so it stays visible on pure white/black, default 12dp shape, zero elevation.
+ * Material 3 card used as the white foreground layer above the softly tinted page canvas.
  */
 @Composable
 fun MoneyCard(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = moneyGroupCardColors(),
-    ) {
+    val cardContent: @Composable ColumnScope.() -> Unit = {
         Column(
             modifier = Modifier.padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
+        )
+    }
+    if (onClick == null) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            colors = moneyGroupCardColors(),
+            content = cardContent,
+        )
+    } else {
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            enabled = enabled,
+            colors = moneyGroupCardColors(),
+            content = cardContent,
         )
     }
 }
@@ -74,7 +82,7 @@ fun MoneyCard(
 /** Stock M3 card colors for every grouped container in the app. */
 @Composable
 private fun moneyGroupCardColors() = CardDefaults.cardColors(
-    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
 )
 
 /**
@@ -150,7 +158,7 @@ fun MoneyStatusPill(
     Surface(
         modifier = modifier,
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(8.dp),
+        shape = MaterialTheme.shapes.small,
     ) {
         Text(
             text = text,
@@ -171,7 +179,7 @@ fun MoneyMetricTile(
     Surface(
         modifier = modifier,
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(8.dp),
+        shape = MaterialTheme.shapes.small,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -201,21 +209,23 @@ fun MoneyEmptyStateCard(
 ) {
     MoneyCard(modifier = modifier) {
         if (icon != null) {
-            Box(
+            Surface(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        shape = CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
+                    .size(48.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                shape = CircleShape,
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp),
-                )
+                Box(
+                    modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
         Text(title, style = MaterialTheme.typography.titleLarge)
@@ -265,10 +275,12 @@ fun MoneyListSection(
 fun MoneyListRow(
     title: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     subtitle: String? = null,
     trailing: String? = null,
-    showChevron: Boolean = true,
-    isClickable: Boolean = showChevron,
+    showChevron: Boolean = onClick != null,
+    isClickable: Boolean = onClick != null,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
 ) {
@@ -312,9 +324,16 @@ fun MoneyListRow(
         },
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
             .semantics(mergeDescendants = true) {
                 contentDescription = rowDescription
-                if (isClickable) role = Role.Button
+                if (isClickable || onClick != null) role = Role.Button
             },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )
@@ -330,202 +349,51 @@ fun MoneySelectionField(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     subtitle: String? = null,
     isError: Boolean = false,
     supportingText: String? = null,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        modifier = modifier.fillMaxWidth(),
-        readOnly = true,
-        enabled = true,
-        singleLine = true,
-        label = { Text(label) },
-        supportingText = (supportingText ?: subtitle)?.let { text -> { Text(text) } },
-        isError = isError,
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-    )
-}
-
-/**
- * Grouped container for form rows on the pure background: a stock M3 filled card.
- * Rows inside use [MoneyInsetRow]/[MoneyInsetTextRow] separated by [MoneyInsetDivider].
- */
-@Composable
-fun MoneyInsetGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = moneyGroupCardColors(),
-    ) {
-        Column(content = content)
-    }
-}
-
-/** Divider between inset-group rows, inset from the leading edge to align with row labels. */
-@Composable
-fun MoneyInsetDivider() {
-    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-}
-
-/**
- * iOS-style grouped row: label on the leading side, value + optional chevron on the trailing
- * side, no box outline. [onClick] makes the whole row tappable; error/supporting text renders
- * under the row inside the same padded area.
- */
-@Composable
-fun MoneyInsetRow(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    showChevron: Boolean = false,
-    isError: Boolean = false,
-    supportingText: String? = null,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(
-                        role = Role.Button,
-                        onClick = onClick,
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .semantics(mergeDescendants = true) {
-                contentDescription = "$label，$value"
-            },
-    ) {
-        Row(
+    Box(modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isError) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clearAndSetSemantics {},
-                )
-                if (showChevron) {
+                .then(if (onClick != null) Modifier.clearAndSetSemantics {} else Modifier),
+            readOnly = true,
+            enabled = true,
+            singleLine = true,
+            label = { Text(label) },
+            supportingText = (supportingText ?: subtitle)?.let { text -> { Text(text) } },
+            isError = isError,
+            trailingIcon = if (onClick != null) {
+                {
                     Icon(
                         imageVector = Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-        }
-        if (isError && supportingText != null) {
-            Text(
-                text = supportingText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+            } else {
+                null
+            },
+        )
+        if (onClick != null) {
+            Surface(
+                onClick = onClick,
                 modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                    .clearAndSetSemantics {},
-            )
-        }
-    }
-}
-
-/**
- * iOS-style grouped row with an inline borderless text input on the trailing side. Used for
- * short free-text fields (e.g. the note row) so the group stays visually uniform.
- */
-@Composable
-fun MoneyInsetTextRow(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    placeholder: String? = null,
-    isError: Boolean = false,
-    supportingText: String? = null,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            BasicTextField(                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.End,
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterEnd,
-                    ) {
-                        if (value.isEmpty() && placeholder != null) {
-                            Text(
-                                text = placeholder,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                    .matchParentSize()
+                    .semantics {
+                        contentDescription = "$label，$value"
+                        subtitle?.let { stateDescription = it }
+                        if (isError && supportingText != null) {
+                            error(supportingText)
                         }
-                        innerTextField()
-                    }
-                },
-            )
-        }
-        if (isError && supportingText != null) {
-            Text(
-                text = supportingText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    },
+                color = Color.Transparent,
+                shape = MaterialTheme.shapes.extraSmall,
+                content = {},
             )
         }
     }

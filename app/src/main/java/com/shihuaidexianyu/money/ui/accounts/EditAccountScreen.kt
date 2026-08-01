@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
@@ -128,7 +127,8 @@ fun EditAccountScreen(
                     title = stringResource(R.string.account_name),
                     trailing = state.name,
                     showChevron = !state.isClosed,
-                    modifier = Modifier.clickable(enabled = !state.isClosed) {
+                    enabled = !state.isClosed,
+                    onClick = {
                         nameDraft = state.name
                         dialog = EditAccountDialog.Name
                     },
@@ -167,6 +167,11 @@ fun EditAccountScreen(
                         title = stringResource(R.string.account_hide),
                         subtitle = stringResource(R.string.account_hide_description),
                         showChevron = false,
+                        onClick = {
+                            if (!state.isUpdatingHidden && !state.isSaving) {
+                                viewModel.setHidden(!state.isHidden)
+                            }
+                        },
                         accessory = {
                             Switch(
                                 checked = state.isHidden,
@@ -215,7 +220,8 @@ fun EditAccountScreen(
                         },
                         showChevron = false,
                         isClickable = state.canClose,
-                        modifier = Modifier.clickable(enabled = state.canClose) {
+                        enabled = state.canClose,
+                        onClick = {
                             dialog = EditAccountDialog.CloseConfirm
                         },
                     )
