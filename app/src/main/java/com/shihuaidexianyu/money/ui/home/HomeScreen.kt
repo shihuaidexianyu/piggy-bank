@@ -271,7 +271,10 @@ fun HomeHeaderActions(
     onOpenSettings: () -> Unit,
     onOpenReminders: () -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        modifier = Modifier.padding(end = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         CircularHeaderIconButton(
             onClick = onOpenSettings,
         ) {

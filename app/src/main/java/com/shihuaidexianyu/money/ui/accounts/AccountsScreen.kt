@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Reorder
@@ -20,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -104,6 +107,25 @@ fun AccountsScreen(
     Column(modifier = modifier) {
         TopAppBar(
             title = { Text(stringResource(R.string.accounts_title)) },
+            actions = {
+                IconButton(
+                    onClick = onCreateAccount,
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .size(44.dp),
+                    shape = CircleShape,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.accounts_create),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
                 scrolledContainerColor = MaterialTheme.colorScheme.surface,
