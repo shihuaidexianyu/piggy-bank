@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.history
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -468,13 +468,31 @@ fun HistoryScreen(
                             settings = state.settings,
                         )
                     }
-                    items(records, key = { record -> record.id }) { record ->
-                        HistoryRow(
-                            record = record,
-                            settings = state.settings,
-                            onClick = { onRecordClick(record) },
-                            modifier = Modifier.animateItem(),
-                        )
+                    item(key = "history_day_card_$dateLabel") {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            ),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Column {
+                                records.forEachIndexed { index, record ->
+                                    HistoryRow(
+                                        record = record,
+                                        settings = state.settings,
+                                        onClick = { onRecordClick(record) },
+                                    )
+                                    if (index != records.lastIndex) {
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 state.loadMoreErrorMessageRes?.let { messageRes ->
@@ -765,11 +783,12 @@ private fun HistoryRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    Column(modifier = modifier.fillMaxWidth()) {
-        Surface(
-            onClick = onClick,
-            color = MaterialTheme.colorScheme.surfaceContainerLowest,
-            modifier = Modifier.semantics(mergeDescendants = true) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics(mergeDescendants = true) {
                 contentDescription = buildString {
                     append(record.title)
                     append("，$kindLabel")
@@ -778,54 +797,46 @@ private fun HistoryRow(
                 }
                 role = Role.Button
             },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        RecordKindDot(kind = record.kind, amount = record.amount)
+        Column(
+            modifier = Modifier.weight(0.58f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                RecordKindDot(kind = record.kind, amount = record.amount)
-                Column(
-                    modifier = Modifier.weight(0.58f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                Text(
-                    text = record.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "$kindLabel · ${record.subtitle}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                }
-                Column(
-                    modifier = Modifier.weight(0.42f),
-                    horizontalAlignment = Alignment.End,
-                ) {
-                    Text(
-                        text = amountText,
-                        style = amountStyle,
-                        color = amountColor,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
+            Text(
+                text = record.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "$kindLabel · ${record.subtitle}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+        Column(
+            modifier = Modifier.weight(0.42f),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = amountText,
+                style = amountStyle,
+                color = amountColor,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+            Text(
+                text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 

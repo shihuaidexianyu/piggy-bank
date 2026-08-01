@@ -38,9 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -591,9 +588,9 @@ private fun NetCashFlowRow(
 }
 
 /**
- * Period switcher built from official Material 3 segmented buttons. The 40dp minimum touch
- * target replaces the previous 30dp hand-rolled pill while keeping SegmentTick haptics and the
- * compact width.
+ * Compact pill selector restored to the previous visual language: a quiet tonal container with
+ * an elevated selected segment. The height is raised from the original 30dp to a 40dp touch
+ * target while keeping the Material interaction and selection semantics.
  */
 @Composable
 private fun PeriodSwitcher(
@@ -602,30 +599,52 @@ private fun PeriodSwitcher(
 ) {
     val selectorDescription = stringResource(R.string.home_period_selector)
     val haptics = LocalHapticFeedback.current
-    SingleChoiceSegmentedButtonRow(
+    Surface(
         modifier = Modifier
-            .width(160.dp)
+            .width(146.dp)
             .semantics { contentDescription = selectorDescription },
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
     ) {
-        DashboardPeriod.entries.forEachIndexed { index, period ->
-            val isSelected = period == selected
-            SegmentedButton(
-                selected = isSelected,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                    onSelect(period)
-                },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = DashboardPeriod.entries.size,
-                ),
-                label = {
-                    Text(
-                        text = stringResource(period.shortLabelRes()),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                },
-            )
+        Row(
+            modifier = Modifier.padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            DashboardPeriod.entries.forEach { period ->
+                val isSelected = period == selected
+                Surface(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onSelect(period)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .semantics { this.selected = isSelected },
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    } else {
+                        Color.Transparent
+                    },
+                    contentColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    shape = MaterialTheme.shapes.small,
+                    shadowElevation = if (isSelected) 1.dp else 0.dp,
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(period.shortLabelRes()),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -680,7 +699,8 @@ private fun DeltaLabel(
             text = text,
             style = style,
             color = color,
-            maxLines = 1,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
 }
