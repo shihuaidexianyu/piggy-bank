@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.history
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -32,13 +30,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -49,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -72,6 +66,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
+import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.RecordKindDot
@@ -805,62 +801,38 @@ private fun HistoryRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    var deleteHandled by remember(record.id) { mutableStateOf(false) }
-    var editHandled by remember(record.id) { mutableStateOf(false) }
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    if (deleteEnabled && !deleteHandled) {
-                        deleteHandled = true
-                        onDelete()
-                    }
-                }
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    if (editEnabled && !editHandled) {
-                        editHandled = true
-                        onEdit()
-                    }
-                }
-                SwipeToDismissBoxValue.Settled -> {
-                    deleteHandled = false
-                    editHandled = false
-                }
-            }
-            false
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = editEnabled,
-        enableDismissFromEndToStart = deleteEnabled,
-        backgroundContent = {
-            when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.EndToStart -> HistorySwipeBackground(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.CenterEnd,
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    icon = Icons.Rounded.Delete,
-                    label = stringResource(R.string.action_delete),
-                )
-                SwipeToDismissBoxValue.StartToEnd -> HistorySwipeBackground(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.CenterStart,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    icon = Icons.Rounded.Edit,
-                    label = stringResource(R.string.action_edit),
-                )
-                SwipeToDismissBoxValue.Settled -> Unit
-            }
-        },
+    val deleteAction = if (deleteEnabled) {
+        SwipeRevealAction(
+            label = stringResource(R.string.action_delete),
+            icon = Icons.Rounded.Delete,
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        )
+    } else {
+        null
+    }
+    val editAction = if (editEnabled) {
+        SwipeRevealAction(
+            label = stringResource(R.string.action_edit),
+            icon = Icons.Rounded.Edit,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    } else {
+        null
+    }
+    SwipeRevealActionsBox(
+        endAction = deleteAction,
+        startAction = editAction,
+        onEndAction = onDelete,
+        onStartAction = onEdit,
+        contentClick = onClick,
         modifier = modifier,
-    ) {
+    ) { contentClick ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .clickable(onClick = contentClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .semantics(mergeDescendants = true) {
                     contentDescription = buildString {
@@ -911,39 +883,6 @@ private fun HistoryRow(
                     maxLines = 1,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun HistorySwipeBackground(
-    modifier: Modifier = Modifier,
-    contentAlignment: Alignment,
-    containerColor: Color,
-    contentColor: Color,
-    icon: ImageVector,
-    label: String,
-) {
-    Box(
-        modifier = modifier.background(containerColor),
-        contentAlignment = contentAlignment,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor,
-            )
         }
     }
 }

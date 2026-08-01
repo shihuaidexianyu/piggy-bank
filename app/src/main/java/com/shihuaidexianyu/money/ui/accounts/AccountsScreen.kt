@@ -1,12 +1,10 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -16,24 +14,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.FactCheck
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Reorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +48,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
+import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
 import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
@@ -361,58 +354,25 @@ private fun AccountCard(
     } else {
         null
     }
-    var reconcileHandled by remember(account.id) { mutableStateOf(false) }
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    if (reconcileEnabled && !account.isClosed && !reconcileHandled) {
-                        reconcileHandled = true
-                        onReconcile()
-                    }
-                }
-                SwipeToDismissBoxValue.Settled -> reconcileHandled = false
-                SwipeToDismissBoxValue.StartToEnd -> Unit
-            }
-            false
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = reconcileEnabled && !account.isClosed,
-        backgroundContent = {
-            if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Row(
-                        modifier = Modifier.padding(end = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.FactCheck,
-                            contentDescription = null,
-                            tint = LocalMoneyColors.current.current,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.account_detail_reconcile),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        },
+    val reconcileAction = if (reconcileEnabled && !account.isClosed) {
+        SwipeRevealAction(
+            label = stringResource(R.string.account_detail_reconcile),
+            icon = Icons.Rounded.CheckCircle,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconTint = LocalMoneyColors.current.current,
+        )
+    } else {
+        null
+    }
+    SwipeRevealActionsBox(
+        endAction = reconcileAction,
+        onEndAction = onReconcile,
+        contentClick = onClick,
         modifier = modifier,
-    ) {
+    ) { contentClick ->
         Card(
-            onClick = onClick,
+            onClick = contentClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {
