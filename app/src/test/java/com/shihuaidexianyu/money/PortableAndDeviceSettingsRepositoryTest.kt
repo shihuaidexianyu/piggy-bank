@@ -50,6 +50,7 @@ class PortableAndDeviceSettingsRepositoryTest {
         val repository = InMemoryDevicePreferencesRepository()
         val expected = DevicePreferences(
             themeMode = ThemeMode.DARK,
+            continueRecording = true,
             biometricLock = true,
             relockDelay = AppRelockDelay.FIVE_MINUTES,
             maskAmountsInApp = true,
@@ -78,6 +79,16 @@ class PortableAndDeviceSettingsRepositoryTest {
             repository.query(),
         )
         assertEquals(repository.query(), repository.observe().first())
+    }
+
+    @Test
+    fun `device preference mapper round trips continue recording`() {
+        val preferences = mutablePreferencesOf()
+        DevicePreferencesMapper.write(preferences, DevicePreferences(continueRecording = true))
+        assertEquals(true, DevicePreferencesMapper.fromPreferences(preferences).continueRecording)
+
+        preferences.remove(booleanPreferencesKey("continue_recording"))
+        assertEquals(false, DevicePreferencesMapper.fromPreferences(preferences).continueRecording)
     }
 
     @Test

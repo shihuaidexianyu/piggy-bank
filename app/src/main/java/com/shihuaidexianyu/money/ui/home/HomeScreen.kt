@@ -38,6 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -330,13 +333,45 @@ private fun PeriodOverviewBlock(
     periodInvestmentPnl: Long,
     onSelectPeriod: (DashboardPeriod) -> Unit,
 ) {
-    val moneyColors = LocalMoneyColors.current
-    val cashNet = cashInflow - cashOutflow
-    val netColor = when {
-        cashNet > 0 -> moneyColors.income
-        cashNet < 0 -> moneyColors.expense
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        NetWorthHeroCard(
+            totalAssets = totalAssets,
+            settings = settings,
+            period = period,
+            selectedPeriod = selectedPeriod,
+            netWorthDelta = netWorthDelta,
+            hasInvestmentAccounts = hasInvestmentAccounts,
+            investmentAssets = investmentAssets,
+            onSelectPeriod = onSelectPeriod,
+        )
+        PeriodFlowsCard(
+            cashInflow = cashInflow,
+            cashOutflow = cashOutflow,
+            settings = settings,
+            period = period,
+            cashInflowDelta = cashInflowDelta,
+            cashOutflowDelta = cashOutflowDelta,
+            hasInvestmentAccounts = hasInvestmentAccounts,
+            periodInvestmentPnl = periodInvestmentPnl,
+        )
     }
+}
+
+/**
+ * First story on home: how much money there is right now. The period switcher and the net-worth
+ * delta live here; everything about how money moved lives in [PeriodFlowsCard].
+ */
+@Composable
+private fun NetWorthHeroCard(
+    totalAssets: Long,
+    settings: PortableSettings,
+    period: DashboardPeriod,
+    selectedPeriod: DashboardPeriod,
+    netWorthDelta: PeriodDelta,
+    hasInvestmentAccounts: Boolean,
+    investmentAssets: Long,
+    onSelectPeriod: (DashboardPeriod) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
@@ -386,25 +421,82 @@ private fun PeriodOverviewBlock(
                 style = MaterialTheme.typography.bodyMedium,
             )
             if (hasInvestmentAccounts) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    PeriodMetricCell(
+                    AssetSplitCell(
                         label = stringResource(R.string.home_funding_assets),
                         value = formatInAppAmount(totalAssets - investmentAssets, settings),
-                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
-                    PeriodMetricCell(
+                    AssetSplitCell(
                         label = stringResource(R.string.home_investment_assets),
                         value = formatInAppAmount(investmentAssets, settings),
-                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+        }
+    }
+}
+
+/**
+ * Secondary asset split line in the hero card. Kept deliberately quiet: neutral text, no semantic
+ * colors, so the card never competes with the headline amount.
+ */
+@Composable
+private fun AssetSplitCell(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * Second story on home: how cash moved during the selected period.
+ */
+@Composable
+private fun PeriodFlowsCard(
+    cashInflow: Long,
+    cashOutflow: Long,
+    settings: PortableSettings,
+    period: DashboardPeriod,
+    cashInflowDelta: PeriodDelta,
+    cashOutflowDelta: PeriodDelta,
+    hasInvestmentAccounts: Boolean,
+    periodInvestmentPnl: Long,
+) {
+    val moneyColors = LocalMoneyColors.current
+    val cashNet = cashInflow - cashOutflow
+    val netColor = when {
+        cashNet > 0 -> moneyColors.income
+        cashNet < 0 -> moneyColors.expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             if (cashInflow > 0L && cashOutflow > 0L) {
                 FlowSplitBar(
                     cashInflow = cashInflow,
@@ -438,13 +530,12 @@ private fun PeriodOverviewBlock(
                     settings = settings,
                     modifier = Modifier.weight(1f),
                 )
-                PeriodMetricCell(
-                    label = stringResource(period.netCashFlowLabelRes()),
-                    value = formatInAppAmount(cashNet, settings),
-                    color = netColor,
-                    modifier = Modifier.weight(1f),
-                )
             }
+            NetCashFlowRow(
+                label = stringResource(period.netCashFlowLabelRes()),
+                value = formatInAppAmount(cashNet, settings),
+                color = netColor,
+            )
             if (hasInvestmentAccounts) {
                 val pnlColor = when {
                     periodInvestmentPnl > 0L -> moneyColors.income
@@ -473,10 +564,36 @@ private fun PeriodOverviewBlock(
     }
 }
 
+@Composable
+private fun NetCashFlowRow(
+    label: String,
+    value: String,
+    color: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            color = color,
+            maxLines = 1,
+        )
+    }
+}
 
 /**
- * Compact pill selector built from official Material 3 surfaces. It keeps the lighter visual
- * weight of the original switcher while retaining Material interaction and selection semantics.
+ * Period switcher built from official Material 3 segmented buttons. The 40dp minimum touch
+ * target replaces the previous 30dp hand-rolled pill while keeping SegmentTick haptics and the
+ * compact width.
  */
 @Composable
 private fun PeriodSwitcher(
@@ -485,52 +602,30 @@ private fun PeriodSwitcher(
 ) {
     val selectorDescription = stringResource(R.string.home_period_selector)
     val haptics = LocalHapticFeedback.current
-    Surface(
+    SingleChoiceSegmentedButtonRow(
         modifier = Modifier
-            .width(146.dp)
+            .width(160.dp)
             .semantics { contentDescription = selectorDescription },
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.medium,
     ) {
-        Row(
-            modifier = Modifier.padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            DashboardPeriod.entries.forEach { period ->
-                val isSelected = period == selected
-                Surface(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                        onSelect(period)
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(30.dp)
-                        .semantics { this.selected = isSelected },
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                    } else {
-                        Color.Transparent
-                    },
-                    contentColor = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    shape = MaterialTheme.shapes.small,
-                    shadowElevation = if (isSelected) 1.dp else 0.dp,
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = stringResource(period.shortLabelRes()),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-            }
+        DashboardPeriod.entries.forEachIndexed { index, period ->
+            val isSelected = period == selected
+            SegmentedButton(
+                selected = isSelected,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    onSelect(period)
+                },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = DashboardPeriod.entries.size,
+                ),
+                label = {
+                    Text(
+                        text = stringResource(period.shortLabelRes()),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
+            )
         }
     }
 }

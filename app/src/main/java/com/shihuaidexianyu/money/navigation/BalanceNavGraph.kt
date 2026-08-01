@@ -219,6 +219,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
                         note = "余额核对补记",
                         reminderId = null,
                         expectedDueAt = null,
+                        allowContinue = false,
                     ),
                 )
             },

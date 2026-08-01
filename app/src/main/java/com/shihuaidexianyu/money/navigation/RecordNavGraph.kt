@@ -94,6 +94,7 @@ internal fun NavGraphBuilder.addRecordGraph(
             navArgument("purpose") { type = NavType.StringType; defaultValue = "" },
             navArgument("reminderId") { type = NavType.LongType; defaultValue = 0L },
             navArgument("expectedDueAt") { type = NavType.LongType; defaultValue = 0L },
+            navArgument("allowContinue") { type = NavType.BoolType; defaultValue = true },
         ),
     ) { entry ->
         val direction = CashFlowDirection.fromValue(entry.arguments?.getString("direction"))
@@ -102,6 +103,8 @@ internal fun NavGraphBuilder.addRecordGraph(
         val prefillNote = NavigationQueryCodec.decode(entry.arguments?.getString("purpose") ?: "")
         val reminderId = entry.arguments?.getLong("reminderId") ?: 0L
         val expectedDueAt = entry.arguments?.getLong("expectedDueAt") ?: 0L
+        val allowContinueRecording = reminderId <= 0L &&
+            (entry.arguments?.getBoolean("allowContinue") ?: true)
         val viewModel = viewModel<RecordCashFlowViewModel>(
             key = "cash_flow_${direction.value}_${accountId}_${reminderId}_$expectedDueAt",
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
@@ -112,6 +115,7 @@ internal fun NavGraphBuilder.addRecordGraph(
                     prefillNote = prefillNote.takeIf { it.isNotEmpty() },
                     reminderId = reminderId.takeIf { it > 0 },
                     expectedDueAt = expectedDueAt.takeIf { it > 0 },
+                    allowContinueRecording = allowContinueRecording,
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,

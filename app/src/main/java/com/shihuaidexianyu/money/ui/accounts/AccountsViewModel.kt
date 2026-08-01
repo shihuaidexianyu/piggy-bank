@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
@@ -30,6 +31,7 @@ data class AccountListItemUiModel(
     val name: String,
     val colorName: String,
     val iconName: String,
+    val kind: AccountKind = AccountKind.DEFAULT,
     val balance: Long,
     val isHidden: Boolean = false,
     val isClosed: Boolean,
@@ -199,6 +201,7 @@ class AccountsViewModel(
             name = account.name,
             colorName = account.colorName,
             iconName = account.iconName,
+            kind = account.kind,
             balance = balance,
             isHidden = account.isHidden,
             isClosed = account.isClosed,

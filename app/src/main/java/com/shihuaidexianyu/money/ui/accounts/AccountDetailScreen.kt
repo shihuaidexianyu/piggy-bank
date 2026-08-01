@@ -3,15 +3,23 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.FactCheck
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -39,7 +49,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -170,35 +180,47 @@ fun AccountDetailScreen(
         if (state.canMutateLedger()) {
             item { MoneySectionHeader(title = stringResource(R.string.account_detail_quick_actions)) }
             item {
-                MoneyListSection {
-                    MoneyListRow(
-                        title = stringResource(R.string.account_detail_record_income),
-                        subtitle = stringResource(R.string.account_detail_preselected),
-                        onClick = onRecordIncome,
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.account_detail_record_expense),
-                        subtitle = stringResource(R.string.account_detail_preselected),
-                        onClick = onRecordExpense,
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.history_transfer),
-                        subtitle = if (state.openAccountCount >= 2) {
-                            stringResource(R.string.account_detail_transfer_from)
-                        } else {
-                            stringResource(R.string.account_detail_transfer_unavailable)
-                        },
-                        onClick = onRecordTransfer,
-                        enabled = state.openAccountCount >= 2,
-                    )
-                    MoneySectionDivider()
-                    MoneyListRow(
-                        title = stringResource(R.string.account_detail_reconcile),
-                        subtitle = stringResource(R.string.account_detail_reconcile_description),
-                        onClick = onStartUpdateBalance,
-                    )
+                val moneyColors = LocalMoneyColors.current
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        QuickActionButton(
+                            label = stringResource(R.string.account_detail_record_income),
+                            icon = Icons.Rounded.Add,
+                            iconTint = moneyColors.income,
+                            onClick = onRecordIncome,
+                            modifier = Modifier.weight(1f),
+                        )
+                        QuickActionButton(
+                            label = stringResource(R.string.account_detail_record_expense),
+                            icon = Icons.Rounded.Remove,
+                            iconTint = moneyColors.expense,
+                            onClick = onRecordExpense,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        QuickActionButton(
+                            label = stringResource(R.string.history_transfer),
+                            icon = Icons.Rounded.SwapHoriz,
+                            iconTint = moneyColors.transfer,
+                            onClick = onRecordTransfer,
+                            enabled = state.openAccountCount >= 2,
+                            modifier = Modifier.weight(1f),
+                        )
+                        QuickActionButton(
+                            label = stringResource(R.string.account_detail_reconcile),
+                            icon = Icons.Rounded.FactCheck,
+                            iconTint = moneyColors.current,
+                            onClick = onStartUpdateBalance,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -256,6 +278,49 @@ fun AccountDetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Neutral tonal button with a semantic icon tint. The container stays stock Material 3 (no filled
+ * color blocks); semantic colors appear only on the small icon, keeping the grid quiet.
+ */
+@Composable
+private fun QuickActionButton(
+    label: String,
+    icon: ImageVector,
+    iconTint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    MoneyTonalButton(
+        onClick = onClick,
+        modifier = modifier.height(88.dp),
+        enabled = enabled,
+        contentPadding = PaddingValues(vertical = 12.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (enabled) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                maxLines = 1,
+            )
         }
     }
 }

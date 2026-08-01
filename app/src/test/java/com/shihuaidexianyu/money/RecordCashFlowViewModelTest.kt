@@ -4,11 +4,13 @@ import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.TaskExecutor
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -21,6 +23,7 @@ import com.shihuaidexianyu.money.ui.record.RecordCashFlowEffect
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -101,6 +104,76 @@ class RecordCashFlowViewModelTest {
         val records = repository.queryAllActiveCashFlowRecords()
         assertEquals(1, records.size)
         assertEquals("", records.single().note)
+    }
+
+    @Test
+    fun `continue recording keeps the page open and resets the form`() = runTest(dispatcher) {
+        val preferences = InMemoryDevicePreferencesRepository()
+        val repository = InMemoryTransactionRepository()
+        val vm = buildViewModel(
+            txnRepo = repository,
+            preferences = preferences,
+        )
+        advanceUntilIdle()
+        vm.updateAccount(1L)
+        vm.updateAmount("100")
+        vm.updateNote("第一笔")
+        vm.updateContinueRecording(true)
+        vm.save()
+        advanceUntilIdle()
+
+        assertEquals(null, vm.uiState.value.pendingTerminal)
+        assertEquals("", vm.uiState.value.amountText)
+        assertEquals("", vm.uiState.value.note)
+        assertEquals(1L, vm.uiState.value.selectedAccountId)
+        assertEquals(false, vm.uiState.value.isDirty)
+        assertEquals(false, vm.uiState.value.isSaving)
+        assertEquals(true, vm.uiState.value.continueRecording)
+
+        // The second save must create a distinct record with a fresh operation ID.
+        vm.updateAmount("200")
+        vm.save()
+        advanceUntilIdle()
+
+        val records = repository.queryAllActiveCashFlowRecords()
+        assertEquals(2, records.size)
+        assertNotEquals(records[0].operationId, records[1].operationId)
+    }
+
+    @Test
+    fun `continue recording shows the saved hint message`() = runTest(dispatcher) {
+        val vm = buildViewModel(preferences = InMemoryDevicePreferencesRepository())
+        advanceUntilIdle()
+        vm.updateAccount(1L)
+        vm.updateAmount("50")
+        vm.updateContinueRecording(true)
+        vm.effectFlow.test {
+            vm.save()
+            advanceUntilIdle()
+            val message = awaitItem()
+            assertTrue(message is RecordCashFlowEffect.ShowMessage)
+            assertEquals(
+                "已保存，可继续记账",
+                (message as RecordCashFlowEffect.ShowMessage).message,
+            )
+        }
+    }
+
+    @Test
+    fun `stateful entries ignore continue mode and navigate after save`() = runTest(dispatcher) {
+        val preferences = InMemoryDevicePreferencesRepository(
+            initial = DevicePreferences(continueRecording = true),
+        )
+        val vm = buildViewModel(
+            preferences = preferences,
+            allowContinueRecording = false,
+        )
+        advanceUntilIdle()
+        vm.updateAccount(1L)
+        vm.updateAmount("50")
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(FormTerminalKind.SAVED, vm.uiState.value.pendingTerminal?.kind)
     }
 
     @Test
@@ -229,6 +302,8 @@ class RecordCashFlowViewModelTest {
             kotlinx.coroutines.runBlocking { repo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L)) }
         },
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
+        preferences: InMemoryDevicePreferencesRepository? = null,
+        allowContinueRecording: Boolean = true,
     ): RecordCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateAccountBalancesUseCase(txnRepo)
@@ -244,6 +319,7 @@ class RecordCashFlowViewModelTest {
             prefillAmount = null,
             prefillNote = null,
             reminderId = null,
+            allowContinueRecording = allowContinueRecording,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,
             calculateAccountBalancesUseCase = calculateUseCase,
@@ -251,6 +327,7 @@ class RecordCashFlowViewModelTest {
             processDueReminderUseCase = null,
             savedStateHandle = SavedStateHandle(),
             operationIdFactory = LedgerOperationIdFactory { testOperationId() },
+            devicePreferencesRepository = preferences,
         )
     }
 }

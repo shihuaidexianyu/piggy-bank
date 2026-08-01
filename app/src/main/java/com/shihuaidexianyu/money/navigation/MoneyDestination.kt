@@ -58,6 +58,7 @@ sealed class MoneyDestination(
             note: String?,
             reminderId: Long?,
             expectedDueAt: Long?,
+            allowContinue: Boolean = true,
         ): String {
             val baseRoute = recordCashFlowRoute(direction, accountId)
             val query = buildList {
@@ -65,6 +66,7 @@ sealed class MoneyDestination(
                 note?.takeIf { it.isNotBlank() }?.let { add("purpose=${NavigationQueryCodec.encode(it)}") }
                 reminderId?.takeIf { it > 0 }?.let { add("reminderId=$it") }
                 expectedDueAt?.takeIf { it > 0 }?.let { add("expectedDueAt=$it") }
+                if (!allowContinue) add("allowContinue=false")
             }
             return if (query.isEmpty()) baseRoute else "$baseRoute?${query.joinToString("&")}"
         }

@@ -85,6 +85,9 @@
     <string name="async_empty">暂无数据</string>
     <string name="async_filtered_empty">没有符合筛选条件的数据</string>
     <string name="action_save">保存</string>
+    <string name="record_continue_recording">保存后继续记账</string>
+    <string name="record_continue_recording_hint">保存后留在本页，继续记录下一笔</string>
+    <string name="record_saved_continue_hint">已保存，可继续记账</string>
     <string name="action_cancel">取消</string>
     <string name="form_discard_title">放弃未保存的更改？</string>
     <string name="form_discard_message">当前草稿尚未保存。</string>
@@ -95,6 +98,10 @@
 
     <!-- Accounts -->
     <string name="accounts_title">账户</string>
+    <string name="accounts_total_assets">总资产</string>
+    <string name="accounts_open_count_format">%1$d 个开放账户</string>
+    <string name="accounts_funding_share_format">日常 %1$s</string>
+    <string name="accounts_investment_share_format">投资 %1$s</string>
     <string name="accounts_create">新建账户</string>
     <string name="accounts_management">管理</string>
     <string name="accounts_order">账户顺序</string>
