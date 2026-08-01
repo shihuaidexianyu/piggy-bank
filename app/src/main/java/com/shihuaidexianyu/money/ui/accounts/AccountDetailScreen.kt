@@ -13,11 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.FactCheck
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,13 +25,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.usecase.AccountDetailRecordKind
@@ -188,14 +187,14 @@ fun AccountDetailScreen(
                     ) {
                         QuickActionButton(
                             label = stringResource(R.string.account_detail_record_income),
-                            icon = Icons.Rounded.Add,
+                            icon = IncomeActionIcon,
                             iconTint = moneyColors.income,
                             onClick = onRecordIncome,
                             modifier = Modifier.weight(1f),
                         )
                         QuickActionButton(
                             label = stringResource(R.string.account_detail_record_expense),
-                            icon = Icons.Rounded.Remove,
+                            icon = ExpenseActionIcon,
                             iconTint = moneyColors.expense,
                             onClick = onRecordExpense,
                             modifier = Modifier.weight(1f),
@@ -207,7 +206,7 @@ fun AccountDetailScreen(
                     ) {
                         QuickActionButton(
                             label = stringResource(R.string.history_transfer),
-                            icon = Icons.Rounded.SwapHoriz,
+                            icon = TransferActionIcon,
                             iconTint = moneyColors.transfer,
                             onClick = onRecordTransfer,
                             enabled = state.openAccountCount >= 2,
@@ -215,7 +214,7 @@ fun AccountDetailScreen(
                         )
                         QuickActionButton(
                             label = stringResource(R.string.account_detail_reconcile),
-                            icon = Icons.Rounded.FactCheck,
+                            icon = ReconcileActionIcon,
                             iconTint = moneyColors.current,
                             onClick = onStartUpdateBalance,
                             modifier = Modifier.weight(1f),
@@ -279,6 +278,78 @@ fun AccountDetailScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * Hand-drawn geometric action glyphs (24x24) in the same visual language as the account
+ * patterns: income drops into a tray, expense leaves it, transfer crosses, reconcile checks.
+ * Single-color paths; the button supplies the semantic tint.
+ */
+private val IncomeActionIcon: ImageVector = actionGlyph {
+    line(4f, 19f, 20f, 19f)
+    line(12f, 6f, 12f, 15f)
+    line(7f, 10f, 12f, 15f)
+    line(17f, 10f, 12f, 15f)
+}
+
+private val ExpenseActionIcon: ImageVector = actionGlyph {
+    line(4f, 5f, 20f, 5f)
+    line(12f, 18f, 12f, 9f)
+    line(7f, 13f, 12f, 8f)
+    line(17f, 13f, 12f, 8f)
+}
+
+private val TransferActionIcon: ImageVector = actionGlyph {
+    line(4f, 8f, 16f, 8f)
+    line(12f, 4f, 17f, 8f)
+    line(12f, 12f, 17f, 8f)
+    line(20f, 16f, 8f, 16f)
+    line(12f, 12f, 7f, 16f)
+    line(12f, 20f, 7f, 16f)
+}
+
+private val ReconcileActionIcon: ImageVector = actionGlyph {
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 2f,
+        strokeLineCap = StrokeCap.Round,
+    ) {
+        moveTo(21f, 12f)
+        arcTo(9f, 9f, 0f, true, true, 3f, 12f)
+        arcTo(9f, 9f, 0f, true, true, 21f, 12f)
+    }
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 2.4f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(7.5f, 12.5f)
+        lineTo(10.5f, 15.5f)
+        lineTo(16.5f, 9f)
+    }
+}
+
+private fun actionGlyph(draw: ImageVector.Builder.() -> Unit): ImageVector =
+    ImageVector.Builder(
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply(draw).build()
+
+private fun ImageVector.Builder.line(x1: Float, y1: Float, x2: Float, y2: Float) {
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 2f,
+        strokeLineCap = StrokeCap.Round,
+    ) {
+        moveTo(x1, y1)
+        lineTo(x2, y2)
     }
 }
 
