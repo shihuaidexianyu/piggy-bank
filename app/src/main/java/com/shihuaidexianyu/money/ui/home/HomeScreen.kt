@@ -303,7 +303,7 @@ private fun CircularHeaderIconButton(
         modifier = Modifier.size(44.dp),
         shape = CircleShape,
         colors = IconButtonDefaults.iconButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
     ) {
         Box(
