@@ -141,6 +141,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
                 onManageSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
+                onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
                 onRetry = viewModel::retry,
             )
     }

@@ -14,9 +14,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Reorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,9 +26,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -36,8 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContent
@@ -48,7 +47,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 data class AccountGroups(
@@ -76,14 +74,22 @@ fun AccountsScreen(
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
     onManageSavingsGoal: () -> Unit,
+    onReorderAccounts: () -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
-    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
-        .mapNotNull { account -> account.balance.takeIf { it > 0L } }
-        .ledgerSumExact()
+    val normalKindGroups = buildList<Pair<AccountKind?, List<AccountListItemUiModel>>> {
+        val funding = groups.normal.filter { it.kind == AccountKind.FUNDING }
+        val investment = groups.normal.filter { it.kind == AccountKind.INVESTMENT }
+        if (funding.isNotEmpty() && investment.isNotEmpty()) {
+            add(AccountKind.FUNDING to funding)
+            add(AccountKind.INVESTMENT to investment)
+        } else {
+            add(null to groups.normal)
+        }
+    }
 
     Column(modifier = modifier) {
         TopAppBar(
@@ -146,26 +152,65 @@ fun AccountsScreen(
                     }
                 }
             } else {
-                if (groups.normal.isNotEmpty()) {
-                    val staleCount = groups.normal.count { it.isStale }
-                    item {
-                        MoneySectionHeader(
-                            title = stringResource(R.string.accounts_normal),
-                            trailing = if (staleCount > 0) {
-                                pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount)
-                            } else {
-                                pluralStringResource(R.plurals.account_count, groups.normal.size, groups.normal.size)
-                            },
-                        )
-                    }
-                    itemsIndexed(groups.normal, key = { _, account -> account.id }) { _, account ->
-                        AccountCard(
-                            account = account,
-                            currencySettings = state.settings,
-                            positiveAssetsTotal = positiveAssetsTotal,
-                            onClick = { onAccountClick(account.id) },
-                            modifier = Modifier.animateItem(),
-                        )
+                normalKindGroups.forEachIndexed { groupIndex, (kind, accounts) ->
+                    if (accounts.isNotEmpty()) {
+                        val staleCount = accounts.count { it.isStale }
+                        item {
+                            MoneySectionHeader(
+                                title = stringResource(
+                                    when (kind) {
+                                        AccountKind.FUNDING -> R.string.account_kind_funding
+                                        AccountKind.INVESTMENT -> R.string.account_kind_investment
+                                        null -> R.string.accounts_normal
+                                    },
+                                ),
+                                trailingContent = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        if (groupIndex == 0) {
+                                            IconButton(
+                                                onClick = onReorderAccounts,
+                                                modifier = Modifier.size(40.dp),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Reorder,
+                                                    contentDescription = stringResource(R.string.accounts_order),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = if (staleCount > 0) {
+                                                pluralStringResource(
+                                                    R.plurals.stale_account_count,
+                                                    staleCount,
+                                                    staleCount,
+                                                )
+                                            } else {
+                                                pluralStringResource(
+                                                    R.plurals.account_count,
+                                                    accounts.size,
+                                                    accounts.size,
+                                                )
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                            )
+                        }
+                        itemsIndexed(accounts, key = { _, account -> account.id }) { _, account ->
+                            AccountCard(
+                                account = account,
+                                currencySettings = state.settings,
+                                onClick = { onAccountClick(account.id) },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
                     }
                 }
                 if (groups.hidden.isNotEmpty()) {
@@ -183,7 +228,6 @@ fun AccountsScreen(
                         AccountCard(
                             account = account,
                             currencySettings = state.settings,
-                            positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
                             modifier = Modifier.animateItem(),
                         )
@@ -224,7 +268,6 @@ fun AccountsScreen(
                     AccountCard(
                         account = account,
                         currencySettings = state.settings,
-                        positiveAssetsTotal = 0L,
                         modifier = Modifier.animateItem(),
                         onClick = { onAccountClick(account.id) },
                     )
@@ -256,34 +299,26 @@ fun AccountsScreen(
 private fun AccountCard(
     account: AccountListItemUiModel,
     currencySettings: PortableSettings,
-    positiveAssetsTotal: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
     val balanceText = formatInAppAmount(account.balance, currencySettings)
-    val showAssetShare = !account.isClosed && account.balance > 0 && positiveAssetsTotal > 0
-    // Fraction is for UI layout only (a horizontal rectangle width). Compose draw APIs take Float,
-    // so we divide as Float *after* the rule-of-money check. The amount itself is never stored as Float.
-    @Suppress("FloatingPointUsageInMoney")
-    val assetShareFraction = if (showAssetShare) {
-        account.balance.toFloat() / positiveAssetsTotal.toFloat()
-    } else {
-        0f
-    }
-    val assetShareText = if (showAssetShare) {
-        formatAssetShare(account.balance, positiveAssetsTotal)
-    } else {
-        ""
-    }
-    val assetShareColor = accountVisualColor(account.colorName)
     val statusText = when {
         account.requiresReopenAndSettle -> stringResource(R.string.account_status_reopen_settle)
         account.isClosed -> stringResource(R.string.account_status_closed)
         account.isHidden -> stringResource(R.string.account_status_hidden)
         account.isStale -> stringResource(R.string.account_status_stale)
-        else -> stringResource(R.string.account_status_normal)
+        else -> null
     }
+    // Normal accounts stay silent; only investment accounts carry a type tag so the kind is
+    // visible while scrolling without repeating it on every row.
+    val caption = statusText ?: if (account.kind == AccountKind.INVESTMENT) {
+        stringResource(R.string.account_kind_investment)
+    } else {
+        null
+    }
+    val isDimmed = account.isClosed || account.isHidden
     val balanceStyle = when {
         balanceText.length > 18 -> MaterialTheme.typography.bodyMedium
         balanceText.length > 14 -> MaterialTheme.typography.titleMedium
@@ -299,91 +334,60 @@ private fun AccountCard(
                 contentDescription = buildString {
                     append(account.name)
                     append(balanceSemantics)
-                    append("，$statusText")
+                    caption?.let { append("，$it") }
                 }
                 role = Role.Button
             },
         colors = CardDefaults.cardColors(containerColor = cardColor),
         shape = MaterialTheme.shapes.medium,
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (showAssetShare) {
-                        Modifier.drawBehind {
-                            drawRect(
-                                color = assetShareColor.copy(alpha = 0.10f),
-                                size = Size(
-                                    width = size.width * assetShareFraction.coerceIn(0.01f, 1f),
-                                    height = size.height,
-                                ),
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
-                ),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            AccountIconBadge(
+                iconName = account.iconName,
+                colorName = account.colorName,
+                isClosed = account.isClosed,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                AccountIconBadge(
-                    iconName = account.iconName,
-                    colorName = account.colorName,
-                    isClosed = account.isClosed,
+                Text(
+                    text = account.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isDimmed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+                caption?.let {
                     Text(
-                        text = account.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = statusText,
+                        text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                 }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (showAssetShare) {
-                        Text(
-                            text = assetShareText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                    Text(
-                        text = balanceText,
-                        style = balanceStyle,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
             }
+            Text(
+                text = balanceText,
+                style = balanceStyle,
+                color = if (account.isClosed) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onBackground
+                },
+                maxLines = 1,
+            )
         }
-    }
-}
-
-private fun formatAssetShare(balance: Long, totalPositiveBalance: Long): String {
-    // Integer percentage of [0, 100] — uses Long arithmetic to avoid Float/Double for the money math.
-    val percentage = (balance * 100L / totalPositiveBalance).coerceIn(0L, 100L)
-    return if (percentage < 1L) {
-        "<1%"
-    } else {
-        "$percentage%"
     }
 }
 

@@ -111,7 +111,6 @@
     <string name="account_status_closed">已关闭</string>
     <string name="account_status_hidden">已隐藏 · 仍计入净资产</string>
     <string name="account_status_stale">余额待核对</string>
-    <string name="account_status_normal">余额正常</string>
     <string name="account_balance_semantics_format">，余额 %1$s</string>
     <string name="account_stale_badge">待核对</string>
 
