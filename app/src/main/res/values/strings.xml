@@ -89,10 +89,7 @@
 
     <!-- Accounts -->
     <string name="accounts_title">账户</string>
-    <string name="accounts_total_assets">总资产</string>
     <string name="accounts_open_count_format">%1$d 个开放账户</string>
-    <string name="accounts_funding_share_format">日常 %1$s</string>
-    <string name="accounts_investment_share_format">投资 %1$s</string>
     <string name="accounts_create">新建账户</string>
     <string name="accounts_management">管理</string>
     <string name="accounts_order">账户顺序</string>

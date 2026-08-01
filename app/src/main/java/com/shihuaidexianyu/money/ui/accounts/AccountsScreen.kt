@@ -1,36 +1,30 @@
 package com.shihuaidexianyu.money.ui.accounts
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
@@ -91,12 +84,6 @@ fun AccountsScreen(
     val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
         .mapNotNull { account -> account.balance.takeIf { it > 0L } }
         .ledgerSumExact()
-    val allAccounts = state.openAccounts + state.closedAccounts
-    val totalAssets = allAccounts.map { it.balance }.ledgerSumExact()
-    val investmentAssets = allAccounts
-        .filter { it.kind == AccountKind.INVESTMENT }
-        .map { it.balance }
-        .ledgerSumExact()
 
     Column(modifier = modifier) {
         TopAppBar(
@@ -123,12 +110,8 @@ fun AccountsScreen(
             if (state.openAccounts.isNotEmpty() || hasClosedAccounts) {
                 item {
                     AccountsOverviewCard(
-                        totalAssets = totalAssets,
                         openCount = state.openAccounts.size,
                         staleCount = state.openAccounts.count { it.isStale },
-                        fundingAssets = totalAssets - investmentAssets,
-                        investmentAssets = investmentAssets,
-                        settings = state.settings,
                     )
                 }
             }
@@ -405,115 +388,38 @@ private fun formatAssetShare(balance: Long, totalPositiveBalance: Long): String 
 }
 
 /**
- * Page-level summary: total assets, open/stale counts, and the funding/investment split.
- * The split bar is deliberately quiet — brand primary for the dominant funding share and a
- * neutral outline tone for the rest, so the page never turns into a patchwork of color blocks.
+ * Page-level summary limited to what the home dashboard does not already show: open and stale
+ * account counts. The total-assets amount and the funding/investment split live on home only,
+ * so each piece of information keeps a single source.
  */
 @Composable
 private fun AccountsOverviewCard(
-    totalAssets: Long,
     openCount: Int,
     staleCount: Int,
-    fundingAssets: Long,
-    investmentAssets: Long,
-    settings: PortableSettings,
 ) {
-    MoneyCard {
-        Text(
-            text = stringResource(R.string.accounts_total_assets),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val totalText = formatInAppAmount(totalAssets, settings)
-        val amountStyle = when {
-            totalText.length > 12 -> MaterialTheme.typography.headlineSmall
-            totalText.length > 8 -> MaterialTheme.typography.headlineMedium
-            else -> MaterialTheme.typography.displayMedium
-        }
-        Text(
-            text = totalText,
-            style = amountStyle,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.accounts_open_count_format, openCount),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, top = 10.dp, bottom = 10.dp),
             )
             if (staleCount > 0) {
                 Text(
                     text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        if (investmentAssets > 0L) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-            AccountsAssetsSplitBar(
-                fundingAssets = fundingAssets,
-                investmentAssets = investmentAssets,
-            )
-            val splitTotal = fundingAssets + investmentAssets
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = stringResource(
-                        R.string.accounts_funding_share_format,
-                        formatAssetShare(fundingAssets, splitTotal),
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(
-                        R.string.accounts_investment_share_format,
-                        formatAssetShare(investmentAssets, splitTotal),
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Suppress("FloatingPointUsageInMoney")
-@Composable
-private fun AccountsAssetsSplitBar(
-    fundingAssets: Long,
-    investmentAssets: Long,
-) {
-    val total = (fundingAssets + investmentAssets).coerceAtLeast(1L)
-    val fundingFraction = (fundingAssets.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val neutralColor = MaterialTheme.colorScheme.outlineVariant
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(CircleShape),
-    ) {
-        val gap = 2.dp.toPx()
-        val fundingWidth = (size.width - gap) * fundingFraction
-        drawRoundRect(
-            color = primaryColor,
-            size = Size(fundingWidth, size.height),
-            cornerRadius = CornerRadius(size.height / 2f),
-        )
-        drawRoundRect(
-            color = neutralColor,
-            topLeft = Offset(fundingWidth + gap, 0f),
-            size = Size(size.width - fundingWidth - gap, size.height),
-            cornerRadius = CornerRadius(size.height / 2f),
-        )
     }
 }
