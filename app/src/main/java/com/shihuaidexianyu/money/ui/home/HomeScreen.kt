@@ -35,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -271,9 +272,8 @@ fun HomeHeaderActions(
     onOpenReminders: () -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        IconButton(
+        CircularHeaderIconButton(
             onClick = onOpenSettings,
-            modifier = Modifier.size(48.dp),
         ) {
             Icon(
                 imageVector = Icons.Rounded.Settings,
@@ -289,14 +289,39 @@ fun HomeHeaderActions(
     }
 }
 
+/**
+ * Header icon with a quiet circular tonal backing, so settings/reminder actions read as buttons
+ * instead of floating glyphs on the app-bar canvas.
+ */
+@Composable
+private fun CircularHeaderIconButton(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(44.dp),
+        shape = CircleShape,
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
+        }
+    }
+}
+
 @Composable
 private fun ReminderHeaderButton(
     dueCount: Int,
     onClick: () -> Unit,
 ) {
-    IconButton(
+    CircularHeaderIconButton(
         onClick = onClick,
-        modifier = Modifier.size(48.dp),
     ) {
         BadgedBox(
             badge = {
