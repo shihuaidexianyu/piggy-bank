@@ -14,6 +14,8 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import com.shihuaidexianyu.money.domain.model.ACCOUNT_GEOMETRY_NAMES
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
@@ -166,6 +168,12 @@ object DebugSampleDataSeeder {
                     },
                     displayOrder = index,
                     colorName = colors[index],
+                    iconName = ACCOUNT_GEOMETRY_NAMES[index % ACCOUNT_GEOMETRY_NAMES.size],
+                    kind = if (key == "investment") {
+                        AccountKind.INVESTMENT.value
+                    } else {
+                        AccountKind.FUNDING.value
+                    },
                 ),
             )
             key to accountId

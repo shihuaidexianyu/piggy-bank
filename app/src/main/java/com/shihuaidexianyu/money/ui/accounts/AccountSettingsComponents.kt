@@ -40,13 +40,12 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
-import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.ui.common.AccountColorOptions
 import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AccountIconOptions
-import com.shihuaidexianyu.money.ui.common.accountIconLabel
+import com.shihuaidexianyu.money.ui.common.accountPatternIndex
 import com.shihuaidexianyu.money.ui.common.accountColorLabel
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -184,7 +183,8 @@ private fun AccountIconChoiceDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(AccountIconOptions, key = { it.name }) { option ->
-                    val selected = option.name == normalizeAccountIconName(selectedIconName)
+                    val selected = accountPatternIndex(option.name) ==
+                        accountPatternIndex(selectedIconName)
                     val label = stringResource(option.labelRes)
                     Card(
                         onClick = { onSelect(option.name) },
@@ -396,7 +396,7 @@ internal fun AccountVisualFields(
 ) {
     MoneySelectionField(
         label = stringResource(R.string.account_icon_title),
-        value = accountIconLabel(iconName),
+        value = accountPatternLabel(iconName),
         onClick = onIconClick,
     )
     MoneySelectionField(
@@ -497,7 +497,7 @@ internal fun AccountVisualListRows(
     MoneySectionDivider()
     MoneyListRow(
         title = stringResource(R.string.account_icon_title),
-        trailing = accountIconLabel(iconName),
+        trailing = accountPatternLabel(iconName),
         leading = { AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp) },
         onClick = onIconClick,
     )
@@ -509,3 +509,7 @@ internal fun AccountVisualListRows(
         onClick = onColorClick,
     )
 }
+
+@Composable
+private fun accountPatternLabel(iconName: String): String =
+    stringResource(R.string.account_pattern_format, accountPatternIndex(iconName) + 1)

@@ -4,26 +4,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ShowChart
-import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.AccountBalance
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.BusinessCenter
-import androidx.compose.material.icons.rounded.CardGiftcard
-import androidx.compose.material.icons.rounded.CreditCard
-import androidx.compose.material.icons.rounded.CurrencyExchange
-import androidx.compose.material.icons.rounded.DirectionsCar
-import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.MedicalServices
-import androidx.compose.material.icons.rounded.Payments
-import androidx.compose.material.icons.rounded.Pets
-import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.Savings
-import androidx.compose.material.icons.rounded.School
-import androidx.compose.material.icons.rounded.ShoppingBag
-import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,15 +12,22 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.ACCOUNT_GEOMETRY_NAMES
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_ICON_NAMES
 import com.shihuaidexianyu.money.domain.model.ACCOUNT_COLOR_NAMES
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class AccountVisualOption(
     val name: String,
@@ -57,8 +44,39 @@ val AccountColorOptions = ACCOUNT_COLOR_NAMES.map { name ->
     AccountVisualOption(name = name, labelRes = accountColorLabelRes(name))
 }
 
-val AccountIconOptions = ACCOUNT_ICON_NAMES.map { name ->
-    AccountIconOption(name = name, labelRes = accountIconLabelRes(name), icon = accountIconVector(name))
+val AccountIconOptions = ACCOUNT_GEOMETRY_NAMES.mapIndexed { index, name ->
+    AccountIconOption(
+        name = name,
+        labelRes = accountPatternLabelRes(index),
+        icon = accountGeometryVector(index),
+    )
+}
+
+@StringRes
+private fun accountPatternLabelRes(index: Int): Int = when (index % ACCOUNT_GEOMETRY_NAMES.size) {
+    0 -> R.string.account_pattern_1
+    1 -> R.string.account_pattern_2
+    2 -> R.string.account_pattern_3
+    3 -> R.string.account_pattern_4
+    4 -> R.string.account_pattern_5
+    5 -> R.string.account_pattern_6
+    6 -> R.string.account_pattern_7
+    7 -> R.string.account_pattern_8
+    8 -> R.string.account_pattern_9
+    else -> R.string.account_pattern_10
+}
+
+/**
+ * Stable pattern slot for any stored icon name. New picks use the geometry catalog directly;
+ * legacy names from older backups map to a fixed slot by their position in the legacy list, so
+ * existing accounts keep a varied, deterministic pattern without any data migration.
+ */
+internal fun accountPatternIndex(name: String): Int {
+    val normalized = normalizeAccountIconName(name)
+    val geometryIndex = ACCOUNT_GEOMETRY_NAMES.indexOf(normalized)
+    if (geometryIndex >= 0) return geometryIndex
+    val legacyIndex = ACCOUNT_ICON_NAMES.indexOf(normalized)
+    return if (legacyIndex >= 0) legacyIndex % ACCOUNT_GEOMETRY_NAMES.size else 0
 }
 
 @StringRes
@@ -79,36 +97,8 @@ fun accountColorLabelRes(name: String): Int {
     }
 }
 
-@StringRes
-fun accountIconLabelRes(name: String): Int {
-    return when (normalizeAccountIconName(name)) {
-        "bank" -> R.string.account_icon_bank
-        "cash" -> R.string.account_icon_cash
-        "credit_card" -> R.string.account_icon_credit_card
-        "savings" -> R.string.account_icon_savings
-        "investment" -> R.string.account_icon_investment
-        "chart" -> R.string.account_icon_chart
-        "currency" -> R.string.account_icon_currency
-        "home" -> R.string.account_icon_home
-        "phone" -> R.string.account_icon_phone
-        "shopping" -> R.string.account_icon_shopping
-        "restaurant" -> R.string.account_icon_restaurant
-        "car" -> R.string.account_icon_car
-        "flight" -> R.string.account_icon_flight
-        "gift" -> R.string.account_icon_gift
-        "school" -> R.string.account_icon_school
-        "medical" -> R.string.account_icon_medical
-        "pets" -> R.string.account_icon_pets
-        "work" -> R.string.account_icon_work
-        else -> R.string.account_icon_wallet
-    }
-}
-
 @Composable
 fun accountColorLabel(name: String): String = stringResource(accountColorLabelRes(name))
-
-@Composable
-fun accountIconLabel(name: String): String = stringResource(accountIconLabelRes(name))
 
 @Composable
 fun AccountColorSwatch(
@@ -149,7 +139,10 @@ fun AccountIconBadge(
         ) {
             Icon(
                 imageVector = accountIconVector(iconName),
-                contentDescription = stringResource(accountIconLabelRes(iconName)),
+                contentDescription = stringResource(
+                    R.string.account_pattern_format,
+                    accountPatternIndex(iconName) + 1,
+                ),
                 tint = accent,
                 modifier = Modifier.size(iconSize),
             )
@@ -182,26 +175,176 @@ internal fun accountVisualColor(name: String): Color {
     }
 }
 
-private fun accountIconVector(name: String): ImageVector {
-    return when (normalizeAccountIconName(name)) {
-        "bank" -> Icons.Rounded.AccountBalance
-        "cash" -> Icons.Rounded.Payments
-        "credit_card" -> Icons.Rounded.CreditCard
-        "savings" -> Icons.Rounded.Savings
-        "investment" -> Icons.AutoMirrored.Rounded.TrendingUp
-        "chart" -> Icons.AutoMirrored.Rounded.ShowChart
-        "currency" -> Icons.Rounded.CurrencyExchange
-        "home" -> Icons.Rounded.Home
-        "phone" -> Icons.Rounded.Smartphone
-        "shopping" -> Icons.Rounded.ShoppingBag
-        "restaurant" -> Icons.Rounded.Restaurant
-        "car" -> Icons.Rounded.DirectionsCar
-        "flight" -> Icons.Rounded.Flight
-        "gift" -> Icons.Rounded.CardGiftcard
-        "school" -> Icons.Rounded.School
-        "medical" -> Icons.Rounded.MedicalServices
-        "pets" -> Icons.Rounded.Pets
-        "work" -> Icons.Rounded.BusinessCenter
-        else -> Icons.Rounded.AccountBalanceWallet
+private fun accountIconVector(name: String): ImageVector =
+    accountGeometryVector(accountPatternIndex(name))
+
+private const val GeometryStrokeWidth = 2f
+
+/**
+ * Procedurally drawn geometric glyphs in a 24x24 viewport. Each pattern is a distinct silhouette
+ * (rings, pie, hexagon, arc, dots, stripes, sun, waves, diamond, grid) so accounts read as
+ * unique without any semantic icon. Single-color paths — the Icon tint supplies the account hue.
+ */
+private fun accountGeometryVector(patternIndex: Int): ImageVector {
+    val builder = ImageVector.Builder(
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    )
+    when (patternIndex % ACCOUNT_GEOMETRY_NAMES.size) {
+        0 -> { // Concentric rings
+            builder.strokedCircle(12f, 12f, 8f)
+            builder.strokedCircle(12f, 12f, 4.5f)
+            builder.filledCircle(12f, 12f, 1.5f)
+        }
+        1 -> { // Three-quarter pie
+            builder.path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 12f)
+                lineTo(20f, 12f)
+                arcTo(8f, 8f, 0f, true, true, 12f, 4f)
+                close()
+            }
+            builder.filledCircle(20f, 12f, 1.5f)
+        }
+        2 -> { // Hexagon with center dot
+            builder.polygon(
+                regularPolygon(12f, 12f, 8.5f, sides = 6, startAngleDegrees = -90.0),
+                filled = false,
+            )
+            builder.filledCircle(12f, 12f, 2f)
+        }
+        3 -> { // Arc with endpoint dot
+            builder.path(
+                fill = null,
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = GeometryStrokeWidth,
+                strokeLineCap = StrokeCap.Round,
+            ) {
+                moveTo(20f, 12f)
+                arcTo(8f, 8f, 0f, true, true, 8f, 5.07f)
+            }
+            builder.filledCircle(8f, 5.07f, 1.8f)
+        }
+        4 -> { // Dot matrix
+            listOf(
+                8f to 6f, 16f to 6f,
+                8f to 12f, 16f to 12f,
+                8f to 18f, 16f to 18f,
+            ).forEach { (x, y) -> builder.filledCircle(x, y, 2f) }
+        }
+        5 -> { // Diagonal stripes
+            builder.line(5f, 18f, 10f, 8f)
+            builder.line(9f, 18f, 14f, 8f)
+            builder.line(13f, 18f, 18f, 8f)
+        }
+        6 -> { // Sun
+            builder.filledCircle(12f, 12f, 5f)
+            repeat(8) { i ->
+                val angle = Math.toRadians(i * 45.0)
+                val rayCos = cos(angle).toFloat()
+                val raySin = sin(angle).toFloat()
+                builder.line(
+                    12f + 7.5f * rayCos, 12f + 7.5f * raySin,
+                    12f + 10.5f * rayCos, 12f + 10.5f * raySin,
+                )
+            }
+        }
+        7 -> { // Waves
+            builder.wave(yOffset = 0f)
+            builder.wave(yOffset = 6f)
+        }
+        8 -> { // Diamond
+            builder.path(fill = SolidColor(Color.Black)) {
+                moveTo(12f, 3f)
+                lineTo(21f, 12f)
+                lineTo(12f, 21f)
+                lineTo(3f, 12f)
+                close()
+            }
+            builder.polygon(
+                regularPolygon(12f, 12f, 4.95f, sides = 4, startAngleDegrees = 45.0),
+                filled = false,
+            )
+        }
+        else -> { // Dot grid
+            listOf(6f, 12f, 18f).forEach { x ->
+                listOf(6f, 12f, 18f).forEach { y ->
+                    builder.filledCircle(x, y, 1.6f)
+                }
+            }
+        }
     }
+    return builder.build()
+}
+
+private fun ImageVector.Builder.filledCircle(cx: Float, cy: Float, radius: Float) {
+    path(fill = SolidColor(Color.Black)) {
+        moveTo(cx + radius, cy)
+        arcTo(radius, radius, 0f, true, true, cx - radius, cy)
+        arcTo(radius, radius, 0f, true, true, cx + radius, cy)
+    }
+}
+
+private fun ImageVector.Builder.strokedCircle(cx: Float, cy: Float, radius: Float) {
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = GeometryStrokeWidth,
+        strokeLineCap = StrokeCap.Round,
+    ) {
+        moveTo(cx + radius, cy)
+        arcTo(radius, radius, 0f, true, true, cx - radius, cy)
+        arcTo(radius, radius, 0f, true, true, cx + radius, cy)
+    }
+}
+
+private fun ImageVector.Builder.line(x1: Float, y1: Float, x2: Float, y2: Float) {
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = GeometryStrokeWidth,
+        strokeLineCap = StrokeCap.Round,
+    ) {
+        moveTo(x1, y1)
+        lineTo(x2, y2)
+    }
+}
+
+private fun ImageVector.Builder.polygon(points: List<Pair<Float, Float>>, filled: Boolean) {
+    path(
+        fill = if (filled) SolidColor(Color.Black) else null,
+        stroke = if (filled) null else SolidColor(Color.Black),
+        strokeLineWidth = GeometryStrokeWidth,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ) {
+        moveTo(points.first().first, points.first().second)
+        points.drop(1).forEach { (x, y) -> lineTo(x, y) }
+        close()
+    }
+}
+
+private fun ImageVector.Builder.wave(yOffset: Float) {
+    path(
+        fill = null,
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = GeometryStrokeWidth,
+        strokeLineCap = StrokeCap.Round,
+    ) {
+        moveTo(3f, 9f + yOffset)
+        curveTo(6f, 5f + yOffset, 9f, 13f + yOffset, 12f, 9f + yOffset)
+        curveTo(15f, 5f + yOffset, 18f, 13f + yOffset, 21f, 9f + yOffset)
+    }
+}
+
+private fun regularPolygon(
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    sides: Int,
+    startAngleDegrees: Double,
+): List<Pair<Float, Float>> = (0 until sides).map { i ->
+    val angle = Math.toRadians(startAngleDegrees + i * (360.0 / sides))
+    (centerX + radius * cos(angle)).toFloat() to (centerY + radius * sin(angle)).toFloat()
 }

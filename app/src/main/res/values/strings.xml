@@ -323,7 +323,18 @@
 
     <!-- Account appearance and reconciliation reminders -->
     <string name="account_color_title">账户颜色</string>
-    <string name="account_icon_title">账户图标</string>
+    <string name="account_icon_title">账户图案</string>
+    <string name="account_pattern_1">图案 1</string>
+    <string name="account_pattern_2">图案 2</string>
+    <string name="account_pattern_3">图案 3</string>
+    <string name="account_pattern_4">图案 4</string>
+    <string name="account_pattern_5">图案 5</string>
+    <string name="account_pattern_6">图案 6</string>
+    <string name="account_pattern_7">图案 7</string>
+    <string name="account_pattern_8">图案 8</string>
+    <string name="account_pattern_9">图案 9</string>
+    <string name="account_pattern_10">图案 10</string>
+    <string name="account_pattern_format">图案 %1$d</string>
     <string name="account_kind_title">账户类型</string>
     <string name="account_kind_funding">日常</string>
     <string name="account_kind_investment">投资</string>
@@ -362,25 +373,6 @@
     <string name="account_color_indigo">靛蓝</string>
     <string name="account_color_brown">棕色</string>
     <string name="account_color_gray">灰色</string>
-    <string name="account_icon_wallet">钱包</string>
-    <string name="account_icon_bank">银行</string>
-    <string name="account_icon_cash">现金</string>
-    <string name="account_icon_credit_card">信用卡</string>
-    <string name="account_icon_savings">储蓄</string>
-    <string name="account_icon_investment">理财</string>
-    <string name="account_icon_home">房产</string>
-    <string name="account_icon_phone">手机</string>
-    <string name="account_icon_shopping">消费</string>
-    <string name="account_icon_chart">证券</string>
-    <string name="account_icon_currency">外币</string>
-    <string name="account_icon_restaurant">餐饮</string>
-    <string name="account_icon_car">车辆</string>
-    <string name="account_icon_flight">旅行</string>
-    <string name="account_icon_gift">礼金</string>
-    <string name="account_icon_school">教育</string>
-    <string name="account_icon_medical">医疗</string>
-    <string name="account_icon_pets">宠物</string>
-    <string name="account_icon_work">工作</string>
 
     <!-- Ledger forms -->
     <string name="field_please_choose">请选择</string>
