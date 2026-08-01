@@ -9,10 +9,11 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Spring
@@ -55,7 +56,7 @@ data class SwipeRevealAction(
     val iconTint: Color? = null,
 )
 
-private const val REVEAL_WIDTH_DP = 88
+private const val REVEAL_WIDTH_DP = 104
 
 /**
  * iOS-style swipe reveal: dragging reveals an action button at the row edge; the action fires
@@ -185,19 +186,20 @@ private fun SwipeRevealActionButton(
         modifier = modifier.background(action.containerColor),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(
                 imageVector = action.icon,
                 contentDescription = null,
                 tint = action.iconTint ?: action.contentColor,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(20.dp),
             )
             Text(
                 text = action.label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = action.contentColor,
                 maxLines = 1,
             )

@@ -805,8 +805,9 @@ private fun HistoryRow(
         SwipeRevealAction(
             label = stringResource(R.string.action_delete),
             icon = Icons.Rounded.Delete,
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconTint = MaterialTheme.colorScheme.error,
         )
     } else {
         null
@@ -815,8 +816,9 @@ private fun HistoryRow(
         SwipeRevealAction(
             label = stringResource(R.string.action_edit),
             icon = Icons.Rounded.Edit,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconTint = MaterialTheme.colorScheme.primary,
         )
     } else {
         null
