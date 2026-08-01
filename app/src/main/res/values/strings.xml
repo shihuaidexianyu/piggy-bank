@@ -51,15 +51,8 @@
     <string name="home_week_investment_pnl">本周投资损益</string>
     <string name="home_month_investment_pnl">本月投资损益</string>
     <string name="home_year_investment_pnl">今年投资损益</string>
-    <string name="home_since_week_start">较周初</string>
-    <string name="home_since_month_start">较月初</string>
-    <string name="home_since_year_start">较年初</string>
-    <string name="home_vs_previous_week">较上周</string>
-    <string name="home_vs_previous_month">较上月</string>
-    <string name="home_vs_previous_year">较去年</string>
-    <string name="home_change_with_percent_format">%1$s (%2$s) %3$s</string>
-    <string name="home_change_format">%1$s %2$s</string>
-    <string name="home_change_none_format">持平 %1$s</string>
+    <string name="home_change_with_percent_format">%1$s (%2$s)</string>
+    <string name="home_change_none">持平</string>
     <string name="home_change_increase">增加</string>
     <string name="home_change_decrease">减少</string>
     <string name="home_monthly_budget">月预算</string>

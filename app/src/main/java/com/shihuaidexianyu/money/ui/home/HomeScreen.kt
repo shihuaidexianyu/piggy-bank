@@ -413,7 +413,6 @@ private fun NetWorthHeroCard(
             DeltaLabel(
                 delta = netWorthDelta,
                 settings = settings,
-                baselineLabel = stringResource(period.sinceStartLabelRes()),
                 increaseIsPositive = true,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -501,7 +500,6 @@ private fun PeriodFlowsCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            val comparisonLabel = stringResource(period.versusPreviousLabelRes())
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -513,7 +511,6 @@ private fun PeriodFlowsCard(
                     delta = cashInflowDelta,
                     // More income than last period is good news; more spending is not.
                     increaseIsPositive = true,
-                    baselineLabel = comparisonLabel,
                     settings = settings,
                     modifier = Modifier.weight(1f),
                 )
@@ -523,7 +520,6 @@ private fun PeriodFlowsCard(
                     color = moneyColors.expense,
                     delta = cashOutflowDelta,
                     increaseIsPositive = false,
-                    baselineLabel = comparisonLabel,
                     settings = settings,
                     modifier = Modifier.weight(1f),
                 )
@@ -650,16 +646,14 @@ private fun PeriodSwitcher(
 }
 
 /**
- * Renders a signed change as an arrow, an absolute amount, an optional percentage, and a baseline
- * label. The arrow direction always follows the sign of the change, but the colour follows
- * [increaseIsPositive] — spending more than last month is an increase and should still read as a
- * warning, not as growth.
+ * Renders a signed change as an arrow, an absolute amount, and an optional percentage. The arrow
+ * direction always follows the sign of the change, but the colour follows [increaseIsPositive] —
+ * spending more than last month is an increase and should still read as a warning, not as growth.
  */
 @Composable
 private fun DeltaLabel(
     delta: PeriodDelta,
     settings: PortableSettings,
-    baselineLabel: String,
     increaseIsPositive: Boolean,
     modifier: Modifier = Modifier,
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodySmall,
@@ -667,7 +661,7 @@ private fun DeltaLabel(
     val moneyColors = LocalMoneyColors.current
     if (delta.isUnchanged) {
         Text(
-            text = stringResource(R.string.home_change_none_format, baselineLabel),
+            text = stringResource(R.string.home_change_none),
             style = style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -679,8 +673,8 @@ private fun DeltaLabel(
     val color = if (isFavourable) moneyColors.income else moneyColors.expense
     val amountText = formatInAppAmount(kotlin.math.abs(delta.deltaAmount), settings)
     val text = delta.percentageText?.let { percentage ->
-        stringResource(R.string.home_change_with_percent_format, amountText, percentage, baselineLabel)
-    } ?: stringResource(R.string.home_change_format, amountText, baselineLabel)
+        stringResource(R.string.home_change_with_percent_format, amountText, percentage)
+    } ?: amountText
     val directionDescription = stringResource(
         if (delta.isIncrease) R.string.home_change_increase else R.string.home_change_decrease,
     )
@@ -1116,7 +1110,6 @@ private fun PeriodMetricCell(
     modifier: Modifier = Modifier,
     delta: PeriodDelta? = null,
     increaseIsPositive: Boolean = true,
-    baselineLabel: String = "",
     settings: PortableSettings = PortableSettings(),
 ) {
     Column(
@@ -1140,7 +1133,6 @@ private fun PeriodMetricCell(
             DeltaLabel(
                 delta = delta,
                 settings = settings,
-                baselineLabel = baselineLabel,
                 increaseIsPositive = increaseIsPositive,
             )
         }
@@ -1180,20 +1172,6 @@ private fun DashboardPeriod.investmentPnlLabelRes(): Int = when (this) {
     DashboardPeriod.WEEK -> R.string.home_week_investment_pnl
     DashboardPeriod.MONTH -> R.string.home_month_investment_pnl
     DashboardPeriod.YEAR -> R.string.home_year_investment_pnl
-}
-
-@androidx.annotation.StringRes
-private fun DashboardPeriod.sinceStartLabelRes(): Int = when (this) {
-    DashboardPeriod.WEEK -> R.string.home_since_week_start
-    DashboardPeriod.MONTH -> R.string.home_since_month_start
-    DashboardPeriod.YEAR -> R.string.home_since_year_start
-}
-
-@androidx.annotation.StringRes
-private fun DashboardPeriod.versusPreviousLabelRes(): Int = when (this) {
-    DashboardPeriod.WEEK -> R.string.home_vs_previous_week
-    DashboardPeriod.MONTH -> R.string.home_vs_previous_month
-    DashboardPeriod.YEAR -> R.string.home_vs_previous_year
 }
 
 @Composable
