@@ -38,9 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -477,7 +475,8 @@ private fun PeriodOverviewBlock(
 
 
 /**
- * Official M3 segmented-button period selector.
+ * Compact pill selector built from official Material 3 surfaces. It keeps the lighter visual
+ * weight of the original switcher while retaining Material interaction and selection semantics.
  */
 @Composable
 private fun PeriodSwitcher(
@@ -486,33 +485,52 @@ private fun PeriodSwitcher(
 ) {
     val selectorDescription = stringResource(R.string.home_period_selector)
     val haptics = LocalHapticFeedback.current
-    SingleChoiceSegmentedButtonRow(
+    Surface(
         modifier = Modifier
-            .width(164.dp)
+            .width(146.dp)
             .semantics { contentDescription = selectorDescription },
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
     ) {
-        DashboardPeriod.entries.forEachIndexed { index, period ->
-            val isSelected = period == selected
-            SegmentedButton(
-                modifier = Modifier.height(34.dp),
-                selected = isSelected,
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                    onSelect(period)
-                },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = DashboardPeriod.entries.size,
-                ),
-                icon = {},
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                label = {
-                    Text(
-                        text = stringResource(period.shortLabelRes()),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                },
-            )
+        Row(
+            modifier = Modifier.padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            DashboardPeriod.entries.forEach { period ->
+                val isSelected = period == selected
+                Surface(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onSelect(period)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(30.dp)
+                        .semantics { this.selected = isSelected },
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    } else {
+                        Color.Transparent
+                    },
+                    contentColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    shape = MaterialTheme.shapes.small,
+                    shadowElevation = if (isSelected) 1.dp else 0.dp,
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(period.shortLabelRes()),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            }
         }
     }
 }
