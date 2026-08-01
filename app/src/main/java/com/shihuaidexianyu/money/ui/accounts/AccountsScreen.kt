@@ -47,6 +47,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 data class AccountGroups(
@@ -80,6 +81,9 @@ fun AccountsScreen(
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
+    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
+        .mapNotNull { account -> account.balance.takeIf { it > 0L } }
+        .sum()
     val normalKindGroups = buildList<Pair<AccountKind?, List<AccountListItemUiModel>>> {
         val funding = groups.normal.filter { it.kind == AccountKind.FUNDING }
         val investment = groups.normal.filter { it.kind == AccountKind.INVESTMENT }
@@ -207,6 +211,7 @@ fun AccountsScreen(
                             AccountCard(
                                 account = account,
                                 currencySettings = state.settings,
+                                positiveAssetsTotal = positiveAssetsTotal,
                                 onClick = { onAccountClick(account.id) },
                                 modifier = Modifier.animateItem(),
                             )
@@ -228,6 +233,7 @@ fun AccountsScreen(
                         AccountCard(
                             account = account,
                             currencySettings = state.settings,
+                            positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
                             modifier = Modifier.animateItem(),
                         )
@@ -268,6 +274,7 @@ fun AccountsScreen(
                     AccountCard(
                         account = account,
                         currencySettings = state.settings,
+                        positiveAssetsTotal = 0L,
                         modifier = Modifier.animateItem(),
                         onClick = { onAccountClick(account.id) },
                     )
@@ -299,6 +306,7 @@ fun AccountsScreen(
 private fun AccountCard(
     account: AccountListItemUiModel,
     currencySettings: PortableSettings,
+    positiveAssetsTotal: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -325,6 +333,11 @@ private fun AccountCard(
         else -> MaterialTheme.typography.titleLarge
     }
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
+    val shareText = if (!account.isClosed && account.balance > 0L && positiveAssetsTotal > 0L) {
+        formatSharePercent(account.balance, positiveAssetsTotal)
+    } else {
+        null
+    }
 
     Card(
         onClick = onClick,
@@ -377,16 +390,29 @@ private fun AccountCard(
                     )
                 }
             }
-            Text(
-                text = balanceText,
-                style = balanceStyle,
-                color = if (account.isClosed) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onBackground
-                },
-                maxLines = 1,
-            )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = balanceText,
+                    style = balanceStyle,
+                    color = if (account.isClosed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onBackground
+                    },
+                    maxLines = 1,
+                )
+                shareText?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }

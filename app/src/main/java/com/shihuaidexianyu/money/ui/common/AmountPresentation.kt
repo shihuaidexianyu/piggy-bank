@@ -31,3 +31,13 @@ fun signedFormatInAppAmount(
     val formatted = formatInAppAmount(amountInMinor, settings)
     return if (amountInMinor > 0L) "+$formatted" else formatted
 }
+
+/**
+ * Integer share of [part] over [total] as a compact percent label ("82%" / "<1%").
+ * Long-only arithmetic; this is presentation formatting, never money math.
+ */
+fun formatSharePercent(part: Long, total: Long): String {
+    if (total <= 0L || part <= 0L) return ""
+    val percent = part * 100L / total
+    return if (percent < 1L) "<1%" else "$percent%"
+}

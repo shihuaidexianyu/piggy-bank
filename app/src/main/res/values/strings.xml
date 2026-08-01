@@ -462,6 +462,7 @@
 
     <!-- Secondary screens -->
     <string name="accounts_reorder_empty_description">创建账户后才能调整顺序。</string>
+    <string name="accounts_reorder_hint">账户页按「日常 / 投资」分组展示，隐藏账户单独排列；此页的顺序在每个分组内部生效。</string>
     <string name="accounts_sort_balance">按余额</string>
     <string name="accounts_sort_recent">最近使用</string>
     <string name="accounts_sort_name">按名称</string>

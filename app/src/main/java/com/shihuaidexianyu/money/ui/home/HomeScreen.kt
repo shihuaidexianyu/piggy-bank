@@ -77,6 +77,7 @@ import com.shihuaidexianyu.money.ui.common.RecordKindDot
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -418,18 +419,29 @@ private fun NetWorthHeroCard(
             )
             if (hasInvestmentAccounts) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+                val fundingAssets = totalAssets - investmentAssets
+                val fundingShare = formatSharePercent(fundingAssets, totalAssets)
+                val investmentShare = if (totalAssets > 0L && investmentAssets > 0L) {
+                    val fundingPercent = fundingAssets * 100L / totalAssets
+                    val investmentPercent = (100L - fundingPercent).coerceIn(0L, 100L)
+                    if (investmentPercent < 1L) "<1%" else "$investmentPercent%"
+                } else {
+                    ""
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     AssetSplitCell(
                         label = stringResource(R.string.home_funding_assets),
-                        value = formatInAppAmount(totalAssets - investmentAssets, settings),
+                        value = formatInAppAmount(fundingAssets, settings),
+                        share = fundingShare,
                         modifier = Modifier.weight(1f),
                     )
                     AssetSplitCell(
                         label = stringResource(R.string.home_investment_assets),
                         value = formatInAppAmount(investmentAssets, settings),
+                        share = investmentShare,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -446,6 +458,7 @@ private fun NetWorthHeroCard(
 private fun AssetSplitCell(
     label: String,
     value: String,
+    share: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -460,6 +473,14 @@ private fun AssetSplitCell(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
         )
+        share?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 

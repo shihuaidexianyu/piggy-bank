@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ data class ReorderAccountItemUiModel(
     val name: String,
     val colorName: String,
     val iconName: String,
+    val kind: AccountKind,
     val balance: Long,
     val lastUsedAt: Long?,
 )
@@ -66,6 +68,7 @@ class ReorderAccountsViewModel(
                             name = it.name,
                             colorName = it.colorName,
                             iconName = it.iconName,
+                            kind = it.kind,
                             balance = balances.getValue(it.id),
                             lastUsedAt = it.lastUsedAt,
                         )

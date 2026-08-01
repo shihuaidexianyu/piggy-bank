@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -72,6 +74,15 @@ fun ReorderAccountsScreen(
         } else {
             item {
                 MoneyCard {
+                    Text(
+                        text = stringResource(R.string.accounts_reorder_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            item {
+                MoneyCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -108,6 +119,13 @@ fun ReorderAccountsScreen(
                     state.accounts.forEachIndexed { index, account ->
                         MoneyListRow(
                             title = account.name,
+                            subtitle = stringResource(
+                                if (account.kind == AccountKind.INVESTMENT) {
+                                    R.string.account_kind_investment
+                                } else {
+                                    R.string.account_kind_funding
+                                },
+                            ),
                             showChevron = false,
                             leading = {
                                 AccountIconBadge(
