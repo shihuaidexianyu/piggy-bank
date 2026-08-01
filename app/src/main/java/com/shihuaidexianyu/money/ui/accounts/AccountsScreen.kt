@@ -23,11 +23,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -111,6 +111,10 @@ fun AccountsScreen(
     Column(modifier = modifier) {
         TopAppBar(
             title = { Text(stringResource(R.string.accounts_title)) },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                scrolledContainerColor = MaterialTheme.colorScheme.surface,
+            ),
         )
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
@@ -329,7 +333,7 @@ private fun AccountCard(
     onReconcile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val cardColor = MaterialTheme.colorScheme.surface
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val balanceText = formatInAppAmount(account.balance, currencySettings)
     val statusText = when {
         account.requiresReopenAndSettle -> stringResource(R.string.account_status_reopen_settle)
@@ -496,29 +500,22 @@ private fun AccountsOverviewCard(
     openCount: Int,
     staleCount: Int,
 ) {
-    Surface(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.small,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Text(
+            text = stringResource(R.string.accounts_open_count_format, openCount),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (staleCount > 0) {
             Text(
-                text = stringResource(R.string.accounts_open_count_format, openCount),
+                text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, top = 10.dp, bottom = 10.dp),
             )
-            if (staleCount > 0) {
-                Text(
-                    text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }
