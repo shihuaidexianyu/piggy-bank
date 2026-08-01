@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.ui.accounts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +18,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,7 +50,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
@@ -283,8 +283,8 @@ fun AccountDetailScreen(
 }
 
 /**
- * Neutral tonal button with a semantic icon tint. The container stays stock Material 3 (no filled
- * color blocks); semantic colors appear only on the small icon, keeping the grid quiet.
+ * Circular quick action: a tonal circle carries the semantic-tinted icon, with the label below —
+ * the same circular language as the home header icons, no filled rectangle blocks.
  */
 @Composable
 private fun QuickActionButton(
@@ -295,33 +295,37 @@ private fun QuickActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    MoneyTonalButton(
-        onClick = onClick,
-        modifier = modifier.height(88.dp),
-        enabled = enabled,
-        contentPadding = PaddingValues(vertical = 12.dp),
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.size(52.dp),
+            shape = CircleShape,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 tint = if (enabled) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp),
             )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                maxLines = 1,
-            )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            maxLines = 1,
+        )
     }
 }
 
