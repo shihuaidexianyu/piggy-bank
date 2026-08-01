@@ -60,7 +60,6 @@
     <string name="home_set_monthly_budget">设置月预算</string>
     <string name="home_edit_monthly_budget">修改月预算</string>
     <string name="home_close_monthly_budget">关闭月预算</string>
-    <string name="home_budget_spent_format">已支出 %1$s / %2$s</string>
     <string name="home_budget_over_format">超支 %1$s · %2$s</string>
     <string name="home_budget_pace_format">剩余 %1$d 天 · 日均 %2$s</string>
     <string name="home_budget_last_day">最后一天 · 日均 %1$s</string>
@@ -71,7 +70,6 @@
     <string name="home_stale_accounts">待核对账户</string>
     <string name="home_monthly_budget_field">每月支出预算</string>
     <string name="home_savings_goal">储蓄目标</string>
-    <string name="home_savings_goal_progress_format">已存 %1$s / %2$s</string>
     <string name="home_recent_records">最近记录</string>
     <string name="home_view_all">全部</string>
     <string name="action_retry">重试</string>

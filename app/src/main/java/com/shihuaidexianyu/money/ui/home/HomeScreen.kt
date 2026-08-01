@@ -755,11 +755,8 @@ private fun MonthlyBudgetBlock(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        stringResource(
-                            R.string.home_budget_spent_format,
-                            formatInAppAmount(budget.spentAmount, settings),
-                            formatInAppAmount(budget.targetAmount, settings),
-                        ),
+                        text = formatInAppAmount(budget.targetAmount, settings),
+                        style = MaterialTheme.typography.titleMedium,
                     )
                     Text(budget.percentageText, color = MaterialTheme.colorScheme.primary)
                 }
@@ -918,11 +915,8 @@ private fun HomeSavingsGoalBlock(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    stringResource(
-                        R.string.home_savings_goal_progress_format,
-                        formatInAppAmount(progress.currentAmount, settings),
-                        formatInAppAmount(progress.targetAmount, settings),
-                    ),
+                    text = formatInAppAmount(progress.targetAmount, settings),
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
             }
