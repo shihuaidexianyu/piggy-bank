@@ -54,6 +54,12 @@ class DevicePreferencesRepositoryImpl(
     override suspend fun updateThemeMode(mode: ThemeMode) = edit { copy(themeMode = mode) }
     override suspend fun updateUseDynamicColor(enabled: Boolean) = edit { copy(useDynamicColor = enabled) }
     override suspend fun updateContinueRecording(enabled: Boolean) = edit { copy(continueRecording = enabled) }
+    override suspend fun updateHistorySwipeDeleteEnabled(enabled: Boolean) =
+        edit { copy(historySwipeDeleteEnabled = enabled) }
+    override suspend fun updateHistorySwipeEditEnabled(enabled: Boolean) =
+        edit { copy(historySwipeEditEnabled = enabled) }
+    override suspend fun updateAccountSwipeReconcileEnabled(enabled: Boolean) =
+        edit { copy(accountSwipeReconcileEnabled = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = edit { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() = edit {
         copy(
@@ -104,6 +110,9 @@ object DevicePreferencesMapper {
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             useDynamicColor = preferences[Keys.UseDynamicColor] ?: false,
             continueRecording = preferences[Keys.ContinueRecording] ?: false,
+            historySwipeDeleteEnabled = preferences[Keys.HistorySwipeDeleteEnabled] ?: true,
+            historySwipeEditEnabled = preferences[Keys.HistorySwipeEditEnabled] ?: true,
+            accountSwipeReconcileEnabled = preferences[Keys.AccountSwipeReconcileEnabled] ?: true,
             biometricLock = preferences[Keys.BiometricLock] ?: false,
             relockDelay = AppRelockDelay.fromValue(preferences[Keys.RelockDelay]),
             maskAmountsInApp = preferences[Keys.MaskAmountsInApp] ?: false,
@@ -126,6 +135,9 @@ object DevicePreferencesMapper {
         preferences[Keys.ThemeMode] = value.themeMode.value
         preferences[Keys.UseDynamicColor] = value.useDynamicColor
         preferences[Keys.ContinueRecording] = value.continueRecording
+        preferences[Keys.HistorySwipeDeleteEnabled] = value.historySwipeDeleteEnabled
+        preferences[Keys.HistorySwipeEditEnabled] = value.historySwipeEditEnabled
+        preferences[Keys.AccountSwipeReconcileEnabled] = value.accountSwipeReconcileEnabled
         preferences[Keys.BiometricLock] = value.biometricLock
         preferences[Keys.RelockDelay] = value.relockDelay.value
         preferences[Keys.MaskAmountsInApp] = value.maskAmountsInApp
@@ -153,6 +165,9 @@ object DevicePreferencesMapper {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val UseDynamicColor = booleanPreferencesKey("use_dynamic_color")
         val ContinueRecording = booleanPreferencesKey("continue_recording")
+        val HistorySwipeDeleteEnabled = booleanPreferencesKey("history_swipe_delete_enabled")
+        val HistorySwipeEditEnabled = booleanPreferencesKey("history_swipe_edit_enabled")
+        val AccountSwipeReconcileEnabled = booleanPreferencesKey("account_swipe_reconcile_enabled")
         val BiometricLock = booleanPreferencesKey("biometric_lock")
         val RelockDelay = stringPreferencesKey("relock_delay")
         val MaskAmountsInApp = booleanPreferencesKey("mask_amounts_in_app")

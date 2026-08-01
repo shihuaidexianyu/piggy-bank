@@ -1,10 +1,12 @@
 package com.shihuaidexianyu.money.ui.accounts
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.FactCheck
 import androidx.compose.material.icons.rounded.Reorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,9 +24,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +59,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 data class AccountGroups(
     val normal: List<AccountListItemUiModel>,
@@ -76,6 +87,8 @@ fun AccountsScreen(
     onToggleClosedVisibility: () -> Unit,
     onManageSavingsGoal: () -> Unit,
     onReorderAccounts: () -> Unit = {},
+    accountSwipeReconcileEnabled: Boolean = true,
+    onReconcileAccount: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
 ) {
@@ -213,6 +226,8 @@ fun AccountsScreen(
                                 currencySettings = state.settings,
                                 positiveAssetsTotal = positiveAssetsTotal,
                                 onClick = { onAccountClick(account.id) },
+                                reconcileEnabled = accountSwipeReconcileEnabled,
+                                onReconcile = { onReconcileAccount(account.id) },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -235,6 +250,8 @@ fun AccountsScreen(
                             currencySettings = state.settings,
                             positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
+                            reconcileEnabled = accountSwipeReconcileEnabled,
+                            onReconcile = { onReconcileAccount(account.id) },
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -308,6 +325,8 @@ private fun AccountCard(
     currencySettings: PortableSettings,
     positiveAssetsTotal: Long,
     onClick: () -> Unit,
+    reconcileEnabled: Boolean = true,
+    onReconcile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surface
@@ -338,79 +357,129 @@ private fun AccountCard(
     } else {
         null
     }
-
-    Card(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {
-                contentDescription = buildString {
-                    append(account.name)
-                    append(balanceSemantics)
-                    caption?.let { append("，$it") }
+    var reconcileHandled by remember(account.id) { mutableStateOf(false) }
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    if (reconcileEnabled && !account.isClosed && !reconcileHandled) {
+                        reconcileHandled = true
+                        onReconcile()
+                    }
                 }
-                role = Role.Button
-            },
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AccountIconBadge(
-                iconName = account.iconName,
-                colorName = account.colorName,
-                isClosed = account.isClosed,
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = account.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isDimmed) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                caption?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
+                SwipeToDismissBoxValue.Settled -> reconcileHandled = false
+                SwipeToDismissBoxValue.StartToEnd -> Unit
+            }
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = reconcileEnabled && !account.isClosed,
+        backgroundContent = {
+            if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(end = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.FactCheck,
+                            contentDescription = null,
+                            tint = LocalMoneyColors.current.current,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.account_detail_reconcile),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+        },
+        modifier = modifier,
+    ) {
+        Card(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) {
+                    contentDescription = buildString {
+                        append(account.name)
+                        append(balanceSemantics)
+                        caption?.let { append("，$it") }
+                    }
+                    role = Role.Button
+                },
+            colors = CardDefaults.cardColors(containerColor = cardColor),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = balanceText,
-                    style = balanceStyle,
-                    color = if (account.isClosed) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onBackground
-                    },
-                    maxLines = 1,
+                AccountIconBadge(
+                    iconName = account.iconName,
+                    colorName = account.colorName,
+                    isClosed = account.isClosed,
                 )
-                shareText?.let {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = account.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isDimmed) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    caption?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = balanceText,
+                        style = balanceStyle,
+                        color = if (account.isClosed) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
                         maxLines = 1,
                     )
+                    shareText?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }

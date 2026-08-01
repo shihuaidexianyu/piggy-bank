@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -19,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
@@ -28,10 +32,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -42,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -110,6 +118,10 @@ fun HistoryScreen(
     onClearAllFilters: () -> Unit,
     onLoadMore: () -> Unit,
     onRecordClick: (HistoryRecordUiModel) -> Unit,
+    historySwipeDeleteEnabled: Boolean = true,
+    historySwipeEditEnabled: Boolean = true,
+    onDeleteRecord: (HistoryRecordUiModel) -> Unit = {},
+    onEditRecord: (HistoryRecordUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
@@ -484,6 +496,12 @@ fun HistoryScreen(
                                         record = record,
                                         settings = state.settings,
                                         onClick = { onRecordClick(record) },
+                                        deleteEnabled = historySwipeDeleteEnabled,
+                                        editEnabled = historySwipeEditEnabled &&
+                                            (record.kind == HistoryRecordKind.CASH_FLOW ||
+                                                record.kind == HistoryRecordKind.TRANSFER),
+                                        onDelete = { onDeleteRecord(record) },
+                                        onEdit = { onEditRecord(record) },
                                     )
                                     if (index != records.lastIndex) {
                                         HorizontalDivider(
@@ -766,6 +784,10 @@ private fun HistoryRow(
     settings: PortableSettings,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    deleteEnabled: Boolean = true,
+    editEnabled: Boolean = false,
+    onDelete: () -> Unit = {},
+    onEdit: () -> Unit = {},
 ) {
     val moneyColors = LocalMoneyColors.current
     val amountText = formatInAppAmount(record.amount, settings)
@@ -783,58 +805,144 @@ private fun HistoryRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = buildString {
-                    append(record.title)
-                    append("，$kindLabel")
-                    append("，$amountText")
-                    append("，${DateTimeTextFormatter.format(record.occurredAt)}")
+    var deleteHandled by remember(record.id) { mutableStateOf(false) }
+    var editHandled by remember(record.id) { mutableStateOf(false) }
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    if (deleteEnabled && !deleteHandled) {
+                        deleteHandled = true
+                        onDelete()
+                    }
                 }
-                role = Role.Button
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    if (editEnabled && !editHandled) {
+                        editHandled = true
+                        onEdit()
+                    }
+                }
+                SwipeToDismissBoxValue.Settled -> {
+                    deleteHandled = false
+                    editHandled = false
+                }
+            }
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = editEnabled,
+        enableDismissFromEndToStart = deleteEnabled,
+        backgroundContent = {
+            when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.EndToStart -> HistorySwipeBackground(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterEnd,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    icon = Icons.Rounded.Delete,
+                    label = stringResource(R.string.action_delete),
+                )
+                SwipeToDismissBoxValue.StartToEnd -> HistorySwipeBackground(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterStart,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    icon = Icons.Rounded.Edit,
+                    label = stringResource(R.string.action_edit),
+                )
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
+        },
+        modifier = modifier,
     ) {
-        RecordKindDot(kind = record.kind, amount = record.amount)
-        Column(
-            modifier = Modifier.weight(0.58f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = buildString {
+                        append(record.title)
+                        append("，$kindLabel")
+                        append("，$amountText")
+                        append("，${DateTimeTextFormatter.format(record.occurredAt)}")
+                    }
+                    role = Role.Button
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = record.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "$kindLabel · ${record.subtitle}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
+            RecordKindDot(kind = record.kind, amount = record.amount)
+            Column(
+                modifier = Modifier.weight(0.58f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = record.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "$kindLabel · ${record.subtitle}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(0.42f),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Text(
+                    text = amountText,
+                    style = amountStyle,
+                    color = amountColor,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
-        Column(
-            modifier = Modifier.weight(0.42f),
-            horizontalAlignment = Alignment.End,
+    }
+}
+
+@Composable
+private fun HistorySwipeBackground(
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment,
+    containerColor: Color,
+    contentColor: Color,
+    icon: ImageVector,
+    label: String,
+) {
+    Box(
+        modifier = modifier.background(containerColor),
+        contentAlignment = contentAlignment,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = amountText,
-                style = amountStyle,
-                color = amountColor,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
             )
             Text(
-                text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
             )
         }
     }

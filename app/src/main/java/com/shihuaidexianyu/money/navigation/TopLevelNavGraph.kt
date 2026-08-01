@@ -1,14 +1,21 @@
 package com.shihuaidexianyu.money.navigation
 
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.accounts.AccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.AccountsViewModel
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
@@ -20,6 +27,7 @@ import com.shihuaidexianyu.money.ui.settings.SettingsScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
+import kotlinx.coroutines.launch
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -85,6 +93,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     }
 
     composable(MoneyDestination.History.route) {
+        val devicePreferences by container.devicePreferencesRepository.observe()
+            .collectAsStateWithLifecycle(initialValue = DevicePreferences())
         val viewModel = viewModel<HistoryViewModel>(
             factory = moneyViewModelFactory {
                 HistoryViewModel(
@@ -96,6 +106,10 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
+        val scope = rememberCoroutineScope()
+        val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
+        val deletedMessage = stringResource(R.string.ledger_record_deleted)
+        val undoLabel = stringResource(R.string.action_undo)
         HistoryScreen(
                 state = state,
                 onKeywordChange = viewModel::updateKeyword,
@@ -118,10 +132,49 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                         HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
                     }
                 },
+                historySwipeDeleteEnabled = devicePreferences.historySwipeDeleteEnabled,
+                historySwipeEditEnabled = devicePreferences.historySwipeEditEnabled,
+                onDeleteRecord = { record ->
+                    scope.launch {
+                        val undoToken = when (record.kind) {
+                            HistoryRecordKind.CASH_FLOW ->
+                                container.deleteCashFlowRecordUseCase(record.recordId)
+                            HistoryRecordKind.TRANSFER ->
+                                container.deleteTransferRecordUseCase(record.recordId)
+                            HistoryRecordKind.BALANCE_UPDATE ->
+                                container.deleteBalanceUpdateRecordUseCase(record.recordId)
+                            HistoryRecordKind.BALANCE_ADJUSTMENT ->
+                                container.deleteBalanceAdjustmentUseCase(record.recordId)
+                        }
+                        if (undoToken != null) {
+                            rootSnackbarDispatcher?.dispatch(
+                                rootSnackbarEffect(
+                                    message = deletedMessage,
+                                    actionLabel = undoLabel,
+                                    action = RootSnackbarAction.RestoreLedger(undoToken),
+                                ),
+                            )
+                        }
+                    }
+                },
+                onEditRecord = { record ->
+                    when (record.kind) {
+                        HistoryRecordKind.CASH_FLOW ->
+                            navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
+                        HistoryRecordKind.TRANSFER ->
+                            navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_UPDATE ->
+                            navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
+                        HistoryRecordKind.BALANCE_ADJUSTMENT ->
+                            navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                    }
+                },
             )
     }
 
     composable(MoneyDestination.Accounts.route) {
+        val devicePreferences by container.devicePreferencesRepository.observe()
+            .collectAsStateWithLifecycle(initialValue = DevicePreferences())
         val viewModel = viewModel<AccountsViewModel>(
             factory = moneyViewModelFactory {
                 AccountsViewModel(
@@ -142,6 +195,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
                 onManageSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
                 onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
+                accountSwipeReconcileEnabled = devicePreferences.accountSwipeReconcileEnabled,
+                onReconcileAccount = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
                 onRetry = viewModel::retry,
             )
     }
@@ -169,6 +224,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onUseDynamicColorChange = viewModel::updateUseDynamicColor,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
+            onHistorySwipeDeleteChange = viewModel::updateHistorySwipeDeleteEnabled,
+            onHistorySwipeEditChange = viewModel::updateHistorySwipeEditEnabled,
+            onAccountSwipeReconcileChange = viewModel::updateAccountSwipeReconcileEnabled,
             onBiometricLockChange = onBiometricLockChange,
             onRelockDelayChange = viewModel::updateRelockDelay,
             onMaskAmountsInAppChange = viewModel::updateMaskAmountsInApp,

@@ -45,6 +45,10 @@ data class DevicePreferences(
     // Default off: record pages navigate away after a successful save. When enabled, the page
     // stays open and clears amount/note so consecutive entries can be recorded quickly.
     val continueRecording: Boolean = false,
+    // Swipe gestures on the ledger/account lists. Default on; users can opt out per gesture.
+    val historySwipeDeleteEnabled: Boolean = true,
+    val historySwipeEditEnabled: Boolean = true,
+    val accountSwipeReconcileEnabled: Boolean = true,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
     val maskAmountsInApp: Boolean = false,

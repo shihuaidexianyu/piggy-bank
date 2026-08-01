@@ -207,6 +207,18 @@ class SettingsViewModel(
         viewModelScope.launch { devicePreferencesRepository.updateUseDynamicColor(enabled) }
     }
 
+    fun updateHistorySwipeDeleteEnabled(enabled: Boolean) {
+        viewModelScope.launch { devicePreferencesRepository.updateHistorySwipeDeleteEnabled(enabled) }
+    }
+
+    fun updateHistorySwipeEditEnabled(enabled: Boolean) {
+        viewModelScope.launch { devicePreferencesRepository.updateHistorySwipeEditEnabled(enabled) }
+    }
+
+    fun updateAccountSwipeReconcileEnabled(enabled: Boolean) {
+        viewModelScope.launch { devicePreferencesRepository.updateAccountSwipeReconcileEnabled(enabled) }
+    }
+
     fun updateAmountColorMode(amountColorMode: AmountColorMode) {
         commitPortableSettingsChange {
             portableSettingsRepository.updateAmountColorMode(amountColorMode)

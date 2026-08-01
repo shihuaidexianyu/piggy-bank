@@ -185,6 +185,13 @@
     <!-- Settings -->
     <string name="settings_title">设置</string>
     <string name="settings_section_display">显示</string>
+    <string name="settings_section_gestures">手势</string>
+    <string name="settings_swipe_delete">明细页左滑删除</string>
+    <string name="settings_swipe_delete_description">左滑直接删除记录，可从提示条撤销</string>
+    <string name="settings_swipe_edit">明细页右滑编辑</string>
+    <string name="settings_swipe_edit_description">右滑直接进入编辑页</string>
+    <string name="settings_swipe_reconcile">账户页左滑核对</string>
+    <string name="settings_swipe_reconcile_description">左滑直接进入余额核对</string>
     <string name="settings_section_privacy">隐私</string>
     <string name="settings_section_notifications">通知</string>
     <string name="settings_section_data">数据</string>

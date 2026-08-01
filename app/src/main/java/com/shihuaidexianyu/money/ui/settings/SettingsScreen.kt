@@ -66,6 +66,9 @@ fun SettingsScreen(
     onUseDynamicColorChange: (Boolean) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
+    onHistorySwipeDeleteChange: (Boolean) -> Unit,
+    onHistorySwipeEditChange: (Boolean) -> Unit,
+    onAccountSwipeReconcileChange: (Boolean) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
     onRelockDelayChange: (AppRelockDelay) -> Unit,
     onMaskAmountsInAppChange: (Boolean) -> Unit,
@@ -311,6 +314,52 @@ fun SettingsScreen(
         item {
             MoneyListSection {
                 MoneyListRow(
+                    title = stringResource(R.string.settings_swipe_delete),
+                    subtitle = stringResource(R.string.settings_swipe_delete_description),
+                    showChevron = false,
+                    onClick = { onHistorySwipeDeleteChange(!devicePreferences.historySwipeDeleteEnabled) },
+                    accessory = {
+                        Switch(
+                            checked = devicePreferences.historySwipeDeleteEnabled,
+                            onCheckedChange = onHistorySwipeDeleteChange,
+                        )
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = stringResource(R.string.settings_swipe_edit),
+                    subtitle = stringResource(R.string.settings_swipe_edit_description),
+                    showChevron = false,
+                    onClick = { onHistorySwipeEditChange(!devicePreferences.historySwipeEditEnabled) },
+                    accessory = {
+                        Switch(
+                            checked = devicePreferences.historySwipeEditEnabled,
+                            onCheckedChange = onHistorySwipeEditChange,
+                        )
+                    },
+                )
+                MoneySectionDivider()
+                MoneyListRow(
+                    title = stringResource(R.string.settings_swipe_reconcile),
+                    subtitle = stringResource(R.string.settings_swipe_reconcile_description),
+                    showChevron = false,
+                    onClick = { onAccountSwipeReconcileChange(!devicePreferences.accountSwipeReconcileEnabled) },
+                    accessory = {
+                        Switch(
+                            checked = devicePreferences.accountSwipeReconcileEnabled,
+                            onCheckedChange = onAccountSwipeReconcileChange,
+                        )
+                    },
+                )
+            }
+        }
+
+        item {
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[2].titleRes))
+        }
+        item {
+            MoneyListSection {
+                MoneyListRow(
                     title = stringResource(R.string.settings_biometric_lock),
                     subtitle = stringResource(R.string.settings_biometric_description),
                     showChevron = false,
@@ -351,7 +400,7 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[2].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
         }
         item {
             MoneyListSection {
@@ -406,7 +455,7 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
         }
         item {
             MoneyListSection {
@@ -486,7 +535,7 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[5].titleRes))
         }
         item {
             MoneyListSection {

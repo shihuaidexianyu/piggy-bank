@@ -33,7 +33,7 @@ class SettingsSectionContractTest {
     }
 
     @Test
-    fun `settings has exactly five sections with the approved ownership`() {
+    fun `settings has exactly six sections with the approved ownership`() {
         assertEquals(
             listOf(
                 R.string.settings_section_display to listOf(
@@ -43,6 +43,7 @@ class SettingsSectionContractTest {
                     "account_order",
                     "mask_in_app",
                 ),
+                R.string.settings_section_gestures to listOf("swipe_delete", "swipe_edit", "swipe_reconcile"),
                 R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_widget", "hide_notification"),
                 R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
                 R.string.settings_section_data to listOf("plaintext_warning", "export_json", "import_preview", "receipt_history"),

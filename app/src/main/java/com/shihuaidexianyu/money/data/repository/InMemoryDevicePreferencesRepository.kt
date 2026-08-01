@@ -39,6 +39,12 @@ class InMemoryDevicePreferencesRepository(
     override suspend fun updateThemeMode(mode: ThemeMode) = update { copy(themeMode = mode) }
     override suspend fun updateUseDynamicColor(enabled: Boolean) = update { copy(useDynamicColor = enabled) }
     override suspend fun updateContinueRecording(enabled: Boolean) = update { copy(continueRecording = enabled) }
+    override suspend fun updateHistorySwipeDeleteEnabled(enabled: Boolean) =
+        update { copy(historySwipeDeleteEnabled = enabled) }
+    override suspend fun updateHistorySwipeEditEnabled(enabled: Boolean) =
+        update { copy(historySwipeEditEnabled = enabled) }
+    override suspend fun updateAccountSwipeReconcileEnabled(enabled: Boolean) =
+        update { copy(accountSwipeReconcileEnabled = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = update { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() {
         beforeEnableBiometricLock()
