@@ -144,8 +144,8 @@ object DebugSampleDataSeeder {
                     name = names[index],
                     initialBalance = randomAmount(
                         random = random,
-                        minYuan = if (key == "investment") 12_000 else 300,
-                        maxYuan = if (key == "investment") 48_000 else 18_000,
+                        minYuan = if (key == "investment") 20_000 else 10_000,
+                        maxYuan = if (key == "investment") 60_000 else 32_000,
                     ),
                     createdAt = createdAt,
                     lastUsedAt = millisAt(
@@ -196,6 +196,13 @@ object DebugSampleDataSeeder {
             "房租分摊",
             "网购",
             "水电燃气",
+            // Narrative notes: demo that a remark replaces a category.
+            "和小王吃饭",
+            "请团队下午茶",
+            "给妈妈买的礼物",
+            "加班打车回家",
+            "周末超市大采购",
+            "和家人的晚餐",
         )
 
         repeat(5) { monthOffset ->
