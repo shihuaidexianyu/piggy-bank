@@ -9,13 +9,11 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
@@ -31,7 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -72,6 +72,7 @@ fun SwipeRevealActionsBox(
     onStartAction: () -> Unit = {},
     contentClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    shape: Shape = MaterialTheme.shapes.medium,
     content: @Composable (contentClick: () -> Unit) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -134,38 +135,40 @@ fun SwipeRevealActionsBox(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
             .onSizeChanged { widthPx = it.width.toFloat() },
     ) {
-        if (endAction != null) {
-            SwipeRevealActionButton(
+        // Full-width backing in the direction of the drag: the exposed strip is always the action
+        // color with its label pinned to the revealed edge, exactly like a native swipe row.
+        when {
+            state.requireOffset() < 0f && endAction != null -> SwipeRevealActionBacking(
                 action = endAction,
+                alignment = Alignment.CenterEnd,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(REVEAL_WIDTH_DP.dp)
+                    .matchParentSize()
                     .clickable {
                         onEndAction()
                         scope.launch { state.animateTo(SwipeRevealValue.SETTLED) }
                     },
             )
-        }
-        if (startAction != null) {
-            SwipeRevealActionButton(
+            state.requireOffset() > 0f && startAction != null -> SwipeRevealActionBacking(
                 action = startAction,
+                alignment = Alignment.CenterStart,
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(REVEAL_WIDTH_DP.dp)
+                    .matchParentSize()
                     .clickable {
                         onStartAction()
                         scope.launch { state.animateTo(SwipeRevealValue.SETTLED) }
                     },
             )
+            else -> Unit
         }
+        // The row itself is an opaque lid that slides over the backing; nothing shows through.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(state.requireOffset().roundToInt(), 0) }
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
                 .anchoredDraggable(
                     state = state,
                     orientation = Orientation.Horizontal,
@@ -178,16 +181,17 @@ fun SwipeRevealActionsBox(
 }
 
 @Composable
-private fun SwipeRevealActionButton(
+private fun SwipeRevealActionBacking(
     action: SwipeRevealAction,
+    alignment: Alignment,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier.background(action.containerColor),
-        contentAlignment = Alignment.Center,
+        contentAlignment = alignment,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
