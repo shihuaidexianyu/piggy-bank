@@ -378,7 +378,7 @@ private fun AccountCard(
     }
     val reconcileAction = if (reconcileEnabled && !account.isClosed) {
         SwipeRevealAction(
-            label = stringResource(R.string.account_detail_reconcile),
+            label = stringResource(R.string.account_swipe_reconcile),
             icon = Icons.Rounded.CheckCircle,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,

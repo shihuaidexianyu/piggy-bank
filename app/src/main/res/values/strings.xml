@@ -287,6 +287,7 @@
     <string name="account_detail_transfer_from">当前账户作为转出账户</string>
     <string name="account_detail_transfer_unavailable">至少需要两个开放账户才能转账</string>
     <string name="account_detail_reconcile">核对余额</string>
+    <string name="account_swipe_reconcile">核对</string>
     <string name="account_detail_reconcile_description">按当前账面余额开始核对</string>
     <string name="account_detail_month_cash">本月收支</string>
     <string name="account_detail_recent_records">最近记录</string>
