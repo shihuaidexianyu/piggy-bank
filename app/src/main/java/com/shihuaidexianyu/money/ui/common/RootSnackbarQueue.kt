@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.compose.material3.SnackbarDuration
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import java.io.Serializable
@@ -30,6 +31,9 @@ fun rootSnackbarEffect(
     action: RootSnackbarAction? = null,
     token: String = UUID.randomUUID().toString(),
 ) = RootSnackbarEffect(token, message, actionLabel, action)
+
+internal fun rootSnackbarDuration(effect: RootSnackbarEffect): SnackbarDuration =
+    if (effect.actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short
 
 fun interface RootSnackbarDispatcher {
     fun dispatch(effect: RootSnackbarEffect)

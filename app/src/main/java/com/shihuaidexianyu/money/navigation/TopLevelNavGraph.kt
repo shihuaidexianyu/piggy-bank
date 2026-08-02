@@ -1,7 +1,8 @@
 package com.shihuaidexianyu.money.navigation
 
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -27,6 +28,7 @@ import com.shihuaidexianyu.money.ui.settings.SettingsScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 internal fun NavGraphBuilder.addTopLevelGraph(
@@ -109,7 +111,10 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         val scope = rememberCoroutineScope()
         val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
         val deletedMessage = stringResource(R.string.ledger_record_deleted)
+        val deleteFailedMessage = stringResource(R.string.ledger_record_delete_failed)
+        val closedAccountReadOnlyMessage = stringResource(R.string.account_closed_readonly_description)
         val undoLabel = stringResource(R.string.action_undo)
+        val deletingRecordIds = remember { mutableSetOf<String>() }
         HistoryScreen(
                 state = state,
                 onKeywordChange = viewModel::updateKeyword,
@@ -125,48 +130,67 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onRetryLoadMore = viewModel::loadMore,
                 onRetry = viewModel::retry,
                 onRecordClick = { record ->
-                    when (record.kind) {
-                        HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
-                        HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                    if (!record.canMutate) {
+                        rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(closedAccountReadOnlyMessage))
+                    } else {
+                        when (record.kind) {
+                            HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
+                            HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
+                            HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
+                            HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                        }
                     }
                 },
                 historySwipeDeleteEnabled = devicePreferences.historySwipeDeleteEnabled,
                 historySwipeEditEnabled = devicePreferences.historySwipeEditEnabled,
-                onDeleteRecord = { record ->
+                onDeleteRecord = delete@{ record ->
+                    if (!record.canMutate || !deletingRecordIds.add(record.id)) return@delete
                     scope.launch {
-                        val undoToken = when (record.kind) {
-                            HistoryRecordKind.CASH_FLOW ->
-                                container.deleteCashFlowRecordUseCase(record.recordId)
-                            HistoryRecordKind.TRANSFER ->
-                                container.deleteTransferRecordUseCase(record.recordId)
-                            HistoryRecordKind.BALANCE_UPDATE ->
-                                container.deleteBalanceUpdateRecordUseCase(record.recordId)
-                            HistoryRecordKind.BALANCE_ADJUSTMENT ->
-                                container.deleteBalanceAdjustmentUseCase(record.recordId)
-                        }
-                        if (undoToken != null) {
+                        try {
+                            val undoToken = when (record.kind) {
+                                HistoryRecordKind.CASH_FLOW ->
+                                    container.deleteCashFlowRecordUseCase(record.recordId)
+                                HistoryRecordKind.TRANSFER ->
+                                    container.deleteTransferRecordUseCase(record.recordId)
+                                HistoryRecordKind.BALANCE_UPDATE ->
+                                    container.deleteBalanceUpdateRecordUseCase(record.recordId)
+                                HistoryRecordKind.BALANCE_ADJUSTMENT ->
+                                    container.deleteBalanceAdjustmentUseCase(record.recordId)
+                            }
+                            if (undoToken != null) {
+                                rootSnackbarDispatcher?.dispatch(
+                                    rootSnackbarEffect(
+                                        message = deletedMessage,
+                                        actionLabel = undoLabel,
+                                        action = RootSnackbarAction.RestoreLedger(undoToken),
+                                    ),
+                                )
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
                             rootSnackbarDispatcher?.dispatch(
-                                rootSnackbarEffect(
-                                    message = deletedMessage,
-                                    actionLabel = undoLabel,
-                                    action = RootSnackbarAction.RestoreLedger(undoToken),
-                                ),
+                                rootSnackbarEffect(error.message ?: deleteFailedMessage),
                             )
+                        } finally {
+                            deletingRecordIds.remove(record.id)
                         }
                     }
                 },
                 onEditRecord = { record ->
-                    when (record.kind) {
-                        HistoryRecordKind.CASH_FLOW ->
-                            navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
-                        HistoryRecordKind.TRANSFER ->
-                            navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_UPDATE ->
-                            navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_ADJUSTMENT ->
-                            navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                    if (!record.canMutate) {
+                        rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(closedAccountReadOnlyMessage))
+                    } else {
+                        when (record.kind) {
+                            HistoryRecordKind.CASH_FLOW ->
+                                navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
+                            HistoryRecordKind.TRANSFER ->
+                                navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
+                            HistoryRecordKind.BALANCE_UPDATE ->
+                                navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
+                            HistoryRecordKind.BALANCE_ADJUSTMENT ->
+                                navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
+                        }
                     }
                 },
             )

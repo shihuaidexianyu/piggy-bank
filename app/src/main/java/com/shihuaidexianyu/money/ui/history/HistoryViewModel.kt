@@ -80,6 +80,8 @@ data class HistoryRecordUiModel(
     val keywordSource: String,
     /** Reconciliation deltas on investment accounts read as investment P&L, not error correction. */
     val isInvestmentAccount: Boolean = false,
+    /** Closed or missing related accounts make the ledger record read-only. */
+    val canMutate: Boolean = true,
 )
 
 data class HistoryUiState(
@@ -457,6 +459,11 @@ class HistoryViewModel(
         return map { record ->
             val kind = record.type.toUiKind()
             val relatedAccountId = record.relatedAccountId
+            val accountIds = if (relatedAccountId == null) {
+                setOf(record.accountId)
+            } else {
+                setOf(record.accountId, relatedAccountId)
+            }
             HistoryRecordUiModel(
                 id = "${kind.name.lowercase()}_${record.recordId}",
                 recordId = record.recordId,
@@ -469,13 +476,10 @@ class HistoryViewModel(
                 },
                 amount = record.amount,
                 occurredAt = record.occurredAt,
-                accountIds = if (relatedAccountId == null) {
-                    setOf(record.accountId)
-                } else {
-                    setOf(record.accountId, relatedAccountId)
-                },
+                accountIds = accountIds,
                 keywordSource = record.keywordSource,
                 isInvestmentAccount = accountMap[record.accountId]?.isInvestment == true,
+                canMutate = accountIds.all { accountId -> accountMap[accountId]?.isClosed == false },
             )
         }
     }

@@ -492,8 +492,9 @@ fun HistoryScreen(
                                         record = record,
                                         settings = state.settings,
                                         onClick = { onRecordClick(record) },
-                                        deleteEnabled = historySwipeDeleteEnabled,
+                                        deleteEnabled = historySwipeDeleteEnabled && record.canMutate,
                                         editEnabled = historySwipeEditEnabled &&
+                                            record.canMutate &&
                                             (record.kind == HistoryRecordKind.CASH_FLOW ||
                                                 record.kind == HistoryRecordKind.TRANSFER),
                                         onDelete = { onDeleteRecord(record) },

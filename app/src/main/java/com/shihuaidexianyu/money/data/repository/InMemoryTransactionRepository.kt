@@ -822,8 +822,8 @@ class InMemoryTransactionRepository(
                 ).joinToString(" "),
             )
         }
-        val updateHistoryRecords = balanceUpdates.filter { it.deletedAt == null }.map { record ->
-            val title = if (record.delta == 0L) "余额核对" else "对账调整"
+        val updateHistoryRecords = balanceUpdates.filter { it.deletedAt == null && it.delta != 0L }.map { record ->
+            val title = "对账调整"
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_UPDATE,

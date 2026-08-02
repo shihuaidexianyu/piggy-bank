@@ -18,6 +18,7 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -251,6 +252,51 @@ class HistoryAsyncRetryRaceTest {
 
             assertEquals("新名称", viewModel.uiState.value.accountOptions.single().name)
         }
+
+    @Test
+    fun `records linked to closed accounts are projected read only`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val transactions = InMemoryTransactionRepository()
+        val openId = accounts.createAccount(Account(name = "开放账户", initialBalance = 0L, createdAt = 1L))
+        val closedId = accounts.createAccount(Account(name = "关闭账户", initialBalance = 0L, createdAt = 1L))
+        accounts.closeAccount(closedId, closedAt = 2L)
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = openId,
+                direction = CashFlowDirection.INFLOW.value,
+                amount = 100L,
+                note = "开放记录",
+                occurredAt = 3L,
+                createdAt = 3L,
+                updatedAt = 3L,
+                operationId = testOperationId(),
+            ),
+        )
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = closedId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100L,
+                note = "关闭记录",
+                occurredAt = 4L,
+                createdAt = 4L,
+                updatedAt = 4L,
+                operationId = testOperationId(),
+            ),
+        )
+
+        val viewModel = HistoryViewModel(
+            accountRepository = accounts,
+            transactionRepository = transactions,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+        )
+        runCurrent()
+
+        val records = viewModel.uiState.value.records.associateBy { it.title }
+        assertTrue(requireNotNull(records["开放记录"]).canMutate)
+        assertFalse(requireNotNull(records["关闭记录"]).canMutate)
+    }
 
 }
 

@@ -22,6 +22,8 @@ data class HistoryRecordRow(
  * [HistoryRecordRow] — Room maps result columns BY NAME to the data class properties — keep them in sync.
  *
  * Every ledger table retains soft-deleted rows, so each branch filters on `deletedAt IS NULL`.
+ * Zero-delta balance checks remain stored as reconciliation evidence but are intentionally absent
+ * from the user-facing history projection.
  */
 internal const val HISTORY_UNION_FRAGMENT = """
     SELECT
@@ -65,7 +67,7 @@ internal const val HISTORY_UNION_FRAGMENT = """
         CASE WHEN delta = 0 THEN '余额核对' ELSE '对账调整' END || ' ' ||
             COALESCE((SELECT name FROM accounts WHERE accounts.id = balance_update_records.accountId), '') AS keywordSource
     FROM balance_update_records
-    WHERE deletedAt IS NULL
+    WHERE deletedAt IS NULL AND delta != 0
     UNION ALL
     SELECT
         id AS recordId,

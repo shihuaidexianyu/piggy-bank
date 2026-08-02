@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.compose.material3.SnackbarDuration
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
@@ -10,6 +11,7 @@ import com.shihuaidexianyu.money.ui.common.RootSnackbarQueueViewModel
 import com.shihuaidexianyu.money.ui.common.executeRootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
+import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import java.io.ByteArrayInputStream
@@ -23,6 +25,18 @@ import org.junit.Test
 import kotlinx.coroutines.test.runTest
 
 class RootSnackbarQueueTest {
+    @Test
+    fun `actionable messages use the longer undo duration`() {
+        assertEquals(
+            SnackbarDuration.Long,
+            rootSnackbarDuration(RootSnackbarEffect("undo", "已删除", "撤销")),
+        )
+        assertEquals(
+            SnackbarDuration.Short,
+            rootSnackbarDuration(RootSnackbarEffect("status", "保存成功")),
+        )
+    }
+
     @Test
     fun `queue is fifo conditional ack and survives recreation`() {
         val handle = SavedStateHandle()

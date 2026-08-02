@@ -573,9 +573,9 @@ class TransactionRepositoryContractTest {
         seedAccountAndCashFlows()
         val update = BalanceUpdateRecord(
             accountId = 1L,
-            actualBalance = 100_000L,
+            actualBalance = 100_001L,
             systemBalanceBeforeUpdate = 100_000L,
-            delta = 0L,
+            delta = 1L,
             occurredAt = 1_800_000_000_000L,
             createdAt = 1_800_000_000_000L,
             updatedAt = 1_800_000_000_000L,
@@ -584,7 +584,7 @@ class TransactionRepositoryContractTest {
         roomRepo.insertBalanceUpdateRecord(update)
         memoryRepo.insertBalanceUpdateRecord(update)
 
-        listOf("测试账户", "余额核对").forEach { keyword ->
+        listOf("测试账户", "对账调整").forEach { keyword ->
             val filters = HistoryRecordFilters(
                 keyword = keyword,
                 recordTypes = setOf(HistoryRecordType.BALANCE_UPDATE),
@@ -594,6 +594,32 @@ class TransactionRepositoryContractTest {
                 roomRepo.queryHistoryRecords(filters, null, 50),
             )
         }
+    }
+
+    @Test
+    fun zeroDeltaBalanceChecksStayStoredButAreAbsentFromHistoryInBothImplementations() = runBlocking {
+        seedAccount()
+        val update = BalanceUpdateRecord(
+            accountId = 1L,
+            actualBalance = 100_000L,
+            systemBalanceBeforeUpdate = 100_000L,
+            delta = 0L,
+            occurredAt = 1_800_000_000_000L,
+            createdAt = 1_800_000_000_000L,
+            updatedAt = 1_800_000_000_000L,
+            operationId = "zero-delta-history",
+        )
+        roomRepo.insertBalanceUpdateRecord(update)
+        memoryRepo.insertBalanceUpdateRecord(update)
+
+        val filters = HistoryRecordFilters(recordTypes = setOf(HistoryRecordType.BALANCE_UPDATE))
+        assertTrue(roomRepo.queryHistoryRecords(filters, null, 50).isEmpty())
+        assertEquals(
+            memoryRepo.queryHistoryRecords(filters, null, 50),
+            roomRepo.queryHistoryRecords(filters, null, 50),
+        )
+        assertEquals(0, roomRepo.countHistoryRecords(filters))
+        assertEquals(1, roomRepo.queryAllBalanceUpdateRecords().size)
     }
 
     @Test

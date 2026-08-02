@@ -161,6 +161,7 @@
     <string name="history_loaded_records_retained">已加载的记录会继续保留。</string>
     <string name="history_load_failed">明细加载失败，请重试</string>
     <string name="history_load_more_failed">加载更多明细失败</string>
+    <string name="ledger_record_delete_failed">删除失败，请稍后重试</string>
     <string name="validation_valid_amount">请输入有效金额</string>
     <string name="validation_max_less_than_min">最大金额不能小于最小金额</string>
     <string name="history_date_range_format">%1$s 至 %2$s</string>
@@ -299,6 +300,7 @@
     <string name="reminder_add_recurring">添加定期提醒</string>
     <string name="reminder_delete_title">删除提醒</string>
     <string name="reminder_delete_message">确定要删除这个提醒吗？</string>
+    <string name="reminder_delete_failed">提醒删除失败，请稍后重试</string>
     <string name="reminder_skipped">已跳过本期</string>
     <string name="reminder_empty">暂无待处理提醒</string>
     <string name="reminder_empty_description">余额核对和定期提醒都会显示在这里。</string>

@@ -3,32 +3,36 @@ package com.shihuaidexianyu.money.ui.reminder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.domain.model.AmountVisibility
+import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
-import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
+import com.shihuaidexianyu.money.domain.usecase.HomeDashboardSnapshot
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.SkipReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UndoSkipReminderUseCase
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import java.io.Serializable
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.io.Serializable
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +54,7 @@ data class ReminderUiModel(
     val direction: String,
     val amount: Long,
     val nextDueAt: Long,
+    val canMutate: Boolean = true,
 )
 
 data class ReminderListProjection(
@@ -81,9 +86,11 @@ data class PendingReminderSkipEffect(
 
 sealed interface ReminderListEffect {
     data class ShowMessage(override val message: String) : ReminderListEffect, UiEffect.HasMessage
+    data object DeleteFailed : ReminderListEffect
 }
 
 class ReminderListViewModel(
+    private val accountRepository: AccountRepository,
     private val reminderRepository: RecurringReminderRepository,
     private val deleteReminderUseCase: DeleteReminderUseCase,
     private val skipReminderUseCase: SkipReminderUseCase,
@@ -99,6 +106,7 @@ class ReminderListViewModel(
 
     private val effects = MutableSharedFlow<ReminderListEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
+    private val deleteInFlight = mutableSetOf<Long>()
     private val skipInFlight = mutableSetOf<Pair<Long, Long>>()
 
     init {
@@ -107,44 +115,74 @@ class ReminderListViewModel(
                 reminderRepository.observeAllReminders(),
                 observeHomeDashboardUseCase(),
                 devicePreferencesRepository.observe(),
-            ) { reminders, snapshot, devicePreferences -> Triple(reminders, snapshot, devicePreferences) }
-                .collect { (reminders, snapshot, devicePreferences) ->
-                    val visibility = AmountPrivacy.from(devicePreferences)
-                        .visibilityFor(AmountSurface.IN_APP)
-                    val projection = partitionReminderModels(
-                        reminders = reminders,
-                        settings = snapshot.settings,
-                        nowMillis = clockProvider.nowMillis(),
-                        zoneId = zoneIdProvider.zoneId(),
-                        amountVisibility = visibility,
-                    )
-                    _uiState.value = ReminderListUiState(
-                        isLoading = false,
-                        balanceReminders = snapshot.staleAccounts.map { account ->
-                            BalanceReminderUiModel(
-                                accountId = account.id,
-                                name = account.name,
-                                currentBalanceFormatted = AmountFormatter.format(
-                                    snapshot.accountBalances[account.id] ?: 0L,
-                                    snapshot.settings,
-                                    visibility,
-                                ),
-                                lastBalanceUpdateText = account.lastBalanceUpdateAt?.let {
-                                    "最近核对 ${DateTimeTextFormatter.format(it)}"
-                                } ?: "尚未核对",
-                            )
-                        },
-                        dueReminders = projection.due,
-                        upcomingReminders = projection.upcoming,
-                        pausedReminders = projection.paused,
-                        pendingSkip = savedStateHandle[PENDING_SKIP_KEY],
-                    )
-                }
+                accountRepository.observeAllAccounts(),
+            ) { reminders, snapshot, devicePreferences, accounts ->
+                ReminderListSource(
+                    reminders = reminders,
+                    snapshot = snapshot,
+                    devicePreferences = devicePreferences,
+                    closedAccountIds = accounts.asSequence()
+                        .filter { it.isClosed }
+                        .map { it.id }
+                        .toSet(),
+                )
+            }.collect { source ->
+                val reminders = source.reminders
+                val snapshot = source.snapshot
+                val devicePreferences = source.devicePreferences
+                val visibility = AmountPrivacy.from(devicePreferences)
+                    .visibilityFor(AmountSurface.IN_APP)
+                val projection = partitionReminderModels(
+                    reminders = reminders,
+                    settings = snapshot.settings,
+                    nowMillis = clockProvider.nowMillis(),
+                    zoneId = zoneIdProvider.zoneId(),
+                    amountVisibility = visibility,
+                    closedAccountIds = source.closedAccountIds,
+                )
+                _uiState.value = ReminderListUiState(
+                    isLoading = false,
+                    balanceReminders = snapshot.staleAccounts.map { account ->
+                        BalanceReminderUiModel(
+                            accountId = account.id,
+                            name = account.name,
+                            currentBalanceFormatted = AmountFormatter.format(
+                                snapshot.accountBalances[account.id] ?: 0L,
+                                snapshot.settings,
+                                visibility,
+                            ),
+                            lastBalanceUpdateText = account.lastBalanceUpdateAt?.let {
+                                "最近核对 ${DateTimeTextFormatter.format(it)}"
+                            } ?: "尚未核对",
+                        )
+                    },
+                    dueReminders = projection.due,
+                    upcomingReminders = projection.upcoming,
+                    pausedReminders = projection.paused,
+                    pendingSkip = savedStateHandle[PENDING_SKIP_KEY],
+                )
+            }
         }
     }
 
     fun deleteReminder(id: Long) {
-        viewModelScope.launch { deleteReminderUseCase(id) }
+        val reminder = sequenceOf(
+            _uiState.value.dueReminders,
+            _uiState.value.upcomingReminders,
+            _uiState.value.pausedReminders,
+        ).flatten().firstOrNull { it.id == id }
+        if (reminder?.canMutate != true || !deleteInFlight.add(id)) return
+        viewModelScope.launch {
+            try {
+                deleteReminderUseCase(id)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                effects.emit(ReminderListEffect.DeleteFailed)
+            } finally {
+                deleteInFlight.remove(id)
+            }
+        }
     }
 
     fun skipReminder(id: Long, expectedDueAt: Long) {
@@ -196,10 +234,19 @@ internal fun partitionReminderModels(
     nowMillis: Long,
     zoneId: ZoneId,
     amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
+    closedAccountIds: Set<Long> = emptySet(),
 ): ReminderListProjection {
     val models = reminders
         .sortedWith(compareBy<RecurringReminder> { it.nextDueAt }.thenBy { it.id })
-        .map { it.toUiModel(settings, nowMillis, zoneId, amountVisibility) }
+        .map { reminder ->
+            reminder.toUiModel(
+                settings = settings,
+                nowMillis = nowMillis,
+                zoneId = zoneId,
+                amountVisibility = amountVisibility,
+                canMutate = reminder.accountId !in closedAccountIds,
+            )
+        }
     return ReminderListProjection(
         due = models.filter { it.isEnabled && it.isOverdue },
         upcoming = models.filter { it.isEnabled && !it.isOverdue },
@@ -212,6 +259,7 @@ internal fun RecurringReminder.toUiModel(
     nowMillis: Long,
     zoneId: ZoneId,
     amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
+    canMutate: Boolean = true,
 ): ReminderUiModel {
     val periodDescription = when (ReminderPeriodType.fromValue(periodType)) {
         ReminderPeriodType.MONTHLY -> "每月${periodValue}日"
@@ -232,5 +280,13 @@ internal fun RecurringReminder.toUiModel(
         direction = direction,
         amount = amount,
         nextDueAt = nextDueAt,
+        canMutate = canMutate,
     )
 }
+
+private data class ReminderListSource(
+    val reminders: List<RecurringReminder>,
+    val snapshot: HomeDashboardSnapshot,
+    val devicePreferences: DevicePreferences,
+    val closedAccountIds: Set<Long>,
+)

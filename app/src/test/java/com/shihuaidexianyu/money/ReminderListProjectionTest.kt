@@ -32,6 +32,23 @@ class ReminderListProjectionTest {
         assertEquals(true, reminderCashFlowRoute(projection.due.last()).contains("expectedDueAt=$now"))
     }
 
+    @Test
+    fun `reminders linked to closed accounts are projected read only`() {
+        val projection = partitionReminderModels(
+            reminders = listOf(
+                reminder(id = 1, dueAt = 10_000L, enabled = false),
+                reminder(id = 2, dueAt = 10_000L, enabled = false).copy(accountId = 2L),
+            ),
+            settings = PortableSettings(),
+            nowMillis = 10_000L,
+            zoneId = ZoneId.of("UTC"),
+            closedAccountIds = setOf(1L),
+        )
+
+        assertEquals(false, projection.paused.first { it.id == 1L }.canMutate)
+        assertEquals(true, projection.paused.first { it.id == 2L }.canMutate)
+    }
+
     private fun reminder(id: Long, dueAt: Long, enabled: Boolean = true) = RecurringReminder(
         id = id,
         name = "reminder-$id",

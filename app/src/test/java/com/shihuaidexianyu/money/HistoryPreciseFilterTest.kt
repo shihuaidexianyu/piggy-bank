@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.TransferRecord
@@ -24,9 +25,9 @@ class HistoryPreciseFilterTest {
         repository.insertBalanceUpdateRecord(
             BalanceUpdateRecord(
                 accountId = 2L,
-                actualBalance = 0L,
+                actualBalance = 50L,
                 systemBalanceBeforeUpdate = 0L,
-                delta = 0L,
+                delta = 50L,
                 occurredAt = 1_200L,
                 createdAt = 1_200L,
                 updatedAt = 1_200L,
@@ -44,13 +45,42 @@ class HistoryPreciseFilterTest {
         )
         assertEquals(
             listOf(HistoryRecordType.BALANCE_UPDATE),
-            repository.queryHistoryRecords(HistoryRecordFilters(keyword = "余额核对"), null, 20).map { it.type },
+            repository.queryHistoryRecords(HistoryRecordFilters(keyword = "对账调整"), null, 20).map { it.type },
         )
         assertEquals(
             listOf("午餐 100%_"),
             repository.queryHistoryRecords(HistoryRecordFilters(keyword = "100%_"), null, 20).map { it.title },
         )
         assertEquals("\\%\\_\\\\", escapeHistoryLikeLiteral("%_\\"))
+    }
+
+    @Test
+    fun `zero delta balance checks stay stored but are excluded from history`() = runBlocking {
+        val repository = InMemoryTransactionRepository()
+        repository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = 1L,
+                actualBalance = 100L,
+                systemBalanceBeforeUpdate = 100L,
+                delta = 0L,
+                occurredAt = 1_000L,
+                createdAt = 1_000L,
+                updatedAt = 1_000L,
+                operationId = testOperationId(),
+            ),
+        )
+
+        assertEquals(1, repository.queryAllBalanceUpdateRecords().size)
+        assertEquals(emptyList(), repository.queryHistoryRecords(HistoryRecordFilters(), null, 20))
+        assertEquals(0, repository.countHistoryRecords(HistoryRecordFilters()))
+        assertEquals(
+            HistoryFilterSummary(
+                cashInflow = 0L,
+                cashOutflow = 0L,
+                netChange = 0L,
+            ),
+            repository.queryHistoryFilterSummary(HistoryRecordFilters()),
+        )
     }
 
     @Test

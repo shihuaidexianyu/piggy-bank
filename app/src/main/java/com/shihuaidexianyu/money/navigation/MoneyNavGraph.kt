@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -64,6 +63,7 @@ import com.shihuaidexianyu.money.ui.common.RootSnackbarQueueViewModel
 import com.shihuaidexianyu.money.ui.common.executeRootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
+import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -73,7 +73,6 @@ import com.shihuaidexianyu.money.domain.launch.AppLaunchDestination
 import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 private val topLevelRoutes = MoneyDestination.topLevel.map { it.route }
 private val topLevelRouteSet = topLevelRoutes.toSet()
@@ -295,19 +294,13 @@ fun MoneyNavGraph(
 
     LaunchedEffect(rootSnackbarItems.firstOrNull()?.token) {
         val effect = rootSnackbarItems.firstOrNull() ?: return@LaunchedEffect
-        // Cap the banner at four seconds explicitly: the host's own auto-dismiss can be
-        // overridden by accessibility services or interrupted by recomposition, which previously
-        // left the delete/undo banner on screen indefinitely.
-        val result = withTimeoutOrNull(4_000L) {
-            snackbarHostState.showSnackbar(
-                message = effect.message,
-                actionLabel = effect.actionLabel,
-                duration = SnackbarDuration.Short,
-            )
-        } ?: run {
-            snackbarHostState.currentSnackbarData?.dismiss()
-            SnackbarResult.Dismissed
-        }
+        // Actionable messages stay visible for Material's long, accessibility-aware timeout.
+        // Non-actionable status messages keep the shorter duration so the FIFO queue can advance.
+        val result = snackbarHostState.showSnackbar(
+            message = effect.message,
+            actionLabel = effect.actionLabel,
+            duration = rootSnackbarDuration(effect),
+        )
         if (result == SnackbarResult.ActionPerformed) {
             when (val execution = executeRootSnackbarAction(
                 action = effect.action,

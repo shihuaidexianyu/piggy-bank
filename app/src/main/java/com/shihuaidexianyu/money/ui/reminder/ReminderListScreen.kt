@@ -77,12 +77,16 @@ fun ReminderListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val skippedMessage = stringResource(R.string.reminder_skipped)
+    val deleteFailedMessage = stringResource(R.string.reminder_delete_failed)
     val undoLabel = stringResource(R.string.action_undo)
 
     LaunchedEffect(effects) {
         effects.collect { effect ->
-            if (effect is ReminderListEffect.ShowMessage) {
-                rootDispatcher?.dispatch(rootSnackbarEffect(effect.message))
+            when (effect) {
+                is ReminderListEffect.ShowMessage ->
+                    rootDispatcher?.dispatch(rootSnackbarEffect(effect.message))
+                ReminderListEffect.DeleteFailed ->
+                    rootDispatcher?.dispatch(rootSnackbarEffect(deleteFailedMessage))
             }
         }
     }
@@ -335,7 +339,7 @@ private fun ReminderListItem(
     MoneyCard(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        onClick = onEdit,
+        onClick = if (reminder.canMutate) onEdit else null,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -392,15 +396,17 @@ private fun ReminderListItem(
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.action_delete),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (reminder.canMutate) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = stringResource(R.string.action_delete),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-        if (isDue) {
+        if (isDue && reminder.canMutate) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

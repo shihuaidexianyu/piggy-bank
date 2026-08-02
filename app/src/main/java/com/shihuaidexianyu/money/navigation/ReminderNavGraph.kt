@@ -38,6 +38,7 @@ internal fun NavGraphBuilder.addReminderGraph(
         val viewModel = viewModel<ReminderListViewModel>(
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 ReminderListViewModel(
+                    accountRepository = container.accountRepository,
                     reminderRepository = container.recurringReminderRepository,
                     deleteReminderUseCase = container.deleteReminderUseCase,
                     skipReminderUseCase = container.skipReminderUseCase,

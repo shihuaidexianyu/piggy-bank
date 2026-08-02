@@ -73,6 +73,25 @@ class ReminderListPendingSkipTest {
         assertEquals(fixture.dueAt + DAY, fixture.reminders.getReminderById(fixture.secondReminderId)?.nextDueAt)
     }
 
+    @Test
+    fun `closing account during reminder deletion is caught and leaves reminder intact`() = runTest(dispatcher) {
+        val fixture = Fixture()
+        val viewModel = fixture.viewModel(SavedStateHandle())
+        advanceUntilIdle()
+
+        fixture.accounts.closeAccount(fixture.accountId, closedAt = 2L)
+        viewModel.deleteReminder(fixture.reminderId)
+        advanceUntilIdle()
+
+        assertNotNull(fixture.reminders.getReminderById(fixture.reminderId))
+        val reminder = listOf(
+            viewModel.uiState.value.dueReminders,
+            viewModel.uiState.value.upcomingReminders,
+            viewModel.uiState.value.pausedReminders,
+        ).flatten().first { it.id == fixture.reminderId }
+        assertFalse(reminder.canMutate)
+    }
+
     private class Fixture {
         val dueAt = 10L * DAY
         val accounts = InMemoryAccountRepository()
@@ -105,7 +124,7 @@ class ReminderListPendingSkipTest {
             CalculateAccountBalancesUseCase(transactions, clock), clock, zone,
         )
         fun viewModel(handle: SavedStateHandle) = ReminderListViewModel(
-            reminders, DeleteReminderUseCase(accounts, reminders), SkipReminderUseCase(accounts, reminders, clock, zone),
+            accounts, reminders, DeleteReminderUseCase(accounts, reminders), SkipReminderUseCase(accounts, reminders, clock, zone),
             UndoSkipReminderUseCase(reminders, clock, com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester),
             dashboard, clock, zone, preferences, handle,
         )
