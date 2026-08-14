@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
@@ -30,7 +31,7 @@ import kotlinx.coroutines.launch
 
 data class EditCashFlowUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val loadRetryToken: String? = null,
     val direction: CashFlowDirection = CashFlowDirection.INFLOW,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -53,6 +54,7 @@ data class EditCashFlowUiState(
 sealed interface EditCashFlowEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : EditCashFlowEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -179,10 +181,10 @@ class EditCashFlowViewModel(
                 }
                 val message = failure.message ?: "保存失败"
                 when {
-                    failure is LedgerRecordChangedException -> effects.emit(EditCashFlowEffect.ShowMessage(message))
+                    failure is LedgerRecordChangedException -> effects.emit(EditCashFlowEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                     message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
                     message.contains("账户") -> updateDraft { copy(accountError = message) }
-                    else -> effects.emit(EditCashFlowEffect.ShowMessage(message))
+                    else -> effects.emit(EditCashFlowEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                 }
             }
         }
@@ -206,7 +208,7 @@ class EditCashFlowViewModel(
                         hasConflict = it is LedgerRecordChangedException,
                     )
                 }
-                effects.emit(EditCashFlowEffect.ShowMessage(it.message ?: "删除失败"))
+                effects.emit(EditCashFlowEffect.ShowMessage(it.message.orEmpty(), messageRes = R.string.msg_delete_failed))
             }
         }
     }
@@ -225,7 +227,7 @@ class EditCashFlowViewModel(
     fun retryLoad() {
         _uiState.value = _uiState.value.copy(
             isLoading = true,
-            loadErrorMessage = null,
+            loadErrorMessageRes = null,
             loadRetryToken = null,
         )
         loadRecord(useSavedDraft = true)
@@ -269,7 +271,7 @@ class EditCashFlowViewModel(
                 runCatching { android.util.Log.e("EditCashFlowViewModel", "Failed to load record", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "记录加载失败，请重试",
+                    loadErrorMessageRes = R.string.record_load_failed,
                     loadRetryToken = "edit-cash:$recordId",
                 )
             }

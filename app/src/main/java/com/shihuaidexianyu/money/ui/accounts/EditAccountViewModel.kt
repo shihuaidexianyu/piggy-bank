@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class EditAccountUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val name: String = "",
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
@@ -52,6 +53,7 @@ sealed interface EditAccountEffect {
     data object Closed : EditAccountEffect
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : EditAccountEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -102,7 +104,7 @@ class EditAccountViewModel(
                                 .onFailure {
                                     _uiState.value = _uiState.value.copy(
                                         isLoading = false,
-                                        loadErrorMessage = "账户加载失败，请重试",
+                                        loadErrorMessageRes = R.string.account_load_failed,
                                     )
                                 }
                         }
@@ -113,7 +115,7 @@ class EditAccountViewModel(
                 runCatching { android.util.Log.e("EditAccountViewModel", "Failed to observe account balance", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "账户加载失败，请重试",
+                    loadErrorMessageRes = R.string.account_load_failed,
                 )
             }
         }
@@ -125,7 +127,7 @@ class EditAccountViewModel(
     }
 
     private fun loadAccount() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val account = accountRepository.getAccountById(accountId)
@@ -152,7 +154,7 @@ class EditAccountViewModel(
                 runCatching { android.util.Log.e("EditAccountViewModel", "Failed to load account", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "账户加载失败，请重试",
+                    loadErrorMessageRes = R.string.account_load_failed,
                 )
             }
         }
@@ -181,7 +183,7 @@ class EditAccountViewModel(
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(isUpdatingHidden = false)
-                    effects.emit(EditAccountEffect.ShowMessage(error.message ?: "隐藏状态更新失败"))
+                    effects.emit(EditAccountEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.account_hidden_update_failed))
                 }
         }
     }
@@ -219,7 +221,7 @@ class EditAccountViewModel(
     fun save() {
         val state = _uiState.value
         if (state.isClosed) {
-            effects.tryEmit(EditAccountEffect.ShowMessage("关闭账户不能修改账户"))
+            effects.tryEmit(EditAccountEffect.ShowMessage("", messageRes = R.string.account_closed_cannot_edit))
             return
         }
         viewModelScope.launch {
@@ -242,25 +244,25 @@ class EditAccountViewModel(
                     return@onFailure
                 }
                 _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(EditAccountEffect.ShowMessage(error.message ?: "保存失败"))
+                effects.emit(EditAccountEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.msg_save_failed))
             }
         }
     }
 
     fun closeAccount() {
         if (_uiState.value.isClosed) {
-            effects.tryEmit(EditAccountEffect.ShowMessage("账户已关闭"))
+            effects.tryEmit(EditAccountEffect.ShowMessage("", messageRes = R.string.account_already_closed))
             return
         }
         viewModelScope.launch {
             val latestBalance = runCatching { calculateCurrentBalanceUseCase(accountId) }
                 .getOrElse { error ->
-                    effects.emit(EditAccountEffect.ShowMessage(error.message ?: "无法读取最新余额"))
+                    effects.emit(EditAccountEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.account_read_latest_failed))
                     return@launch
                 }
             _uiState.value = _uiState.value.copy(currentBalance = latestBalance)
             if (latestBalance != 0L) {
-                effects.emit(EditAccountEffect.ShowMessage("请先结清余额，再关闭账户"))
+                effects.emit(EditAccountEffect.ShowMessage("", messageRes = R.string.account_close_balance_nonzero))
                 return@launch
             }
             runCatching { closeAccountUseCase(accountId) }.onSuccess {
@@ -271,12 +273,13 @@ class EditAccountViewModel(
                     emitClosedOnce()
                     return@onFailure
                 }
-                val message = if (error.message.orEmpty().contains("余额必须为 0")) {
-                    "请先结清余额，再关闭账户"
+                val message = error.message.orEmpty()
+                val messageRes = if (message.contains("余额必须为 0")) {
+                    R.string.account_close_balance_nonzero
                 } else {
-                    error.message ?: "关闭失败"
+                    R.string.account_close_failed
                 }
-                effects.emit(EditAccountEffect.ShowMessage(message))
+                effects.emit(EditAccountEffect.ShowMessage(message, messageRes = messageRes))
             }
         }
     }

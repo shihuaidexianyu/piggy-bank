@@ -135,13 +135,13 @@ class EditReminderViewModelTest {
         )
         advanceUntilIdle()
         viewModel.updateName("新房租")
-        assertEquals("提醒加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.reminder_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         available = true
         viewModel.retryLoad()
         advanceUntilIdle()
 
-        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+        assertEquals(null, viewModel.uiState.value.loadErrorMessageRes)
         assertEquals("新房租", viewModel.uiState.value.name)
     }
 

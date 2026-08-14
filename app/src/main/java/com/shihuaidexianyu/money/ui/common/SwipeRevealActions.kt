@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -40,6 +42,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 enum class SwipeRevealValue {
@@ -91,12 +94,13 @@ fun SwipeRevealActionsBox(
         AnchoredDraggableState(
             initialValue = SwipeRevealValue.SETTLED,
             anchors = anchors,
-            positionalThreshold = { distance: Float -> distance * 0.5f },
-            velocityThreshold = { with(density) { 1500.dp.toPx() } },
-            snapAnimationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-            decayAnimationSpec = exponentialDecay(),
         )
     }
+    val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
+        state,
+        { distance: Float -> distance * 0.5f },
+        spring(stiffness = Spring.StiffnessMediumLow),
+    )
 
     val rowClick: () -> Unit = {
         if (state.currentValue == SwipeRevealValue.SETTLED) {
@@ -106,6 +110,8 @@ fun SwipeRevealActionsBox(
         }
     }
 
+    // 0 → 1 as the user drags the lid aside; drives the backing button's fade/scale.
+    val revealFraction = (abs(state.requireOffset()) / revealWidthPx).coerceIn(0f, 1f)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -117,6 +123,7 @@ fun SwipeRevealActionsBox(
             state.requireOffset() < 0f && endAction != null -> SwipeRevealActionBacking(
                 action = endAction,
                 alignment = Alignment.CenterEnd,
+                revealFraction = revealFraction,
                 onClick = {
                     onEndAction()
                     scope.launch { state.animateTo(SwipeRevealValue.SETTLED) }
@@ -126,6 +133,7 @@ fun SwipeRevealActionsBox(
             state.requireOffset() > 0f && startAction != null -> SwipeRevealActionBacking(
                 action = startAction,
                 alignment = Alignment.CenterStart,
+                revealFraction = revealFraction,
                 onClick = {
                     onStartAction()
                     scope.launch { state.animateTo(SwipeRevealValue.SETTLED) }
@@ -144,6 +152,7 @@ fun SwipeRevealActionsBox(
                     state = state,
                     orientation = Orientation.Horizontal,
                     enabled = startAction != null || endAction != null,
+                    flingBehavior = flingBehavior,
                 ),
         ) {
             content(rowClick)
@@ -155,6 +164,7 @@ fun SwipeRevealActionsBox(
 private fun SwipeRevealActionBacking(
     action: SwipeRevealAction,
     alignment: Alignment,
+    revealFraction: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -175,7 +185,14 @@ private fun SwipeRevealActionBacking(
             contentAlignment = alignment,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .graphicsLayer {
+                        alpha = revealFraction
+                        val scale = 0.85f + 0.15f * revealFraction
+                        scaleX = scale
+                        scaleY = scale
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {

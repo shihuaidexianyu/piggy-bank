@@ -50,7 +50,7 @@ class CreateAccountViewModelTest {
             advanceUntilIdle()
             val effect = awaitItem()
             assertTrue(effect is CreateAccountEffect.ShowMessage)
-            assertEquals("金额不能为空", effect.message)
+            assertEquals(R.string.account_create_amount_empty, effect.messageRes)
         }
     }
 

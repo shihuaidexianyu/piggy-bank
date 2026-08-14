@@ -176,14 +176,14 @@ class SharePreviewViewModelTest {
         runCurrent()
         viewModel.updateAmount("88.00")
 
-        assertEquals("无法读取开放账户", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.share_accounts_load_failed, viewModel.uiState.value.loadErrorMessageRes)
         assertTrue(viewModel.uiState.value.accounts.isEmpty())
         viewModel.retryLoad()
         runCurrent()
 
         assertEquals("88.00", viewModel.uiState.value.amountText)
         assertEquals(7L, viewModel.uiState.value.selectedAccountId)
-        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+        assertEquals(null, viewModel.uiState.value.loadErrorMessageRes)
     }
 
     private fun viewModel(

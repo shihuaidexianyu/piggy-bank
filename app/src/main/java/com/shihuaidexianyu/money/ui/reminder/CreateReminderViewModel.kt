@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -25,7 +26,7 @@ import kotlinx.coroutines.launch
 
 data class CreateReminderUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val name: String = "",
     val type: ReminderType = ReminderType.MANUAL,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -43,7 +44,10 @@ data class CreateReminderUiState(
 
 sealed interface CreateReminderEffect {
     data object Saved : CreateReminderEffect
-    data class ShowMessage(override val message: String) : CreateReminderEffect, UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : CreateReminderEffect, UiEffect.HasMessage
 }
 
 class CreateReminderViewModel(
@@ -87,7 +91,7 @@ class CreateReminderViewModel(
     }
 
     private fun loadDependencies() {
-        setState(_uiState.value.copy(isLoading = true, loadErrorMessage = null))
+        setState(_uiState.value.copy(isLoading = true, loadErrorMessageRes = null))
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
@@ -99,7 +103,7 @@ class CreateReminderViewModel(
                         accounts = accounts.toAccountOptionUiModels(),
                         selectedAccountId = selected,
                         isLoading = false,
-                        loadErrorMessage = null,
+                        loadErrorMessageRes = null,
                     ),
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -108,7 +112,7 @@ class CreateReminderViewModel(
                 setState(
                     _uiState.value.copy(
                         isLoading = false,
-                        loadErrorMessage = "开放账户加载失败，请重试",
+                        loadErrorMessageRes = R.string.open_accounts_load_failed,
                     ),
                 )
             }

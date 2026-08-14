@@ -137,12 +137,12 @@ fun AccountIconBadge(
             modifier = Modifier.size(size),
             contentAlignment = Alignment.Center,
         ) {
+            // Decorative geometry: the enclosing row merges its own semantics, and the picker
+            // dialogs announce each pattern through their labels — reading "图案 N" here was
+            // pure noise for screen-reader users.
             Icon(
                 imageVector = accountIconVector(iconName),
-                contentDescription = stringResource(
-                    R.string.account_pattern_format,
-                    accountPatternIndex(iconName) + 1,
-                ),
+                contentDescription = null,
                 tint = accent,
                 modifier = Modifier.size(iconSize),
             )

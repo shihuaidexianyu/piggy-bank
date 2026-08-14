@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.share
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
@@ -49,7 +50,7 @@ data class SharePreviewUiState(
     val isUncertain: Boolean = true,
     val candidateAmounts: List<Long> = emptyList(),
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val isSaving: Boolean = false,
     val fieldError: String? = null,
     val isDirty: Boolean = false,
@@ -57,7 +58,10 @@ data class SharePreviewUiState(
 
 sealed interface SharePreviewEffect {
     data object Saved : SharePreviewEffect
-    data class ShowMessage(override val message: String) : SharePreviewEffect, UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : SharePreviewEffect, UiEffect.HasMessage
 }
 
 class SharePreviewViewModel(
@@ -90,7 +94,7 @@ class SharePreviewViewModel(
     }
 
     private fun loadAccounts() {
-        updateState { copy(isLoading = true, loadErrorMessage = null) }
+        updateState { copy(isLoading = true, loadErrorMessageRes = null) }
         viewModelScope.launch {
             runCatching { accountLoader.loadOpenAccounts() }
                 .onSuccess { accounts ->
@@ -102,7 +106,7 @@ class SharePreviewViewModel(
                             accounts = accounts,
                             selectedAccountId = selected,
                             isLoading = false,
-                            loadErrorMessage = null,
+                            loadErrorMessageRes = null,
                         )
                     }
                 }
@@ -111,7 +115,7 @@ class SharePreviewViewModel(
                     updateState {
                         copy(
                             isLoading = false,
-                            loadErrorMessage = "无法读取开放账户",
+                            loadErrorMessageRes = R.string.share_accounts_load_failed,
                         )
                     }
                 }
@@ -163,7 +167,7 @@ class SharePreviewViewModel(
             }.onFailure { error ->
                 saveInFlight = false
                 updateState { copy(isSaving = false, fieldError = error.message ?: "保存失败") }
-                effects.emit(SharePreviewEffect.ShowMessage(error.message ?: "保存失败"))
+                effects.emit(SharePreviewEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.msg_save_failed))
             }
         }
     }

@@ -168,19 +168,7 @@ fun AccountsScreen(
                             ),
                             icon = Icons.Rounded.AccountBalanceWallet,
                     ) {
-                        if (hasClosedAccounts) {
-                            MoneyTonalButton(onClick = onToggleClosedVisibility) {
-                                Text(
-                                    stringResource(
-                                        if (state.showClosed) {
-                                            R.string.accounts_collapse_closed
-                                        } else {
-                                            R.string.accounts_show_closed
-                                        },
-                                    ),
-                                )
-                            }
-                        } else {
+                        if (!hasClosedAccounts) {
                             MoneyTonalButton(onClick = onCreateAccount) {
                                 Text(stringResource(R.string.accounts_create_first))
                             }
@@ -307,9 +295,6 @@ fun AccountsScreen(
                 }
             }
             if (state.showClosed) {
-                item {
-                    MoneySectionHeader(title = stringResource(R.string.accounts_closed))
-                }
                 itemsIndexed(state.closedAccounts, key = { _, account -> account.id }) { _, account ->
                     AccountCard(
                         account = account,

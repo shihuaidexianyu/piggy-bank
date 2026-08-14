@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -46,7 +47,7 @@ data class BatchReconcileAccountUiModel(
 
 data class BatchReconcileUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val settings: PortableSettings = PortableSettings(),
     val accounts: List<BatchReconcileAccountUiModel> = emptyList(),
     val isDirty: Boolean = false,
@@ -61,6 +62,7 @@ data class BatchReconcileUiState(
 sealed interface BatchReconcileEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : BatchReconcileEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -99,7 +101,7 @@ class BatchReconcileViewModel(
 
     private fun observeAccounts() {
         observationJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         observationJob = viewModelScope.launch {
             try {
                 combine(
@@ -115,7 +117,7 @@ class BatchReconcileViewModel(
                         settings = settings,
                         accounts = buildItems(accounts, reminderConfigs),
                         isDirty = draft.isDirty,
-                        loadErrorMessage = null,
+                        loadErrorMessageRes = null,
                         confirmTimeMillis = draft.occurredAtMillis,
                     )
                 }
@@ -125,7 +127,7 @@ class BatchReconcileViewModel(
                 runCatching { android.util.Log.e("BatchReconcileViewModel", "Failed to load stale accounts", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "批量核对加载失败，请重试",
+                    loadErrorMessageRes = R.string.batch_reconcile_load_failed,
                 )
             }
         }
@@ -178,7 +180,7 @@ class BatchReconcileViewModel(
         val selectedAccounts = state.accounts.filter { it.isSelected }
         if (selectedAccounts.isEmpty()) {
             saveInFlight = false
-            effects.tryEmit(BatchReconcileEffect.ShowMessage("请至少选择一个账户"))
+            effects.tryEmit(BatchReconcileEffect.ShowMessage("", messageRes = R.string.batch_select_at_least_one))
             return
         }
 
@@ -239,10 +241,11 @@ class BatchReconcileViewModel(
                 )
                 effects.emit(
                     BatchReconcileEffect.ShowMessage(
-                        if (failedIds.size == selectedIds.size) {
-                            "账户保存失败，请重试"
+                        "",
+                        messageRes = if (failedIds.size == selectedIds.size) {
+                            R.string.batch_all_save_failed
                         } else {
-                            "部分账户保存失败，请重试"
+                            R.string.batch_partial_save_failed
                         },
                     ),
                 )

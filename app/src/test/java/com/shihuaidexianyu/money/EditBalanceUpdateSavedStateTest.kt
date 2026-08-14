@@ -173,13 +173,13 @@ class EditBalanceUpdateSavedStateTest {
         val repository = ToggleBalanceLoadRepository(fixture.transactions)
         val viewModel = fixture.viewModel(handle = SavedStateHandle(), transactions = repository)
         advanceUntilIdle()
-        assertEquals("核对记录加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.balance_detail_load_failed, viewModel.uiState.value.loadErrorMessageRes)
         viewModel.updateActualBalance("8.88")
 
         repository.available = true
         viewModel.retryLoad(); advanceUntilIdle()
 
-        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+        assertEquals(null, viewModel.uiState.value.loadErrorMessageRes)
         assertEquals("8.88", viewModel.uiState.value.actualBalanceText)
     }
 

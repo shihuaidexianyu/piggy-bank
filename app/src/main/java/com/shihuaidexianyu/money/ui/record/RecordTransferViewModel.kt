@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class RecordTransferUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val allowContinueRecording: Boolean = true,
     val continueRecording: Boolean = false,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -52,6 +53,7 @@ data class RecordTransferUiState(
 sealed interface RecordTransferEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : RecordTransferEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -109,7 +111,7 @@ class RecordTransferViewModel(
     }
 
     private fun loadDependencies() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
@@ -138,7 +140,7 @@ class RecordTransferViewModel(
                     fromAccountError = if (normalizedFromAccountId != null) null else _uiState.value.fromAccountError,
                     toAccountError = if (normalizedToAccountId != null) null else _uiState.value.toAccountError,
                     isLoading = false,
-                    loadErrorMessage = null,
+                    loadErrorMessageRes = null,
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -146,7 +148,7 @@ class RecordTransferViewModel(
                 runCatching { android.util.Log.e("RecordTransferViewModel", "Failed to load accounts", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "开放账户加载失败，请重试",
+                    loadErrorMessageRes = R.string.open_accounts_load_failed,
                 )
             }
         }
@@ -308,7 +310,7 @@ class RecordTransferViewModel(
                 rememberRecentAccounts(fromId, toId)
                 if (allowContinueRecording && _uiState.value.continueRecording) {
                     resetAfterSave()
-                    effects.emit(RecordTransferEffect.ShowMessage("已保存，可继续记账"))
+                    effects.emit(RecordTransferEffect.ShowMessage("", messageRes = R.string.record_saved_continue_hint))
                 } else {
                     setPendingTerminal(pendingFormTerminal(FormTerminalKind.SAVED))
                 }
@@ -323,7 +325,7 @@ class RecordTransferViewModel(
                     message.contains("账户") -> updateDraft {
                         copy(fromAccountError = message, toAccountError = message)
                     }
-                    else -> effects.emit(RecordTransferEffect.ShowMessage(message))
+                    else -> effects.emit(RecordTransferEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                 }
             }
         }

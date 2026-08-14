@@ -77,10 +77,10 @@ fun BalanceAdjustmentDetailScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
-                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "adjustment-detail"),
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessageRes?.let { stringResource(it) }, "adjustment-detail"),
                     onRetry = viewModel::retryLoad,
                     modifier = Modifier.heightIn(min = 240.dp),
                     data = { _, _ -> },

@@ -21,8 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import com.shihuaidexianyu.money.data.migration.StartupRecoveryAction
 import com.shihuaidexianyu.money.navigation.MoneyNavGraph
@@ -69,7 +71,7 @@ fun StartupMigrationSurface(
             verticalArrangement = Arrangement.Center,
         ) {
             CircularProgressIndicator()
-            Text("正在准备账本…", modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.migration_preparing), modifier = Modifier.padding(top = 16.dp))
         }
 
         StartupMigrationState.Ready -> Unit
@@ -79,11 +81,11 @@ fun StartupMigrationSurface(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("账本迁移需要处理")
+            Text(stringResource(R.string.migration_needed_title))
             Text(current.diagnostic, modifier = Modifier.padding(vertical = 16.dp))
             recoveryActionError?.let { Text(it, modifier = Modifier.padding(bottom = 8.dp)) }
             Button(onClick = { scope.launch { container.startupMigrationCoordinator.retry() } }) {
-                Text("重试")
+                Text(stringResource(R.string.action_retry))
             }
             if (StartupRecoveryAction.USE_CURRENT_DATABASE in current.actions) {
                 Button(
@@ -94,7 +96,7 @@ fun StartupMigrationSurface(
                     },
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    Text("保留当前账本并忽略旧文件")
+                    Text(stringResource(R.string.migration_use_current))
                 }
             }
             if (StartupRecoveryAction.EXPORT_LEGACY_SOURCE in current.actions) {
@@ -118,17 +120,17 @@ fun StartupMigrationSurface(
                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
                                     context.startActivity(
-                                        Intent.createChooser(shareIntent, "保存旧账本源文件"),
+                                        Intent.createChooser(shareIntent, context.getString(R.string.migration_save_legacy_chooser)),
                                     )
                                 }
                                 .onFailure { error ->
-                                    recoveryActionError = error.message ?: "旧账本源文件导出失败"
+                                    recoveryActionError = error.message ?: context.getString(R.string.migration_export_failed)
                                 }
                         }
                     },
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    Text("导出旧账本源文件")
+                    Text(stringResource(R.string.migration_export_legacy))
                 }
             }
             if (StartupRecoveryAction.RESET_LOCAL_SETTINGS in current.actions) {
@@ -136,18 +138,15 @@ fun StartupMigrationSurface(
                     onClick = { showResetConfirmation = true },
                     modifier = Modifier.padding(top = 8.dp),
                 ) {
-                    Text("重置损坏的本地设置")
+                    Text(stringResource(R.string.migration_reset_local))
                 }
             }
             if (showResetConfirmation) {
                 AlertDialog(
                     onDismissRequest = { showResetConfirmation = false },
-                    title = { Text("确认重置本地设置") },
+                    title = { Text(stringResource(R.string.migration_reset_confirm_title)) },
                     text = {
-                        Text(
-                            "仅重置检测为损坏的本机显示、隐私、历史筛选或旧提醒设置，" +
-                                "不会删除账户和账本记录。",
-                        )
+                        Text(stringResource(R.string.migration_reset_confirm_message))
                     },
                     confirmButton = {
                         Button(
@@ -158,12 +157,12 @@ fun StartupMigrationSurface(
                                 }
                             },
                         ) {
-                            Text("确认重置并继续")
+                            Text(stringResource(R.string.migration_reset_confirm_action))
                         }
                     },
                     dismissButton = {
                         Button(onClick = { showResetConfirmation = false }) {
-                            Text("取消")
+                            Text(stringResource(R.string.action_cancel))
                         }
                     },
                 )

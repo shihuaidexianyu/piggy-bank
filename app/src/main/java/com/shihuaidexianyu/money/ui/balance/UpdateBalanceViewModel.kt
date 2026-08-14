@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceResult
@@ -30,7 +31,7 @@ import kotlinx.coroutines.launch
 
 data class UpdateBalanceUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val selectedAccountId: Long? = null,
     val actualBalanceText: String = "",
@@ -51,6 +52,7 @@ data class UpdateBalanceUiState(
 sealed interface UpdateBalanceEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : UpdateBalanceEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -106,7 +108,7 @@ class UpdateBalanceViewModel(
     }
 
     private fun loadDependencies() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
@@ -119,7 +121,7 @@ class UpdateBalanceViewModel(
                     selectedAccountId = selected,
                     accountError = if (selected != null) null else _uiState.value.accountError,
                     isLoading = false,
-                    loadErrorMessage = null,
+                    loadErrorMessageRes = null,
                 )
                 refreshPreview(resetActualBalanceToSystem = !_uiState.value.actualBalanceEdited)
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -128,7 +130,7 @@ class UpdateBalanceViewModel(
                 runCatching { android.util.Log.e("UpdateBalanceViewModel", "Failed to load accounts", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "开放账户加载失败，请重试",
+                    loadErrorMessageRes = R.string.open_accounts_load_failed,
                 )
             }
         }
@@ -255,11 +257,11 @@ class UpdateBalanceViewModel(
             }.onFailure { throwable ->
                 saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
-                val message = throwable.message ?: "保存失败"
+                val message = throwable.message.orEmpty()
                 when {
                     message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
                     message.contains("账户") -> updateDraft { copy(accountError = message) }
-                    else -> effects.emit(UpdateBalanceEffect.ShowMessage(message))
+                    else -> effects.emit(UpdateBalanceEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                 }
             }
         }

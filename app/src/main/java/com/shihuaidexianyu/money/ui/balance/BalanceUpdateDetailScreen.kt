@@ -88,10 +88,10 @@ fun BalanceUpdateDetailScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
     ) {
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
-                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "balance-detail"),
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessageRes?.let { stringResource(it) }, "balance-detail"),
                     onRetry = viewModel::retryLoad,
                     modifier = Modifier.heightIn(min = 240.dp),
                     data = { _, _ -> },
@@ -155,7 +155,7 @@ fun BalanceUpdateDetailScreen(
 }
 
 internal fun balanceUpdateDetailTitleRes(state: BalanceUpdateDetailUiState): Int =
-    if (state.isLoading || state.loadErrorMessage != null) {
+    if (state.isLoading || state.loadErrorMessageRes != null) {
         R.string.balance_detail_neutral_title
     } else if (state.isInvestmentAccount && state.delta != 0L) {
         R.string.balance_detail_investment_title

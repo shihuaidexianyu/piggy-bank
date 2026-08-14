@@ -7,4 +7,10 @@
     <color name="widget_text_secondary">#A9A39C</color>
     <color name="widget_income">#E57373</color>
     <color name="widget_expense">#66BB6A</color>
+
+    <!-- Launcher icon (dark): same geometry, light-on-dark surfaces. -->
+    <color name="launcher_icon_background">#1C1C1E</color>
+    <color name="launcher_icon_ink">#E6E6E6</color>
+    <color name="launcher_icon_body">#FFCDCD</color>
+    <color name="launcher_icon_coin">#FFF3C4</color>
 </resources>

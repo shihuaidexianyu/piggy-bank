@@ -153,8 +153,8 @@ class RecordCashFlowViewModelTest {
             val message = awaitItem()
             assertTrue(message is RecordCashFlowEffect.ShowMessage)
             assertEquals(
-                "已保存，可继续记账",
-                (message as RecordCashFlowEffect.ShowMessage).message,
+                R.string.record_saved_continue_hint,
+                (message as RecordCashFlowEffect.ShowMessage).messageRes,
             )
         }
     }

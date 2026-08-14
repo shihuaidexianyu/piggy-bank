@@ -259,6 +259,11 @@ private fun AmountKeypadButton(
             modifier = buttonModifier,
             contentPadding = PaddingValues(0.dp),
             shape = MaterialTheme.shapes.large,
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 2.dp,
+                pressedElevation = 0.dp,
+                disabledElevation = 0.dp,
+            ),
             content = { content() },
         )
     } else {
@@ -271,6 +276,11 @@ private fun AmountKeypadButton(
             ),
             contentPadding = PaddingValues(0.dp),
             shape = MaterialTheme.shapes.large,
+            elevation = ButtonDefaults.filledTonalButtonElevation(
+                defaultElevation = 1.dp,
+                pressedElevation = 0.dp,
+                disabledElevation = 0.dp,
+            ),
             content = { content() },
         )
     }

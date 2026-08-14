@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,7 @@ sealed interface CreateAccountEffect {
     data object Saved : CreateAccountEffect
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : CreateAccountEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -102,7 +104,7 @@ class CreateAccountViewModel(
         viewModelScope.launch {
             val amount = AmountInputParser.parseSignedToMinor(_uiState.value.amountText)
             if (amount == null) {
-                effects.emit(CreateAccountEffect.ShowMessage("金额不能为空"))
+                effects.emit(CreateAccountEffect.ShowMessage("", messageRes = R.string.account_create_amount_empty))
                 return@launch
             }
 
@@ -120,7 +122,7 @@ class CreateAccountViewModel(
                 effects.emit(CreateAccountEffect.Saved)
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(CreateAccountEffect.ShowMessage(throwable.message ?: "创建账户失败"))
+                effects.emit(CreateAccountEffect.ShowMessage(throwable.message.orEmpty(), messageRes = R.string.account_create_failed))
             }
         }
     }

@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class EditBalanceUpdateUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val loadRetryToken: String? = null,
     val accountName: String = "",
     val isInvestmentAccount: Boolean = false,
@@ -50,6 +51,7 @@ data class EditBalanceUpdateUiState(
 sealed interface EditBalanceUpdateEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : EditBalanceUpdateEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -129,7 +131,7 @@ class EditBalanceUpdateViewModel(
                 runCatching { android.util.Log.e("EditBalanceUpdateViewModel", "Failed to load record", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "核对记录加载失败，请重试",
+                    loadErrorMessageRes = R.string.balance_detail_load_failed,
                     loadRetryToken = "edit-balance:$recordId",
                 )
             }
@@ -139,7 +141,7 @@ class EditBalanceUpdateViewModel(
     fun retryLoad() {
         _uiState.value = _uiState.value.copy(
             isLoading = true,
-            loadErrorMessage = null,
+            loadErrorMessageRes = null,
             loadRetryToken = null,
         )
         loadRecord(useSavedDraft = true)
@@ -247,12 +249,12 @@ class EditBalanceUpdateViewModel(
                     return@onFailure
                 }
                 updateDraft { copy(isSaving = false, hasConflict = throwable is LedgerRecordChangedException) }
-                val message = throwable.message ?: "保存失败"
+                val message = throwable.message.orEmpty()
                 when {
-                    throwable is LedgerRecordChangedException -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message))
+                    throwable is LedgerRecordChangedException -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                     message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
-                    message.contains("账户") -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message))
-                    else -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message))
+                    message.contains("账户") -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
+                    else -> effects.emit(EditBalanceUpdateEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                 }
             }
         }
@@ -276,7 +278,7 @@ class EditBalanceUpdateViewModel(
                         hasConflict = throwable is LedgerRecordChangedException,
                     )
                 }
-                effects.emit(EditBalanceUpdateEffect.ShowMessage(throwable.message ?: "撤销失败"))
+                effects.emit(EditBalanceUpdateEffect.ShowMessage(throwable.message.orEmpty(), messageRes = R.string.msg_undo_failed))
             }
         }
     }

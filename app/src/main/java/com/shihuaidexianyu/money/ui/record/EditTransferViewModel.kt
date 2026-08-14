@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class EditTransferUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val loadRetryToken: String? = null,
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val fromAccountId: Long? = null,
@@ -54,6 +55,7 @@ data class EditTransferUiState(
 sealed interface EditTransferEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : EditTransferEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -131,7 +133,7 @@ class EditTransferViewModel(
                 runCatching { android.util.Log.e("EditTransferViewModel", "Failed to load record", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "记录加载失败，请重试",
+                    loadErrorMessageRes = R.string.record_load_failed,
                     loadRetryToken = "edit-transfer:$recordId",
                 )
             }
@@ -141,7 +143,7 @@ class EditTransferViewModel(
     fun retryLoad() {
         _uiState.value = _uiState.value.copy(
             isLoading = true,
-            loadErrorMessage = null,
+            loadErrorMessageRes = null,
             loadRetryToken = null,
         )
         loadRecord(useSavedDraft = true)
@@ -266,14 +268,14 @@ class EditTransferViewModel(
                     }
                     val message = failure.message ?: "保存失败"
                     when {
-                        failure is LedgerRecordChangedException -> effects.emit(EditTransferEffect.ShowMessage(message))
+                        failure is LedgerRecordChangedException -> effects.emit(EditTransferEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                         message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
                         message.contains("转出账户") -> updateDraft { copy(fromAccountError = message) }
                         message.contains("转入账户") -> updateDraft { copy(toAccountError = message) }
                         message.contains("账户") -> updateDraft {
                             copy(fromAccountError = message, toAccountError = message)
                         }
-                        else -> effects.emit(EditTransferEffect.ShowMessage(message))
+                        else -> effects.emit(EditTransferEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                     }
                 }
         }
@@ -297,7 +299,7 @@ class EditTransferViewModel(
                             hasConflict = it is LedgerRecordChangedException,
                         )
                     }
-                    effects.emit(EditTransferEffect.ShowMessage(it.message ?: "删除失败"))
+                    effects.emit(EditTransferEffect.ShowMessage(it.message.orEmpty(), messageRes = R.string.msg_delete_failed))
                 }
         }
     }

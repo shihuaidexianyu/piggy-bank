@@ -114,13 +114,13 @@ fun SharePreviewScreen(
                 }
             }
         }
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
                     content = formAsyncContent(
                         value = state,
                         isLoading = state.isLoading,
-                        errorMessage = state.loadErrorMessage,
+                        errorMessage = state.loadErrorMessageRes?.let { stringResource(it) },
                         retryToken = "share-accounts",
                     ),
                     onRetry = viewModel::retryLoad,

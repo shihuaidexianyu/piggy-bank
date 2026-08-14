@@ -87,10 +87,10 @@ fun RecordCashFlowScreen(
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
     ) {
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
-                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "record-cash"),
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessageRes?.let { stringResource(it) }, "record-cash"),
                     onRetry = viewModel::retryLoad,
                     modifier = Modifier.heightIn(min = 240.dp),
                     data = { _, _ -> },

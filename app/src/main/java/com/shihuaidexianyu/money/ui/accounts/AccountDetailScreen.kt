@@ -78,17 +78,17 @@ fun AccountDetailScreen(
     CollectUiEffects(effectFlow, snackbarHostState) { }
     MoneyFormPage(
         title = state.name.ifEmpty { stringResource(R.string.account_detail_title) },
-        trailing = if (state.isMissing || state.isLoading || state.loadErrorMessage != null || state.isClosed) null else {
+        trailing = if (state.isMissing || state.isLoading || state.loadErrorMessageRes != null || state.isClosed) null else {
             { TextButton(onClick = onManageAccount) { Text(stringResource(R.string.accounts_management)) } }
         },
         onBack = onBackToAccounts,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
-                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "account-detail"),
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessageRes?.let { stringResource(it) }, "account-detail"),
                     onRetry = onRetry,
                     modifier = Modifier.heightIn(min = 240.dp),
                     data = { _, _ -> },

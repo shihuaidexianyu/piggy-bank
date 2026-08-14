@@ -20,7 +20,7 @@ import com.shihuaidexianyu.money.R
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
     val isMissing: Boolean = false,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val accountId: Long = 0,
     val name: String = "",
     val colorName: String = "blue",
@@ -41,7 +41,7 @@ data class AccountDetailUiState(
 )
 
 fun AccountDetailUiState.canMutateLedger(): Boolean =
-    !isLoading && !isMissing && loadErrorMessage == null && !isClosed
+    !isLoading && !isMissing && loadErrorMessageRes == null && !isClosed
 
 data class AccountClosurePresentation(
     val canMutate: Boolean,
@@ -70,6 +70,7 @@ fun accountClosurePresentation(isClosed: Boolean, balance: Long): AccountClosure
 sealed interface AccountDetailEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : AccountDetailEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -100,18 +101,18 @@ class AccountDetailViewModel(
             runCatching { reopenAccountUseCase(accountId) }
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(isReopening = false)
-                    effects.emit(AccountDetailEffect.ShowMessage("账户已重新开启，提醒仍保持关闭"))
+                    effects.emit(AccountDetailEffect.ShowMessage("", messageRes = R.string.account_reopened_message))
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(isReopening = false)
-                    effects.emit(AccountDetailEffect.ShowMessage(error.message ?: "重新开启失败"))
+                    effects.emit(AccountDetailEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.account_reopen_failed))
                 }
         }
     }
 
     private fun observeDetail() {
         observationJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = true, isMissing = false, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, isMissing = false, loadErrorMessageRes = null)
         observationJob = viewModelScope.launch {
             try {
                 observeAccountDetailUseCase().collect { snapshot ->
@@ -154,7 +155,7 @@ class AccountDetailViewModel(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isMissing = false,
-                    loadErrorMessage = "账户详情加载失败，请重试",
+                    loadErrorMessageRes = R.string.account_detail_load_failed,
                 )
             }
         }

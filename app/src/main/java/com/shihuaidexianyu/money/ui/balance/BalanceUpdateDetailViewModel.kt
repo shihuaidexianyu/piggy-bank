@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
@@ -29,7 +30,7 @@ data class BalanceUpdateDetailUiState(
     val delta: Long = 0,
     val occurredAt: Long = 0,
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val isDeleting: Boolean = false,
     val expectedUpdatedAt: Long = 0,
     val pendingTerminal: PendingFormTerminal? = null,
@@ -38,6 +39,7 @@ data class BalanceUpdateDetailUiState(
 sealed interface BalanceUpdateDetailEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : BalanceUpdateDetailEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -67,7 +69,7 @@ class BalanceUpdateDetailViewModel(
 
     private fun observeRecord() {
         observationJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         observationJob = viewModelScope.launch {
             try {
                 transactionRepository.observeChangeVersion().collect {
@@ -79,7 +81,7 @@ class BalanceUpdateDetailViewModel(
                 runCatching { android.util.Log.e("BalanceUpdateDetailViewModel", "Failed to observe record", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "核对记录加载失败，请重试",
+                    loadErrorMessageRes = R.string.balance_detail_load_failed,
                     isDeleting = false,
                 )
             }
@@ -92,7 +94,7 @@ class BalanceUpdateDetailViewModel(
             deleteInFlight ||
             _uiState.value.pendingTerminal != null ||
             _uiState.value.isLoading ||
-            _uiState.value.loadErrorMessage != null
+            _uiState.value.loadErrorMessageRes != null
         ) return
         val expectedUpdatedAt = _uiState.value.expectedUpdatedAt
         deleteInFlight = true
@@ -105,7 +107,7 @@ class BalanceUpdateDetailViewModel(
             }.onFailure { throwable ->
                 deleteInFlight = false
                 _uiState.value = _uiState.value.copy(isDeleting = false)
-                effects.emit(BalanceUpdateDetailEffect.ShowMessage(throwable.message ?: "删除失败"))
+                effects.emit(BalanceUpdateDetailEffect.ShowMessage(throwable.message.orEmpty(), messageRes = R.string.msg_delete_failed))
             }
         }
     }

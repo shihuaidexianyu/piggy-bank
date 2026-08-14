@@ -87,14 +87,14 @@ class BalanceDetailUndoTest {
         val vm = f.updateViewModel(id, SavedStateHandle(), repository)
         advanceUntilIdle()
 
-        assertEquals("核对记录加载失败，请重试", vm.uiState.value.loadErrorMessage)
+        assertEquals(R.string.balance_detail_load_failed, vm.uiState.value.loadErrorMessageRes)
         assertNull(vm.uiState.value.pendingTerminal)
         vm.delete(); advanceUntilIdle()
         assertNull(vm.uiState.value.pendingTerminal)
 
         repository.available = true
         vm.retryLoad(); advanceUntilIdle()
-        assertNull(vm.uiState.value.loadErrorMessage)
+        assertNull(vm.uiState.value.loadErrorMessageRes)
         assertEquals(10L, vm.uiState.value.actualBalance)
     }
 
@@ -105,14 +105,14 @@ class BalanceDetailUndoTest {
         val vm = f.adjustmentViewModel(id, SavedStateHandle(), repository)
         advanceUntilIdle()
 
-        assertEquals("调整记录加载失败，请重试", vm.uiState.value.loadErrorMessage)
+        assertEquals(R.string.balance_adjustment_load_failed, vm.uiState.value.loadErrorMessageRes)
         assertNull(vm.uiState.value.pendingTerminal)
         vm.delete(); advanceUntilIdle()
         assertNull(vm.uiState.value.pendingTerminal)
 
         repository.available = true
         vm.retryLoad(); advanceUntilIdle()
-        assertNull(vm.uiState.value.loadErrorMessage)
+        assertNull(vm.uiState.value.loadErrorMessageRes)
         assertEquals(10L, vm.uiState.value.delta)
     }
 

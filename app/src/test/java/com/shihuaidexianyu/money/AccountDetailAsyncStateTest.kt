@@ -150,14 +150,14 @@ class AccountDetailAsyncStateTest {
         )
         viewModel.uiState.first { !it.isLoading }
 
-        assertEquals("账户详情加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.account_detail_load_failed, viewModel.uiState.value.loadErrorMessageRes)
         assertFalse(viewModel.uiState.value.isMissing)
 
         accounts.available = true
         viewModel.retry()
         viewModel.uiState.first { !it.isLoading }
 
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
         assertEquals(12_345L, viewModel.uiState.value.currentBalance)
         assertFalse(viewModel.uiState.value.isMissing)
     }

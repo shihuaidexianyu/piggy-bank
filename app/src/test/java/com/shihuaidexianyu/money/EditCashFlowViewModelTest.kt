@@ -377,13 +377,13 @@ class EditCashFlowViewModelTest {
         val repository = ToggleCashLoadRepository(delegate)
         val viewModel = buildViewModel(recordId, accounts, repository, SavedStateHandle())
         advanceUntilIdle()
-        assertEquals("记录加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.record_load_failed, viewModel.uiState.value.loadErrorMessageRes)
         viewModel.updateAmount("8.88")
 
         repository.available = true
         viewModel.retryLoad(); advanceUntilIdle()
 
-        assertEquals(null, viewModel.uiState.value.loadErrorMessage)
+        assertEquals(null, viewModel.uiState.value.loadErrorMessageRes)
         assertEquals("8.88", viewModel.uiState.value.amountText)
     }
 

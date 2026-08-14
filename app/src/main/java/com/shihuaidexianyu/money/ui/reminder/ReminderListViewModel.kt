@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
@@ -67,7 +68,7 @@ data class BalanceReminderUiModel(
     val accountId: Long,
     val name: String,
     val currentBalanceFormatted: String,
-    val lastBalanceUpdateText: String,
+    val lastBalanceUpdateAt: Long? = null,
 )
 
 data class ReminderListUiState(
@@ -85,7 +86,10 @@ data class PendingReminderSkipEffect(
 ) : Serializable
 
 sealed interface ReminderListEffect {
-    data class ShowMessage(override val message: String) : ReminderListEffect, UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : ReminderListEffect, UiEffect.HasMessage
     data object DeleteFailed : ReminderListEffect
 }
 
@@ -151,9 +155,7 @@ class ReminderListViewModel(
                                 snapshot.settings,
                                 visibility,
                             ),
-                            lastBalanceUpdateText = account.lastBalanceUpdateAt?.let {
-                                "最近核对 ${DateTimeTextFormatter.format(it)}"
-                            } ?: "尚未核对",
+                            lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                         )
                     },
                     dueReminders = projection.due,
@@ -198,7 +200,7 @@ class ReminderListViewModel(
                     savedStateHandle[PENDING_SKIP_KEY] = pending
                     _uiState.value = _uiState.value.copy(pendingSkip = pending)
                 }
-                .onFailure { effects.emit(ReminderListEffect.ShowMessage(it.message ?: "跳过失败，请刷新后重试")) }
+                .onFailure { effects.emit(ReminderListEffect.ShowMessage(it.message.orEmpty(), messageRes = R.string.reminder_skip_failed)) }
             skipInFlight.remove(key)
         }
     }
@@ -208,10 +210,10 @@ class ReminderListViewModel(
             when (undoSkipReminderUseCase(token)) {
                 UndoReminderSkipResult.RESTORED, UndoReminderSkipResult.ALREADY_RESTORED -> Unit
                 UndoReminderSkipResult.STALE -> effects.emit(
-                    ReminderListEffect.ShowMessage("提醒已发生变化，无法撤销"),
+                    ReminderListEffect.ShowMessage("", messageRes = R.string.reminder_undo_stale),
                 )
                 UndoReminderSkipResult.NOT_FOUND -> effects.emit(
-                    ReminderListEffect.ShowMessage("提醒已删除，无法撤销"),
+                    ReminderListEffect.ShowMessage("", messageRes = R.string.reminder_undo_not_found),
                 )
             }
         }

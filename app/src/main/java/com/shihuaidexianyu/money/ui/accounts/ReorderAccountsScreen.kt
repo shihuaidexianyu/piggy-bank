@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
@@ -30,9 +31,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
-import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
-import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
@@ -60,10 +59,10 @@ fun ReorderAccountsScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        if (state.isLoading || state.loadErrorMessage != null) {
+        if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
                 AsyncContentRenderer(
-                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessage, "reorder-accounts"),
+                    content = formAsyncContent(state, state.isLoading, state.loadErrorMessageRes?.let { stringResource(it) }, "reorder-accounts"),
                     onRetry = viewModel::retryLoad,
                     modifier = Modifier.heightIn(min = 240.dp),
                     data = { _, _ -> },
@@ -122,57 +121,58 @@ fun ReorderAccountsScreen(
             item {
                 MoneySectionHeader(title = stringResource(R.string.accounts_order))
             }
-            item {
-                MoneyListSection {
-                    state.accounts.forEachIndexed { index, account ->
-                        MoneyListRow(
-                            title = account.name,
-                            subtitle = stringResource(
-                                if (account.kind == AccountKind.INVESTMENT) {
-                                    R.string.account_kind_investment
-                                } else {
-                                    R.string.account_kind_funding
-                                },
-                            ) + " · " + stringResource(
-                                R.string.account_picker_balance_format,
-                                "${LocalCurrencySymbol.current}${AmountFormatter.formatPlain(account.balance)}",
-                            ) + if (account.isHidden) {
-                                " · " + stringResource(R.string.accounts_hidden_short)
+            itemsIndexed(
+                state.accounts,
+                key = { _, account -> account.id },
+            ) { index, account ->
+                MoneyCard(
+                    modifier = Modifier.animateItem(),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    MoneyListRow(
+                        title = account.name,
+                        subtitle = stringResource(
+                            if (account.kind == AccountKind.INVESTMENT) {
+                                R.string.account_kind_investment
                             } else {
-                                ""
+                                R.string.account_kind_funding
                             },
-                            showChevron = false,
-                            leading = {
-                                AccountIconBadge(
-                                    iconName = account.iconName,
-                                    colorName = account.colorName,
-                                    size = 30.dp,
-                                    iconSize = 17.dp,
-                                )
-                            },
-                            accessory = {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    MoneyTonalButton(
-                                        onClick = { viewModel.moveAccountUp(account.id) },
-                                        enabled = index > 0,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                    ) {
-                                        Text(stringResource(R.string.action_move_up))
-                                    }
-                                    MoneyTonalButton(
-                                        onClick = { viewModel.moveAccountDown(account.id) },
-                                        enabled = index < state.accounts.lastIndex,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                    ) {
-                                        Text(stringResource(R.string.action_move_down))
-                                    }
+                        ) + " · " + stringResource(
+                            R.string.account_picker_balance_format,
+                            "${LocalCurrencySymbol.current}${AmountFormatter.formatPlain(account.balance)}",
+                        ) + if (account.isHidden) {
+                            " · " + stringResource(R.string.accounts_hidden_short)
+                        } else {
+                            ""
+                        },
+                        showChevron = false,
+                        leading = {
+                            AccountIconBadge(
+                                iconName = account.iconName,
+                                colorName = account.colorName,
+                                size = 30.dp,
+                                iconSize = 17.dp,
+                            )
+                        },
+                        accessory = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MoneyTonalButton(
+                                    onClick = { viewModel.moveAccountUp(account.id) },
+                                    enabled = index > 0,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                ) {
+                                    Text(stringResource(R.string.action_move_up))
                                 }
-                            },
-                        )
-                        if (index != state.accounts.lastIndex) {
-                            MoneySectionDivider()
-                        }
-                    }
+                                MoneyTonalButton(
+                                    onClick = { viewModel.moveAccountDown(account.id) },
+                                    enabled = index < state.accounts.lastIndex,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                ) {
+                                    Text(stringResource(R.string.action_move_down))
+                                }
+                            }
+                        },
+                    )
                 }
             }
             item {

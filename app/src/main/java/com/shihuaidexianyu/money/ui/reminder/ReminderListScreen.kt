@@ -2,6 +2,8 @@ package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,6 +53,10 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.MoneySkeleton
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
+import androidx.compose.ui.platform.LocalContext
+import com.shihuaidexianyu.money.ui.common.resolveMessage
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import kotlinx.coroutines.flow.Flow
 
@@ -80,11 +86,12 @@ fun ReminderListScreen(
     val deleteFailedMessage = stringResource(R.string.reminder_delete_failed)
     val undoLabel = stringResource(R.string.action_undo)
 
+    val context = LocalContext.current
     LaunchedEffect(effects) {
         effects.collect { effect ->
             when (effect) {
                 is ReminderListEffect.ShowMessage ->
-                    rootDispatcher?.dispatch(rootSnackbarEffect(effect.message))
+                    rootDispatcher?.dispatch(rootSnackbarEffect(effect.resolveMessage(context)))
                 ReminderListEffect.DeleteFailed ->
                     rootDispatcher?.dispatch(rootSnackbarEffect(deleteFailedMessage))
             }
@@ -143,6 +150,13 @@ fun ReminderListScreen(
                             onRequest = onRequestNotificationPermission,
                             onOpenSettings = onOpenNotificationSettings,
                         )
+                    }
+                }
+                if (state.isLoading) {
+                    item {
+                        Box(modifier = Modifier.height(420.dp)) {
+                            MoneySkeleton()
+                        }
                     }
                 }
                 if (!state.isLoading && state.balanceReminders.isEmpty() &&
@@ -302,7 +316,12 @@ private fun BalanceReminderRow(
         },
         supportingContent = {
             Text(
-                text = reminder.lastBalanceUpdateText,
+                text = reminder.lastBalanceUpdateAt?.let {
+                    stringResource(
+                        R.string.account_detail_last_reconciled_format,
+                        DateTimeTextFormatter.format(it),
+                    )
+                } ?: stringResource(R.string.batch_reconcile_never),
             )
         },
         trailingContent = {

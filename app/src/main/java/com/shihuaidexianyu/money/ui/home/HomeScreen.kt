@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -434,20 +439,11 @@ private fun NetWorthHeroCard(
                 recordText.length > 8 -> MaterialTheme.typography.displayMedium
                 else -> MaterialTheme.typography.displayLarge
             }
-            AnimatedContent(
-                targetState = recordText,
-                transitionSpec = {
-                    (slideInVertically { it / 3 } + fadeIn()) togetherWith
-                        (slideOutVertically { -it / 3 } + fadeOut())
-                },
-                label = "netAssetsAmount",
-            ) { animatedText ->
-                Text(
-                    text = animatedText,
-                    style = recordStyle,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
+            RollingAmountText(
+                target = recordText,
+                style = recordStyle,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             DeltaLabel(
                 delta = netWorthDelta,
                 settings = settings,
@@ -485,6 +481,58 @@ private fun NetWorthHeroCard(
             }
         }
     }
+}
+
+/**
+ * Odometers-style amount display: when the amount changes, digits that differ roll vertically
+ * (new value enters from below on increase, from above on decrease) while unchanged characters,
+ * the currency symbol and separators stay put. Reuses the app typography so tabular figures and
+ * the font keep the exact look of a single Text.
+ */
+@Composable
+private fun RollingAmountText(
+    target: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    var current by remember { mutableStateOf(target) }
+    var previous by remember { mutableStateOf(target) }
+    if (target != current) {
+        previous = current
+        current = target
+    }
+    val chars = current.toList()
+    val prevChars = previous.toList()
+    val offset = chars.size - prevChars.size
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        chars.forEachIndexed { index, char ->
+            val prevChar = prevChars.getOrNull(index - offset)
+            if (prevChar == null || prevChar == char) {
+                Text(text = char.toString(), style = style, color = color)
+            } else {
+                AnimatedContent(
+                    targetState = char,
+                    transitionSpec = {
+                        val rising = charValue(targetState) >= charValue(initialState)
+                        val direction = if (rising) 1 else -1
+                        (slideInVertically(animationSpec = tween(220)) { direction * it } +
+                            fadeIn(animationSpec = tween(220))) togetherWith
+                            (slideOutVertically(animationSpec = tween(220)) { -direction * it } +
+                                fadeOut(animationSpec = tween(160)))
+                    },
+                    label = "rollingAmountChar",
+                ) { animatedChar ->
+                    Text(text = animatedChar.toString(), style = style, color = color)
+                }
+            }
+        }
+    }
+}
+
+private fun charValue(char: Char): Int = when (char) {
+    in '0'..'9' -> char - '0'
+    else -> -1
 }
 
 /**
@@ -934,7 +982,8 @@ private fun HomeStaleAccountSection(
         accounts.forEachIndexed { index, account ->
             MoneyListRow(
                 title = account.name,
-                subtitle = formatInAppAmount(account.currentBalance, settings),
+                subtitle = formatInAppAmount(account.currentBalance, settings) +
+                    " · " + staleAccountCheckedText(account.lastBalanceUpdateAt),
                 showChevron = false,
                 onClick = { onReconcile(account.accountId) },
             )
@@ -942,6 +991,22 @@ private fun HomeStaleAccountSection(
                 MoneySectionDivider()
             }
         }
+    }
+}
+
+@Composable
+private fun staleAccountCheckedText(lastBalanceUpdateAt: Long?): String {
+    val millis = lastBalanceUpdateAt ?: return stringResource(R.string.balance_never_checked)
+    val zone = java.time.ZoneId.systemDefault()
+    val lastDate = java.time.Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val days = java.time.temporal.ChronoUnit.DAYS
+        .between(lastDate, java.time.LocalDate.now(zone))
+        .coerceAtLeast(0L)
+        .toInt()
+    return if (days == 0) {
+        stringResource(R.string.balance_checked_today)
+    } else {
+        stringResource(R.string.balance_last_checked_days_format, days)
     }
 }
 

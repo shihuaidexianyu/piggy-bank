@@ -61,12 +61,12 @@ class ManagementAsyncLoadTest {
             updateAccountDisplayOrderUseCase = UpdateAccountDisplayOrderUseCase(accounts, transactions),
         )
         advanceUntilIdle()
-        assertEquals("账户顺序加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.account_order_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         accounts.available = true
         viewModel.retryLoad()
         viewModel.uiState.first { !it.isLoading }
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
         assertEquals(1, viewModel.uiState.value.accounts.size)
     }
 
@@ -90,12 +90,12 @@ class ManagementAsyncLoadTest {
             clockProvider = testClockProvider,
         )
         advanceUntilIdle()
-        assertEquals("批量核对加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.batch_reconcile_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         accounts.available = true
         viewModel.retryLoad()
         viewModel.uiState.first { !it.isLoading }
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
         assertFalse(viewModel.uiState.value.isLoading)
 
         accounts.available = false
@@ -118,12 +118,12 @@ class ManagementAsyncLoadTest {
             ClearSavingsGoalUseCase(repository),
         )
         advanceUntilIdle()
-        assertEquals("净资产目标加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.goal_load_failed, viewModel.uiState.value.loadErrorMessageRes)
         assertFalse(viewModel.uiState.value.hasGoal)
 
         repository.available = true
         viewModel.retryLoad(); advanceUntilIdle()
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -26,7 +27,7 @@ import kotlinx.coroutines.launch
 
 data class EditReminderUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val name: String = "",
     val type: ReminderType = ReminderType.MANUAL,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -47,7 +48,10 @@ data class EditReminderUiState(
 sealed interface EditReminderEffect {
     data class Saved(val shouldRequestNotificationPermission: Boolean) : EditReminderEffect
     data object Closed : EditReminderEffect
-    data class ShowMessage(override val message: String) : EditReminderEffect, UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : EditReminderEffect, UiEffect.HasMessage
 }
 
 class EditReminderViewModel(
@@ -81,7 +85,7 @@ class EditReminderViewModel(
     }
 
     private fun loadReminder() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val reminder = reminderRepository.getReminderById(reminderId)
@@ -143,7 +147,7 @@ class EditReminderViewModel(
                 runCatching { android.util.Log.e("EditReminderViewModel", "Failed to load reminder", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "提醒加载失败，请重试",
+                    loadErrorMessageRes = R.string.reminder_load_failed,
                 )
             }
         }

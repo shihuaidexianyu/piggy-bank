@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
@@ -21,7 +22,7 @@ import kotlinx.coroutines.launch
 
 data class SavingsGoalUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val hasGoal: Boolean = false,
     val amountText: String = "",
     val isSaving: Boolean = false,
@@ -32,7 +33,10 @@ data class SavingsGoalUiState(
 sealed interface SavingsGoalEffect : UiEffect {
     data object Saved : SavingsGoalEffect
     data object Cleared : SavingsGoalEffect
-    data class ShowMessage(override val message: String) : SavingsGoalEffect, UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : SavingsGoalEffect, UiEffect.HasMessage
 }
 
 class SavingsGoalViewModel(
@@ -58,7 +62,7 @@ class SavingsGoalViewModel(
 
     private fun observeGoal() {
         observationJob?.cancel()
-        _uiState.update { it.copy(isLoading = true, loadErrorMessage = null) }
+        _uiState.update { it.copy(isLoading = true, loadErrorMessageRes = null) }
         observationJob = viewModelScope.launch {
             try {
                 combine(
@@ -69,7 +73,7 @@ class SavingsGoalViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                loadErrorMessage = null,
+                                loadErrorMessageRes = null,
                                 hasGoal = goal != null,
                                 amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
                                 progress = progress,
@@ -82,7 +86,7 @@ class SavingsGoalViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        loadErrorMessage = "净资产目标加载失败，请重试",
+                        loadErrorMessageRes = R.string.goal_load_failed,
                     )
                 }
             }
@@ -106,7 +110,7 @@ class SavingsGoalViewModel(
         if (state.isSaving) return
         val amount = AmountInputParser.parseUnsignedToMinor(state.amountText)
         if (amount == null || amount <= 0L) {
-            viewModelScope.launch { _effectFlow.emit(SavingsGoalEffect.ShowMessage("请输入有效的目标金额")) }
+            viewModelScope.launch { _effectFlow.emit(SavingsGoalEffect.ShowMessage("", messageRes = R.string.goal_amount_invalid)) }
             return
         }
 
@@ -118,7 +122,8 @@ class SavingsGoalViewModel(
                     _uiState.update { it.copy(isSaving = false) }
                     _effectFlow.emit(
                         SavingsGoalEffect.ShowMessage(
-                            error.message ?: if (state.hasGoal) "修改失败" else "设置失败",
+                            error.message.orEmpty(),
+                            messageRes = if (state.hasGoal) R.string.goal_edit_failed else R.string.goal_set_failed,
                         ),
                     )
                 }
@@ -133,7 +138,7 @@ class SavingsGoalViewModel(
                 .onSuccess { _effectFlow.emit(SavingsGoalEffect.Cleared) }
                 .onFailure { error ->
                     _uiState.update { it.copy(isSaving = false) }
-                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message ?: "清除失败"))
+                    _effectFlow.emit(SavingsGoalEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.goal_clear_failed))
                 }
         }
     }

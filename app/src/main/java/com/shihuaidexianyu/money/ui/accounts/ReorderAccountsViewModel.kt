@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -28,7 +29,7 @@ data class ReorderAccountItemUiModel(
 
 data class ReorderAccountsUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val isSaving: Boolean = false,
     val accounts: List<ReorderAccountItemUiModel> = emptyList(),
     val isDirty: Boolean = false,
@@ -39,6 +40,7 @@ sealed interface ReorderAccountsEffect {
     data object Saved : ReorderAccountsEffect
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : ReorderAccountsEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -64,7 +66,7 @@ class ReorderAccountsViewModel(
     }
 
     private fun loadAccounts() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts().sortedBy { it.displayOrder }
@@ -93,7 +95,7 @@ class ReorderAccountsViewModel(
                 runCatching { android.util.Log.e("ReorderAccountsViewModel", "Failed to load accounts", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "账户顺序加载失败，请重试",
+                    loadErrorMessageRes = R.string.account_order_load_failed,
                 )
             }
         }
@@ -172,7 +174,7 @@ class ReorderAccountsViewModel(
                 effects.emit(ReorderAccountsEffect.Saved)
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(ReorderAccountsEffect.ShowMessage(error.message ?: "保存排序失败"))
+                effects.emit(ReorderAccountsEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.account_order_save_failed))
             }
         }
     }

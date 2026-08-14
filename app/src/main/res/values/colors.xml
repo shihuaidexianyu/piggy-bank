@@ -2,6 +2,12 @@
 <resources>
     <color name="shortcut_icon_background">#256F70</color>
 
+    <!-- Launcher icon (light): white canvas, pastel pig, dark ink. -->
+    <color name="launcher_icon_background">#FFFFFF</color>
+    <color name="launcher_icon_ink">#333333</color>
+    <color name="launcher_icon_body">#FFC2C2</color>
+    <color name="launcher_icon_coin">#FFF1B6</color>
+
     <!-- Home-screen widget. Kept in sync with ui/theme/Color.kt MoneyColors (light). -->
     <color name="widget_background">#FFFFFF</color>
     <color name="widget_stroke">#DDE2E8</color>

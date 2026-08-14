@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
@@ -33,7 +34,7 @@ import kotlinx.coroutines.launch
 data class RecordCashFlowUiState(
     val direction: CashFlowDirection,
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val allowContinueRecording: Boolean = true,
     val continueRecording: Boolean = false,
     val accounts: List<AccountOptionUiModel> = emptyList(),
@@ -52,7 +53,10 @@ data class RecordCashFlowUiState(
 )
 
 sealed interface RecordCashFlowEffect {
-    data class ShowMessage(override val message: String) : RecordCashFlowEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
+    data class ShowMessage(
+        override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
+    ) : RecordCashFlowEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
 class RecordCashFlowViewModel(
@@ -121,7 +125,7 @@ class RecordCashFlowViewModel(
     }
 
     private fun loadDependencies() {
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         viewModelScope.launch {
             try {
                 val accounts = accountRepository.queryOpenAccounts()
@@ -141,7 +145,7 @@ class RecordCashFlowViewModel(
                         explicitAccountId = _uiState.value.selectedAccountId,
                     ),
                     isLoading = false,
-                    loadErrorMessage = null,
+                    loadErrorMessageRes = null,
                 )
                 refreshNoteSuggestions()
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -150,7 +154,7 @@ class RecordCashFlowViewModel(
                 runCatching { android.util.Log.e("RecordCashFlowViewModel", "Failed to load accounts", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "开放账户加载失败，请重试",
+                    loadErrorMessageRes = R.string.open_accounts_load_failed,
                 )
             }
         }
@@ -278,7 +282,7 @@ class RecordCashFlowViewModel(
                 rememberRecentAccounts(accountId)
                 if (allowContinueRecording && _uiState.value.continueRecording) {
                     resetAfterSave()
-                    effects.emit(RecordCashFlowEffect.ShowMessage("已保存，可继续记账"))
+                    effects.emit(RecordCashFlowEffect.ShowMessage("", messageRes = R.string.record_saved_continue_hint))
                 } else {
                     setPendingTerminal(pendingFormTerminal(FormTerminalKind.SAVED))
                 }
@@ -289,7 +293,7 @@ class RecordCashFlowViewModel(
                 when {
                     message.contains("时间不能") -> updateDraft { copy(occurredAtError = message) }
                     message.contains("账户") -> updateDraft { copy(accountError = message) }
-                    else -> effects.emit(RecordCashFlowEffect.ShowMessage(message))
+                    else -> effects.emit(RecordCashFlowEffect.ShowMessage(message, messageRes = R.string.msg_save_failed))
                 }
             }
         }

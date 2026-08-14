@@ -60,13 +60,13 @@ class CreateFormDependencyLoadTest {
         )
         advanceUntilIdle()
         viewModel.updateAmount("12.34")
-        assertEquals("开放账户加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.open_accounts_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         fixture.accounts.available = true
         viewModel.retryLoad()
         advanceUntilIdle()
         assertEquals("12.34", viewModel.uiState.value.amountText)
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
     }
 
     @Test
@@ -84,13 +84,13 @@ class CreateFormDependencyLoadTest {
         )
         advanceUntilIdle()
         viewModel.updateNote("午餐")
-        assertEquals("开放账户加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.open_accounts_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         fixture.accounts.available = true
         viewModel.retryLoad()
         advanceUntilIdle()
         assertEquals("午餐", viewModel.uiState.value.note)
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
     }
 
     @Test
@@ -108,13 +108,13 @@ class CreateFormDependencyLoadTest {
         )
         advanceUntilIdle()
         viewModel.updateActualBalance("-1.00")
-        assertEquals("开放账户加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.open_accounts_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         fixture.accounts.available = true
         viewModel.retryLoad()
         advanceUntilIdle()
         assertEquals("-1.00", viewModel.uiState.value.actualBalanceText)
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
     }
 
     @Test
@@ -131,13 +131,13 @@ class CreateFormDependencyLoadTest {
         )
         advanceUntilIdle()
         viewModel.updateName("房租")
-        assertEquals("开放账户加载失败，请重试", viewModel.uiState.value.loadErrorMessage)
+        assertEquals(R.string.open_accounts_load_failed, viewModel.uiState.value.loadErrorMessageRes)
 
         fixture.accounts.available = true
         viewModel.retryLoad()
         advanceUntilIdle()
         assertEquals("房租", viewModel.uiState.value.name)
-        assertNull(viewModel.uiState.value.loadErrorMessage)
+        assertNull(viewModel.uiState.value.loadErrorMessageRes)
     }
 
     private suspend fun fixture(): Fixture {

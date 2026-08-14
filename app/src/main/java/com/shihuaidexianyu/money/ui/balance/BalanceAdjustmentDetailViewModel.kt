@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceAdjustmentUseCase
@@ -21,7 +22,7 @@ import kotlinx.coroutines.Job
 
 data class BalanceAdjustmentDetailUiState(
     val isLoading: Boolean = true,
-    val loadErrorMessage: String? = null,
+    val loadErrorMessageRes: Int? = null,
     val accountName: String = "",
     val delta: Long = 0,
     val occurredAt: Long = 0,
@@ -33,6 +34,7 @@ data class BalanceAdjustmentDetailUiState(
 sealed interface BalanceAdjustmentDetailEffect {
     data class ShowMessage(
         override val message: String,
+        @param:androidx.annotation.StringRes override val messageRes: Int? = null,
     ) : BalanceAdjustmentDetailEffect, com.shihuaidexianyu.money.ui.common.UiEffect.HasMessage
 }
 
@@ -61,7 +63,7 @@ class BalanceAdjustmentDetailViewModel(
 
     private fun observeRecord() {
         observationJob?.cancel()
-        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessage = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, loadErrorMessageRes = null)
         observationJob = viewModelScope.launch {
             try {
                 transactionRepository.observeChangeVersion().collect {
@@ -73,7 +75,7 @@ class BalanceAdjustmentDetailViewModel(
                 runCatching { android.util.Log.e("BalanceAdjustmentDetailViewModel", "Failed to observe record", e) }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    loadErrorMessage = "调整记录加载失败，请重试",
+                    loadErrorMessageRes = R.string.balance_adjustment_load_failed,
                     isDeleting = false,
                 )
             }
@@ -81,7 +83,7 @@ class BalanceAdjustmentDetailViewModel(
     }
 
     fun delete() {
-        if (closed || _uiState.value.isLoading || _uiState.value.loadErrorMessage != null) return
+        if (closed || _uiState.value.isLoading || _uiState.value.loadErrorMessageRes != null) return
         if (deleteInFlight) return
         val expectedUpdatedAt = _uiState.value.expectedUpdatedAt
         deleteInFlight = true
@@ -98,7 +100,7 @@ class BalanceAdjustmentDetailViewModel(
                     }
                 }
                 _uiState.value = _uiState.value.copy(isDeleting = false)
-                effects.emit(BalanceAdjustmentDetailEffect.ShowMessage(e.message ?: "删除失败"))
+                effects.emit(BalanceAdjustmentDetailEffect.ShowMessage(e.message.orEmpty(), messageRes = R.string.msg_delete_failed))
             }
         }
     }

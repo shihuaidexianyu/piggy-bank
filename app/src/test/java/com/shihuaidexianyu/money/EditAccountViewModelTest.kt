@@ -74,7 +74,7 @@ class EditAccountViewModelTest {
             advanceUntilIdle()
             val effect = awaitItem()
             assertTrue(effect is EditAccountEffect.ShowMessage)
-            assertEquals("关闭账户不能修改账户", effect.message)
+            assertEquals(R.string.account_closed_cannot_edit, effect.messageRes)
         }
     }
 
@@ -143,7 +143,7 @@ class EditAccountViewModelTest {
             advanceUntilIdle()
             val effect = awaitItem()
             assertTrue(effect is EditAccountEffect.ShowMessage)
-            assertEquals("请先结清余额，再关闭账户", effect.message)
+            assertEquals(R.string.account_close_balance_nonzero, effect.messageRes)
         }
         assertTrue(accountRepo.getAccountById(accountId)?.isClosed == false)
     }
@@ -232,12 +232,12 @@ class EditAccountViewModelTest {
         val vm = buildViewModel(accountId = accountId, accountRepo = flaky)
         advanceUntilIdle()
 
-        assertEquals("账户加载失败，请重试", vm.uiState.value.loadErrorMessage)
+        assertEquals(R.string.account_load_failed, vm.uiState.value.loadErrorMessageRes)
         available = true
         vm.retryLoad()
         advanceUntilIdle()
 
-        assertEquals(null, vm.uiState.value.loadErrorMessage)
+        assertEquals(null, vm.uiState.value.loadErrorMessageRes)
         assertEquals("现金", vm.uiState.value.name)
     }
 
