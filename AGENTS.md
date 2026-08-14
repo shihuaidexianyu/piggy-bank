@@ -8,7 +8,7 @@ This file contains essential context for AI coding agents working on the **Money
 It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, a net-worth savings goal, a home-screen widget, app shortcuts, share-to-record, biometric app lock, amount privacy masking, and dark mode.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.4.4` (versionCode `109`)
+- **Version**: `2.5.21` (versionCode `130`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
