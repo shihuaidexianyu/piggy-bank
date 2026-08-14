@@ -22,10 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
@@ -114,6 +118,8 @@ fun HistoryScreen(
     onClearAllFilters: () -> Unit,
     onLoadMore: () -> Unit,
     onRecordClick: (HistoryRecordUiModel) -> Unit,
+    onRecordIncome: () -> Unit = {},
+    onRecordExpense: () -> Unit = {},
     historySwipeDeleteEnabled: Boolean = true,
     historySwipeEditEnabled: Boolean = true,
     onDeleteRecord: (HistoryRecordUiModel) -> Unit = {},
@@ -129,6 +135,32 @@ fun HistoryScreen(
         !state.isLoading &&
         !state.isLoadingMore &&
         state.loadMoreErrorMessageRes == null
+    // Scroll anchor: a ledger mutation reloads the first page and can strand a user who was
+    // paging deep in the list. Capture the visible date while the old page is still on screen
+    // (isRefreshing), then scroll back to it once the fresh page lands.
+    var pendingAnchorDate by remember { mutableStateOf<String?>(null) }
+    val visibleDateLabel by remember(listState) {
+        derivedStateOf {
+            (listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String)
+                ?.takeIf { it.startsWith("history_date_") }
+                ?.removePrefix("history_date_")
+        }
+    }
+    LaunchedEffect(state.isRefreshing) {
+        if (state.isRefreshing) {
+            pendingAnchorDate = visibleDateLabel ?: pendingAnchorDate
+        } else {
+            val anchor = pendingAnchorDate
+            pendingAnchorDate = null
+            if (anchor == null || state.records.isEmpty()) return@LaunchedEffect
+            val groupIndex = state.records
+                .map { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
+                .indexOf(anchor)
+            if (groupIndex < 0) return@LaunchedEffect
+            val baseItems = 1 + if (state.filterSummary != null) 1 else 0
+            listState.scrollToItem(baseItems + groupIndex * 2)
+        }
+    }
     val historyLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
     val shouldPrefetch by remember(listState, canPrefetch, state.records.size) {
         derivedStateOf {
@@ -450,12 +482,37 @@ fun HistoryScreen(
                         EmptyKind.FILTERED_EMPTY -> stringResource(R.string.history_filtered_empty_description)
                     },
                     icon = Icons.Rounded.Search,
+                    action = if (content.kind == EmptyKind.COMPLETELY_EMPTY) {
+                        {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MoneyTonalButton(
+                                    onClick = onRecordIncome,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.ledger_income))
+                                }
+                                MoneyTonalButton(
+                                    onClick = onRecordExpense,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.ledger_expense))
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    },
                 )
             }
             is AsyncContent.Data,
             is AsyncContent.Refreshing,
             -> {
                 val nowMillis = System.currentTimeMillis()
+                if (content is AsyncContent.Refreshing) {
+                    item(key = "history_refresh_progress") {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                }
                 recordGroups.forEach { (dateLabel, records) ->
                     stickyHeader(key = "history_date_$dateLabel") {
                         HistoryDateHeader(
@@ -474,6 +531,9 @@ fun HistoryScreen(
                                 .map { it.amount }
                                 .ledgerSumExact(),
                             settings = state.settings,
+                            partialTotal = state.hasMoreRecords &&
+                                state.records.lastOrNull()
+                                    ?.let { DateTimeTextFormatter.formatDateOnly(it.occurredAt) } == dateLabel,
                         )
                     }
                     item(key = "history_day_card_$dateLabel") {
@@ -522,6 +582,21 @@ fun HistoryScreen(
                     }
                 }
             }
+                if (state.isLoadingMore) {
+                    item(key = "history_loading_more") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -611,7 +686,9 @@ private fun SearchField(
     TextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = placeholder },
         placeholder = { Text(placeholder) },
         singleLine = true,
         leadingIcon = {
@@ -620,6 +697,19 @@ private fun SearchField(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        },
+        trailingIcon = if (value.isNotEmpty()) {
+            {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.action_clear),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            null
         },
         colors = TextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -657,6 +747,7 @@ private fun HistoryDateHeader(
     cashIncomeTotal: Long,
     cashExpenseTotal: Long,
     settings: PortableSettings,
+    partialTotal: Boolean = false,
 ) {
     val moneyColors = LocalMoneyColors.current
     Surface(
@@ -692,6 +783,14 @@ private fun HistoryDateHeader(
                         text = formatInAppAmount(cashExpenseTotal, settings),
                         style = MaterialTheme.typography.labelMedium,
                         color = moneyColors.expense,
+                        maxLines = 1,
+                    )
+                }
+                if (partialTotal) {
+                    Text(
+                        text = stringResource(R.string.history_partial_total),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                 }
@@ -841,6 +940,7 @@ private fun HistoryRow(
                     contentDescription = buildString {
                         append(record.title)
                         append("，$kindLabel")
+                        record.subtitle.takeIf { it.isNotBlank() }?.let { append("，$it") }
                         append("，$amountText")
                         append("，${DateTimeTextFormatter.format(record.occurredAt)}")
                     }

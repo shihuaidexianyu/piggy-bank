@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface RootSnackbarAction : Serializable {
     data class RestoreLedger(val undoToken: LedgerUndoToken) : RootSnackbarAction
     data class UndoReminderSkip(val undoToken: ReminderSkipUndoToken) : RootSnackbarAction
+    data class UnhideAccount(val accountId: Long) : RootSnackbarAction
     data object CreateAccount : RootSnackbarAction
     data object ManageAccounts : RootSnackbarAction
 }

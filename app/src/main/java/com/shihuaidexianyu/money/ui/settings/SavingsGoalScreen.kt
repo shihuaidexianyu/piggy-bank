@@ -22,6 +22,12 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
+import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
+import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
+import com.shihuaidexianyu.money.ui.home.netWorthGoalProgressPresentation
+import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
 fun SavingsGoalScreen(
@@ -30,13 +36,23 @@ fun SavingsGoalScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val rootDispatcher = LocalRootSnackbarDispatcher.current
+    val savedFeedbackMessage = stringResource(R.string.savings_goal_saved_feedback)
+    val clearedFeedbackMessage = stringResource(R.string.savings_goal_cleared_feedback)
 
     CollectUiEffects(
         effectFlow = viewModel.effectFlow,
         snackbarHostState = snackbarHostState,
         handler = { effect ->
             when (effect) {
-                SavingsGoalEffect.Saved, SavingsGoalEffect.Cleared -> onBack()
+                SavingsGoalEffect.Saved -> {
+                    rootDispatcher?.dispatch(rootSnackbarEffect(savedFeedbackMessage))
+                    onBack()
+                }
+                SavingsGoalEffect.Cleared -> {
+                    rootDispatcher?.dispatch(rootSnackbarEffect(clearedFeedbackMessage))
+                    onBack()
+                }
                 else -> {}
             }
         },
@@ -49,6 +65,7 @@ fun SavingsGoalScreen(
             onConfirm = viewModel::clear,
             onDismiss = viewModel::dismissClearConfirm,
             confirmLabel = stringResource(R.string.action_clear),
+            destructive = true,
         )
     }
 
@@ -80,6 +97,21 @@ fun SavingsGoalScreen(
                         onValueChange = viewModel::updateAmount,
                         label = stringResource(R.string.savings_goal_amount),
                     )
+                    state.progress?.let { progress ->
+                        val symbol = LocalCurrencySymbol.current
+                        val presentation = netWorthGoalProgressPresentation(
+                            currentAmount = progress.currentAmount,
+                            targetAmount = progress.targetAmount,
+                        )
+                        MoneyInlineLabelValue(
+                            label = stringResource(R.string.savings_goal_current_net_worth),
+                            value = stringResource(
+                                R.string.savings_goal_progress_format,
+                                "${symbol}${AmountFormatter.formatPlain(progress.currentAmount)}",
+                                presentation.percentageText,
+                            ),
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.savings_goal_description),
                         style = MaterialTheme.typography.bodySmall,

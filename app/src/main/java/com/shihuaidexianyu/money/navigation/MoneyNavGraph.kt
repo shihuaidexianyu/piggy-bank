@@ -45,6 +45,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -64,6 +65,7 @@ import com.shihuaidexianyu.money.ui.common.executeRootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
+import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -181,6 +183,7 @@ fun MoneyNavGraph(
     appLaunchRequest: AppLaunchRequest? = null,
     onAppLaunchConsumed: (String) -> Unit = {},
     onBiometricLockChange: (Boolean) -> Unit = {},
+    appLockFeedback: kotlinx.coroutines.flow.Flow<AppLockFeedback>? = null,
 ) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -247,6 +250,13 @@ fun MoneyNavGraph(
         )
     }
 
+    val appContext = LocalContext.current
+    LaunchedEffect(appLockFeedback) {
+        appLockFeedback?.collect { feedback ->
+            rootSnackbarQueue.enqueue(appContext.getString(feedback.messageRes))
+        }
+    }
+
     LaunchedEffect(appLaunchRequest?.token) {
         val request = appLaunchRequest ?: return@LaunchedEffect
         var showNotificationStateChanged = false
@@ -310,6 +320,9 @@ fun MoneyNavGraph(
                     navController.navigate(MoneyDestination.CreateAccountRoute) { launchSingleTop = true }
                 },
                 manageAccounts = { navigateTopLevel(MoneyDestination.Accounts) },
+                unhideAccount = { accountId ->
+                    container.setAccountHiddenUseCase(accountId, hidden = false)
+                },
             )) {
                 RootActionExecutionResult.Success -> rootSnackbarQueue.ack(effect.token)
                 is RootActionExecutionResult.PermanentFailure -> rootSnackbarQueue.replaceHead(

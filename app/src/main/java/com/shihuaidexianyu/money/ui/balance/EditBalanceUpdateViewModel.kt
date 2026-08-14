@@ -32,6 +32,7 @@ data class EditBalanceUpdateUiState(
     val loadErrorMessage: String? = null,
     val loadRetryToken: String? = null,
     val accountName: String = "",
+    val isInvestmentAccount: Boolean = false,
     val actualBalanceText: String = "",
     val actualBalanceError: String? = null,
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
@@ -110,6 +111,7 @@ class EditBalanceUpdateViewModel(
                 _uiState.value = EditBalanceUpdateUiState(
                     isLoading = false,
                     accountName = account?.name ?: "未知账户",
+                    isInvestmentAccount = account?.isInvestment == true,
                     actualBalanceText = actualBalanceText,
                     actualBalanceError = draft?.actualBalanceError,
                     occurredAtMillis = occurredAt,

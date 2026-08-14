@@ -1,11 +1,14 @@
 package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,9 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
+import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
+import com.shihuaidexianyu.money.util.AmountFormatter
 
 @Composable
 fun ReorderAccountsScreen(
@@ -40,6 +46,7 @@ fun ReorderAccountsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         if (effect is ReorderAccountsEffect.Saved) onBack()
@@ -49,7 +56,7 @@ fun ReorderAccountsScreen(
         title = stringResource(R.string.accounts_order),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
         contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -83,30 +90,31 @@ fun ReorderAccountsScreen(
             }
             item {
                 MoneyCard {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        MoneyTonalButton(
-                            onClick = viewModel::sortByBalance,
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(stringResource(R.string.accounts_sort_balance))
+                            FilterChip(
+                                selected = state.sortMode == ReorderSortMode.BALANCE,
+                                onClick = viewModel::sortByBalance,
+                                label = { Text(stringResource(R.string.accounts_sort_balance)) },
+                            )
+                            FilterChip(
+                                selected = state.sortMode == ReorderSortMode.RECENT,
+                                onClick = viewModel::sortByRecentUse,
+                                label = { Text(stringResource(R.string.accounts_sort_recent)) },
+                            )
+                            FilterChip(
+                                selected = state.sortMode == ReorderSortMode.NAME,
+                                onClick = viewModel::sortByName,
+                                label = { Text(stringResource(R.string.accounts_sort_name)) },
+                            )
                         }
-                        MoneyTonalButton(
-                            onClick = viewModel::sortByRecentUse,
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                        ) {
-                            Text(stringResource(R.string.accounts_sort_recent))
-                        }
-                        MoneyTonalButton(
-                            onClick = viewModel::sortByName,
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                        ) {
-                            Text(stringResource(R.string.accounts_sort_name))
+                        if (state.sortMode != ReorderSortMode.NONE || state.isDirty) {
+                            TextButton(onClick = viewModel::restoreDefaultOrder) {
+                                Text(stringResource(R.string.accounts_restore_order))
+                            }
                         }
                     }
                 }
@@ -125,7 +133,14 @@ fun ReorderAccountsScreen(
                                 } else {
                                     R.string.account_kind_funding
                                 },
-                            ),
+                            ) + " · " + stringResource(
+                                R.string.account_picker_balance_format,
+                                "${LocalCurrencySymbol.current}${AmountFormatter.formatPlain(account.balance)}",
+                            ) + if (account.isHidden) {
+                                " · " + stringResource(R.string.accounts_hidden_short)
+                            } else {
+                                ""
+                            },
                             showChevron = false,
                             leading = {
                                 AccountIconBadge(

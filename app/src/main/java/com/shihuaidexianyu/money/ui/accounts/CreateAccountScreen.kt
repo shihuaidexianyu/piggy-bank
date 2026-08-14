@@ -16,6 +16,7 @@ import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 
 @Composable
 fun CreateAccountScreen(
@@ -26,6 +27,7 @@ fun CreateAccountScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         if (effect is CreateAccountEffect.Saved) onBack()
@@ -49,7 +51,7 @@ fun CreateAccountScreen(
         title = stringResource(R.string.account_create_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
         item {
             MoneyCard {

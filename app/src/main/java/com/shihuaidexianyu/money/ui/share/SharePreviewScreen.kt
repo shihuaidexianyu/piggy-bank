@@ -1,11 +1,14 @@
 package com.shihuaidexianyu.money.ui.share
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 
 @Composable
 fun SharePreviewScreen(
@@ -46,6 +51,7 @@ fun SharePreviewScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         if (effect is SharePreviewEffect.Saved) onSaved()
@@ -73,7 +79,7 @@ fun SharePreviewScreen(
         title = stringResource(R.string.share_preview_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
         item {
             MoneyCard {
@@ -84,7 +90,27 @@ fun SharePreviewScreen(
                 )
                 Text(state.originalText, maxLines = 4)
                 if (state.candidateAmounts.size > 1) {
-                    Text(stringResource(R.string.share_multiple_amounts))
+                    Text(
+                        text = stringResource(R.string.share_multiple_amounts),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.candidateAmounts.forEach { amount ->
+                            FilterChip(
+                                selected = false,
+                                onClick = {
+                                    viewModel.updateAmount(AmountFormatter.formatPlain(amount))
+                                },
+                                label = { Text(AmountFormatter.formatPlain(amount)) },
+                            )
+                        }
+                    }
                 }
             }
         }

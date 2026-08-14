@@ -28,7 +28,15 @@ data class CreateAccountUiState(
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val amountText: String = "",
     val isSaving: Boolean = false,
-)
+) {
+    val isDirty: Boolean
+        get() = name.isNotBlank() ||
+            amountText.isNotBlank() ||
+            kind != AccountKind.DEFAULT ||
+            colorName != DEFAULT_ACCOUNT_COLOR_NAME ||
+            iconName != DEFAULT_ACCOUNT_ICON_NAME ||
+            reminderConfig != BalanceUpdateReminderConfig()
+}
 
 sealed interface CreateAccountEffect {
     data object Saved : CreateAccountEffect

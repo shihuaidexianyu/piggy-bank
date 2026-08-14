@@ -36,6 +36,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 
 @Composable
@@ -79,12 +81,15 @@ fun EditBalanceUpdateScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = stringResource(R.string.balance_undo_title),
+            title = stringResource(
+                if (state.isInvestmentAccount) R.string.balance_undo_investment else R.string.balance_undo_title,
+            ),
             message = stringResource(R.string.balance_undo_message),
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
             confirmLabel = stringResource(R.string.balance_confirm_undo),
             dismissLabel = stringResource(R.string.action_cancel),
+            destructive = true,
         )
     }
 
@@ -96,7 +101,9 @@ fun EditBalanceUpdateScreen(
     )
 
     MoneyFormPage(
-        title = stringResource(R.string.balance_edit_title),
+        title = stringResource(
+            if (state.isInvestmentAccount) R.string.balance_edit_investment_title else R.string.balance_edit_title,
+        ),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -114,28 +121,24 @@ fun EditBalanceUpdateScreen(
         }
         item {
             MoneyCard {
-                if (state.isLoading) {
-                    Text(stringResource(R.string.loading_ellipsis), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text(
-                        text = stringResource(R.string.balance_edit_warning),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    MoneyInlineLabelValue(label = stringResource(R.string.account_single), value = state.accountName)
-                    MoneyInlineLabelValue(
-                        label = stringResource(R.string.balance_system),
-                        value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
-                    )
-                    MoneyAmountField(
-                        value = state.actualBalanceText,
-                        onValueChange = viewModel::updateActualBalance,
-                        label = stringResource(R.string.balance_actual),
-                        allowSigned = true,
-                        isError = state.actualBalanceError != null,
-                        supportingText = state.actualBalanceError,
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.balance_edit_warning),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                MoneyInlineLabelValue(label = stringResource(R.string.account_single), value = state.accountName)
+                MoneyInlineLabelValue(
+                    label = stringResource(R.string.balance_system),
+                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
+                )
+                MoneyAmountField(
+                    value = state.actualBalanceText,
+                    onValueChange = viewModel::updateActualBalance,
+                    label = stringResource(R.string.balance_actual),
+                    allowSigned = true,
+                    isError = state.actualBalanceError != null,
+                    supportingText = state.actualBalanceError,
+                )
             }
         }
         item {
@@ -149,9 +152,19 @@ fun EditBalanceUpdateScreen(
                 )
                 // The actual balance is the input's own value one card up — only the derived
                 // delta is new information here.
+                val moneyColors = LocalMoneyColors.current
                 MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_delta),
-                    value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
+                    label = stringResource(
+                        if (state.isInvestmentAccount) R.string.balance_delta_investment else R.string.balance_delta,
+                    ),
+                    value = state.deltaPreview?.let { signedFormatInAppAmount(it, settings) } ?: "-",
+                    valueColor = state.deltaPreview?.let { delta ->
+                        when {
+                            delta > 0L -> moneyColors.income
+                            delta < 0L -> moneyColors.expense
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    },
                 )
                 MoneySaveButton(
                     onClick = viewModel::save,

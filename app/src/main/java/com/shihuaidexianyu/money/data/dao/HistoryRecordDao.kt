@@ -75,7 +75,7 @@ internal const val HISTORY_UNION_FRAGMENT = """
         1 AS sourceOrder,
         accountId AS accountId,
         NULL AS relatedAccountId,
-        '余额矫正' AS title,
+        '余额校正' AS title,
         delta AS amount,
         occurredAt AS occurredAt,
         '余额矫正 余额校正 ' || COALESCE(

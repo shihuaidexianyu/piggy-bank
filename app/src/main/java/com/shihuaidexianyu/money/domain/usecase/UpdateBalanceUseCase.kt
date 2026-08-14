@@ -21,6 +21,7 @@ data class UpdateBalanceResult(
     val delta: Long,
     /** On investment accounts the delta is investment P&L, and result copy says so. */
     val isInvestmentAccount: Boolean = false,
+    val occurredAt: Long = 0,
 ) : Serializable
 
 class UpdateBalanceUseCase(
@@ -100,6 +101,7 @@ class UpdateBalanceUseCase(
             actualBalance = actualBalance,
             delta = delta,
             isInvestmentAccount = account.isInvestment,
+            occurredAt = occurredAt,
         )
     }
 }

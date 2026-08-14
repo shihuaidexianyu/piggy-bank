@@ -38,6 +38,7 @@ data class CreateReminderUiState(
     val anchorTimeText: String,
     val anchorError: String? = null,
     val isSaving: Boolean = false,
+    val isDirty: Boolean = false,
 )
 
 sealed interface CreateReminderEffect {
@@ -168,8 +169,18 @@ class CreateReminderViewModel(
         }
     }
 
+    private fun computeIsDirty(state: CreateReminderUiState): Boolean =
+        state.name.isNotBlank() ||
+            state.type != ReminderType.MANUAL ||
+            state.direction != CashFlowDirection.OUTFLOW ||
+            state.periodType != ReminderPeriodType.MONTHLY ||
+            state.amountText.isNotBlank() ||
+            state.periodCustomDays != "30" ||
+            state.anchorDateText != defaultDraft.first ||
+            state.anchorTimeText != defaultDraft.second
+
     private fun setState(state: CreateReminderUiState) {
-        _uiState.value = state
+        _uiState.value = state.copy(isDirty = computeIsDirty(state))
         savedStateHandle[KEY_NAME] = state.name
         savedStateHandle[KEY_TYPE] = state.type.value
         savedStateHandle[KEY_ACCOUNT] = state.selectedAccountId

@@ -1,9 +1,13 @@
 package com.shihuaidexianyu.money
 
 import app.cash.turbine.test
+import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
+import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalEffect
 import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
@@ -42,7 +46,21 @@ class SavingsGoalViewModelTest {
         val clock = CountingClock(100L)
         val upsert = UpsertSavingsGoalUseCase(repository, clock)
         val clear = ClearSavingsGoalUseCase(repository)
-        val createViewModel = { SavingsGoalViewModel(repository, upsert, clear) }
+        // The progress observer gets its own clock so [clock] keeps counting only the
+        // upsert's reads (the test asserts single-flight by that count).
+        val createViewModel = {
+            SavingsGoalViewModel(
+                repository,
+                ObserveSavingsGoalUseCase(
+                    InMemoryAccountRepository(),
+                    repository,
+                    InMemoryTransactionRepository(),
+                    CalculateAccountBalancesUseCase(InMemoryTransactionRepository(), ClockProvider { 100L }),
+                ),
+                upsert,
+                clear,
+            )
+        }
 
         val initial = createViewModel()
         advanceUntilIdle()

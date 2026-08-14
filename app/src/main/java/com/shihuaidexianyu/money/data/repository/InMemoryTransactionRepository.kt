@@ -837,7 +837,7 @@ class InMemoryTransactionRepository(
             )
         }
         val adjustmentHistoryRecords = adjustments.filter { it.deletedAt == null }.map { record ->
-            val title = "余额矫正"
+            val title = "余额校正"
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_ADJUSTMENT,

@@ -15,6 +15,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -97,21 +99,60 @@ fun BatchReconcileScreen(
 
         item {
             MoneyCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    MoneyStatusPill(
-                        text = stringResource(R.string.batch_reconcile_pending_format, state.accounts.size),
-                    )
-                    Text(
-                        text = stringResource(R.string.batch_reconcile_selected_format, state.selectedCount),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        MoneyStatusPill(
+                            text = stringResource(R.string.batch_reconcile_pending_format, state.accounts.size),
+                        )
+                        Text(
+                            text = stringResource(R.string.batch_reconcile_selected_format, state.selectedCount),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = { viewModel.setAllSelected(state.selectedCount != state.accounts.size) },
+                            enabled = !state.isSaving,
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (state.selectedCount == state.accounts.size) {
+                                        R.string.batch_deselect_all
+                                    } else {
+                                        R.string.batch_select_all
+                                    },
+                                ),
+                            )
+                        }
+                        state.confirmTimeMillis?.let { millis ->
+                            Text(
+                                text = stringResource(
+                                    R.string.batch_confirm_time_format,
+                                    DateTimeTextFormatter.format(millis),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
+        }
+        item {
+            Text(
+                text = stringResource(R.string.batch_reconcile_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         item {
@@ -154,7 +195,7 @@ private fun BatchReconcileAccountRow(
         leadingContent = {
             Checkbox(
                 checked = account.isSelected,
-                onCheckedChange = null,
+                onCheckedChange = { onToggle() },
                 enabled = !state.isSaving,
             )
         },
@@ -185,19 +226,29 @@ private fun BatchReconcileAccountRow(
         },
         supportingContent = {
             Text(
-                text = account.lastBalanceUpdateAt?.let {
+                text = stringResource(
+                    if (account.isInvestment) R.string.account_kind_investment else R.string.account_kind_funding,
+                ) + " · " + (account.lastBalanceUpdateAt?.let {
                     stringResource(R.string.batch_reconcile_last_format, DateTimeTextFormatter.format(it))
-                } ?: stringResource(R.string.batch_reconcile_never),
-            )
-        },
-        trailingContent = {
-            Text(
-                text = formatInAppAmount(account.systemBalance, state.settings),
-                style = MaterialTheme.typography.titleMedium,
+                } ?: stringResource(R.string.batch_reconcile_never)),
                 maxLines = 1,
             )
         },
-        modifier = Modifier.clickable(enabled = !state.isSaving, onClick = onToggle),
+        trailingContent = {
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = stringResource(R.string.batch_system_balance),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = formatInAppAmount(account.systemBalance, state.settings),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+            }
+        },
+        modifier = Modifier.clickable(enabled = !state.isSaving, role = Role.Checkbox, onClick = onToggle),
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
     )
 }

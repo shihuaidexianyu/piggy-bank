@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
@@ -98,7 +100,7 @@ fun MoneyTonalButton(
 ) {
     FilledTonalButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 48.dp),
         enabled = enabled,
         contentPadding = contentPadding,
         content = content,
@@ -243,6 +245,7 @@ fun MoneyInlineLabelValue(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    valueColor: Color? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -254,7 +257,11 @@ fun MoneyInlineLabelValue(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(text = value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = valueColor ?: MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
@@ -283,13 +290,18 @@ fun MoneyListRow(
     isClickable: Boolean = onClick != null,
     leading: (@Composable () -> Unit)? = null,
     accessory: (@Composable () -> Unit)? = null,
+    switchChecked: Boolean? = null,
 ) {
     // Build a single spoken description so Talkback reads the row as one item, e.g.
     // "招商银行 最近核对 2024-01-15 余额 12345 元".
+    val switchStateText = switchChecked?.let {
+        stringResource(if (it) R.string.settings_channel_enabled else R.string.settings_channel_disabled)
+    }
     val rowDescription = buildString {
         append(title)
         subtitle?.let { append("，$it") }
         trailing?.let { append("，$it") }
+        switchStateText?.let { append("，$it") }
     }
     ListItem(
         headlineContent = { Text(title) },
@@ -333,7 +345,11 @@ fun MoneyListRow(
             )
             .semantics(mergeDescendants = true) {
                 contentDescription = rowDescription
-                if (isClickable || onClick != null) role = Role.Button
+                if (isClickable || onClick != null) {
+                    role = if (switchChecked != null) Role.Switch else Role.Button
+                }
+                switchStateText?.let { stateDescription = it }
+                if (!enabled) disabled()
             },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )

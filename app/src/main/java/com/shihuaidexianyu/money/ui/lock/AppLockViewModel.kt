@@ -2,12 +2,20 @@ package com.shihuaidexianyu.money.ui.lock
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+data class AppLockFeedback(
+    @param:androidx.annotation.StringRes val messageRes: Int,
+)
 
 class AppLockViewModel(
     private val preferencesRepository: DevicePreferencesRepository,
@@ -19,6 +27,9 @@ class AppLockViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow<AppLockState>(AppLockState.Loading)
     val state: StateFlow<AppLockState> = _state.asStateFlow()
+
+    private val _feedback = MutableSharedFlow<AppLockFeedback>(extraBufferCapacity = 1)
+    val feedback: SharedFlow<AppLockFeedback> = _feedback.asSharedFlow()
 
     private var biometricEnabled = false
     private var relockDelay = AppRelockDelay.THIRTY_SECONDS
@@ -160,6 +171,7 @@ class AppLockViewModel(
                     val failedBeforeEnable = enablesLock && !biometricEnabled
                     authenticationEnablesLock = false
                     _state.value = if (failedBeforeEnable) {
+                        _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_failed))
                         AppLockState.Unlocked
                     } else {
                         capabilityState(capability)
@@ -190,6 +202,7 @@ class AppLockViewModel(
                         val failedBeforeEnable = authenticationEnablesLock && !biometricEnabled
                         authenticationEnablesLock = false
                         _state.value = if (failedBeforeEnable) {
+                            _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_failed))
                             AppLockState.Unlocked
                         } else {
                             AppLockState.Locked
@@ -219,11 +232,15 @@ class AppLockViewModel(
                 } else {
                     _state.value = AppLockState.Unlocked
                 }
-                if (!persisted) runCatching(onPrivacyDefaultsEnableFailed)
+                if (!persisted) {
+                    runCatching(onPrivacyDefaultsEnableFailed)
+                    _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_persist_failed))
+                }
                 return
             }
             if (!persisted) {
                 runCatching(onPrivacyDefaultsEnableFailed)
+                _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_persist_failed))
                 _state.value = AppLockState.Unlocked
                 return
             }

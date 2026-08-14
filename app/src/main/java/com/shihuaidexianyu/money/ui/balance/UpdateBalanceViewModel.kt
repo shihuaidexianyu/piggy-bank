@@ -155,7 +155,11 @@ class UpdateBalanceViewModel(
                 actualBalancePreview = actual,
                 deltaPreview = actual?.minus(systemBalance),
                 actualBalanceEdited = true,
-                actualBalanceError = null,
+                actualBalanceError = if (actual == null && value.isNotBlank()) {
+                    "请输入有效金额"
+                } else {
+                    null
+                },
                 isDirty = true,
             )
         }

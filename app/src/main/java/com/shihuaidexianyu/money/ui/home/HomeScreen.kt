@@ -72,6 +72,7 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.RecordKindDot
@@ -108,10 +109,18 @@ fun HomeScreen(
 ) {
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
     val homeLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
+    val manageAccountsLabel = stringResource(R.string.accounts_management)
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
-            rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(it, token = "home:$it"))
+            rootSnackbarDispatcher?.dispatch(
+                rootSnackbarEffect(
+                    message = it,
+                    actionLabel = manageAccountsLabel,
+                    action = RootSnackbarAction.ManageAccounts,
+                    token = "home:$it",
+                ),
+            )
             onSnackbarMessageShown()
         }
     }

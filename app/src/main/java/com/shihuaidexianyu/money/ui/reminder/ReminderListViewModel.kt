@@ -166,12 +166,14 @@ class ReminderListViewModel(
     }
 
     fun deleteReminder(id: Long) {
+        // Deleting a reminder never touches the ledger, so it stays available even when the
+        // reminder's account is closed (which disables edit/skip/process but not removal).
         val reminder = sequenceOf(
             _uiState.value.dueReminders,
             _uiState.value.upcomingReminders,
             _uiState.value.pausedReminders,
         ).flatten().firstOrNull { it.id == id }
-        if (reminder?.canMutate != true || !deleteInFlight.add(id)) return
+        if (reminder == null || !deleteInFlight.add(id)) return
         viewModelScope.launch {
             try {
                 deleteReminderUseCase(id)

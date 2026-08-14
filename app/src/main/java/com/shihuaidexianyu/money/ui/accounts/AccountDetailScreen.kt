@@ -70,6 +70,7 @@ fun AccountDetailScreen(
     onStartUpdateBalance: () -> Unit,
     onReopenAccount: () -> Unit,
     onBackToAccounts: () -> Unit,
+    onViewAllHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
 ) {
@@ -136,7 +137,7 @@ fun AccountDetailScreen(
                 )
                 val closure = accountClosurePresentation(state.isClosed, state.currentBalance)
                 if (state.isClosed) {
-                    MoneyStatusPill(text = closure.statusText, accent = MaterialTheme.colorScheme.onSurfaceVariant)
+                    MoneyStatusPill(text = stringResource(closure.statusTextRes), accent = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (state.currentBalance != 0L) {
                         Text(
                             text = stringResource(R.string.account_detail_legacy_closure_issue),
@@ -173,6 +174,12 @@ fun AccountDetailScreen(
                     MoneyStatusPill(
                         text = stringResource(R.string.account_stale_badge),
                         accent = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                if (state.isHidden && !state.isClosed) {
+                    MoneyStatusPill(
+                        text = stringResource(R.string.account_status_hidden),
+                        accent = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -222,11 +229,22 @@ fun AccountDetailScreen(
                         )
                     }
                 }
+                if (state.openAccountCount < 2) {
+                    Text(
+                        text = stringResource(R.string.account_detail_transfer_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         // === This month summary ===
         item {
-            MoneySectionHeader(title = stringResource(R.string.account_detail_month_cash))
+            MoneySectionHeader(
+                title = stringResource(
+                    if (state.isInvestment) R.string.account_detail_month_cash_flow else R.string.account_detail_month_cash,
+                ),
+            )
         }
         item {
             MoneyCard {
@@ -266,12 +284,23 @@ fun AccountDetailScreen(
         // === Recent records ===
         if (state.recentRecords.isNotEmpty()) {
             item {
-                MoneySectionHeader(title = stringResource(R.string.account_detail_recent_records))
+                MoneySectionHeader(
+                    title = stringResource(R.string.account_detail_recent_records),
+                    trailingContent = {
+                        TextButton(onClick = onViewAllHistory) {
+                            Text(stringResource(R.string.account_detail_view_all))
+                        }
+                    },
+                )
             }
             item {
                 MoneyCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
                     state.recentRecords.forEachIndexed { index, record ->
-                        RecentRecordRow(record = record, settings = state.settings)
+                        RecentRecordRow(
+                            record = record,
+                            settings = state.settings,
+                            isInvestment = state.isInvestment,
+                        )
                         if (index != state.recentRecords.lastIndex) {
                             MoneySectionDivider()
                         }
@@ -333,6 +362,7 @@ private fun QuickActionButton(
 private fun RecentRecordRow(
     record: AccountDetailRecentRecord,
     settings: com.shihuaidexianyu.money.domain.model.PortableSettings,
+    isInvestment: Boolean,
 ) {
     val moneyColors = LocalMoneyColors.current
     val accent = when (record.kind) {
@@ -345,9 +375,18 @@ private fun RecentRecordRow(
     val amountText = formatInAppAmount(record.amount, settings)
     val kindLabel = when (record.kind) {
         AccountDetailRecordKind.CASH_FLOW -> stringResource(R.string.history_cash_flow)
-        AccountDetailRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
-        AccountDetailRecordKind.BALANCE_UPDATE -> stringResource(R.string.account_detail_kind_reconciliation)
-        AccountDetailRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.account_detail_kind_adjustment)
+        AccountDetailRecordKind.TRANSFER -> stringResource(
+            if (record.amount < 0L) R.string.transfer_out else R.string.transfer_in,
+        )
+        AccountDetailRecordKind.BALANCE_UPDATE -> stringResource(
+            when {
+                record.amount == 0L -> R.string.history_balance_update
+                isInvestment && record.amount > 0L -> R.string.history_investment_gain
+                isInvestment -> R.string.history_investment_loss
+                else -> R.string.history_reconciliation_adjustment
+            },
+        )
+        AccountDetailRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
     }
     val recordContentDescription = stringResource(
         R.string.account_detail_record_semantics_format,

@@ -34,6 +34,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -161,7 +166,12 @@ private fun SwipeRevealActionBacking(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(REVEAL_WIDTH_DP.dp)
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = action.label
+                    role = Role.Button
+                    this.onClick { onClick(); true }
+                },
             contentAlignment = alignment,
         ) {
             Row(

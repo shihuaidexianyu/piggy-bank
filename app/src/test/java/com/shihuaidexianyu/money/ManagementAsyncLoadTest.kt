@@ -13,6 +13,7 @@ import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
@@ -107,6 +108,12 @@ class ManagementAsyncLoadTest {
         val repository = ToggleSavingsGoalRepository(delegate)
         val viewModel = SavingsGoalViewModel(
             repository,
+            ObserveSavingsGoalUseCase(
+                InMemoryAccountRepository(),
+                repository,
+                InMemoryTransactionRepository(),
+                CalculateAccountBalancesUseCase(InMemoryTransactionRepository(), testClockProvider),
+            ),
             UpsertSavingsGoalUseCase(repository, testClockProvider),
             ClearSavingsGoalUseCase(repository),
         )

@@ -26,6 +26,8 @@ import androidx.core.net.toUri
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import com.shihuaidexianyu.money.data.migration.StartupRecoveryAction
 import com.shihuaidexianyu.money.navigation.MoneyNavGraph
+import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
 import com.shihuaidexianyu.money.domain.model.AmountPrivacy
@@ -38,6 +40,7 @@ fun MoneyApp(
     onAppLaunchConsumed: (String) -> Unit = {},
     onBiometricLockChange: (Boolean) -> Unit = {},
     amountPrivacy: AmountPrivacy = AmountPrivacy.Visible,
+    appLockFeedback: Flow<AppLockFeedback>? = null,
 ) {
     CompositionLocalProvider(LocalAmountPrivacy provides amountPrivacy) {
         MoneyNavGraph(
@@ -45,6 +48,7 @@ fun MoneyApp(
             appLaunchRequest = appLaunchRequest,
             onAppLaunchConsumed = onAppLaunchConsumed,
             onBiometricLockChange = onBiometricLockChange,
+            appLockFeedback = appLockFeedback,
         )
     }
 }

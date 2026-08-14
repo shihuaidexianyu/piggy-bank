@@ -107,6 +107,7 @@ fun SettingsScreen(
     )
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    var rollbackTarget by remember { mutableStateOf<String?>(null) }
     var currencyDraft by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -213,6 +214,7 @@ fun SettingsScreen(
                     onDismiss = { dialog = null },
                     confirmLabel = stringResource(R.string.settings_confirm_import),
                     dismissLabel = stringResource(R.string.action_cancel),
+                    destructive = true,
                 )
             }
 
@@ -241,9 +243,24 @@ fun SettingsScreen(
                     onDismiss = { dialog = null },
                     confirmLabel = stringResource(R.string.settings_rollback_import),
                     dismissLabel = stringResource(R.string.action_done),
+                    destructive = true,
                 )
             }
         }
+    }
+
+    rollbackTarget?.let { receiptId ->
+        MoneyConfirmDialog(
+            title = stringResource(R.string.settings_rollback_confirm_title),
+            message = stringResource(R.string.settings_rollback_confirm_message),
+            onConfirm = {
+                rollbackTarget = null
+                onRollbackImport(receiptId)
+            },
+            onDismiss = { rollbackTarget = null },
+            confirmLabel = stringResource(R.string.settings_rollback),
+            destructive = true,
+        )
     }
 
     val notificationPresentation = notificationSettingsPresentation(notificationPermissionState)
@@ -317,6 +334,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_swipe_delete),
                     subtitle = stringResource(R.string.settings_swipe_delete_description),
                     showChevron = false,
+                    switchChecked = devicePreferences.historySwipeDeleteEnabled,
                     onClick = { onHistorySwipeDeleteChange(!devicePreferences.historySwipeDeleteEnabled) },
                     accessory = {
                         Switch(
@@ -330,6 +348,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_swipe_edit),
                     subtitle = stringResource(R.string.settings_swipe_edit_description),
                     showChevron = false,
+                    switchChecked = devicePreferences.historySwipeEditEnabled,
                     onClick = { onHistorySwipeEditChange(!devicePreferences.historySwipeEditEnabled) },
                     accessory = {
                         Switch(
@@ -343,6 +362,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_swipe_reconcile),
                     subtitle = stringResource(R.string.settings_swipe_reconcile_description),
                     showChevron = false,
+                    switchChecked = devicePreferences.accountSwipeReconcileEnabled,
                     onClick = { onAccountSwipeReconcileChange(!devicePreferences.accountSwipeReconcileEnabled) },
                     accessory = {
                         Switch(
@@ -363,6 +383,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_biometric_lock),
                     subtitle = stringResource(R.string.settings_biometric_description),
                     showChevron = false,
+                    switchChecked = devicePreferences.biometricLock,
                     onClick = { onBiometricLockChange(!devicePreferences.biometricLock) },
                     accessory = {
                         Switch(
@@ -516,11 +537,13 @@ fun SettingsScreen(
                                 },
                             ),
                             subtitle = receipt.historySubtitle(),
-                            trailing = stringResource(
-                                if (row.canRollback) R.string.settings_rollback else R.string.settings_history,
-                            ),
+                            trailing = if (row.canRollback) {
+                                stringResource(R.string.settings_rollback)
+                            } else {
+                                null
+                            },
                             onClick = if (row.canRollback) {
-                                { onRollbackImport(receipt.id) }
+                                { rollbackTarget = receipt.id }
                             } else {
                                 null
                             },
@@ -564,6 +587,7 @@ private fun PrivacySwitchRow(
     MoneyListRow(
         title = title,
         showChevron = false,
+        switchChecked = checked,
         onClick = { onCheckedChange(!checked) },
         accessory = {
             Switch(

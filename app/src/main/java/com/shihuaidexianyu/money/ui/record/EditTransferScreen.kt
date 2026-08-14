@@ -101,6 +101,7 @@ fun EditTransferScreen(
             onDismiss = viewModel::dismissDeleteConfirm,
             confirmLabel = stringResource(R.string.ledger_confirm_delete),
             dismissLabel = stringResource(R.string.action_cancel),
+            destructive = true,
         )
     }
 

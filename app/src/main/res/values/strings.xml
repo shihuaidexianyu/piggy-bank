@@ -102,11 +102,13 @@
     <string name="accounts_show_closed">查看已关闭</string>
     <string name="accounts_create_first">创建第一个账户</string>
     <string name="accounts_normal">正常账户</string>
+    <string name="accounts_share_of_total">占总资产 %1$s</string>
     <string name="accounts_hidden">隐藏账户</string>
     <string name="accounts_closed">已关闭账户</string>
     <string name="action_collapse">收起</string>
     <string name="action_view">查看</string>
     <string name="accounts_goal_manage_description">设置、修改或清除净资产目标</string>
+    <string name="account_status_open">开放</string>
     <string name="account_status_reopen_settle">需重新开启并结清</string>
     <string name="account_status_closed">已关闭</string>
     <string name="account_status_hidden">已隐藏 · 仍计入净资产</string>
@@ -129,7 +131,7 @@
     <string name="field_amount">金额</string>
 
     <!-- History -->
-    <string name="history_title">历史</string>
+    <string name="history_title">明细</string>
     <string name="history_filter">筛选</string>
     <string name="history_filter_account">筛选账户</string>
     <string name="history_all_accounts">全部账户</string>
@@ -168,6 +170,7 @@
     <string name="history_date_from_format">%1$s 起</string>
     <string name="history_date_until_format">截至 %1$s</string>
     <string name="history_amount_filtered">金额已筛选</string>
+    <string name="history_partial_total">部分合计</string>
     <string name="history_all_types">全部类型</string>
     <string name="history_filter_count_format">筛选 %1$d</string>
     <string name="history_cash_flow">收支</string>
@@ -247,6 +250,8 @@
     <string name="settings_import_history_empty">暂无可撤销的导入或恢复记录</string>
     <string name="settings_restore_history">恢复记录</string>
     <string name="settings_rollback">撤销</string>
+    <string name="settings_rollback_confirm_title">撤销这次导入？</string>
+    <string name="settings_rollback_confirm_message">将把当前数据恢复为该次导入前的快照，并生成新的保护快照。确认继续？</string>
     <string name="settings_history">历史</string>
     <string name="settings_version">版本</string>
     <string name="settings_offline_safety">离线与数据安全</string>
@@ -287,6 +292,10 @@
     <string name="account_detail_transfer_from">当前账户作为转出账户</string>
     <string name="account_detail_transfer_unavailable">至少需要两个开放账户才能转账</string>
     <string name="account_detail_reconcile">核对余额</string>
+    <string name="account_detail_view_all">查看全部</string>
+    <string name="account_detail_month_cash_flow">本月现金流</string>
+    <string name="transfer_in">转入</string>
+    <string name="transfer_out">转出</string>
     <string name="account_swipe_reconcile">核对</string>
     <string name="account_detail_reconcile_description">按当前账面余额开始核对</string>
     <string name="account_detail_month_cash">本月收支</string>
@@ -300,7 +309,7 @@
     <string name="reminder_add">添加提醒</string>
     <string name="reminder_add_recurring">添加定期提醒</string>
     <string name="reminder_delete_title">删除提醒</string>
-    <string name="reminder_delete_message">确定要删除这个提醒吗？</string>
+    <string name="reminder_delete_message">确定要删除提醒「%1$s」吗？</string>
     <string name="reminder_delete_failed">提醒删除失败，请稍后重试</string>
     <string name="reminder_skipped">已跳过本期</string>
     <string name="reminder_empty">暂无待处理提醒</string>
@@ -325,7 +334,7 @@
     <string name="notification_denied_message">你可以在需要提醒时再次申请通知权限。</string>
     <string name="notification_request_again">再次申请</string>
     <string name="notification_denied_permanent_title">通知权限不可再次申请</string>
-    <string name="notification_denied_permanent_message">请前往系统设置为 Money 开启通知。</string>
+    <string name="notification_denied_permanent_message">请前往系统设置为小金库开启通知。</string>
     <string name="notification_open_settings">打开设置</string>
     <string name="notification_recurring_channel_disabled">定期提醒通知渠道已关闭</string>
     <string name="notification_balance_channel_disabled">余额核对通知渠道已关闭</string>
@@ -349,6 +358,8 @@
     <string name="account_kind_funding">日常</string>
     <string name="account_kind_investment">投资</string>
     <string name="account_kind_investment_hint">对账差额将计为投资收益或亏损</string>
+    <string name="account_kind_switch_title">切换账户类型</string>
+    <string name="account_kind_switch_message">切换后历史对账差额将按新类型重新呈现（投资账户计为投资损益），确认切换？</string>
     <string name="account_reminder_period">提醒周期</string>
     <string name="account_reminder_weekday_dialog">每周提醒日</string>
     <string name="account_reminder_month_day_dialog">每月提醒日</string>
@@ -364,6 +375,7 @@
     <string name="account_information">账户信息</string>
     <string name="account_hide">隐藏账户</string>
     <string name="account_hide_description">仍计入净资产，可在选择器中展开使用</string>
+    <string name="account_hidden_done">账户已隐藏，仍计入净资产</string>
     <string name="account_closed_readonly_description">这个账户已关闭，仅保留历史记录和余额查看。</string>
     <string name="account_close_section">关闭</string>
     <string name="account_close_title">关闭账户</string>
@@ -430,14 +442,14 @@
     <string name="balance_record_income">补记收入</string>
     <string name="balance_record_expense">补记支出</string>
     <string name="balance_confirm_unchanged">确认无变化</string>
-    <string name="balance_save_reconciliation">保存余额核对</string>
+    <string name="balance_save_reconciliation">保存对账调整</string>
     <string name="balance_edit_title">修改对账记录</string>
     <string name="balance_edit_warning">这次修改会影响当前余额</string>
     <string name="balance_edit_time_description">修改本次更新的发生时间</string>
-    <string name="balance_undo_title">撤销对账记录</string>
-    <string name="balance_undo_message">撤销后会重新计算该账户当前余额，确认继续？</string>
-    <string name="balance_confirm_undo">确认撤销</string>
-    <string name="balance_undo_update">撤销这次更新</string>
+    <string name="balance_undo_title">删除对账记录</string>
+    <string name="balance_undo_message">删除后会重新计算该账户当前余额，确认继续？</string>
+    <string name="balance_confirm_undo">确认删除</string>
+    <string name="balance_undo_update">删除这次更新</string>
     <string name="loading_ellipsis">加载中…</string>
     <string name="action_edit_record">修改记录</string>
     <string name="action_deleting">删除中…</string>
@@ -445,11 +457,14 @@
     <string name="field_occurred_time">时间</string>
     <string name="balance_before_reconciliation">对账前账面余额</string>
     <string name="balance_confirmed">本次确认余额</string>
-    <string name="balance_undo_reconciliation">撤销余额核对</string>
-    <string name="balance_undo_adjustment">撤销对账调整</string>
+    <string name="balance_undo_reconciliation">删除余额核对</string>
+    <string name="balance_undo_adjustment">删除对账调整</string>
     <string name="balance_detail_neutral_title">对账记录详情</string>
     <string name="balance_detail_reconciliation_title">余额核对详情</string>
     <string name="balance_detail_adjustment_title">对账调整详情</string>
+    <string name="balance_detail_investment_title">市值更新详情</string>
+    <string name="balance_edit_investment_title">修改市值更新</string>
+    <string name="balance_undo_investment">删除市值更新</string>
 
     <!-- Reminder forms -->
     <string name="reminder_create_title">新建提醒</string>
@@ -464,8 +479,8 @@
     <string name="reminder_period">周期</string>
     <string name="reminder_period_dialog">周期类型</string>
     <string name="reminder_interval_days">间隔天数</string>
-    <string name="reminder_first_date">首次日期 (YYYY-MM-DD)</string>
-    <string name="reminder_first_time">首次时间 (HH:mm)</string>
+    <string name="reminder_first_date">首次日期</string>
+    <string name="reminder_first_time">首次时间</string>
     <string name="field_enabled">启用</string>
     <string name="answer_yes">是</string>
     <string name="answer_no">否</string>
@@ -479,6 +494,8 @@
     <string name="action_move_up">上移</string>
     <string name="action_move_down">下移</string>
     <string name="accounts_save_order">保存顺序</string>
+    <string name="accounts_restore_order">恢复默认顺序</string>
+    <string name="accounts_hidden_short">已隐藏</string>
     <string name="savings_goal_clear_title">清除净资产目标</string>
     <string name="savings_goal_clear_message">仅清除目标设置，不会删除账户或账本记录。</string>
     <string name="savings_goal_edit_title">修改净资产目标</string>
@@ -488,6 +505,10 @@
     <string name="savings_goal_edit_action">修改目标</string>
     <string name="savings_goal_set_action">设置目标</string>
     <string name="savings_goal_clear_action">清除目标</string>
+    <string name="savings_goal_current_net_worth">当前净资产</string>
+    <string name="savings_goal_progress_format">%1$s · 进度 %2$s</string>
+    <string name="savings_goal_saved_feedback">净资产目标已保存</string>
+    <string name="savings_goal_cleared_feedback">净资产目标已清除</string>
     <string name="share_choose_open_account">选择开放账户</string>
     <string name="share_preview_title">分享内容预览</string>
     <string name="share_uncertain">解析结果需要确认</string>
@@ -507,6 +528,8 @@
     <string name="lock_not_enrolled">请先在系统设置中录入屏幕锁或生物识别</string>
     <string name="lock_temporarily_unavailable">身份验证暂时不可用，账本保持锁定</string>
     <string name="lock_preferences_unavailable">无法读取应用锁设置，账本保持锁定</string>
+    <string name="lock_enable_failed">未完成身份验证，生物识别锁未开启</string>
+    <string name="lock_enable_persist_failed">生物识别锁开启失败，请重试</string>
     <string name="batch_reconcile_title">账户核对</string>
     <string name="batch_reconcile_empty">暂无待核对账户</string>
     <string name="batch_reconcile_empty_description">所有账户余额都已在提醒周期内确认。</string>
@@ -516,14 +539,19 @@
     <string name="status_failed">失败</string>
     <string name="batch_reconcile_last_format">最近核对 %1$s</string>
     <string name="batch_reconcile_never">尚未核对</string>
+    <string name="batch_select_all">全选</string>
+    <string name="batch_deselect_all">全不选</string>
+    <string name="batch_confirm_time_format">确认时间 %1$s</string>
+    <string name="batch_system_balance">系统余额</string>
+    <string name="batch_reconcile_hint">批量核对仅确认余额无变化；如需更新实际余额，请进入单个账户核对。</string>
     <string name="account_picker_collapse_hidden">收起隐藏账户</string>
     <string name="account_picker_show_hidden_format">显示隐藏账户（%1$d）</string>
     <string name="account_picker_selected_format">已选择%1$s</string>
     <string name="account_picker_balance_format">余额 %1$s</string>
-    <string name="balance_adjustment_delete_title">删除余额矫正</string>
+    <string name="balance_adjustment_delete_title">删除余额校正</string>
     <string name="balance_adjustment_delete_message">删除后会重新计算该账户当前余额，确认继续？</string>
-    <string name="balance_adjustment_detail_title">余额矫正详情</string>
-    <string name="balance_adjustment_delta">矫正差额</string>
+    <string name="balance_adjustment_detail_title">余额校正详情</string>
+    <string name="balance_adjustment_delta">校正差额</string>
     <string name="balance_result_title">更新结果</string>
     <string name="balance_result_reconciliation_saved">本次已保存为一条余额核对记录</string>
     <string name="balance_result_adjustment_saved">本次已保存为一条对账调整记录</string>
@@ -536,6 +564,6 @@
     <string name="ledger_income">收入</string>
     <string name="ledger_expense">支出</string>
     <string name="ledger_action_menu_hint">选择这次要记录的内容</string>
-    <string name="ledger_reconcile">校对</string>
+    <string name="ledger_reconcile">核对</string>
     <string name="nav_history">明细</string>
 </resources>

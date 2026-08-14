@@ -117,17 +117,19 @@ fun UpdateBalanceScreen(
                 )
                 MoneyInlineLabelValue(
                     label = stringResource(R.string.balance_system),
-                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
+                    value = if (state.isLoading) {
+                        "—"
+                    } else {
+                        formatInAppAmount(state.systemBalanceBeforeUpdate, settings)
+                    },
                 )
-                if (isInvestment) {
-                    // Freshness matters on investment accounts: the value drifts daily without
-                    // any record existing, so an old check means stale P&L and net worth.
-                    Text(
-                        text = lastCheckedText(selectedAccount?.lastBalanceUpdateAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // Freshness matters everywhere: on investment accounts a stale check means
+                // stale P&L, on funding accounts it answers "how long since I last checked".
+                Text(
+                    text = lastCheckedText(selectedAccount?.lastBalanceUpdateAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
@@ -163,7 +165,7 @@ fun UpdateBalanceScreen(
                     label = stringResource(
                         if (isInvestment) R.string.balance_delta_investment else R.string.balance_delta,
                     ),
-                    value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "-",
+                    value = state.deltaPreview?.let { formatInAppAmount(it, settings) } ?: "—",
                 )
                 state.deltaPreview?.let { delta ->
                     Text(
@@ -210,10 +212,13 @@ fun UpdateBalanceScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                // Below system balance (negative delta): the most likely missing
+                                // entry is an expense, so put that action first as the hint.
+                                val outflowFirst = nonZeroDelta < 0L
                                 MoneyTonalButton(
                                     onClick = {
                                         onStartCashFlow(
-                                            CashFlowDirection.INFLOW,
+                                            if (outflowFirst) CashFlowDirection.OUTFLOW else CashFlowDirection.INFLOW,
                                             accountId,
                                             prefillAmount,
                                         )
@@ -221,12 +226,16 @@ fun UpdateBalanceScreen(
                                     enabled = !state.isSaving,
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(stringResource(R.string.balance_record_income))
+                                    Text(
+                                        stringResource(
+                                            if (outflowFirst) R.string.balance_record_expense else R.string.balance_record_income,
+                                        ),
+                                    )
                                 }
                                 MoneyTonalButton(
                                     onClick = {
                                         onStartCashFlow(
-                                            CashFlowDirection.OUTFLOW,
+                                            if (outflowFirst) CashFlowDirection.INFLOW else CashFlowDirection.OUTFLOW,
                                             accountId,
                                             prefillAmount,
                                         )
@@ -234,7 +243,11 @@ fun UpdateBalanceScreen(
                                     enabled = !state.isSaving,
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(stringResource(R.string.balance_record_expense))
+                                    Text(
+                                        stringResource(
+                                            if (outflowFirst) R.string.balance_record_income else R.string.balance_record_expense,
+                                        ),
+                                    )
                                 }
                             }
                         }

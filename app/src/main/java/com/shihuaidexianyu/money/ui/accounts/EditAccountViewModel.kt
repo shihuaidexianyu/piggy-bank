@@ -40,6 +40,7 @@ data class EditAccountUiState(
     val isUpdatingHidden: Boolean = false,
     val reminderConfig: BalanceUpdateReminderConfig = BalanceUpdateReminderConfig(),
     val isSaving: Boolean = false,
+    val isDirty: Boolean = false,
 ) {
     val canClose: Boolean get() = !isLoading && !isClosed && currentBalance == 0L
 }
@@ -47,6 +48,7 @@ data class EditAccountUiState(
 sealed interface EditAccountEffect {
     data object Saved : EditAccountEffect
     data object AccountClosed : EditAccountEffect
+    data class HiddenChanged(val hidden: Boolean, val accountId: Long) : EditAccountEffect
     data object Closed : EditAccountEffect
     data class ShowMessage(
         override val message: String,
@@ -69,6 +71,7 @@ class EditAccountViewModel(
     private val effects = MutableSharedFlow<EditAccountEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
     private var closed = false
+    private var baseline: EditAccountUiState? = null
     private var lifecycleObservationJob: Job? = null
 
     init {
@@ -130,7 +133,7 @@ class EditAccountViewModel(
                     emitClosedOnce()
                     return@launch
                 }
-                _uiState.value = EditAccountUiState(
+                val loaded = EditAccountUiState(
                     isLoading = false,
                     name = account.name,
                     colorName = account.colorName,
@@ -141,6 +144,8 @@ class EditAccountViewModel(
                     currentBalance = calculateCurrentBalanceUseCase(accountId),
                     reminderConfig = accountReminderSettingsRepository.getReminderConfig(accountId),
                 )
+                baseline = loaded
+                _uiState.value = loaded
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -153,21 +158,13 @@ class EditAccountViewModel(
         }
     }
 
-    fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
-    }
+    fun updateName(value: String) = withDirty { copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH)) }
 
-    fun updateColorName(value: String) {
-        _uiState.value = _uiState.value.copy(colorName = normalizeAccountColorName(value))
-    }
+    fun updateColorName(value: String) = withDirty { copy(colorName = normalizeAccountColorName(value)) }
 
-    fun updateIconName(value: String) {
-        _uiState.value = _uiState.value.copy(iconName = normalizeAccountIconName(value))
-    }
+    fun updateIconName(value: String) = withDirty { copy(iconName = normalizeAccountIconName(value)) }
 
-    fun updateKind(value: AccountKind) {
-        _uiState.value = _uiState.value.copy(kind = value)
-    }
+    fun updateKind(value: AccountKind) = withDirty { copy(kind = value) }
 
     fun setHidden(hidden: Boolean) {
         val state = _uiState.value
@@ -180,6 +177,7 @@ class EditAccountViewModel(
                         isHidden = hidden,
                         isUpdatingHidden = false,
                     )
+                    effects.emit(EditAccountEffect.HiddenChanged(hidden, accountId))
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(isUpdatingHidden = false)
@@ -188,28 +186,34 @@ class EditAccountViewModel(
         }
     }
 
-    fun updateReminderPeriod(value: BalanceUpdateReminderPeriod) {
-        _uiState.value = _uiState.value.copy(
-            reminderConfig = _uiState.value.reminderConfig.copy(period = value),
-        )
+    fun updateReminderPeriod(value: BalanceUpdateReminderPeriod) = withDirty {
+        copy(reminderConfig = reminderConfig.copy(period = value))
     }
 
-    fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) {
-        _uiState.value = _uiState.value.copy(
-            reminderConfig = _uiState.value.reminderConfig.copy(weekday = value),
-        )
+    fun updateReminderWeekday(value: BalanceUpdateReminderWeekday) = withDirty {
+        copy(reminderConfig = reminderConfig.copy(weekday = value))
     }
 
-    fun updateReminderMonthDay(value: Int) {
-        _uiState.value = _uiState.value.copy(
-            reminderConfig = _uiState.value.reminderConfig.copy(monthDay = value),
-        )
+    fun updateReminderMonthDay(value: Int) = withDirty {
+        copy(reminderConfig = reminderConfig.copy(monthDay = value))
     }
 
-    fun updateReminderTime(hour: Int, minute: Int) {
-        _uiState.value = _uiState.value.copy(
-            reminderConfig = _uiState.value.reminderConfig.copy(hour = hour, minute = minute),
-        )
+    fun updateReminderTime(hour: Int, minute: Int) = withDirty {
+        copy(reminderConfig = reminderConfig.copy(hour = hour, minute = minute))
+    }
+
+    private fun withDirty(transform: EditAccountUiState.() -> EditAccountUiState) {
+        val next = _uiState.value.transform()
+        _uiState.value = next.copy(isDirty = computeIsDirty(next))
+    }
+
+    private fun computeIsDirty(state: EditAccountUiState): Boolean {
+        val base = baseline ?: return false
+        return state.name != base.name ||
+            state.colorName != base.colorName ||
+            state.iconName != base.iconName ||
+            state.kind != base.kind ||
+            state.reminderConfig != base.reminderConfig
     }
 
     fun save() {

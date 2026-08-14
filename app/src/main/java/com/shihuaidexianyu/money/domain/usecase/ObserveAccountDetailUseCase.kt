@@ -3,6 +3,8 @@ package com.shihuaidexianyu.money.domain.usecase
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
+import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
+import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -98,10 +100,19 @@ class ObserveAccountDetailUseCase(
         val inflow = transactionRepository.sumInflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
         val outflow = transactionRepository.sumOutflowBetween(account.id, monthRange.startInclusive, monthRange.endExclusive)
 
-        // Recent 5 records (cash flow + transfer) for this account, newest first.
+        // Recent 5 ledger events for this account, newest first. Balance checks and manual
+        // corrections are the events that change the balance most directly, so they belong in
+        // the timeline alongside cash flow and transfers.
         val recentCashFlows = transactionRepository.queryCashFlowRecordsByAccountId(account.id).take(5)
         val recentTransfers = transactionRepository.queryTransferRecordsByAccountId(account.id).take(5)
-        val recentRecords = (recentCashFlows.map { it.toRecentRecord() } + recentTransfers.map { it.toRecentRecord() })
+        val recentBalanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(account.id).take(5)
+        val recentAdjustments = transactionRepository.queryBalanceAdjustmentRecordsByAccountId(account.id).take(5)
+        val recentRecords = (
+            recentCashFlows.map { it.toRecentRecord() } +
+                recentTransfers.map { it.toRecentRecord(account.id) } +
+                recentBalanceUpdates.map { it.toRecentRecord() } +
+                recentAdjustments.map { it.toRecentRecord() }
+            )
             .sortedByDescending { it.occurredAt }
             .take(5)
 
@@ -135,12 +146,31 @@ private fun CashFlowRecord.toRecentRecord(): AccountDetailRecentRecord {
     )
 }
 
-private fun TransferRecord.toRecentRecord(): AccountDetailRecentRecord {
+private fun TransferRecord.toRecentRecord(viewerAccountId: Long): AccountDetailRecentRecord {
+    val signedAmount = if (fromAccountId == viewerAccountId) -amount else amount
     return AccountDetailRecentRecord(
         id = id,
         title = note.ifBlank { "账户间转移" },
-        amount = amount,
+        amount = signedAmount,
         occurredAt = occurredAt,
         kind = AccountDetailRecordKind.TRANSFER,
     )
 }
+
+private fun BalanceUpdateRecord.toRecentRecord(): AccountDetailRecentRecord =
+    AccountDetailRecentRecord(
+        id = id,
+        title = if (delta == 0L) "余额核对" else "对账调整",
+        amount = delta,
+        occurredAt = occurredAt,
+        kind = AccountDetailRecordKind.BALANCE_UPDATE,
+    )
+
+private fun BalanceAdjustmentRecord.toRecentRecord(): AccountDetailRecentRecord =
+    AccountDetailRecentRecord(
+        id = id,
+        title = "余额校正",
+        amount = delta,
+        occurredAt = occurredAt,
+        kind = AccountDetailRecordKind.BALANCE_ADJUSTMENT,
+    )

@@ -41,6 +41,7 @@ data class EditReminderUiState(
     val isEnabled: Boolean = true,
     val scheduleDirty: Boolean = false,
     val isSaving: Boolean = false,
+    val isDirty: Boolean = false,
 )
 
 sealed interface EditReminderEffect {
@@ -64,6 +65,7 @@ class EditReminderViewModel(
     val effectFlow = effects.asSharedFlow()
     private var closed = false
     private var initiallyEnabled: Boolean? = null
+    private var baseline: EditReminderUiState? = null
     private var originalAnchorDueAt: Long = 0L
     private var originalPeriodType: ReminderPeriodType = ReminderPeriodType.MONTHLY
     private var originalPeriodValue: Int = 1
@@ -108,8 +110,7 @@ class EditReminderViewModel(
                 originalUpdatedAt = if (restored) {
                     savedStateHandle[KEY_ORIGINAL_UPDATED_AT] ?: reminder.updatedAt
                 } else reminder.updatedAt
-                setState(
-                    EditReminderUiState(
+                val loaded = EditReminderUiState(
                         isLoading = false,
                         name = if (restored) savedStateHandle[KEY_NAME] ?: reminder.name else reminder.name,
                         type = if (restored) {
@@ -133,8 +134,9 @@ class EditReminderViewModel(
                         anchorTimeText = if (restored) savedStateHandle[KEY_ANCHOR_TIME] ?: anchorDraft.second else anchorDraft.second,
                         isEnabled = if (restored) savedStateHandle[KEY_ENABLED] ?: reminder.isEnabled else reminder.isEnabled,
                         scheduleDirty = if (restored) savedStateHandle[KEY_SCHEDULE_DIRTY] ?: false else false,
-                    ),
-                )
+                    )
+                baseline = loaded
+                setState(loaded)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -227,8 +229,22 @@ class EditReminderViewModel(
         }
     }
 
+    private fun computeIsDirty(state: EditReminderUiState): Boolean {
+        val base = baseline ?: return false
+        return state.name != base.name ||
+            state.type != base.type ||
+            state.selectedAccountId != base.selectedAccountId ||
+            state.direction != base.direction ||
+            state.amountText != base.amountText ||
+            state.periodType != base.periodType ||
+            state.periodCustomDays != base.periodCustomDays ||
+            state.anchorDateText != base.anchorDateText ||
+            state.anchorTimeText != base.anchorTimeText ||
+            state.isEnabled != base.isEnabled
+    }
+
     private fun setState(state: EditReminderUiState) {
-        _uiState.value = state
+        _uiState.value = state.copy(isDirty = computeIsDirty(state))
         if (state.isLoading) return
         savedStateHandle[KEY_INITIALIZED] = true
         savedStateHandle[KEY_NAME] = state.name

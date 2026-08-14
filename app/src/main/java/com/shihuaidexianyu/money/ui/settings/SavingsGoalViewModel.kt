@@ -2,8 +2,10 @@ package com.shihuaidexianyu.money.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.util.AmountInputParser
@@ -13,6 +15,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -23,6 +26,7 @@ data class SavingsGoalUiState(
     val amountText: String = "",
     val isSaving: Boolean = false,
     val showClearConfirm: Boolean = false,
+    val progress: SavingsGoalProgress? = null,
 )
 
 sealed interface SavingsGoalEffect : UiEffect {
@@ -33,6 +37,7 @@ sealed interface SavingsGoalEffect : UiEffect {
 
 class SavingsGoalViewModel(
     private val savingsGoalRepository: SavingsGoalRepository,
+    private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
     private val upsertSavingsGoalUseCase: UpsertSavingsGoalUseCase,
     private val clearSavingsGoalUseCase: ClearSavingsGoalUseCase,
 ) : ViewModel() {
@@ -56,16 +61,21 @@ class SavingsGoalViewModel(
         _uiState.update { it.copy(isLoading = true, loadErrorMessage = null) }
         observationJob = viewModelScope.launch {
             try {
-                savingsGoalRepository.observe().collect { goal ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            loadErrorMessage = null,
-                            hasGoal = goal != null,
-                            amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
-                        )
+                combine(
+                    savingsGoalRepository.observe(),
+                    observeSavingsGoalUseCase(),
+                ) { goal, progress -> goal to progress }
+                    .collect { (goal, progress) ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                loadErrorMessage = null,
+                                hasGoal = goal != null,
+                                amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
+                                progress = progress,
+                            )
+                        }
                     }
-                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {

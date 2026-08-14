@@ -6,6 +6,7 @@ import com.shihuaidexianyu.money.ui.accounts.accountClosurePresentation
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailUiState
 import com.shihuaidexianyu.money.ui.accounts.canMutateLedger
 import com.shihuaidexianyu.money.ui.home.netWorthGoalProgressPresentation
+import com.shihuaidexianyu.money.R
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -49,10 +50,10 @@ class AccountsScreenProjectionTest {
         val migrated = accountClosurePresentation(isClosed = true, balance = -50L)
         assertFalse(migrated.canMutate)
         assertTrue(migrated.canReopen)
-        assertEquals("需重新开启并结清", migrated.statusText)
+        assertEquals(R.string.account_status_reopen_settle, migrated.statusTextRes)
 
         val regularClosed = accountClosurePresentation(isClosed = true, balance = 0L)
-        assertEquals("已关闭", regularClosed.statusText)
+        assertEquals(R.string.account_status_closed, regularClosed.statusTextRes)
 
         assertTrue(AccountDetailUiState(isLoading = false, isClosed = false).canMutateLedger())
         assertFalse(AccountDetailUiState(isLoading = false, isClosed = true).canMutateLedger())

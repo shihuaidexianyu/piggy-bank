@@ -30,6 +30,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -60,10 +62,13 @@ fun BalanceUpdateDetailScreen(
     }
 
     if (showDeleteConfirm) {
-        val isReconcile = state.delta == 0L
         MoneyConfirmDialog(
             title = stringResource(
-                if (isReconcile) R.string.balance_undo_reconciliation else R.string.balance_undo_adjustment,
+                when {
+                    state.isInvestmentAccount && state.delta != 0L -> R.string.balance_undo_investment
+                    state.delta == 0L -> R.string.balance_undo_reconciliation
+                    else -> R.string.balance_undo_adjustment
+                },
             ),
             message = stringResource(R.string.balance_undo_message),
             onConfirm = {
@@ -73,6 +78,7 @@ fun BalanceUpdateDetailScreen(
             onDismiss = { showDeleteConfirm = false },
             confirmLabel = stringResource(R.string.balance_confirm_undo),
             dismissLabel = stringResource(R.string.action_cancel),
+            destructive = true,
         )
     }
 
@@ -95,27 +101,32 @@ fun BalanceUpdateDetailScreen(
         }
         item {
             MoneyCard {
-                if (state.isLoading) {
-                    Text(stringResource(R.string.loading_ellipsis), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text(state.accountName, style = MaterialTheme.typography.titleMedium)
-                    MoneyInlineLabelValue(
-                        label = stringResource(R.string.field_occurred_time),
-                        value = DateTimeTextFormatter.format(state.occurredAt),
-                    )
-                    MoneyInlineLabelValue(
-                        label = stringResource(R.string.balance_before_reconciliation),
-                        value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = stringResource(R.string.balance_confirmed),
-                        value = formatInAppAmount(state.actualBalance, settings),
-                    )
-                    MoneyInlineLabelValue(
-                        label = stringResource(R.string.balance_delta),
-                        value = formatInAppAmount(state.delta, settings),
-                    )
-                }
+                Text(state.accountName, style = MaterialTheme.typography.titleMedium)
+                MoneyInlineLabelValue(
+                    label = stringResource(R.string.field_occurred_time),
+                    value = DateTimeTextFormatter.format(state.occurredAt),
+                )
+                MoneyInlineLabelValue(
+                    label = stringResource(R.string.balance_before_reconciliation),
+                    value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
+                )
+                MoneyInlineLabelValue(
+                    label = stringResource(R.string.balance_confirmed),
+                    value = formatInAppAmount(state.actualBalance, settings),
+                )
+                val isInvestmentDelta = state.isInvestmentAccount && state.delta != 0L
+                val moneyColors = LocalMoneyColors.current
+                MoneyInlineLabelValue(
+                    label = stringResource(
+                        if (isInvestmentDelta) R.string.balance_delta_investment else R.string.balance_delta,
+                    ),
+                    value = signedFormatInAppAmount(state.delta, settings),
+                    valueColor = when {
+                        state.delta > 0L -> moneyColors.income
+                        state.delta < 0L -> moneyColors.expense
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
             }
         }
         item {
@@ -146,6 +157,8 @@ fun BalanceUpdateDetailScreen(
 internal fun balanceUpdateDetailTitleRes(state: BalanceUpdateDetailUiState): Int =
     if (state.isLoading || state.loadErrorMessage != null) {
         R.string.balance_detail_neutral_title
+    } else if (state.isInvestmentAccount && state.delta != 0L) {
+        R.string.balance_detail_investment_title
     } else if (state.delta == 0L) {
         R.string.balance_detail_reconciliation_title
     } else {

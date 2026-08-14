@@ -32,10 +32,15 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 
 private sealed interface EditAccountDialog {
     data object Name : EditAccountDialog
     data object CloseConfirm : EditAccountDialog
+    data class KindSwitch(val target: AccountKind) : EditAccountDialog
 }
 
 @Composable
@@ -50,11 +55,24 @@ fun EditAccountScreen(
     var dialog by remember { mutableStateOf<EditAccountDialog?>(null) }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
     var nameDraft by remember(state.name) { mutableStateOf(state.name) }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    val rootDispatcher = LocalRootSnackbarDispatcher.current
+    val hiddenDoneMessage = stringResource(R.string.account_hidden_done)
+    val undoLabel = stringResource(R.string.action_undo)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         when (effect) {
             EditAccountEffect.Saved, EditAccountEffect.AccountClosed -> onBack()
             EditAccountEffect.Closed -> onClosed()
+            is EditAccountEffect.HiddenChanged -> if (effect.hidden) {
+                rootDispatcher?.dispatch(
+                    rootSnackbarEffect(
+                        message = hiddenDoneMessage,
+                        actionLabel = undoLabel,
+                        action = RootSnackbarAction.UnhideAccount(effect.accountId),
+                    ),
+                )
+            }
             else -> {}
         }
     }
@@ -74,6 +92,18 @@ fun EditAccountScreen(
                 )
             }
 
+            is EditAccountDialog.KindSwitch -> {
+                MoneyConfirmDialog(
+                    title = stringResource(R.string.account_kind_switch_title),
+                    message = stringResource(R.string.account_kind_switch_message),
+                    onConfirm = {
+                        viewModel.updateKind(currentDialog.target)
+                        dialog = null
+                    },
+                    onDismiss = { dialog = null },
+                )
+            }
+
             EditAccountDialog.CloseConfirm -> {
                 MoneyConfirmDialog(
                     title = stringResource(R.string.account_close_title),
@@ -84,6 +114,7 @@ fun EditAccountScreen(
                     },
                     onDismiss = { dialog = null },
                     confirmLabel = stringResource(R.string.account_confirm_close),
+                    destructive = true,
                 )
             }
         }
@@ -107,7 +138,7 @@ fun EditAccountScreen(
         title = stringResource(R.string.account_management_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
         if (state.isLoading || state.loadErrorMessage != null) {
             item {
@@ -155,7 +186,11 @@ fun EditAccountScreen(
                                     FilterChip(
                                         selected = state.kind == option,
                                         enabled = !state.isSaving,
-                                        onClick = { viewModel.updateKind(option) },
+                                        onClick = {
+                                            if (option != state.kind) {
+                                                dialog = EditAccountDialog.KindSwitch(option)
+                                            }
+                                        },
                                         label = { Text(accountKindLabel(option)) },
                                     )
                                 }
@@ -167,6 +202,7 @@ fun EditAccountScreen(
                         title = stringResource(R.string.account_hide),
                         subtitle = stringResource(R.string.account_hide_description),
                         showChevron = false,
+                        switchChecked = state.isHidden,
                         onClick = {
                             if (!state.isUpdatingHidden && !state.isSaving) {
                                 viewModel.setHidden(!state.isHidden)

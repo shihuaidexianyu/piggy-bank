@@ -194,7 +194,8 @@ class HistoryAsyncRetryRaceTest {
         runCurrent()
 
         assertEquals(R.string.validation_valid_amount, viewModel.uiState.value.minAmountErrorRes)
-        assertTrue(viewModel.uiState.value.records.isEmpty())
+        // Invalid amount input keeps the last valid page visible instead of wiping the list.
+        assertEquals(1, viewModel.uiState.value.records.size)
         assertEquals(initialQueries, repository.queryCount)
         assertEquals(initialCounts, repository.countCount)
 

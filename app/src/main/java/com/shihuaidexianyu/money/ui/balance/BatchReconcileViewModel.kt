@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -40,6 +41,7 @@ data class BatchReconcileAccountUiModel(
     val lastBalanceUpdateAt: Long?,
     val isSelected: Boolean = true,
     val isFailed: Boolean = false,
+    val isInvestment: Boolean = false,
 )
 
 data class BatchReconcileUiState(
@@ -50,6 +52,7 @@ data class BatchReconcileUiState(
     val isDirty: Boolean = false,
     val isSaving: Boolean = false,
     val pendingTerminal: PendingFormTerminal? = null,
+    val confirmTimeMillis: Long? = null,
 ) {
     val selectedCount: Int
         get() = accounts.count { it.isSelected }
@@ -113,6 +116,7 @@ class BatchReconcileViewModel(
                         accounts = buildItems(accounts, reminderConfigs),
                         isDirty = draft.isDirty,
                         loadErrorMessage = null,
+                        confirmTimeMillis = draft.occurredAtMillis,
                     )
                 }
             } catch (e: CancellationException) {
@@ -137,6 +141,23 @@ class BatchReconcileViewModel(
                     account
                 }
             },
+            isDirty = true,
+        )
+        _uiState.value = next
+        persistDraft(
+            draft.copy(
+                selectedAccountIds = next.accounts
+                    .filter(BatchReconcileAccountUiModel::isSelected)
+                    .map(BatchReconcileAccountUiModel::accountId),
+                isDirty = true,
+            ),
+        )
+    }
+
+    fun setAllSelected(selected: Boolean) {
+        if (_uiState.value.isSaving) return
+        val next = _uiState.value.copy(
+            accounts = _uiState.value.accounts.map { it.copy(isSelected = selected, isFailed = false) },
             isDirty = true,
         )
         _uiState.value = next
@@ -216,7 +237,15 @@ class BatchReconcileViewModel(
                         isDirty = true,
                     ),
                 )
-                effects.emit(BatchReconcileEffect.ShowMessage("部分账户保存失败，请重试"))
+                effects.emit(
+                    BatchReconcileEffect.ShowMessage(
+                        if (failedIds.size == selectedIds.size) {
+                            "账户保存失败，请重试"
+                        } else {
+                            "部分账户保存失败，请重试"
+                        },
+                    ),
+                )
             }
         }
     }
@@ -282,6 +311,7 @@ class BatchReconcileViewModel(
                 lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                 isSelected = !draft.isDirty || account.id in draft.selectedAccountIds,
                 isFailed = account.id in failedIds,
+                isInvestment = account.kind == AccountKind.INVESTMENT,
             )
         }
     }

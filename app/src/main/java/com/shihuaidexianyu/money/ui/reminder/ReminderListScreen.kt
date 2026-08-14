@@ -73,7 +73,7 @@ fun ReminderListScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var deleteTarget by remember { mutableStateOf<Long?>(null) }
+    var deleteTarget by remember { mutableStateOf<ReminderUiModel?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val skippedMessage = stringResource(R.string.reminder_skipped)
@@ -105,15 +105,16 @@ fun ReminderListScreen(
         }
     }
 
-    deleteTarget?.let { id ->
+    deleteTarget?.let { target ->
         MoneyConfirmDialog(
             title = stringResource(R.string.reminder_delete_title),
-            message = stringResource(R.string.reminder_delete_message),
+            message = stringResource(R.string.reminder_delete_message, target.name),
             onConfirm = {
-                onDeleteReminder(id)
+                onDeleteReminder(target.id)
                 deleteTarget = null
             },
             onDismiss = { deleteTarget = null },
+            destructive = true,
         )
     }
 
@@ -202,7 +203,7 @@ fun ReminderListScreen(
                         onProcess = { onProcessReminder(reminder) },
                         onSkip = { onSkipReminder(reminder.id, reminder.nextDueAt) },
                         onEdit = { onEditReminder(reminder.id) },
-                        onDelete = { deleteTarget = reminder.id },
+                        onDelete = { deleteTarget = reminder },
                     )
                 }
                 if (state.upcomingReminders.isNotEmpty()) {
@@ -224,7 +225,7 @@ fun ReminderListScreen(
                         onProcess = {},
                         onSkip = {},
                         onEdit = { onEditReminder(reminder.id) },
-                        onDelete = { deleteTarget = reminder.id },
+                        onDelete = { deleteTarget = reminder },
                     )
                 }
                 if (state.pausedReminders.isNotEmpty()) {
@@ -246,7 +247,7 @@ fun ReminderListScreen(
                         onProcess = {},
                         onSkip = {},
                         onEdit = { onEditReminder(reminder.id) },
-                        onDelete = { deleteTarget = reminder.id },
+                        onDelete = { deleteTarget = reminder },
                     )
                 }
             }
@@ -396,14 +397,12 @@ private fun ReminderListItem(
                     )
                 }
             }
-            if (reminder.canMutate) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = stringResource(R.string.action_delete),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Rounded.Delete,
+                    contentDescription = stringResource(R.string.action_delete),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         if (isDue && reminder.canMutate) {

@@ -24,9 +24,13 @@ import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyPickerField
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
+import java.time.ZoneId
 
 @Composable
 fun EditReminderScreen(
@@ -38,6 +42,23 @@ fun EditReminderScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAccountPicker by remember { mutableStateOf(false) }
+    var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+
+    MoneyDateTimePickerHost(
+        field = dateTimeField,
+        currentMillis = reminderAnchorToMillis(
+            state.anchorDateText,
+            state.anchorTimeText,
+            ZoneId.systemDefault(),
+        ) ?: System.currentTimeMillis(),
+        onPick = { millis ->
+            val (date, time) = formatReminderAnchor(millis, ZoneId.systemDefault())
+            viewModel.updateAnchorDate(date)
+            viewModel.updateAnchorTime(time)
+        },
+        onDismiss = { dateTimeField = null },
+    )
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         when (effect) {
@@ -65,7 +86,7 @@ fun EditReminderScreen(
     MoneyFormPage(
         title = stringResource(R.string.reminder_edit_title),
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
         modifier = modifier,
     ) {
         if (state.isLoading || state.loadErrorMessage != null) {
@@ -147,16 +168,16 @@ fun EditReminderScreen(
                         )
                     }
                 }
-                MoneySingleLineField(
-                    value = state.anchorDateText,
-                    onValueChange = viewModel::updateAnchorDate,
+                MoneySelectionField(
                     label = stringResource(R.string.reminder_first_date),
+                    value = state.anchorDateText,
+                    onClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     isError = state.anchorError != null,
                 )
-                MoneySingleLineField(
-                    value = state.anchorTimeText,
-                    onValueChange = viewModel::updateAnchorTime,
+                MoneySelectionField(
                     label = stringResource(R.string.reminder_first_time),
+                    value = state.anchorTimeText,
+                    onClick = { dateTimeField = MoneyDateTimePickerField.TIME },
                     isError = state.anchorError != null,
                     supportingText = state.anchorError,
                 )

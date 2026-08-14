@@ -159,6 +159,7 @@ class MainActivity : FragmentActivity() {
                             }
                         },
                         amountPrivacy = AmountPrivacy.from(devicePreferences),
+                        appLockFeedback = appLockViewModel.feedback,
                     )
                 }
             }

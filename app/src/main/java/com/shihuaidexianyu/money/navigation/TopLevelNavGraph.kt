@@ -13,6 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
@@ -98,12 +99,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         val devicePreferences by container.devicePreferencesRepository.observe()
             .collectAsStateWithLifecycle(initialValue = DevicePreferences())
         val viewModel = viewModel<HistoryViewModel>(
-            factory = moneyViewModelFactory {
+            factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HistoryViewModel(
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
+                    savedStateHandle = savedStateHandle,
                 )
             },
         )
@@ -129,6 +131,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onLoadMore = viewModel::loadMore,
                 onRetryLoadMore = viewModel::loadMore,
                 onRetry = viewModel::retry,
+                onRecordIncome = {
+                    navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.INFLOW, accountId = 0L))
+                },
+                onRecordExpense = {
+                    navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.OUTFLOW, accountId = 0L))
+                },
                 onRecordClick = { record ->
                     if (!record.canMutate) {
                         rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(closedAccountReadOnlyMessage))
@@ -280,6 +288,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneyViewModelFactory {
                 SavingsGoalViewModel(
                     savingsGoalRepository = container.savingsGoalRepository,
+                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
                     upsertSavingsGoalUseCase = container.upsertSavingsGoalUseCase,
                     clearSavingsGoalUseCase = container.clearSavingsGoalUseCase,
                 )

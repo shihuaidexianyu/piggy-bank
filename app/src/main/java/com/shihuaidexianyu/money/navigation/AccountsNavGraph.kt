@@ -17,6 +17,7 @@ import com.shihuaidexianyu.money.ui.accounts.EditAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
+import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 
 internal fun NavGraphBuilder.addAccountsGraph(
@@ -94,6 +95,11 @@ internal fun NavGraphBuilder.addAccountsGraph(
             onReopenAccount = viewModel::reopenAccount,
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,
+            onViewAllHistory = {
+                navController.getBackStackEntry(MoneyDestination.History.route)
+                    .savedStateHandle[HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER] = accountId
+                navController.navigateToTopLevelTab(MoneyDestination.History)
+            },
         )
     }
 

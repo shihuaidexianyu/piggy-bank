@@ -16,6 +16,7 @@ suspend fun executeRootSnackbarAction(
     undoReminderSkip: suspend (com.shihuaidexianyu.money.domain.model.ReminderSkipUndoToken) -> UndoReminderSkipResult,
     createAccount: () -> Unit,
     manageAccounts: () -> Unit,
+    unhideAccount: suspend (Long) -> Unit = {},
 ): RootActionExecutionResult = try {
     when (action) {
         is RootSnackbarAction.RestoreLedger -> when (restoreLedger(action.undoToken)) {
@@ -29,6 +30,7 @@ suspend fun executeRootSnackbarAction(
         }
         RootSnackbarAction.CreateAccount -> createAccount().let { RootActionExecutionResult.Success }
         RootSnackbarAction.ManageAccounts -> manageAccounts().let { RootActionExecutionResult.Success }
+        is RootSnackbarAction.UnhideAccount -> unhideAccount(action.accountId).let { RootActionExecutionResult.Success }
         null -> RootActionExecutionResult.Success
     }
 } catch (cancelled: CancellationException) {

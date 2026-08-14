@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money.ui.history
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
@@ -132,6 +133,7 @@ class HistoryViewModel(
     private val transactionRepository: TransactionRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -150,7 +152,24 @@ class HistoryViewModel(
     private var accountUpdates: ReceiveChannel<List<Account>>? = null
 
     init {
+        // External entry (account detail "查看全部"): applies a one-shot account filter once
+        // the view model is ready, so a deep link arriving before initialization is not lost.
+        viewModelScope.launch {
+            savedStateHandle.getStateFlow<Long?>(KEY_INITIAL_ACCOUNT_FILTER, null)
+                .collect { accountId ->
+                    if (accountId != null) {
+                        savedStateHandle.remove<Long>(KEY_INITIAL_ACCOUNT_FILTER)
+                        if (initialized) {
+                            applyLocalFilter { copy(selectedAccountId = accountId) }
+                        }
+                    }
+                }
+        }
         initializeSafely()
+    }
+
+    companion object {
+        const val KEY_INITIAL_ACCOUNT_FILTER = "history_initial_account_filter"
     }
 
     fun retry() {
@@ -363,20 +382,22 @@ class HistoryViewModel(
         val generation = ++loadGeneration
         val filters = filterState.value.toHistoryRecordFiltersOrNull()
         if (filters == null) {
-            loadedRecords = emptyList()
-            totalRecordCount = 0
-            nextCursor = null
+            // A half-typed or out-of-range amount is an input error, not an empty result set.
+            // Keep the last valid page visible (the fields already show inline errors) instead
+            // of wiping the list and showing a misleading filtered-empty state.
+            val hadCommittedContent = _uiState.value.hasCommittedContent
+            if (!hadCommittedContent) {
+                loadedRecords = emptyList()
+                totalRecordCount = 0
+                nextCursor = null
+            }
             _uiState.update {
                 it.copy(
-                    records = emptyList(),
-                    filterSummary = null,
-                    totalRecordCount = 0,
                     isLoading = false,
                     isRefreshing = false,
                     hasCommittedContent = true,
                     isLoadingMore = false,
                     loadMoreErrorMessageRes = null,
-                    hasMoreRecords = false,
                     errorMessageRes = null,
                     retryToken = null,
                 )

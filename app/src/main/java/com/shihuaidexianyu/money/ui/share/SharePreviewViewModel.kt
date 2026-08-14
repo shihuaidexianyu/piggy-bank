@@ -52,6 +52,7 @@ data class SharePreviewUiState(
     val loadErrorMessage: String? = null,
     val isSaving: Boolean = false,
     val fieldError: String? = null,
+    val isDirty: Boolean = false,
 )
 
 sealed interface SharePreviewEffect {
@@ -74,6 +75,7 @@ class SharePreviewViewModel(
     private var saveInFlight = false
     private val parsed = SharedTextAmountExtractor.parse(originalText)
     private val _uiState = MutableStateFlow(restoreOrCreate(originalText))
+    private val baseline = _uiState.value
     val uiState: StateFlow<SharePreviewUiState> = _uiState.asStateFlow()
     private val effects = MutableSharedFlow<SharePreviewEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
@@ -190,7 +192,13 @@ class SharePreviewViewModel(
     }
 
     private fun updateState(transform: SharePreviewUiState.() -> SharePreviewUiState) {
-        _uiState.value = _uiState.value.transform()
+        val next = _uiState.value.transform()
+        _uiState.value = next.copy(
+            isDirty = next.direction != baseline.direction ||
+                next.amountText != baseline.amountText ||
+                next.note != baseline.note ||
+                next.occurredAt != baseline.occurredAt,
+        )
         persist(_uiState.value)
     }
 

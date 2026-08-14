@@ -112,7 +112,7 @@ fun AccountsScreen(
                     onClick = onCreateAccount,
                     modifier = Modifier
                         .padding(end = 12.dp)
-                        .size(44.dp),
+                        .size(48.dp),
                     shape = CircleShape,
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -197,7 +197,11 @@ fun AccountsScreen(
                                     when (kind) {
                                         AccountKind.FUNDING -> R.string.account_kind_funding
                                         AccountKind.INVESTMENT -> R.string.account_kind_investment
-                                        null -> R.string.accounts_normal
+                                        null -> if (accounts.firstOrNull()?.kind == AccountKind.INVESTMENT) {
+                                            R.string.account_kind_investment
+                                        } else {
+                                            R.string.account_kind_funding
+                                        }
                                     },
                                 ),
                                 trailingContent = {
@@ -208,7 +212,7 @@ fun AccountsScreen(
                                         if (groupIndex == 0) {
                                             IconButton(
                                                 onClick = onReorderAccounts,
-                                                modifier = Modifier.size(40.dp),
+                                                modifier = Modifier.size(48.dp),
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Reorder,
@@ -460,7 +464,7 @@ private fun AccountCard(
                     )
                     shareText?.let {
                         Text(
-                            text = it,
+                            text = stringResource(R.string.accounts_share_of_total, it),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

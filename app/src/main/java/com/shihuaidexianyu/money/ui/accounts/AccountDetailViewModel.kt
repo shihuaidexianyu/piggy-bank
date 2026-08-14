@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import com.shihuaidexianyu.money.R
 
 data class AccountDetailUiState(
     val isLoading: Boolean = true,
@@ -25,6 +26,8 @@ data class AccountDetailUiState(
     val colorName: String = "blue",
     val iconName: String = "wallet",
     val isClosed: Boolean = false,
+    val isHidden: Boolean = false,
+    val isInvestment: Boolean = false,
     val isReopening: Boolean = false,
     val currentBalance: Long = 0,
     val openAccountCount: Int = 0,
@@ -43,17 +46,25 @@ fun AccountDetailUiState.canMutateLedger(): Boolean =
 data class AccountClosurePresentation(
     val canMutate: Boolean,
     val canReopen: Boolean,
-    val statusText: String,
+    @param:androidx.annotation.StringRes val statusTextRes: Int,
 )
 
 fun accountClosurePresentation(isClosed: Boolean, balance: Long): AccountClosurePresentation = when {
-    !isClosed -> AccountClosurePresentation(canMutate = true, canReopen = false, statusText = "开放")
+    !isClosed -> AccountClosurePresentation(
+        canMutate = true,
+        canReopen = false,
+        statusTextRes = R.string.account_status_open,
+    )
     balance != 0L -> AccountClosurePresentation(
         canMutate = false,
         canReopen = true,
-        statusText = "需重新开启并结清",
+        statusTextRes = R.string.account_status_reopen_settle,
     )
-    else -> AccountClosurePresentation(canMutate = false, canReopen = true, statusText = "已关闭")
+    else -> AccountClosurePresentation(
+        canMutate = false,
+        canReopen = true,
+        statusTextRes = R.string.account_status_closed,
+    )
 }
 
 sealed interface AccountDetailEffect {
@@ -121,6 +132,8 @@ class AccountDetailViewModel(
                             colorName = account.colorName,
                             iconName = account.iconName,
                             isClosed = account.isClosed,
+                            isHidden = account.isHidden,
+                            isInvestment = account.kind == com.shihuaidexianyu.money.domain.model.AccountKind.INVESTMENT,
                             isReopening = _uiState.value.isReopening,
                             currentBalance = snapshot.currentBalance,
                             openAccountCount = snapshot.openAccountCount,

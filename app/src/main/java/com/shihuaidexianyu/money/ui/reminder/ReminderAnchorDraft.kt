@@ -23,6 +23,15 @@ internal fun formatReminderAnchor(anchorDueAt: Long, zoneId: ZoneId): Pair<Strin
     return local.toLocalDate().format(anchorDateFormatter) to local.toLocalTime().format(anchorTimeFormatter)
 }
 
+internal fun reminderAnchorToMillis(dateText: String, timeText: String, zoneId: ZoneId): Long? =
+    runCatching {
+        LocalDate.parse(dateText.trim(), anchorDateFormatter)
+            .atTime(LocalTime.parse(timeText.trim(), anchorTimeFormatter))
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+    }.getOrNull()
+
 internal fun parseReminderAnchor(
     dateText: String,
     timeText: String,

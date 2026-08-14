@@ -16,6 +16,9 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
+import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
 fun BalanceUpdateResultScreen(
@@ -34,6 +37,10 @@ fun BalanceUpdateResultScreen(
             MoneyCard {
                 Text(result.accountName, style = MaterialTheme.typography.titleMedium)
                 MoneyInlineLabelValue(
+                    label = stringResource(R.string.field_occurred_time),
+                    value = DateTimeTextFormatter.format(result.occurredAt),
+                )
+                MoneyInlineLabelValue(
                     label = stringResource(R.string.balance_before_reconciliation),
                     value = formatInAppAmount(result.systemBalanceBeforeUpdate, settings),
                 )
@@ -41,11 +48,17 @@ fun BalanceUpdateResultScreen(
                     label = stringResource(R.string.balance_confirmed),
                     value = formatInAppAmount(result.actualBalance, settings),
                 )
+                val moneyColors = LocalMoneyColors.current
                 MoneyInlineLabelValue(
                     label = stringResource(
                         if (result.isInvestmentAccount) R.string.balance_delta_investment else R.string.balance_delta,
                     ),
-                    value = formatInAppAmount(result.delta, settings),
+                    value = signedFormatInAppAmount(result.delta, settings),
+                    valueColor = when {
+                        result.delta > 0L -> moneyColors.income
+                        result.delta < 0L -> moneyColors.expense
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
                 Text(
                     when {
