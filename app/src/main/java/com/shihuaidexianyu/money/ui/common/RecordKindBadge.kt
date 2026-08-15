@@ -45,8 +45,8 @@ fun RecordKindBadge(
     kind: HistoryRecordKind,
     amount: Long,
     modifier: Modifier = Modifier,
-    size: Dp = 38.dp,
-    iconSize: Dp = 20.dp,
+    size: Dp = 32.dp,
+    iconSize: Dp = 17.dp,
 ) {
     val accent = recordKindAccent(kind, amount)
     val icon = when (kind) {
