@@ -10,6 +10,8 @@ import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.UiEffect
+import com.shihuaidexianyu.money.ui.record.MAX_LEDGER_NOTE_LENGTH
+import com.shihuaidexianyu.money.ui.record.ledgerNoteLengthError
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import com.shihuaidexianyu.money.util.RecordValidator
 import com.shihuaidexianyu.money.util.SharedTextAmountExtractor
@@ -79,7 +81,7 @@ class SharePreviewViewModel(
     private var saveInFlight = false
     private val parsed = SharedTextAmountExtractor.parse(originalText)
     private val _uiState = MutableStateFlow(restoreOrCreate(originalText))
-    private val baseline = _uiState.value
+    private var baseline = _uiState.value
     val uiState: StateFlow<SharePreviewUiState> = _uiState.asStateFlow()
     private val effects = MutableSharedFlow<SharePreviewEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
@@ -101,6 +103,8 @@ class SharePreviewViewModel(
                     val selected = _uiState.value.selectedAccountId
                         ?.takeIf { id -> accounts.any { it.id == id } }
                         ?: accounts.firstOrNull()?.id
+                    // The loaded (auto-selected) account is the clean baseline, not an edit.
+                    baseline = baseline.copy(selectedAccountId = selected)
                     updateState {
                         copy(
                             accounts = accounts,
@@ -127,7 +131,7 @@ class SharePreviewViewModel(
     fun updateNote(value: String) = updateState {
         copy(
             note = value,
-            fieldError = if (value.length > MAX_NOTE_LENGTH) "备注不能超过 200 字" else null,
+            fieldError = ledgerNoteLengthError(value),
         )
     }
     fun updateAccount(value: Long) = updateState { copy(selectedAccountId = value, fieldError = null) }
@@ -143,7 +147,7 @@ class SharePreviewViewModel(
         if (state.accounts.none { it.id == accountId }) return validationError("请选择开放账户")
         val amount = runCatching { RecordValidator.requireAmount(state.amountText) }
             .getOrElse { return validationError(it.message ?: "请输入有效金额") }
-        if (state.note.length > MAX_NOTE_LENGTH) return validationError("备注不能超过 200 字")
+        ledgerNoteLengthError(state.note)?.let { return validationError(it) }
         if (state.occurredAt > clockProvider.nowMillis()) return validationError("时间不能晚于当前时间")
 
         saveInFlight = true
@@ -164,10 +168,12 @@ class SharePreviewViewModel(
                 saveInFlight = false
                 updateState { copy(isSaving = false) }
                 effects.emit(SharePreviewEffect.Saved)
-            }.onFailure { error ->
+            }.onFailure {
                 saveInFlight = false
-                updateState { copy(isSaving = false, fieldError = error.message ?: "保存失败") }
-                effects.emit(SharePreviewEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.msg_save_failed))
+                updateState { copy(isSaving = false) }
+                effects.emit(
+                    SharePreviewEffect.ShowMessage("", messageRes = R.string.share_save_failed_retry),
+                )
             }
         }
     }
@@ -187,7 +193,7 @@ class SharePreviewViewModel(
                 ?: CashFlowDirection.OUTFLOW,
             amountText = savedStateHandle[AMOUNT_KEY]
                 ?: parsed.amountInMinor?.toEditableAmount().orEmpty(),
-            note = savedStateHandle[NOTE_KEY] ?: originalText.trim().take(MAX_NOTE_LENGTH),
+            note = savedStateHandle[NOTE_KEY] ?: originalText.trim().take(MAX_LEDGER_NOTE_LENGTH),
             occurredAt = occurredAt,
             selectedAccountId = savedStateHandle[ACCOUNT_ID_KEY],
             isUncertain = parsed.isUncertain,
@@ -201,7 +207,8 @@ class SharePreviewViewModel(
             isDirty = next.direction != baseline.direction ||
                 next.amountText != baseline.amountText ||
                 next.note != baseline.note ||
-                next.occurredAt != baseline.occurredAt,
+                next.occurredAt != baseline.occurredAt ||
+                next.selectedAccountId != baseline.selectedAccountId,
         )
         persist(_uiState.value)
     }
@@ -220,7 +227,6 @@ class SharePreviewViewModel(
         .toPlainString()
 
     companion object {
-        const val MAX_NOTE_LENGTH = 200
         const val OPERATION_ID_KEY = "share_preview_operation_id"
         const val ORIGINAL_TEXT_STATE_KEY = "share_preview_original_text"
         const val DIRECTION_KEY = "share_preview_direction"

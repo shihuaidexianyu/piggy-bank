@@ -24,11 +24,20 @@ enum class BiometricCapability {
     TEMPORARILY_UNAVAILABLE,
 }
 
+enum class BiometricErrorKind {
+    UNKNOWN,
+    LOCKOUT,
+    NO_DEVICE_CREDENTIAL,
+}
+
 sealed interface BiometricAuthenticationResult {
     data object Succeeded : BiometricAuthenticationResult
     data object Failed : BiometricAuthenticationResult
     data object Cancelled : BiometricAuthenticationResult
-    data class Error(val message: String) : BiometricAuthenticationResult
+    data class Error(
+        val message: String,
+        val kind: BiometricErrorKind = BiometricErrorKind.UNKNOWN,
+    ) : BiometricAuthenticationResult
 }
 
 interface BiometricAuthenticationGateway {

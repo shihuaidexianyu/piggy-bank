@@ -55,20 +55,20 @@ class CreateAccountViewModelTest {
     }
 
     @Test
-    fun `save with empty name emits ShowMessage from use case`() = runTest(dispatcher) {
+    fun `save with empty name surfaces an inline name error instead of a snackbar`() = runTest(dispatcher) {
         val vm = buildViewModel()
         vm.updateAmountText("1000")
         vm.effectFlow.test {
             vm.save()
             advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is CreateAccountEffect.ShowMessage)
-            assertEquals("账户名称不能为空", effect.message)
+            expectNoEvents()
         }
+        assertEquals("账户名称不能为空", vm.uiState.value.nameError)
+        assertTrue(!vm.uiState.value.isSaving)
     }
 
     @Test
-    fun `save with duplicate name emits ShowMessage`() = runTest(dispatcher) {
+    fun `save with duplicate name surfaces an inline name error`() = runTest(dispatcher) {
         val accountRepo = InMemoryAccountRepository()
         val firstVm = buildViewModel(accountRepo)
         firstVm.updateName("现金")
@@ -85,10 +85,9 @@ class CreateAccountViewModelTest {
         secondVm.effectFlow.test {
             secondVm.save()
             advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is CreateAccountEffect.ShowMessage)
-            assertEquals("已存在同名账户", effect.message)
+            expectNoEvents()
         }
+        assertEquals("已存在同名账户", secondVm.uiState.value.nameError)
     }
 
     @Test
@@ -118,6 +117,18 @@ class CreateAccountViewModelTest {
             com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH,
             vm.uiState.value.name.length,
         )
+    }
+
+    @Test
+    fun `inline name error clears when the name is edited`() = runTest(dispatcher) {
+        val vm = buildViewModel()
+        vm.updateAmountText("1000")
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("账户名称不能为空", vm.uiState.value.nameError)
+
+        vm.updateName("现金")
+        assertEquals(null, vm.uiState.value.nameError)
     }
 
     private fun buildViewModel(

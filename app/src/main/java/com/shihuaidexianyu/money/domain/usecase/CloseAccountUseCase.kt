@@ -23,7 +23,7 @@ class CloseAccountUseCase(
         accountLifecycleCoordinator.withLifecycleLock {
             transactionRunner.runInTransaction {
                 val now = clockProvider.nowMillis()
-                val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+                val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
                 require(!account.isClosed) { "账户已关闭" }
                 val balance = calculateCurrentBalanceUseCase(accountId, now)
                 require(balance == 0L) { "账户余额必须为 0 才能关闭" }

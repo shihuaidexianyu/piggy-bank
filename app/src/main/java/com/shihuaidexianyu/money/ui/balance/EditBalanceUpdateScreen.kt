@@ -2,10 +2,10 @@ package com.shihuaidexianyu.money.ui.balance
 
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,9 +81,7 @@ fun EditBalanceUpdateScreen(
 
     if (state.showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = stringResource(
-                if (state.isInvestmentAccount) R.string.balance_undo_investment else R.string.balance_undo_title,
-            ),
+            title = stringResource(balanceUpdateDeleteTitleRes(state.isInvestmentAccount, state.recordDelta)),
             message = stringResource(R.string.balance_undo_message),
             onConfirm = viewModel::delete,
             onDismiss = viewModel::dismissDeleteConfirm,
@@ -138,6 +136,7 @@ fun EditBalanceUpdateScreen(
                     allowSigned = true,
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
+                    enabled = !state.isSaving,
                 )
             }
         }
@@ -183,14 +182,18 @@ fun EditBalanceUpdateScreen(
             }
         }
         item {
-            MoneyCard {
-                MoneyTonalButton(
-                    onClick = viewModel::showDeleteConfirm,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
-                ) {
-                    Text(stringResource(R.string.balance_undo_update))
-                }
+            TextButton(
+                onClick = viewModel::showDeleteConfirm,
+                enabled = !state.isLoading && !state.isSaving && state.pendingTerminal == null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.balance_undo_update),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }

@@ -36,6 +36,7 @@ data class UpdateBalanceUiState(
     val selectedAccountId: Long? = null,
     val actualBalanceText: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val timeEdited: Boolean = false,
     val systemBalanceBeforeUpdate: Long = 0,
     val actualBalancePreview: Long? = null,
     val deltaPreview: Long? = null,
@@ -79,6 +80,7 @@ class UpdateBalanceViewModel(
                 selectedAccountId = draft.selectedAccountId,
                 actualBalanceText = draft.actualBalanceText,
                 occurredAtMillis = draft.occurredAtMillis,
+                timeEdited = draft.timeEdited,
                 actualBalanceEdited = draft.actualBalanceEdited,
                 accountError = draft.accountError,
                 actualBalanceError = draft.actualBalanceError,
@@ -172,6 +174,7 @@ class UpdateBalanceViewModel(
         updateDraft {
             copy(
                 occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+                timeEdited = true,
                 occurredAtError = null,
                 isDirty = true,
             )
@@ -295,6 +298,7 @@ class UpdateBalanceViewModel(
             selectedAccountId = next.selectedAccountId,
             actualBalanceText = next.actualBalanceText,
             occurredAtMillis = next.occurredAtMillis,
+            timeEdited = next.timeEdited,
             actualBalanceEdited = next.actualBalanceEdited,
             accountError = next.accountError,
             actualBalanceError = next.actualBalanceError,

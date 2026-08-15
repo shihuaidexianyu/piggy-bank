@@ -9,6 +9,6 @@ object AccountRecordTimeValidator {
         occurredAt: Long,
     ) {
         val minimumOccurredAt = TimeMath.floorToMinute(account.createdAt)
-        require(occurredAt >= minimumOccurredAt) { "时间不能早于账户创建时间" }
+        require(occurredAt >= minimumOccurredAt) { ValidationErrorText.OCCURRED_AT_BEFORE_ACCOUNT_CREATION }
     }
 }

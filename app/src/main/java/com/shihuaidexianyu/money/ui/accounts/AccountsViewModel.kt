@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.ui.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -50,7 +51,7 @@ data class AccountsUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val hasCommittedContent: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessageRes: Int? = null,
     val retryToken: String? = null,
     val settings: PortableSettings = PortableSettings(),
     val showClosed: Boolean = false,
@@ -59,8 +60,8 @@ data class AccountsUiState(
     val savingsGoal: SavingsGoalUiModel? = null,
 )
 
-internal fun AccountsUiState.toAsyncContent(): AsyncContent<AccountsUiState> {
-    errorMessage?.let { return AsyncContent.Error(it, retryToken) }
+internal fun AccountsUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<AccountsUiState> {
+    errorMessageRes?.let { return AsyncContent.Error(errorMessage, retryToken) }
     if (!hasCommittedContent) return AsyncContent.Loading
     if (isRefreshing) return AsyncContent.Refreshing(this)
     if (openAccounts.isEmpty() && closedAccounts.isEmpty()) {
@@ -105,7 +106,7 @@ class AccountsViewModel(
             it.copy(
                 isLoading = !hasCommittedContent,
                 isRefreshing = hasCommittedContent,
-                errorMessage = null,
+                errorMessageRes = null,
                 retryToken = null,
             )
         }
@@ -142,7 +143,7 @@ class AccountsViewModel(
                     it.copy(
                         isLoading = false,
                         isRefreshing = false,
-                        errorMessage = "账户加载失败，请重试",
+                        errorMessageRes = R.string.account_load_failed,
                         retryToken = "accounts:$retryGeneration",
                     )
                 }

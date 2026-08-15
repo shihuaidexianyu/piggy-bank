@@ -21,7 +21,7 @@ class CreateCashFlowRecordUseCase(
         occurredAt: Long,
         operationId: String,
     ): LedgerInsertResult {
-        require(amount > 0) { "金额必须大于 0" }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
         require(operationId.isNotBlank()) { "操作标识不能为空" }
 
         return transactionRepository.runInTransaction {
@@ -40,8 +40,8 @@ class CreateCashFlowRecordUseCase(
             }
 
             val now = clockProvider.nowMillis()
-            require(occurredAt <= now) { "时间不能晚于当前时间" }
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("记录收支")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 

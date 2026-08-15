@@ -20,13 +20,13 @@ class UpdateBalanceAdjustmentUseCase(
     ) {
         require(delta != 0L) { "调整金额不能为 0" }
         val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
+        require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
 
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.getBalanceAdjustmentRecordById(recordId)) {
-                "余额调整记录不存在"
+                "余额调整记录${ValidationErrorText.NOT_FOUND_SUFFIX}"
             }
-            val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("修改余额调整")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
             val updated = existing.copy(

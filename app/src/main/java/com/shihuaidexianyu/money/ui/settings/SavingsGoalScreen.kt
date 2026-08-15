@@ -26,6 +26,7 @@ import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
+import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.home.netWorthGoalProgressPresentation
 import com.shihuaidexianyu.money.util.AmountFormatter
 
@@ -69,12 +70,14 @@ fun SavingsGoalScreen(
         )
     }
 
+    val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+
     MoneyFormPage(
         title = stringResource(
             if (state.hasGoal) R.string.savings_goal_edit_title else R.string.savings_goal_set_title,
         ),
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = guardedBack,
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {

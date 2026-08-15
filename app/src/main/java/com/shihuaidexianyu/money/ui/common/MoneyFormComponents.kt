@@ -130,6 +130,7 @@ fun MoneyConfirmDialog(
     confirmLabel: String? = null,
     dismissLabel: String? = null,
     destructive: Boolean = false,
+    showDismissAction: Boolean = true,
 ) {
     val resolvedConfirmLabel = confirmLabel ?: stringResource(R.string.action_confirm)
     val resolvedDismissLabel = dismissLabel ?: stringResource(R.string.action_cancel)
@@ -145,8 +146,10 @@ fun MoneyConfirmDialog(
                 )
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(resolvedDismissLabel) }
+        dismissButton = if (showDismissAction) {
+            { TextButton(onClick = onDismiss) { Text(resolvedDismissLabel) } }
+        } else {
+            null
         },
     )
 }

@@ -6,6 +6,7 @@ data class BalanceFormDraft(
     val selectedAccountId: Long?,
     val actualBalanceText: String,
     val occurredAtMillis: Long,
+    val timeEdited: Boolean = false,
     val actualBalanceEdited: Boolean,
     val accountError: String? = null,
     val actualBalanceError: String? = null,

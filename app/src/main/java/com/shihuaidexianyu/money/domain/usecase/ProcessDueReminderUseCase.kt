@@ -30,7 +30,7 @@ class ProcessDueReminderUseCase(
         amount: Long,
         note: String,
     ): Long {
-        require(amount > 0) { "金额必须大于 0" }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
         val operationId = "cash:reminder:$reminderId:$expectedDueAt"
 
         val recordId = transactionRepository.runInTransaction {
@@ -49,10 +49,10 @@ class ProcessDueReminderUseCase(
             }
 
             val now = clockProvider.nowMillis()
-            require(occurredAt <= now) { "时间不能晚于当前时间" }
-            val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
+            require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
+            val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             check(reminder.isEnabled && reminder.nextDueAt == expectedDueAt) { "提醒状态已变化" }
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("处理提醒")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 

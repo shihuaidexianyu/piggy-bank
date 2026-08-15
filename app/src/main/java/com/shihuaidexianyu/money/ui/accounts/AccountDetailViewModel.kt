@@ -37,6 +37,7 @@ data class AccountDetailUiState(
     val settings: PortableSettings = PortableSettings(),
     val monthInflow: Long = 0L,
     val monthOutflow: Long = 0L,
+    val monthInvestmentDelta: Long = 0L,
     val recentRecords: List<AccountDetailRecentRecord> = emptyList(),
 )
 
@@ -144,6 +145,7 @@ class AccountDetailViewModel(
                             settings = snapshot.settings,
                             monthInflow = snapshot.monthInflow,
                             monthOutflow = snapshot.monthOutflow,
+                            monthInvestmentDelta = snapshot.monthInvestmentDelta,
                             recentRecords = snapshot.recentRecords,
                         )
                     }

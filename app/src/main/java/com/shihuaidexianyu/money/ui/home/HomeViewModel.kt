@@ -45,6 +45,9 @@ data class DueReminderUiModel(
     val accountId: Long,
     val direction: String,
     val amount: Long,
+    // Defaulted so existing tests/previews constructing the model keep compiling.
+    val accountName: String = "",
+    val dueAt: Long = 0L,
 )
 
 data class StaleAccountUiModel(
@@ -236,6 +239,8 @@ class HomeViewModel(
                                         visibility,
                                     ),
                                     accountId = reminder.accountId,
+                                    accountName = accountNames[reminder.accountId] ?: "—",
+                                    dueAt = reminder.nextDueAt,
                                     direction = reminder.direction,
                                     amount = reminder.amount,
                                 )

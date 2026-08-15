@@ -95,6 +95,48 @@ class DateTimeTextFormatterTest {
     }
 
     @Test
+    fun `relative day time uses today and tomorrow labels`() {
+        val now = LocalDateTime.of(2026, 8, 15, 12, 0).atZone(utc).toInstant().toEpochMilli()
+        val todayMorning = LocalDateTime.of(2026, 8, 15, 9, 30).atZone(utc).toInstant().toEpochMilli()
+        val tomorrowMorning = LocalDateTime.of(2026, 8, 16, 9, 30).atZone(utc).toInstant().toEpochMilli()
+
+        assertEquals(
+            "今天 09:30",
+            DateTimeTextFormatter.formatRelativeDayTime(todayMorning, now, "今天", "明天", utc),
+        )
+        assertEquals(
+            "明天 09:30",
+            DateTimeTextFormatter.formatRelativeDayTime(tomorrowMorning, now, "今天", "明天", utc),
+        )
+    }
+
+    @Test
+    fun `relative day time falls back to month-day for other dates`() {
+        val now = LocalDateTime.of(2026, 8, 15, 12, 0).atZone(utc).toInstant().toEpochMilli()
+        val past = LocalDateTime.of(2026, 8, 10, 18, 5).atZone(utc).toInstant().toEpochMilli()
+        val later = LocalDateTime.of(2026, 9, 1, 8, 0).atZone(utc).toInstant().toEpochMilli()
+
+        assertEquals(
+            "8月10日 18:05",
+            DateTimeTextFormatter.formatRelativeDayTime(past, now, "今天", "明天", utc),
+        )
+        assertEquals(
+            "9月1日 08:00",
+            DateTimeTextFormatter.formatRelativeDayTime(later, now, "今天", "明天", utc),
+        )
+    }
+
+    @Test
+    fun `day in year omits the year inside the current year only`() {
+        val now = LocalDateTime.of(2026, 8, 15, 12, 0).atZone(utc).toInstant().toEpochMilli()
+        val sameYear = LocalDateTime.of(2026, 2, 3, 0, 0).atZone(utc).toInstant().toEpochMilli()
+        val lastYear = LocalDateTime.of(2025, 12, 31, 23, 0).atZone(utc).toInstant().toEpochMilli()
+
+        assertEquals("2月3日", DateTimeTextFormatter.formatDayInYear(sameYear, now, utc))
+        assertEquals("2025年12月31日", DateTimeTextFormatter.formatDayInYear(lastYear, now, utc))
+    }
+
+    @Test
     fun `startOfDayMillis returns midnight`() {
         val millis = 1712140200000L // 2024-04-03 10:30 UTC
         val start = DateTimeTextFormatter.startOfDayMillis(millis, utc)

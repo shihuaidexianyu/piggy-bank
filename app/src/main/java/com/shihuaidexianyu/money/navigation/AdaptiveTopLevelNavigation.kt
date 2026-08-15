@@ -9,6 +9,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +25,11 @@ fun AdaptiveTopLevelNavigation(
     onDestinationClick: (MoneyDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Shared item colors so the bottom bar and the rail render selection identically.
+    val selectedItemColor = MaterialTheme.colorScheme.primary
+    val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+
     when (type) {
         AdaptiveNavigationType.BOTTOM_BAR -> Surface(
             modifier = modifier.testTag("top_level_bottom_bar"),
@@ -41,11 +47,11 @@ fun AdaptiveTopLevelNavigation(
                             selected = currentRoute == destination.route,
                             onClick = { onDestinationClick(destination) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                selectedIconColor = selectedItemColor,
+                                selectedTextColor = selectedItemColor,
+                                indicatorColor = indicatorColor,
+                                unselectedIconColor = unselectedItemColor,
+                                unselectedTextColor = unselectedItemColor,
                             ),
                             icon = { Icon(destination.icon, contentDescription = label) },
                             label = { Text(label) },
@@ -64,6 +70,13 @@ fun AdaptiveTopLevelNavigation(
                 NavigationRailItem(
                     selected = currentRoute == destination.route,
                     onClick = { onDestinationClick(destination) },
+                    colors = NavigationRailItemDefaults.colors(
+                        selectedIconColor = selectedItemColor,
+                        selectedTextColor = selectedItemColor,
+                        indicatorColor = indicatorColor,
+                        unselectedIconColor = unselectedItemColor,
+                        unselectedTextColor = unselectedItemColor,
+                    ),
                     icon = { Icon(destination.icon, contentDescription = label) },
                     label = { Text(label) },
                 )

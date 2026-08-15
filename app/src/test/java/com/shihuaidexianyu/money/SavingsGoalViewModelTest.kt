@@ -101,6 +101,40 @@ class SavingsGoalViewModelTest {
         assertNull(repository.query())
     }
 
+    @Test
+    fun `dirty flag tracks edits against the persisted goal`() = runTest(dispatcher) {
+        val repository = InMemorySavingsGoalRepository()
+        val clock = CountingClock(100L)
+        val viewModel = SavingsGoalViewModel(
+            repository,
+            ObserveSavingsGoalUseCase(
+                InMemoryAccountRepository(),
+                repository,
+                InMemoryTransactionRepository(),
+                CalculateAccountBalancesUseCase(InMemoryTransactionRepository(), ClockProvider { 100L }),
+            ),
+            UpsertSavingsGoalUseCase(repository, clock),
+            ClearSavingsGoalUseCase(repository),
+        )
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isDirty)
+
+        viewModel.updateAmount("123.45")
+        assertTrue(viewModel.uiState.value.isDirty)
+
+        viewModel.save()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isDirty)
+        assertEquals("123.45", viewModel.uiState.value.amountText)
+
+        // Re-entering the persisted value is not a change.
+        viewModel.updateAmount("123.45")
+        assertFalse(viewModel.uiState.value.isDirty)
+
+        viewModel.updateAmount("200")
+        assertTrue(viewModel.uiState.value.isDirty)
+    }
+
     private class CountingClock(private val now: Long) : ClockProvider {
         var calls: Int = 0
             private set

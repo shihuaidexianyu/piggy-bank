@@ -35,8 +35,8 @@ class CreateBalanceAdjustmentUseCase(
             }
 
             val now = clockProvider.nowMillis()
-            require(occurredAt <= now) { "时间不能晚于当前时间" }
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("新建余额调整")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 

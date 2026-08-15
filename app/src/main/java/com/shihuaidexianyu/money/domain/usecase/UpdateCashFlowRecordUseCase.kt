@@ -24,18 +24,18 @@ class UpdateCashFlowRecordUseCase(
         preserveNoteVerbatim: Boolean = false,
         expectedUpdatedAt: Long? = null,
     ) {
-        require(amount > 0) { "金额必须大于 0" }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
         val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
+        require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.queryCashFlowRecordById(recordId)) {
-                "记录不存在或已删除"
+                "记录${ValidationErrorText.NOT_FOUND_SUFFIX}或已删除"
             }
             if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
                 throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
             }
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
-            val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+            val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("修改收支记录")
             existingAccount.requireOpenForMutation("修改收支记录")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)

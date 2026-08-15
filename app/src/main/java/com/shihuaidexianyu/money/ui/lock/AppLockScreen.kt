@@ -43,8 +43,10 @@ fun AppLockScreen(
             }
             is AppLockState.Unavailable -> {
                 Text(stringResource(state.reason.messageRes()))
-                Button(onClick = onOpenSecuritySettings, modifier = Modifier.padding(top = 16.dp)) {
-                    Text(stringResource(R.string.lock_open_security_settings))
+                if (state.reason.showsSecuritySettings()) {
+                    Button(onClick = onOpenSecuritySettings, modifier = Modifier.padding(top = 16.dp)) {
+                        Text(stringResource(R.string.lock_open_security_settings))
+                    }
                 }
                 Button(onClick = onAuthenticate, modifier = Modifier.padding(top = 8.dp)) {
                     Text(stringResource(R.string.action_retry))
@@ -60,4 +62,14 @@ private fun AppLockUnavailableReason.messageRes(): Int = when (this) {
     AppLockUnavailableReason.NOT_ENROLLED -> R.string.lock_not_enrolled
     AppLockUnavailableReason.TEMPORARILY_UNAVAILABLE -> R.string.lock_temporarily_unavailable
     AppLockUnavailableReason.PREFERENCES_UNAVAILABLE -> R.string.lock_preferences_unavailable
+}
+
+// System security settings can only help when something can still be enrolled there.
+private fun AppLockUnavailableReason.showsSecuritySettings(): Boolean = when (this) {
+    AppLockUnavailableReason.NOT_ENROLLED,
+    AppLockUnavailableReason.PREFERENCES_UNAVAILABLE,
+    -> true
+    AppLockUnavailableReason.NO_HARDWARE,
+    AppLockUnavailableReason.TEMPORARILY_UNAVAILABLE,
+    -> false
 }

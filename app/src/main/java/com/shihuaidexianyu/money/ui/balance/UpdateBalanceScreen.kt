@@ -138,6 +138,7 @@ fun UpdateBalanceScreen(
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
                     enabled = !state.isSaving,
+                    autoOpenKeypad = true,
                 )
                 if (state.actualBalanceEdited || state.deltaPreview != 0L || state.actualBalancePreview == null) {
                     MoneyTonalButton(
@@ -152,7 +153,11 @@ fun UpdateBalanceScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
+                    timeSubtitle = if (state.timeEdited) {
+                        null
+                    } else {
+                        stringResource(R.string.ledger_default_current_time)
+                    },
                     errorText = state.occurredAtError,
                 )
             }
@@ -277,7 +282,7 @@ fun UpdateBalanceScreen(
  * backwards).
  */
 @Composable
-private fun investmentDeltaText(delta: Long, systemBalance: Long): String {
+internal fun investmentDeltaText(delta: Long, systemBalance: Long): String {
     if (delta == 0L) return stringResource(R.string.balance_unchanged_hint)
     val base = stringResource(
         if (delta > 0L) R.string.history_investment_gain else R.string.history_investment_loss,

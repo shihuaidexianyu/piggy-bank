@@ -267,12 +267,33 @@ class EditAccountViewModelTest {
         assertTrue(!vm.uiState.value.isSaving)
     }
 
+    @Test
+    fun `reminder enable toggle persists immediately and keeps the form clean`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
+        val accountId = accountRepo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L))
+        val vm = buildViewModel(
+            accountId = accountId,
+            accountRepo = accountRepo,
+            reminderSettingsRepo = reminderSettingsRepo,
+        )
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.reminderConfig.isEnabled)
+        vm.setReminderEnabled(false)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.reminderConfig.isEnabled)
+        assertFalse(reminderSettingsRepo.getReminderConfig(accountId).isEnabled)
+        assertFalse(vm.uiState.value.isDirty)
+    }
+
     private fun buildViewModel(
         accountId: Long,
         accountRepo: AccountRepository = InMemoryAccountRepository(),
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
+        reminderSettingsRepo: InMemoryAccountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
     ): EditAccountViewModel {
-        val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
         val reminderRepo = InMemoryRecurringReminderRepository()
         val accountLifecycleCoordinator = AccountLifecycleCoordinator()
         val closeUseCase = CloseAccountUseCase(

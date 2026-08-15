@@ -233,17 +233,15 @@ fun SettingsScreen(
             }
 
             is SettingsDialog.ImportSuccess -> {
+                // The success dialog only acknowledges completion. Rollback stays on the
+                // import-history row, which has its own confirmation dialog.
                 MoneyConfirmDialog(
                     title = stringResource(R.string.settings_import_complete),
                     message = stringResource(R.string.settings_import_complete_message),
-                    onConfirm = {
-                        onRollbackImport(currentDialog.receiptId)
-                        dialog = null
-                    },
+                    onConfirm = { dialog = null },
                     onDismiss = { dialog = null },
-                    confirmLabel = stringResource(R.string.settings_rollback_import),
-                    dismissLabel = stringResource(R.string.action_done),
-                    destructive = true,
+                    confirmLabel = stringResource(R.string.action_done),
+                    showDismissAction = false,
                 )
             }
         }
@@ -482,7 +480,6 @@ fun SettingsScreen(
             MoneyListSection {
                 MoneyListRow(
                     title = stringResource(R.string.settings_backup_format),
-                    subtitle = stringResource(R.string.settings_plaintext_warning),
                     trailing = "JSON",
                     showChevron = false,
                 )

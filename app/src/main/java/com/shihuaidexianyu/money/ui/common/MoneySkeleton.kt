@@ -27,84 +27,96 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.shihuaidexianyu.money.R
 
 /**
  * Generic shimmer skeleton shown while async content loads. Uses MoneyCard-shaped blocks so the
- * loading state echoes the page layout instead of a bare spinner.
+ * loading state echoes the page layout instead of a bare spinner. The root announces a loading
+ * state to screen readers; the shimmer blocks carry no text, so nothing else is read aloud.
  */
 @Composable
-fun MoneySkeleton(modifier: Modifier = Modifier) = BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-    val base = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    val highlight = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1100, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "skeletonProgress",
-    )
-    // Sweep across the measured width, not a hardcoded pixel span — a fixed span leaves the right
-    // side of wider screens without any shimmer.
-    val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
-    val bandPx = widthPx * 0.35f
-    val bandStart = -bandPx + (widthPx + bandPx) * progress
-    val brush = Brush.linearGradient(
-        colors = listOf(base, highlight, base),
-        start = Offset(x = bandStart, y = 0f),
-        end = Offset(x = bandStart + bandPx, y = 0f),
-    )
-
-    Column(
-        modifier = Modifier
+fun MoneySkeleton(modifier: Modifier = Modifier) {
+    val loadingDescription = stringResource(R.string.loading_ellipsis)
+    BoxWithConstraints(
+        modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .semantics { stateDescription = loadingDescription },
     ) {
-        // Hero block.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .clip(MaterialTheme.shapes.large)
-                .background(brush),
+        val base = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        val highlight = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        val transition = rememberInfiniteTransition(label = "skeleton")
+        val progress by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1100, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "skeletonProgress",
         )
-        // Section rows.
-        repeat(3) {
-            Row(
+        // Sweep across the measured width, not a hardcoded pixel span — a fixed span leaves the right
+        // side of wider screens without any shimmer.
+        val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+        val bandPx = widthPx * 0.35f
+        val bandStart = -bandPx + (widthPx + bandPx) * progress
+        val brush = Brush.linearGradient(
+            colors = listOf(base, highlight, base),
+            start = Offset(x = bandStart, y = 0f),
+            end = Offset(x = bandStart + bandPx, y = 0f),
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // Hero block.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(brush)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Box(
+                    .height(120.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(brush),
+            )
+            // Section rows.
+            repeat(3) {
+                Row(
                     modifier = Modifier
-                        .width(38.dp)
-                        .height(38.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(brush)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
                     Box(
                         modifier = Modifier
-                            .width(120.dp)
-                            .height(14.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
+                            .width(38.dp)
+                            .height(38.dp)
+                            .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                     )
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(11.dp)
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(14.dp)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(11.dp)
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
+                        )
+                    }
                 }
             }
         }

@@ -12,6 +12,7 @@ import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.ui.record.RecordTransferViewModel
+import com.shihuaidexianyu.money.ui.record.TransferFormDraft
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlinx.coroutines.Dispatchers
@@ -93,5 +94,40 @@ class RecordTransferViewModelContinueTest {
         val transfers = ledger.queryAllActiveTransferRecords()
         assertEquals(2, transfers.size)
         assertNotEquals(transfers[0].operationId, transfers[1].operationId)
+    }
+
+    @Test
+    fun `time is marked edited only after the user picks a time`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
+        accounts.createAccount(Account(name = "银行卡", initialBalance = 0L, createdAt = 1L))
+        val ledger = InMemoryTransactionRepository()
+        val refresh = RefreshAccountActivityStateUseCase(accounts, ledger)
+        val handle = SavedStateHandle()
+        val vm = RecordTransferViewModel(
+            initialFromAccountId = null,
+            allowContinueRecording = true,
+            accountRepository = accounts,
+            transactionRepository = ledger,
+            calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(ledger),
+            createTransferRecordUseCase = CreateTransferRecordUseCase(
+                accounts,
+                ledger,
+                refresh,
+                testClockProvider,
+            ),
+            savedStateHandle = handle,
+            operationIdFactory = LedgerOperationIdFactory { testOperationId() },
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+        )
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.timeEdited)
+
+        vm.updateOccurredAt(1_000_042L) // 16m 42s → floor to 960_000
+
+        assertEquals(true, vm.uiState.value.timeEdited)
+        assertEquals(960_000L, vm.uiState.value.occurredAtMillis)
+        val draft = handle.get<TransferFormDraft>("record_transfer_draft")
+        assertEquals(true, draft?.timeEdited)
     }
 }

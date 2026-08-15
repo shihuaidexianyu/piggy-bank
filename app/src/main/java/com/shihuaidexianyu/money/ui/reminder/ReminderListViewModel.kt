@@ -28,10 +28,7 @@ import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.util.AmountFormatter
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.io.Serializable
-import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -47,11 +44,15 @@ data class ReminderUiModel(
     val name: String,
     val type: ReminderType,
     val amountFormatted: String,
-    val periodDescription: String,
+    // Structured period data; the list screen formats it via string resources.
+    val periodType: ReminderPeriodType,
+    val periodValue: Int,
+    val periodMonth: Int?,
     val nextDueFormatted: String,
     val isEnabled: Boolean,
     val isOverdue: Boolean,
     val accountId: Long,
+    val accountName: String = "",
     val direction: String,
     val amount: Long,
     val nextDueAt: Long,
@@ -129,6 +130,7 @@ class ReminderListViewModel(
                         .filter { it.isClosed }
                         .map { it.id }
                         .toSet(),
+                    accountNames = accounts.associate { it.id to it.name },
                 )
             }.collect { source ->
                 val reminders = source.reminders
@@ -143,6 +145,7 @@ class ReminderListViewModel(
                     zoneId = zoneIdProvider.zoneId(),
                     amountVisibility = visibility,
                     closedAccountIds = source.closedAccountIds,
+                    accountNames = source.accountNames,
                 )
                 _uiState.value = ReminderListUiState(
                     isLoading = false,
@@ -230,8 +233,6 @@ class ReminderListViewModel(
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.SIMPLIFIED_CHINESE)
-
 internal fun partitionReminderModels(
     reminders: List<RecurringReminder>,
     settings: PortableSettings,
@@ -239,6 +240,7 @@ internal fun partitionReminderModels(
     zoneId: ZoneId,
     amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
     closedAccountIds: Set<Long> = emptySet(),
+    accountNames: Map<Long, String> = emptyMap(),
 ): ReminderListProjection {
     val models = reminders
         .sortedWith(compareBy<RecurringReminder> { it.nextDueAt }.thenBy { it.id })
@@ -249,6 +251,7 @@ internal fun partitionReminderModels(
                 zoneId = zoneId,
                 amountVisibility = amountVisibility,
                 canMutate = reminder.accountId !in closedAccountIds,
+                accountName = accountNames[reminder.accountId].orEmpty(),
             )
         }
     return ReminderListProjection(
@@ -264,23 +267,21 @@ internal fun RecurringReminder.toUiModel(
     zoneId: ZoneId,
     amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
     canMutate: Boolean = true,
+    accountName: String = "",
 ): ReminderUiModel {
-    val periodDescription = when (ReminderPeriodType.fromValue(periodType)) {
-        ReminderPeriodType.MONTHLY -> "每月${periodValue}日"
-        ReminderPeriodType.YEARLY -> "每年${periodMonth ?: 1}月${periodValue}日"
-        ReminderPeriodType.CUSTOM_DAYS -> "每${periodValue}天"
-    }
-    val nextDue = Instant.ofEpochMilli(nextDueAt).atZone(zoneId)
     return ReminderUiModel(
         id = id,
         name = name,
         type = ReminderType.fromValue(type),
         amountFormatted = AmountFormatter.format(amount, settings, amountVisibility),
-        periodDescription = periodDescription,
-        nextDueFormatted = nextDue.format(dateFormatter),
+        periodType = ReminderPeriodType.fromValue(periodType),
+        periodValue = periodValue,
+        periodMonth = periodMonth,
+        nextDueFormatted = DateTimeTextFormatter.format(nextDueAt, zoneId),
         isEnabled = isEnabled,
         isOverdue = isEnabled && nextDueAt <= nowMillis,
         accountId = accountId,
+        accountName = accountName,
         direction = direction,
         amount = amount,
         nextDueAt = nextDueAt,
@@ -293,4 +294,5 @@ private data class ReminderListSource(
     val snapshot: HomeDashboardSnapshot,
     val devicePreferences: DevicePreferences,
     val closedAccountIds: Set<Long>,
+    val accountNames: Map<Long, String>,
 )

@@ -21,7 +21,11 @@ import com.shihuaidexianyu.money.ui.theme.MoneyTheme
 @Preview(name = "MoneyCard - dark", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun MoneyCardPreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT, amountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE) {
+    MoneyTheme(
+        themeMode = ThemeMode.DARK,
+        amountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
+        useDynamicColor = false,
+    ) {
         Box(modifier = Modifier.padding(16.dp)) {
             MoneyCard {
                 Text("账户余额", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
@@ -36,7 +40,7 @@ private fun MoneyCardPreview() {
 @Preview(name = "MoneyListRow - with subtitle & accessory", showBackground = true)
 @Composable
 private fun MoneyListRowPreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT) {
+    MoneyTheme(themeMode = ThemeMode.LIGHT, useDynamicColor = false) {
         Column(modifier = Modifier.padding(16.dp)) {
             MoneyListRow(
                 title = "招商银行",
@@ -71,7 +75,7 @@ private fun MoneyListRowPreview() {
 @Preview(name = "MoneyEmptyStateCard", showBackground = true)
 @Composable
 private fun MoneyEmptyStateCardPreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT) {
+    MoneyTheme(themeMode = ThemeMode.LIGHT, useDynamicColor = false) {
         Box(modifier = Modifier.padding(16.dp)) {
             MoneyEmptyStateCard(
                 title = "还没有账户",
@@ -84,7 +88,7 @@ private fun MoneyEmptyStateCardPreview() {
 @Preview(name = "MoneyStatusPill", showBackground = true)
 @Composable
 private fun MoneyStatusPillPreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT) {
+    MoneyTheme(themeMode = ThemeMode.LIGHT, useDynamicColor = false) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             MoneyStatusPill(text = "待核对 3 个", accent = androidx.compose.material3.MaterialTheme.colorScheme.secondary)
             MoneyStatusPill(text = "余额正常", accent = androidx.compose.material3.MaterialTheme.colorScheme.primary)
@@ -95,7 +99,7 @@ private fun MoneyStatusPillPreview() {
 @Preview(name = "MoneySectionHeader", showBackground = true)
 @Composable
 private fun MoneySectionHeaderPreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT) {
+    MoneyTheme(themeMode = ThemeMode.LIGHT, useDynamicColor = false) {
         Box(modifier = Modifier.padding(16.dp)) {
             MoneySectionHeader(title = "开放账户", trailing = "3 个")
         }
@@ -105,7 +109,7 @@ private fun MoneySectionHeaderPreview() {
 @Preview(name = "MoneyMetricTile", showBackground = true)
 @Composable
 private fun MoneyMetricTilePreview() {
-    MoneyTheme(themeMode = ThemeMode.LIGHT) {
+    MoneyTheme(themeMode = ThemeMode.LIGHT, useDynamicColor = false) {
         Box(modifier = Modifier.padding(16.dp)) {
             MoneyMetricTile(label = "本期收入", value = "¥ 8,000")
         }

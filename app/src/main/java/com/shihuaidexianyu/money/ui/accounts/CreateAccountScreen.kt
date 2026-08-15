@@ -59,6 +59,8 @@ fun CreateAccountScreen(
                     value = state.name,
                     onValueChange = viewModel::updateName,
                     label = stringResource(R.string.account_name),
+                    isError = state.nameError != null,
+                    supportingText = state.nameError,
                 )
                 MoneyAmountField(
                     value = state.amountText,
@@ -78,6 +80,7 @@ fun CreateAccountScreen(
                 )
                 AccountReminderFields(
                     reminderConfig = state.reminderConfig,
+                    onReminderEnabledChange = viewModel::updateReminderEnabled,
                     onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
                     onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
                     onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },

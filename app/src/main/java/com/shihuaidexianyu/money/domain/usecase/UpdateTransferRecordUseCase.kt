@@ -23,24 +23,24 @@ class UpdateTransferRecordUseCase(
         preserveNoteVerbatim: Boolean = false,
         expectedUpdatedAt: Long? = null,
     ) {
-        require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
-        require(amount > 0) { "金额必须大于 0" }
+        require(fromAccountId != toAccountId) { ValidationErrorText.SAME_TRANSFER_ACCOUNTS }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
         val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
+        require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.queryTransferRecordById(recordId)) {
-                "记录不存在或已删除"
+                "记录${ValidationErrorText.NOT_FOUND_SUFFIX}或已删除"
             }
             if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
                 throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
             }
-            val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
-            val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
+            val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+            val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             val existingFromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) {
-                "转出账户不存在"
+                "转出账户${ValidationErrorText.NOT_FOUND_SUFFIX}"
             }
             val existingToAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) {
-                "转入账户不存在"
+                "转入账户${ValidationErrorText.NOT_FOUND_SUFFIX}"
             }
             listOf(fromAccount, toAccount, existingFromAccount, existingToAccount).forEach {
                 it.requireOpenForMutation("修改转账记录")

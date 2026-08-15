@@ -16,7 +16,7 @@ class ResolveBalanceUpdateContextUseCase(
         occurredAt: Long,
         excludingRecordId: Long? = null,
     ): BalanceUpdateContext {
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         if (!LedgerBalanceCalculator.isOpenAt(account, occurredAt)) {
             return BalanceUpdateContext(systemBalanceBeforeUpdate = 0L)
         }

@@ -31,8 +31,8 @@ class CreateReminderUseCase(
         anchorDueAt: Long,
     ): Long {
         require(name.isNotBlank()) { "名称不能为空" }
-        require(amount > 0) { "金额必须大于 0" }
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("创建提醒")
         ReminderScheduleValidator.validate(periodType, periodValue, periodMonth)
         val now = clockProvider.nowMillis()

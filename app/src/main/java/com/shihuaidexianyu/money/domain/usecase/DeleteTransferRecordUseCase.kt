@@ -23,8 +23,8 @@ class DeleteTransferRecordUseCase(
         if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
             throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
         }
-        val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户不存在" }
-        val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户不存在" }
+        val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+        val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         fromAccount.requireOpenForMutation("删除转账记录")
         toAccount.requireOpenForMutation("删除转账记录")
         val affectedAccountIds = setOf(existing.fromAccountId, existing.toAccountId)

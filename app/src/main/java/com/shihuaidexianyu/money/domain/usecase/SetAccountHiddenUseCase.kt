@@ -9,7 +9,7 @@ class SetAccountHiddenUseCase(
 ) {
     suspend operator fun invoke(accountId: Long, hidden: Boolean) {
         transactionRunner.runInTransaction {
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("隐藏")
             if (account.isHidden != hidden) {
                 accountRepository.setHidden(accountId, hidden)

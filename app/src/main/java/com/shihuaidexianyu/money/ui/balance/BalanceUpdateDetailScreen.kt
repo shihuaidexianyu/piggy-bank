@@ -6,6 +6,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -63,13 +63,7 @@ fun BalanceUpdateDetailScreen(
 
     if (showDeleteConfirm) {
         MoneyConfirmDialog(
-            title = stringResource(
-                when {
-                    state.isInvestmentAccount && state.delta != 0L -> R.string.balance_undo_investment
-                    state.delta == 0L -> R.string.balance_undo_reconciliation
-                    else -> R.string.balance_undo_adjustment
-                },
-            ),
+            title = stringResource(balanceUpdateDeleteTitleRes(state.isInvestmentAccount, state.delta)),
             message = stringResource(R.string.balance_undo_message),
             onConfirm = {
                 showDeleteConfirm = false
@@ -138,15 +132,17 @@ fun BalanceUpdateDetailScreen(
                 ) {
                     Text(stringResource(R.string.action_edit_record))
                 }
-                MoneyTonalButton(
+                TextButton(
                     onClick = { showDeleteConfirm = true },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isLoading && !state.isDeleting,
                 ) {
                     Text(
-                        stringResource(
-                            if (state.isDeleting) R.string.action_deleting else R.string.action_delete_this_record,
+                        text = stringResource(
+                            if (state.isDeleting) R.string.action_deleting else R.string.balance_undo_update,
                         ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }
@@ -163,4 +159,17 @@ internal fun balanceUpdateDetailTitleRes(state: BalanceUpdateDetailUiState): Int
         R.string.balance_detail_reconciliation_title
     } else {
         R.string.balance_detail_adjustment_title
+    }
+
+/**
+ * Shared delete-confirmation title for a balance update record, so the detail and edit screens
+ * name the same record type identically. The decision uses the record's persisted delta: a
+ * non-zero delta on an investment account is a market value update, a zero delta is a plain
+ * reconciliation, anything else is a reconciliation adjustment.
+ */
+internal fun balanceUpdateDeleteTitleRes(isInvestmentAccount: Boolean, delta: Long): Int =
+    when {
+        isInvestmentAccount && delta != 0L -> R.string.balance_undo_investment
+        delta == 0L -> R.string.balance_undo_reconciliation
+        else -> R.string.balance_undo_adjustment
     }

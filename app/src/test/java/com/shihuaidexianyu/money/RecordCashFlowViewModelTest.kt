@@ -19,6 +19,7 @@ import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
+import com.shihuaidexianyu.money.ui.record.CashFlowFormDraft
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowEffect
 import com.shihuaidexianyu.money.ui.record.RecordCashFlowViewModel
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
@@ -297,6 +298,20 @@ class RecordCashFlowViewModelTest {
         assertEquals(960_000L, vm.uiState.value.occurredAtMillis)
     }
 
+    @Test
+    fun `time is marked edited only after the user picks a time`() = runTest(dispatcher) {
+        val handle = SavedStateHandle()
+        val vm = buildViewModel(savedStateHandle = handle)
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.timeEdited)
+
+        vm.updateOccurredAt(1_000_042L)
+
+        assertEquals(true, vm.uiState.value.timeEdited)
+        val draft = handle.get<CashFlowFormDraft>("record_cash_flow_draft")
+        assertEquals(true, draft?.timeEdited)
+    }
+
     private fun buildViewModel(
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository().also { repo ->
             kotlinx.coroutines.runBlocking { repo.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1L)) }
@@ -304,6 +319,7 @@ class RecordCashFlowViewModelTest {
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
         preferences: InMemoryDevicePreferencesRepository? = null,
         allowContinueRecording: Boolean = true,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ): RecordCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
         val calculateUseCase = CalculateAccountBalancesUseCase(txnRepo)
@@ -325,7 +341,7 @@ class RecordCashFlowViewModelTest {
             calculateAccountBalancesUseCase = calculateUseCase,
             createCashFlowRecordUseCase = createUseCase,
             processDueReminderUseCase = null,
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = savedStateHandle,
             operationIdFactory = LedgerOperationIdFactory { testOperationId() },
             devicePreferencesRepository = preferences,
         )

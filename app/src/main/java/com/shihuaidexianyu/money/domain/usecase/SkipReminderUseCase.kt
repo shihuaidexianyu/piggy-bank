@@ -19,11 +19,11 @@ class SkipReminderUseCase(
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
 ) {
     suspend operator fun invoke(reminderId: Long, expectedDueAt: Long): ReminderSkipUndoToken {
-        val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
+        val reminder = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         check(reminder.isEnabled && reminder.nextDueAt == expectedDueAt) { "提醒状态已变化" }
         val now = clockProvider.nowMillis()
         check(expectedDueAt <= now) { "提醒尚未到期" }
-        val account = requireNotNull(accountRepository.getAccountById(reminder.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(reminder.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("跳过提醒")
         val advancedDueAt = ReminderNextDueCalculator.calculateNextDue(
             currentDueAt = expectedDueAt,

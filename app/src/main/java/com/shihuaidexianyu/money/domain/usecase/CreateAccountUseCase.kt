@@ -28,9 +28,9 @@ class CreateAccountUseCase(
         createdAt: Long = TimeMath.floorToMinute(clockProvider.nowMillis()),
     ): Long {
         val normalizedName = name.trim()
-        require(normalizedName.isNotEmpty()) { "账户名称不能为空" }
+        require(normalizedName.isNotEmpty()) { ValidationErrorText.ACCOUNT_NAME_REQUIRED }
         require(normalizedName.length <= MAX_ACCOUNT_NAME_LENGTH) { "账户名称不能超过 ${MAX_ACCOUNT_NAME_LENGTH} 个字符" }
-        require(accountRepository.isOpenNameAvailable(normalizedName)) { "已存在同名账户" }
+        require(accountRepository.isOpenNameAvailable(normalizedName)) { ValidationErrorText.DUPLICATE_ACCOUNT_NAME }
 
         val accountId = accountRepository.createAccount(
             Account(

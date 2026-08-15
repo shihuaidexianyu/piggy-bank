@@ -54,13 +54,13 @@ class UpdateBalanceUseCase(
                         operationId = operationId,
                     ),
                 )
-                val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+                val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
                 return@runInTransaction existing.toResult(replay, account)
             }
 
             val now = clockProvider.nowMillis()
-            require(occurredAt <= now) { "时间不能晚于当前时间" }
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("核对余额")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
             val context = resolveBalanceUpdateContextUseCase(accountId, occurredAt)

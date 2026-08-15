@@ -11,7 +11,9 @@ import java.time.ZoneId
 import kotlin.test.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.*
 import org.junit.*
 
@@ -74,20 +76,29 @@ class ReminderListPendingSkipTest {
     }
 
     @Test
-    fun `closing account during reminder deletion is caught and leaves reminder intact`() = runTest(dispatcher) {
+    fun `closing account during reminder deletion is caught and leaves reminder intact`() = runBlocking {
+        // The list projection crosses flowOn(Dispatchers.Default) inside the dashboard use
+        // case, so pumping a virtual-time scheduler cannot see it. Await it in real time
+        // instead, mirroring HomeRecentRecordsViewModelTest.
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val fixture = Fixture()
         val viewModel = fixture.viewModel(SavedStateHandle())
-        advanceUntilIdle()
+        withTimeout(5_000L) { viewModel.uiState.first { !it.isLoading } }
 
         fixture.accounts.closeAccount(fixture.accountId, closedAt = 2L)
         viewModel.deleteReminder(fixture.reminderId)
-        advanceUntilIdle()
+        val projected = withTimeout(5_000L) {
+            viewModel.uiState.first { state ->
+                state.dueReminders.plus(state.upcomingReminders).plus(state.pausedReminders)
+                    .any { it.id == fixture.reminderId && !it.canMutate }
+            }
+        }
 
         assertNotNull(fixture.reminders.getReminderById(fixture.reminderId))
         val reminder = listOf(
-            viewModel.uiState.value.dueReminders,
-            viewModel.uiState.value.upcomingReminders,
-            viewModel.uiState.value.pausedReminders,
+            projected.dueReminders,
+            projected.upcomingReminders,
+            projected.pausedReminders,
         ).flatten().first { it.id == fixture.reminderId }
         assertFalse(reminder.canMutate)
     }

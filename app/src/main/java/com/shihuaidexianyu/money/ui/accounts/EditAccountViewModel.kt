@@ -204,6 +204,36 @@ class EditAccountViewModel(
         copy(reminderConfig = reminderConfig.copy(hour = hour, minute = minute))
     }
 
+    /**
+     * The enable switch persists immediately (like [setHidden]) instead of waiting for Save;
+     * the NotificationSyncing repository wrapper triggers a notification sync on its own.
+     * The baseline is kept in sync so an already-persisted toggle never reads as unsaved dirt.
+     */
+    fun setReminderEnabled(enabled: Boolean) {
+        val state = _uiState.value
+        if (state.isClosed || state.isSaving || state.reminderConfig.isEnabled == enabled) return
+        viewModelScope.launch {
+            runCatching { accountReminderSettingsRepository.setEnabled(accountId, enabled) }
+                .onSuccess {
+                    baseline = baseline?.let { base ->
+                        base.copy(reminderConfig = base.reminderConfig.copy(isEnabled = enabled))
+                    }
+                    val next = _uiState.value.copy(
+                        reminderConfig = _uiState.value.reminderConfig.copy(isEnabled = enabled),
+                    )
+                    _uiState.value = next.copy(isDirty = computeIsDirty(next))
+                }
+                .onFailure { error ->
+                    effects.emit(
+                        EditAccountEffect.ShowMessage(
+                            error.message.orEmpty(),
+                            messageRes = R.string.msg_save_failed,
+                        ),
+                    )
+                }
+        }
+    }
+
     private fun withDirty(transform: EditAccountUiState.() -> EditAccountUiState) {
         val next = _uiState.value.transform()
         _uiState.value = next.copy(isDirty = computeIsDirty(next))

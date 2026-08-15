@@ -27,12 +27,12 @@ class UpdateAccountUseCase(
     ) {
         accountLifecycleCoordinator.withLifecycleLock {
             transactionRunner.runInTransaction {
-                val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+                val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
                 account.requireOpenForMutation("修改账户")
                 val normalizedName = name.trim()
-                require(normalizedName.isNotEmpty()) { "账户名称不能为空" }
+                require(normalizedName.isNotEmpty()) { ValidationErrorText.ACCOUNT_NAME_REQUIRED }
                 require(normalizedName.length <= MAX_ACCOUNT_NAME_LENGTH) { "账户名称不能超过 ${MAX_ACCOUNT_NAME_LENGTH} 个字符" }
-                require(accountRepository.isOpenNameAvailable(normalizedName, excludeId = accountId)) { "已存在同名账户" }
+                require(accountRepository.isOpenNameAvailable(normalizedName, excludeId = accountId)) { ValidationErrorText.DUPLICATE_ACCOUNT_NAME }
 
                 accountRepository.updateAccount(
                     account.copy(

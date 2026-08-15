@@ -1,7 +1,9 @@
 package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -123,11 +125,25 @@ fun CreateReminderScreen(
                 )
                 MoneyPickerField(
                     label = stringResource(R.string.field_direction),
-                    value = state.direction.displayName,
+                    value = stringResource(
+                        if (state.direction == CashFlowDirection.INFLOW) {
+                            R.string.ledger_income
+                        } else {
+                            R.string.ledger_expense
+                        },
+                    ),
                     dialogTitle = stringResource(R.string.cash_flow_direction_dialog),
                     options = CashFlowDirection.entries.toList(),
                     selected = state.direction,
-                    optionLabel = { it.displayName },
+                    optionLabel = {
+                        stringResource(
+                            if (it == CashFlowDirection.INFLOW) {
+                                R.string.ledger_income
+                            } else {
+                                R.string.ledger_expense
+                            },
+                        )
+                    },
                     onSelect = viewModel::updateDirection,
                 )
             }
@@ -152,6 +168,17 @@ fun CreateReminderScreen(
                     optionLabel = { it.displayName },
                     onSelect = viewModel::updatePeriodType,
                 )
+                reminderPeriodHint(
+                    periodType = state.periodType,
+                    anchorDateText = state.anchorDateText,
+                    periodCustomDays = state.periodCustomDays,
+                )?.let { hint ->
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 when (state.periodType) {
                     ReminderPeriodType.MONTHLY,
                     ReminderPeriodType.YEARLY,

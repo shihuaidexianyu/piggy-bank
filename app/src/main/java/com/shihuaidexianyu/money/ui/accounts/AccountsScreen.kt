@@ -90,6 +90,7 @@ fun AccountsScreen(
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
+    val loadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
     val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
         .mapNotNull { account -> account.balance.takeIf { it > 0L } }
         .sum()
@@ -135,7 +136,7 @@ fun AccountsScreen(
             contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val asyncContent = state.toAsyncContent()
+            val asyncContent = state.toAsyncContent(loadErrorMessage)
             if (asyncContent is AsyncContent.Loading || asyncContent is AsyncContent.Error) {
                 item {
                     AsyncContentRenderer(
@@ -168,10 +169,8 @@ fun AccountsScreen(
                             ),
                             icon = Icons.Rounded.AccountBalanceWallet,
                     ) {
-                        if (!hasClosedAccounts) {
-                            MoneyTonalButton(onClick = onCreateAccount) {
-                                Text(stringResource(R.string.accounts_create_first))
-                            }
+                        MoneyTonalButton(onClick = onCreateAccount) {
+                            Text(stringResource(R.string.accounts_create_first))
                         }
                     }
                 }
@@ -212,15 +211,14 @@ fun AccountsScreen(
                                         }
                                         Text(
                                             text = if (staleCount > 0) {
-                                                pluralStringResource(
-                                                    R.plurals.stale_account_count,
-                                                    staleCount,
+                                                stringResource(
+                                                    R.string.accounts_group_total_stale_format,
+                                                    accounts.size,
                                                     staleCount,
                                                 )
                                             } else {
-                                                pluralStringResource(
-                                                    R.plurals.account_count,
-                                                    accounts.size,
+                                                stringResource(
+                                                    R.string.accounts_group_total_format,
                                                     accounts.size,
                                                 )
                                             },

@@ -38,6 +38,24 @@ class AccountReminderConfigRepositoryTest {
     }
 
     @Test
+    fun `setEnabled preserves the schedule and creates a default config for unknown accounts`() = runBlocking {
+        val repository = InMemoryAccountReminderSettingsRepository()
+        val schedule = BalanceUpdateReminderConfig(
+            period = BalanceUpdateReminderPeriod.MONTHLY,
+            monthDay = 20,
+            hour = 21,
+            minute = 30,
+        )
+        repository.updateReminderConfig(5L, schedule)
+
+        repository.setEnabled(5L, false)
+        assertEquals(schedule.copy(isEnabled = false), repository.getReminderConfig(5L))
+
+        repository.setEnabled(9L, false)
+        assertEquals(BalanceUpdateReminderConfig(isEnabled = false), repository.getReminderConfig(9L))
+    }
+
+    @Test
     fun `schedule update preserves dedupe boundary and portable replacement resets it`() = runBlocking {
         val repository = InMemoryAccountReminderSettingsRepository()
         repository.updateReminderConfig(3L, BalanceUpdateReminderConfig())

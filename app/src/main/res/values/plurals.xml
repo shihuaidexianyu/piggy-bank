@@ -11,6 +11,9 @@
     <plurals name="history_loaded_count">
         <item quantity="other">已载入 %d 条</item>
     </plurals>
+    <plurals name="history_matched_count">
+        <item quantity="other">共命中 %d 条</item>
+    </plurals>
     <plurals name="reminder_count">
         <item quantity="other">%d 条</item>
     </plurals>

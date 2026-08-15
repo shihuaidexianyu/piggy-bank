@@ -24,7 +24,7 @@ class DeleteBalanceAdjustmentUseCase(
         if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
             throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_ADJUSTMENT, recordId)
         }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("删除余额调整")
         val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.softDeleteBalanceAdjustmentRecord(

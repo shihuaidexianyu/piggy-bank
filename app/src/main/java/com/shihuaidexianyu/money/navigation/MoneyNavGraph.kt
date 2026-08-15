@@ -19,9 +19,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FactCheck
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -66,6 +67,7 @@ import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -447,6 +449,8 @@ private fun LedgerActionDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {
+        // Icon direction semantics mirror RecordKindBadge: income trends up, expense down.
+        val moneyColors = LocalMoneyColors.current
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -470,13 +474,15 @@ private fun LedgerActionDialog(
             ) {
                 LedgerActionButton(
                     label = stringResource(R.string.ledger_income),
-                    icon = Icons.Rounded.ArrowDownward,
+                    icon = Icons.AutoMirrored.Rounded.TrendingUp,
+                    accent = moneyColors.income,
                     onClick = { onAction(LedgerFabAction.INCOME) },
                     modifier = Modifier.weight(1f),
                 )
                 LedgerActionButton(
                     label = stringResource(R.string.ledger_expense),
-                    icon = Icons.Rounded.ArrowUpward,
+                    icon = Icons.AutoMirrored.Rounded.TrendingDown,
+                    accent = moneyColors.expense,
                     onClick = { onAction(LedgerFabAction.EXPENSE) },
                     modifier = Modifier.weight(1f),
                 )
@@ -488,12 +494,14 @@ private fun LedgerActionDialog(
                 LedgerActionButton(
                     label = stringResource(R.string.history_transfer),
                     icon = Icons.Rounded.SwapHoriz,
+                    accent = moneyColors.transfer,
                     onClick = { onAction(LedgerFabAction.TRANSFER) },
                     modifier = Modifier.weight(1f),
                 )
                 LedgerActionButton(
                     label = stringResource(R.string.ledger_reconcile),
                     icon = Icons.AutoMirrored.Rounded.FactCheck,
+                    accent = MaterialTheme.colorScheme.primary,
                     onClick = { onAction(LedgerFabAction.RECONCILE) },
                     modifier = Modifier.weight(1f),
                 )
@@ -506,6 +514,7 @@ private fun LedgerActionDialog(
 private fun LedgerActionButton(
     label: String,
     icon: ImageVector,
+    accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -519,8 +528,8 @@ private fun LedgerActionButton(
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(icon, contentDescription = null)
-            Text(label, style = MaterialTheme.typography.titleMedium)
+            Icon(icon, contentDescription = null, tint = accent)
+            Text(label, style = MaterialTheme.typography.titleMedium, color = accent)
         }
     }
 }

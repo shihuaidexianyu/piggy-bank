@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -58,6 +59,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
@@ -71,6 +74,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
+import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -130,6 +134,7 @@ fun HomeScreen(
         }
     }
 
+    var showCloseBudgetConfirm by remember { mutableStateOf(false) }
     if (state.showMonthlyBudgetEditor) {
         MonthlyBudgetEditorDialog(
             input = state.monthlyBudgetInput,
@@ -143,8 +148,19 @@ fun HomeScreen(
             } else {
                 onSaveMonthlyBudget
             },
-            onCloseBudget = onCloseMonthlyBudget,
+            onCloseBudget = { showCloseBudgetConfirm = true },
             onDismiss = onDismissMonthlyBudgetEditor,
+        )
+    }
+    if (showCloseBudgetConfirm) {
+        MoneyConfirmDialog(
+            title = stringResource(R.string.home_close_monthly_budget),
+            message = stringResource(R.string.home_close_monthly_budget_confirm_message),
+            onConfirm = {
+                showCloseBudgetConfirm = false
+                onCloseMonthlyBudget()
+            },
+            onDismiss = { showCloseBudgetConfirm = false },
         )
     }
     Column(modifier = modifier) {
@@ -152,7 +168,9 @@ fun HomeScreen(
             title = { Text(stringResource(R.string.home_title)) },
             actions = {
                 HomeHeaderActions(
-                    dueCount = state.dueReminders.size + state.staleAccountCount,
+                    // The badge counts due reminders only; stale accounts live in their own
+                    // section below and are not "things to act on from the bell".
+                    dueCount = state.dueReminders.size,
                     onOpenSettings = onOpenSettings,
                     onOpenReminders = onAllRemindersClick,
                 )
@@ -343,7 +361,7 @@ private fun ReminderHeaderButton(
         BadgedBox(
             badge = {
                 if (dueCount > 0) {
-                    Badge(containerColor = MaterialTheme.colorScheme.error)
+                    Badge { Text(text = dueCount.toString()) }
                 }
             },
         ) {
@@ -860,11 +878,20 @@ private fun MonthlyBudgetBlock(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    // Headline is what was spent — the number a budget watcher checks daily;
+                    // the target and used share move to the subtitle.
                     Text(
-                        text = formatInAppAmount(budget.targetAmount, settings),
+                        text = formatInAppAmount(budget.spentAmount, settings),
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    Text(budget.percentageText, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = stringResource(
+                            R.string.home_budget_spent_summary_format,
+                            formatInAppAmount(budget.targetAmount, settings),
+                            budget.percentageText,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 LinearProgressIndicator(
                     progress = { budget.progressFraction },
@@ -954,13 +981,24 @@ private fun HomeReminderSection(
     reminders: List<DueReminderUiModel>,
     onOpenReminders: () -> Unit,
 ) {
+    val todayLabel = stringResource(R.string.history_today)
+    val tomorrowLabel = stringResource(R.string.home_tomorrow)
+    val nowMillis = System.currentTimeMillis()
     MoneySectionHeader(title = stringResource(R.string.home_due_reminders))
     MoneyListSection {
         reminders.forEachIndexed { index, reminder ->
             MoneyListRow(
                 title = reminder.name,
-                subtitle = reminder.amountFormatted,
-                showChevron = false,
+                subtitle = stringResource(
+                    R.string.home_due_reminder_subtitle_format,
+                    DateTimeTextFormatter.formatRelativeDayTime(
+                        timeMillis = reminder.dueAt,
+                        nowMillis = nowMillis,
+                        todayLabel = todayLabel,
+                        tomorrowLabel = tomorrowLabel,
+                    ),
+                    reminder.accountName,
+                ),
                 onClick = onOpenReminders,
             )
             if (index != reminders.lastIndex) {
@@ -984,7 +1022,6 @@ private fun HomeStaleAccountSection(
                 title = account.name,
                 subtitle = formatInAppAmount(account.currentBalance, settings) +
                     " · " + staleAccountCheckedText(account.lastBalanceUpdateAt),
-                showChevron = false,
                 onClick = { onReconcile(account.accountId) },
             )
             if (index != accounts.lastIndex) {
@@ -1042,6 +1079,19 @@ private fun HomeSavingsGoalBlock(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = if (presentation.remainingAmount <= 0L) {
+                        stringResource(R.string.home_savings_goal_achieved)
+                    } else {
+                        stringResource(
+                            R.string.home_savings_goal_progress_format,
+                            formatInAppAmount(progress.currentAmount, settings),
+                            formatInAppAmount(presentation.remainingAmount, settings),
+                        )
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             LinearProgressIndicator(
                 progress = { presentation.geometryPercent / 100f },
@@ -1114,12 +1164,14 @@ private fun HomeRecentRecordRow(
                     text = record.title,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "$kindLabel · ${record.subtitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
@@ -1163,7 +1215,7 @@ private fun recentRecordTimeLabel(occurredAt: Long): String {
     return if (DateTimeTextFormatter.formatDateOnly(occurredAt) == DateTimeTextFormatter.formatDateOnly(now)) {
         DateTimeTextFormatter.formatTimeOnly(occurredAt)
     } else {
-        DateTimeTextFormatter.formatDateOnly(occurredAt)
+        DateTimeTextFormatter.formatDayInYear(occurredAt, now)
     }
 }
 
@@ -1199,6 +1251,7 @@ private fun MonthlyBudgetEditorDialog(
                     supportingText = {
                         (inputErrorRes ?: saveErrorRes)?.let { Text(stringResource(it)) }
                     },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
                 if (hasBudget) {
@@ -1210,7 +1263,7 @@ private fun MonthlyBudgetEditorDialog(
         },
         confirmButton = {
             Button(onClick = onSave, enabled = !isSaving) {
-                Text(stringResource(if (saveErrorRes != null) R.string.action_retry else R.string.action_save))
+                Text(stringResource(if (saveErrorRes != null) R.string.action_retry else R.string.action_confirm))
             }
         },
         dismissButton = {

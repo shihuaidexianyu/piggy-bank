@@ -78,7 +78,10 @@ class BatchReconcileViewModel(
     private val clockProvider: ClockProvider,
 ) : ViewModel() {
     private var draft = savedStateHandle.get<BatchReconcileDraft>(DRAFT_KEY)
-        ?: BatchReconcileDraft()
+        // Pre-fill the confirmation timestamp so the page shows (and can edit) it before saving.
+        ?: BatchReconcileDraft(
+            occurredAtMillis = DateTimeTextFormatter.floorToMinute(clockProvider.nowMillis()),
+        ).also { savedStateHandle[DRAFT_KEY] = it }
     private val _uiState = MutableStateFlow(
         BatchReconcileUiState(
             pendingTerminal = savedStateHandle[PENDING_FORM_TERMINAL_KEY],
@@ -171,6 +174,15 @@ class BatchReconcileViewModel(
                 isDirty = true,
             ),
         )
+    }
+
+    fun updateConfirmTime(value: Long) {
+        if (_uiState.value.isSaving) return
+        val occurredAt = DateTimeTextFormatter.floorToMinute(value)
+        // Dirtiness intentionally untouched: it tracks the selection set, and flipping it here
+        // would make buildItems read the empty selectedAccountIds as "user deselected all".
+        persistDraft(draft.copy(occurredAtMillis = occurredAt))
+        _uiState.value = _uiState.value.copy(confirmTimeMillis = occurredAt)
     }
 
     fun saveSelected() {

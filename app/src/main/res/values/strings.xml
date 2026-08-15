@@ -60,18 +60,24 @@
     <string name="home_set_monthly_budget">设置月预算</string>
     <string name="home_edit_monthly_budget">修改月预算</string>
     <string name="home_close_monthly_budget">关闭月预算</string>
+    <string name="home_close_monthly_budget_confirm_message">关闭后首页不再展示本月预算进度，历史记录不受影响。</string>
     <string name="home_budget_over_format">超支 %1$s · %2$s</string>
+    <string name="home_budget_spent_summary_format">目标 %1$s · 已用 %2$s</string>
     <string name="home_budget_pace_format">剩余 %1$d 天 · 日均 %2$s</string>
     <string name="home_budget_last_day">最后一天 · 日均 %1$s</string>
     <string name="home_budget_projected_overspend_format">按此速度将超支 %1$s</string>
     <string name="home_budget_projected_surplus_format">按此速度可结余 %1$s</string>
     <string name="home_budget_safe_daily_format">剩余每天可用 %1$s</string>
     <string name="home_due_reminders">待处理提醒</string>
+    <string name="home_due_reminder_subtitle_format">%1$s · %2$s</string>
+    <string name="home_tomorrow">明天</string>
     <string name="home_stale_accounts">待核对账户</string>
     <string name="home_monthly_budget_field">每月支出预算</string>
     <string name="home_savings_goal">储蓄目标</string>
+    <string name="home_savings_goal_progress_format">当前净资产 %1$s · 还差 %2$s</string>
+    <string name="home_savings_goal_achieved">已达成目标</string>
     <string name="home_recent_records">最近记录</string>
-    <string name="home_view_all">全部</string>
+    <string name="home_view_all">查看全部</string>
     <string name="action_retry">重试</string>
     <string name="async_empty">暂无数据</string>
 
@@ -132,7 +138,7 @@
     <string name="form_discard_action">放弃</string>
     <string name="form_continue_editing">继续编辑</string>
     <string name="biometric_unlock_title">解锁小金库</string>
-    <string name="biometric_unlock_subtitle">验证生物识别以查看你的账本</string>
+    <string name="biometric_unlock_subtitle">验证身份以查看你的账本</string>
 
     <!-- Accounts -->
     <string name="accounts_title">账户</string>
@@ -140,6 +146,7 @@
     <string name="accounts_create">新建账户</string>
     <string name="accounts_management">管理</string>
     <string name="accounts_order">账户顺序</string>
+    <string name="accounts_reorder_drag_hint">拖拽调整顺序</string>
     <string name="settings_account_order_description">调整账户页和记账选择器中的账户顺序</string>
     <string name="accounts_no_open">还没有开放账户</string>
     <string name="accounts_none">还没有账户</string>
@@ -149,7 +156,9 @@
     <string name="accounts_show_closed">查看已关闭</string>
     <string name="accounts_create_first">创建第一个账户</string>
     <string name="accounts_normal">正常账户</string>
-    <string name="accounts_share_of_total">占总资产 %1$s</string>
+    <string name="accounts_share_of_total">占正资产 %1$s</string>
+    <string name="accounts_group_total_format">共 %1$d 个</string>
+    <string name="accounts_group_total_stale_format">共 %1$d 个 · 待核对 %2$d</string>
     <string name="accounts_hidden">隐藏账户</string>
     <string name="accounts_closed">已关闭账户</string>
     <string name="action_collapse">收起</string>
@@ -197,6 +206,7 @@
     <string name="history_last_seven_days">最近 7 天</string>
     <string name="history_this_month">本月</string>
     <string name="action_clear">清除</string>
+    <string name="history_clear_filters">清除筛选</string>
     <string name="history_start_date">开始日期</string>
     <string name="history_end_date">结束日期</string>
     <string name="history_unlimited">不限</string>
@@ -263,11 +273,10 @@
     <string name="settings_confirm_import">确认导入</string>
     <string name="settings_relock_title">离开后重新锁定</string>
     <string name="settings_import_complete">导入完成</string>
-    <string name="settings_import_complete_message">已保存导入前安全快照。若结果不符合预期，可立即撤销本次导入。</string>
-    <string name="settings_rollback_import">撤销本次导入</string>
+    <string name="settings_import_complete_message">已保存导入前安全快照。若结果不符合预期，如需撤销本次导入，可在导入记录中操作。</string>
     <string name="settings_mask_in_app">应用内隐藏金额</string>
     <string name="settings_biometric_lock">生物识别锁定</string>
-    <string name="settings_biometric_description">启动应用时需指纹或面容解锁</string>
+    <string name="settings_biometric_description">启动应用时需验证生物识别或屏幕锁定方式</string>
     <string name="settings_relock_time">重新锁定时间</string>
     <string name="settings_relock_description">使用单调计时，熄屏会立即锁定</string>
     <string name="settings_hide_recents">隐藏最近任务内容</string>
@@ -346,6 +355,7 @@
     <string name="account_swipe_reconcile">核对</string>
     <string name="account_detail_reconcile_description">按当前账面余额开始核对</string>
     <string name="account_detail_month_cash">本月收支</string>
+    <string name="account_detail_month_investment_pnl">本月投资损益</string>
     <string name="account_detail_recent_records">最近记录</string>
     <string name="account_detail_kind_reconciliation">对账</string>
     <string name="account_detail_kind_adjustment">调整</string>
@@ -359,7 +369,7 @@
     <string name="reminder_delete_message">确定要删除提醒「%1$s」吗？</string>
     <string name="reminder_delete_failed">提醒删除失败，请稍后重试</string>
     <string name="reminder_skipped">已跳过本期</string>
-    <string name="reminder_empty">暂无待处理提醒</string>
+    <string name="reminder_empty">暂无提醒</string>
     <string name="reminder_empty_description">余额核对和定期提醒都会显示在这里。</string>
     <string name="reminder_balance_due">余额待核对</string>
     <string name="reminder_due">已到期</string>
@@ -370,8 +380,10 @@
     <string name="reminder_go_reconcile">去核对</string>
     <string name="reminder_type_manual">手动缴费</string>
     <string name="reminder_type_subscription">自动扣费</string>
-    <string name="reminder_amount_period_format">%1$s · %2$s</string>
     <string name="reminder_next_due_format">下次：%1$s</string>
+    <string name="reminder_period_monthly_description">每月 %1$d 日</string>
+    <string name="reminder_period_yearly_description">每年 %1$d 月 %2$d 日</string>
+    <string name="reminder_period_custom_days_description">每 %1$d 天</string>
     <string name="reminder_record">记账</string>
     <string name="reminder_skip_period">跳过本期</string>
     <string name="notification_enable_title">开启提醒通知</string>
@@ -414,6 +426,7 @@
     <string name="account_reminder_month_day">每月几号</string>
     <string name="account_reminder_time">提醒时间</string>
     <string name="account_reminder_description">到了提醒时间后未核对会标记为待核对</string>
+    <string name="account_reminder_enabled">余额核对提醒</string>
     <string name="account_month_day_format">%1$d日</string>
     <string name="account_name">账户名称</string>
     <string name="account_create_title">新建账户</string>
@@ -423,6 +436,7 @@
     <string name="account_hide">隐藏账户</string>
     <string name="account_hide_description">仍计入净资产，可在选择器中展开使用</string>
     <string name="account_hidden_done">账户已隐藏，仍计入净资产</string>
+    <string name="account_unhidden_done">已取消隐藏</string>
     <string name="account_closed_readonly_description">这个账户已关闭，仅保留历史记录和余额查看。</string>
     <string name="account_close_section">关闭</string>
     <string name="account_close_title">关闭账户</string>
@@ -468,6 +482,8 @@
     <string name="cash_flow_edit_balance_warning">此修改会影响当前余额</string>
     <string name="cash_flow_edit_title">编辑收支记录</string>
     <string name="cash_flow_edit_direction_format">编辑%1$s</string>
+    <string name="ledger_record_income_title">记收入</string>
+    <string name="ledger_record_expense_title">记支出</string>
 
     <!-- Balance reconciliation -->
     <string name="balance_reconcile_title">核对余额</string>
@@ -493,14 +509,12 @@
     <string name="balance_edit_title">修改对账记录</string>
     <string name="balance_edit_warning">这次修改会影响当前余额</string>
     <string name="balance_edit_time_description">修改本次更新的发生时间</string>
-    <string name="balance_undo_title">删除对账记录</string>
     <string name="balance_undo_message">删除后会重新计算该账户当前余额，确认继续？</string>
     <string name="balance_confirm_undo">确认删除</string>
     <string name="balance_undo_update">删除这次更新</string>
     <string name="loading_ellipsis">加载中…</string>
     <string name="action_edit_record">修改记录</string>
     <string name="action_deleting">删除中…</string>
-    <string name="action_delete_this_record">删除这次记录</string>
     <string name="field_occurred_time">时间</string>
     <string name="balance_before_reconciliation">对账前账面余额</string>
     <string name="balance_confirmed">本次确认余额</string>
@@ -512,6 +526,9 @@
     <string name="balance_detail_investment_title">市值更新详情</string>
     <string name="balance_edit_investment_title">修改市值更新</string>
     <string name="balance_undo_investment">删除市值更新</string>
+    <string name="balance_adjustment_delete_action">删除这次调整</string>
+    <string name="batch_confirm_date">确认日期</string>
+    <string name="batch_confirm_time">确认时间</string>
 
     <!-- Reminder forms -->
     <string name="reminder_create_title">新建提醒</string>
@@ -528,9 +545,10 @@
     <string name="reminder_interval_days">间隔天数</string>
     <string name="reminder_first_date">首次日期</string>
     <string name="reminder_first_time">首次时间</string>
+    <string name="reminder_period_monthly_hint">每月 %1$d 日提醒，遇小月取月末</string>
+    <string name="reminder_period_yearly_hint">每年 %1$d 月 %2$d 日提醒</string>
+    <string name="reminder_period_custom_days_hint">每 %1$d 天提醒</string>
     <string name="field_enabled">启用</string>
-    <string name="answer_yes">是</string>
-    <string name="answer_no">否</string>
 
     <!-- Secondary screens -->
     <string name="accounts_reorder_empty_description">创建账户后才能调整顺序。</string>
@@ -560,23 +578,27 @@
     <string name="share_preview_title">分享内容预览</string>
     <string name="share_uncertain">解析结果需要确认</string>
     <string name="share_confirm_parsed">已解析分享内容，请确认后保存</string>
-    <string name="share_multiple_amounts">检测到多个可能金额，请手动填写正确金额</string>
+    <string name="share_multiple_amounts">检测到多个可能金额，请点选或手动填写正确金额</string>
     <string name="share_no_open_account">没有可记账的开放账户</string>
     <string name="share_create_account">创建账户</string>
     <string name="share_note_label">备注（可选，最多 200 字）</string>
     <string name="share_time_description">可修改分享记录时间</string>
     <string name="share_confirm_save">确认并保存</string>
+    <string name="share_original_text_title">分享原文</string>
+    <string name="share_save_failed_retry">保存失败，请重试</string>
     <string name="lock_checking">正在检查应用锁…</string>
     <string name="lock_locked">账本已锁定</string>
     <string name="lock_authenticate">验证身份</string>
     <string name="lock_authenticating">正在验证身份…</string>
     <string name="lock_open_security_settings">打开系统安全设置</string>
-    <string name="lock_no_hardware">设备不支持当前身份验证方式，账本保持锁定</string>
-    <string name="lock_not_enrolled">请先在系统设置中录入屏幕锁或生物识别</string>
-    <string name="lock_temporarily_unavailable">身份验证暂时不可用，账本保持锁定</string>
+    <string name="lock_no_hardware">设备没有可用的安全硬件，无法验证身份，账本保持锁定。建议关闭应用锁功能</string>
+    <string name="lock_not_enrolled">请先在系统设置中设置屏幕锁定方式或录入生物识别</string>
+    <string name="lock_temporarily_unavailable">身份验证暂时不可用，账本保持锁定，请稍后重试</string>
     <string name="lock_preferences_unavailable">无法读取应用锁设置，账本保持锁定</string>
     <string name="lock_enable_failed">未完成身份验证，生物识别锁未开启</string>
     <string name="lock_enable_persist_failed">生物识别锁开启失败，请重试</string>
+    <string name="lock_error_lockout">已暂时锁定，请稍后再试</string>
+    <string name="lock_error_no_device_credential">未设置屏幕锁定方式，请先在系统设置中设置</string>
     <string name="batch_reconcile_title">账户核对</string>
     <string name="batch_reconcile_empty">暂无待核对账户</string>
     <string name="batch_reconcile_empty_description">所有账户余额都已在提醒周期内确认。</string>
@@ -588,7 +610,6 @@
     <string name="batch_reconcile_never">尚未核对</string>
     <string name="batch_select_all">全选</string>
     <string name="batch_deselect_all">全不选</string>
-    <string name="batch_confirm_time_format">确认时间 %1$s</string>
     <string name="batch_system_balance">系统余额</string>
     <string name="batch_reconcile_hint">批量核对仅确认余额无变化；如需更新实际余额，请进入单个账户核对。</string>
     <string name="account_picker_collapse_hidden">收起隐藏账户</string>

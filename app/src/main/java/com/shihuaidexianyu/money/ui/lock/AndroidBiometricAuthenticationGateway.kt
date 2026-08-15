@@ -78,8 +78,10 @@ class AndroidBiometricAuthenticationGateway : BiometricAuthenticationGateway {
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle(activity.getString(R.string.biometric_unlock_title))
                 .setSubtitle(activity.getString(R.string.biometric_unlock_subtitle))
+                // DEVICE_CREDENTIAL is part of the fallback policy; combining it with a
+                // negative button throws IllegalArgumentException, so none is set. User
+                // cancellation still arrives as ERROR_USER_CANCELED / ERROR_CANCELED.
                 .setAllowedAuthenticators(biometricAuthenticators())
-                .setNegativeButtonText(activity.getString(R.string.action_cancel))
                 .build(),
         )
     }
@@ -90,7 +92,9 @@ class AndroidBiometricAuthenticationGateway : BiometricAuthenticationGateway {
     }
 }
 
-fun biometricAuthenticators(): Int = BiometricManager.Authenticators.BIOMETRIC_WEAK
+fun biometricAuthenticators(): Int =
+    BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
 
 fun mapBiometricNonTerminalFailure(): BiometricAuthenticationResult? = null
 
@@ -107,5 +111,12 @@ fun mapBiometricError(errorCode: Int, message: String): BiometricAuthenticationR
         BiometricPrompt.ERROR_USER_CANCELED,
         BiometricPrompt.ERROR_NEGATIVE_BUTTON,
         -> BiometricAuthenticationResult.Cancelled
+        BiometricPrompt.ERROR_LOCKOUT,
+        BiometricPrompt.ERROR_LOCKOUT_PERMANENT,
+        -> BiometricAuthenticationResult.Error(message, BiometricErrorKind.LOCKOUT)
+        BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL -> BiometricAuthenticationResult.Error(
+            message,
+            BiometricErrorKind.NO_DEVICE_CREDENTIAL,
+        )
         else -> BiometricAuthenticationResult.Error(message)
     }

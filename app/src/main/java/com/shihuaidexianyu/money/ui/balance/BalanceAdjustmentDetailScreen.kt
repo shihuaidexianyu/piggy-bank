@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -27,7 +27,8 @@ import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
-import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
 @Composable
@@ -96,9 +97,15 @@ fun BalanceAdjustmentDetailScreen(
                         label = stringResource(R.string.field_occurred_time),
                         value = DateTimeTextFormatter.format(state.occurredAt),
                     )
+                    val moneyColors = LocalMoneyColors.current
                     MoneyInlineLabelValue(
                         label = stringResource(R.string.balance_adjustment_delta),
-                        value = formatInAppAmount(state.delta, settings),
+                        value = signedFormatInAppAmount(state.delta, settings),
+                        valueColor = when {
+                            state.delta > 0L -> moneyColors.income
+                            state.delta < 0L -> moneyColors.expense
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
             }
@@ -106,15 +113,17 @@ fun BalanceAdjustmentDetailScreen(
         if (!state.isLoading) {
             item {
                 MoneyCard {
-                    MoneyTonalButton(
+                    TextButton(
                         onClick = { showDeleteConfirm = true },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !state.isDeleting,
                     ) {
                         Text(
-                            stringResource(
-                                if (state.isDeleting) R.string.action_deleting else R.string.action_delete_this_record,
+                            text = stringResource(
+                                if (state.isDeleting) R.string.action_deleting else R.string.balance_adjustment_delete_action,
                             ),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }

@@ -60,6 +60,14 @@ fun BalanceUpdateResultScreen(
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                 )
+                if (result.isInvestmentAccount && result.delta != 0L) {
+                    // Same gain/loss + percentage copy as the reconcile form's verdict card.
+                    Text(
+                        text = investmentDeltaText(result.delta, result.systemBalanceBeforeUpdate),
+                        color = if (result.delta > 0L) moneyColors.income else moneyColors.expense,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
                 Text(
                     when {
                         result.delta == 0L -> stringResource(R.string.balance_result_reconciliation_saved)

@@ -331,7 +331,7 @@ class ValidateBackupSnapshotUseCase(
     }
 
     private fun requireAccount(id: Long, accounts: Map<Long, BackupAccount>, path: String): BackupAccount =
-        requireNotNull(accounts[id]) { "$path 引用不存在：$id" }
+        requireNotNull(accounts[id]) { "$path 引用${ValidationErrorText.NOT_FOUND_SUFFIX}：$id" }
 
     private fun requireUniqueOperationIds(values: List<String>, path: String) {
         val duplicate = values.groupingBy { it }.eachCount().entries.firstOrNull { it.value > 1 }?.key

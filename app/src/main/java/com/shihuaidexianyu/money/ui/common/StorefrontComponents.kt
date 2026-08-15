@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
@@ -304,8 +305,10 @@ fun MoneyListRow(
         switchStateText?.let { append("，$it") }
     }
     ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = subtitle?.let { text -> { Text(text) } },
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = subtitle?.let { text ->
+            { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        },
         leadingContent = leading,
         trailingContent = if (trailing != null || accessory != null || showChevron) {
             {

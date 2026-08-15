@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.ui.reminder
 
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
+import com.shihuaidexianyu.money.domain.usecase.ValidationErrorText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -42,12 +43,12 @@ internal fun parseReminderAnchor(
     val date = try {
         LocalDate.parse(dateText.trim(), anchorDateFormatter)
     } catch (_: DateTimeParseException) {
-        throw IllegalArgumentException("首次日期格式应为 YYYY-MM-DD")
+        throw IllegalArgumentException(ValidationErrorText.REMINDER_ANCHOR_DATE_FORMAT)
     }
     val time = try {
         LocalTime.parse(timeText.trim(), anchorTimeFormatter)
     } catch (_: DateTimeParseException) {
-        throw IllegalArgumentException("首次时间格式应为 HH:mm")
+        throw IllegalArgumentException(ValidationErrorText.REMINDER_ANCHOR_TIME_FORMAT)
     }
     val anchorDueAt = date.atTime(time).atZone(zoneId).toInstant().toEpochMilli()
     when (periodType) {
@@ -55,8 +56,8 @@ internal fun parseReminderAnchor(
         ReminderPeriodType.YEARLY -> ReminderAnchorInput(anchorDueAt, date.dayOfMonth, date.monthValue)
         ReminderPeriodType.CUSTOM_DAYS -> {
             val customDays = customDaysText.toIntOrNull()
-                ?: throw IllegalArgumentException("请输入有效的间隔天数")
-            require(customDays in 1..3650) { "间隔天数必须在 1 到 3650 之间" }
+                ?: throw IllegalArgumentException(ValidationErrorText.REMINDER_INTERVAL_DAYS_INVALID)
+            require(customDays in 1..3650) { ValidationErrorText.REMINDER_INTERVAL_DAYS_RANGE }
             ReminderAnchorInput(anchorDueAt, customDays, null)
         }
     }

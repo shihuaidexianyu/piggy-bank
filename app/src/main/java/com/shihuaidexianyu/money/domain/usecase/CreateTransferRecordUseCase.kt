@@ -20,8 +20,8 @@ class CreateTransferRecordUseCase(
         occurredAt: Long,
         operationId: String,
     ): LedgerInsertResult {
-        require(fromAccountId != toAccountId) { "请选择不同的转出和转入账户" }
-        require(amount > 0) { "金额必须大于 0" }
+        require(fromAccountId != toAccountId) { ValidationErrorText.SAME_TRANSFER_ACCOUNTS }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
         require(operationId.isNotBlank()) { "操作标识不能为空" }
 
         return transactionRepository.runInTransaction {
@@ -40,9 +40,9 @@ class CreateTransferRecordUseCase(
             }
 
             val now = clockProvider.nowMillis()
-            require(occurredAt <= now) { "时间不能晚于当前时间" }
-            val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户不存在" }
-            val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户不存在" }
+            require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
+            val fromAccount = requireNotNull(accountRepository.getAccountById(fromAccountId)) { "转出账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+            val toAccount = requireNotNull(accountRepository.getAccountById(toAccountId)) { "转入账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             fromAccount.requireOpenForMutation("记录转账")
             toAccount.requireOpenForMutation("记录转账")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)

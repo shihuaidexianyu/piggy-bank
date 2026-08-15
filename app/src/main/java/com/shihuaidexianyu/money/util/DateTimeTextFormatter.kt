@@ -68,6 +68,46 @@ object DateTimeTextFormatter {
     }
 
     /**
+     * Due-reminder style label: "今天 HH:mm" on [nowMillis]'s day, "明天 HH:mm" on the next day,
+     * otherwise "M月d日 HH:mm". Day labels arrive as parameters so user-facing strings stay in
+     * resources; the "M月d日" pattern mirrors the history day-label style.
+     */
+    fun formatRelativeDayTime(
+        timeMillis: Long,
+        nowMillis: Long,
+        todayLabel: String,
+        tomorrowLabel: String,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        val day = Instant.ofEpochMilli(timeMillis).atZone(zoneId).toLocalDate()
+        val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        val time = Instant.ofEpochMilli(timeMillis).atZone(zoneId).format(timeFormatter)
+        return when (day) {
+            today -> "$todayLabel $time"
+            today.plusDays(1) -> "$tomorrowLabel $time"
+            else -> "${day.monthValue}月${day.dayOfMonth}日 $time"
+        }
+    }
+
+    /**
+     * HistoryDayLabel-style calendar date without the 今天/昨天 classification: "M月d日" when the
+     * date falls inside [nowMillis]'s year, "yyyy年M月d日" otherwise.
+     */
+    fun formatDayInYear(
+        timeMillis: Long,
+        nowMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        val day = Instant.ofEpochMilli(timeMillis).atZone(zoneId).toLocalDate()
+        val now = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        return if (day.year == now.year) {
+            "${day.monthValue}月${day.dayOfMonth}日"
+        } else {
+            "${day.year}年${day.monthValue}月${day.dayOfMonth}日"
+        }
+    }
+
+    /**
      * Material 3's date picker encodes a calendar date as midnight UTC rather than as an instant
      * in the device time zone. Convert a real timestamp before handing it to the picker so dates
      * near local midnight do not appear as the previous or next day.

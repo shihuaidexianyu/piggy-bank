@@ -38,9 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.CashFlowDirection
+import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
 import com.shihuaidexianyu.money.domain.model.ReminderType
+import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
@@ -307,6 +314,9 @@ private fun BalanceReminderRow(
                 Text(
                     text = reminder.name,
                     style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
                 MoneyStatusPill(
                     text = stringResource(R.string.account_stale_badge),
@@ -335,7 +345,7 @@ private fun BalanceReminderRow(
                     maxLines = 1,
                 )
                 Text(
-                    text = stringResource(R.string.account_detail_kind_reconciliation),
+                    text = stringResource(R.string.reminder_go_reconcile),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -374,6 +384,9 @@ private fun ReminderListItem(
                     Text(
                         text = reminder.name,
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     MoneyStatusPill(
                         text = when (reminder.type) {
@@ -386,14 +399,43 @@ private fun ReminderListItem(
                         },
                     )
                 }
+                // Second line: account name, direction-signed amount in income/expense color,
+                // then the period description.
+                val moneyColors = LocalMoneyColors.current
+                val isInflow = CashFlowDirection.fromValue(reminder.direction) == CashFlowDirection.INFLOW
+                val periodDescription = when (reminder.periodType) {
+                    ReminderPeriodType.MONTHLY -> stringResource(
+                        R.string.reminder_period_monthly_description,
+                        reminder.periodValue,
+                    )
+                    ReminderPeriodType.YEARLY -> stringResource(
+                        R.string.reminder_period_yearly_description,
+                        reminder.periodMonth ?: 1,
+                        reminder.periodValue,
+                    )
+                    ReminderPeriodType.CUSTOM_DAYS -> stringResource(
+                        R.string.reminder_period_custom_days_description,
+                        reminder.periodValue,
+                    )
+                }
+                val detailLine = buildAnnotatedString {
+                    if (reminder.accountName.isNotBlank()) {
+                        append(reminder.accountName)
+                        append(" · ")
+                    }
+                    withStyle(SpanStyle(color = if (isInflow) moneyColors.income else moneyColors.expense)) {
+                        append(if (isInflow) "+" else "-")
+                        append(reminder.amountFormatted)
+                    }
+                    append(" · ")
+                    append(periodDescription)
+                }
                 Text(
-                    text = stringResource(
-                        R.string.reminder_amount_period_format,
-                        reminder.amountFormatted,
-                        reminder.periodDescription,
-                    ),
+                    text = detailLine,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = if (reminder.isOverdue) {

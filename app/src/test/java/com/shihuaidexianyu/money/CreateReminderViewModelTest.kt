@@ -117,6 +117,36 @@ class CreateReminderViewModelTest {
     }
 
     @Test
+    fun `default anchor is the same local time tomorrow and not immediately due`() = runTest(dispatcher) {
+        val now = java.time.Instant.parse("2025-06-15T10:20:30Z").toEpochMilli()
+        val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider { java.time.ZoneId.of("UTC") }
+        val clock = testClockProvider(now)
+        val accounts = InMemoryAccountRepository()
+        val reminders = InMemoryRecurringReminderRepository()
+        accounts.createAccount(Account(name = "钱包", initialBalance = 0, createdAt = 1))
+        val viewModel = CreateReminderViewModel(
+            accountRepository = accounts,
+            createReminderUseCase = CreateReminderUseCase(accounts, reminders, clock, zone),
+            savedStateHandle = SavedStateHandle(),
+            clockProvider = clock,
+            zoneIdProvider = zone,
+        )
+        advanceUntilIdle()
+
+        assertEquals("2025-06-16", viewModel.uiState.value.anchorDateText)
+        assertEquals("10:20", viewModel.uiState.value.anchorTimeText)
+
+        viewModel.updateName("房租")
+        viewModel.updateAmount("100.00")
+        viewModel.save()
+        advanceUntilIdle()
+
+        val stored = reminders.queryAll().single()
+        assertEquals(java.time.Instant.parse("2025-06-16T10:20:00Z").toEpochMilli(), stored.anchorDueAt)
+        assertTrue(stored.nextDueAt > now)
+    }
+
+    @Test
     fun `past anchor is reported on the anchor fields without writing`() = runTest(dispatcher) {
         val now = java.time.Instant.parse("2025-01-02T00:00:00Z").toEpochMilli()
         val zone = com.shihuaidexianyu.money.domain.time.ZoneIdProvider { java.time.ZoneId.of("UTC") }

@@ -25,6 +25,7 @@ data class SavingsGoalUiState(
     val loadErrorMessageRes: Int? = null,
     val hasGoal: Boolean = false,
     val amountText: String = "",
+    val isDirty: Boolean = false,
     val isSaving: Boolean = false,
     val showClearConfirm: Boolean = false,
     val progress: SavingsGoalProgress? = null,
@@ -52,6 +53,10 @@ class SavingsGoalViewModel(
     val effectFlow: SharedFlow<SavingsGoalEffect> = _effectFlow.asSharedFlow()
     private var observationJob: kotlinx.coroutines.Job? = null
 
+    // Last amount text loaded from (or persisted to) the repository. The dirty flag compares
+    // against it, and progress-only re-emissions must not clobber an in-progress edit.
+    private var persistedAmountText: String = ""
+
     init {
         observeGoal()
     }
@@ -70,12 +75,18 @@ class SavingsGoalViewModel(
                     observeSavingsGoalUseCase(),
                 ) { goal, progress -> goal to progress }
                     .collect { (goal, progress) ->
+                        val goalAmountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty()
+                        val goalChanged = goalAmountText != persistedAmountText
+                        if (goalChanged) {
+                            persistedAmountText = goalAmountText
+                        }
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 loadErrorMessageRes = null,
                                 hasGoal = goal != null,
-                                amountText = goal?.let { value -> formatAmountText(value.targetAmount) }.orEmpty(),
+                                amountText = if (goalChanged) goalAmountText else it.amountText,
+                                isDirty = if (goalChanged) false else it.isDirty,
                                 progress = progress,
                             )
                         }
@@ -94,7 +105,7 @@ class SavingsGoalViewModel(
     }
 
     fun updateAmount(value: String) {
-        _uiState.update { it.copy(amountText = value) }
+        _uiState.update { it.copy(amountText = value, isDirty = value != persistedAmountText) }
     }
 
     fun showClearConfirm() {

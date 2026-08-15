@@ -1,11 +1,13 @@
 package com.shihuaidexianyu.money.util
 
+import com.shihuaidexianyu.money.domain.usecase.ValidationErrorText
+
 object RecordValidator {
     fun requireAmount(amountText: String): Long {
         val amount = AmountInputParser.parseUnsignedToMinor(amountText)
             ?: throw ValidationException(invalidAmountMessage(amountText))
         if (amount <= 0) {
-            throw ValidationException("金额必须大于 0")
+            throw ValidationException(ValidationErrorText.AMOUNT_MUST_BE_POSITIVE)
         }
         return amount
     }
@@ -17,26 +19,26 @@ object RecordValidator {
 
     fun requireOccurredAt(occurredAt: Long) {
         if (occurredAt > System.currentTimeMillis()) {
-            throw ValidationException("时间不能晚于当前时间")
+            throw ValidationException(ValidationErrorText.OCCURRED_AT_IN_FUTURE)
         }
     }
 
     fun requireAccountId(accountId: Long?): Long {
-        return accountId ?: throw ValidationException("请选择账户")
+        return accountId ?: throw ValidationException(ValidationErrorText.ACCOUNT_REQUIRED)
     }
 
     fun requireTransferAccounts(fromId: Long?, toId: Long?): Pair<Long, Long> {
-        val from = fromId ?: throw ValidationException("请选择账户")
-        val to = toId ?: throw ValidationException("请选择账户")
+        val from = fromId ?: throw ValidationException(ValidationErrorText.ACCOUNT_REQUIRED)
+        val to = toId ?: throw ValidationException(ValidationErrorText.ACCOUNT_REQUIRED)
         if (from == to) {
-            throw ValidationException("请选择不同的转出和转入账户")
+            throw ValidationException(ValidationErrorText.SAME_TRANSFER_ACCOUNTS)
         }
         return from to to
     }
 
     fun requireReminderName(name: String) {
         if (name.isBlank()) {
-            throw ValidationException("请输入名称")
+            throw ValidationException(ValidationErrorText.REMINDER_NAME_REQUIRED)
         }
     }
 
@@ -44,9 +46,9 @@ object RecordValidator {
 
     private fun invalidAmountMessage(amountText: String): String {
         return if (amountText.isBlank()) {
-            "金额不能为空"
+            ValidationErrorText.AMOUNT_REQUIRED
         } else {
-            "请输入有效金额，最多保留两位小数"
+            ValidationErrorText.AMOUNT_INVALID
         }
     }
 }

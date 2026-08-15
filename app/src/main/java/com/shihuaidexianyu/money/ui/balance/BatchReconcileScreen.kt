@@ -19,7 +19,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,6 +35,9 @@ import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
 import com.shihuaidexianyu.money.ui.common.MoneyCard
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimeFields
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
+import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
@@ -51,6 +56,7 @@ fun BatchReconcileScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
@@ -59,6 +65,15 @@ fun BatchReconcileScreen(
             if (terminal.kind == FormTerminalKind.SAVED) onSaved(requireNotNull(terminal.count))
             viewModel.ackTerminal(terminal.token)
         }
+    }
+
+    state.confirmTimeMillis?.let { confirmMillis ->
+        MoneyDateTimePickerHost(
+            field = dateTimeField,
+            currentMillis = confirmMillis,
+            onPick = viewModel::updateConfirmTime,
+            onDismiss = { dateTimeField = null },
+        )
     }
 
     MoneyFormPage(
@@ -133,16 +148,15 @@ fun BatchReconcileScreen(
                                 ),
                             )
                         }
-                        state.confirmTimeMillis?.let { millis ->
-                            Text(
-                                text = stringResource(
-                                    R.string.batch_confirm_time_format,
-                                    DateTimeTextFormatter.format(millis),
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                    }
+                    state.confirmTimeMillis?.let { millis ->
+                        MoneyDateTimeFields(
+                            valueMillis = millis,
+                            onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
+                            onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
+                            dateLabel = stringResource(R.string.batch_confirm_date),
+                            timeLabel = stringResource(R.string.batch_confirm_time),
+                        )
                     }
                 }
             }

@@ -26,16 +26,16 @@ class UpdateBalanceUpdateRecordUseCase(
         expectedUpdatedAt: Long? = null,
     ) {
         val now = clockProvider.nowMillis()
-        require(occurredAt <= now) { "时间不能晚于当前时间" }
+        require(occurredAt <= now) { ValidationErrorText.OCCURRED_AT_IN_FUTURE }
 
         transactionRepository.runInTransaction {
             val existing = requireNotNull(transactionRepository.getBalanceUpdateRecordById(recordId)) {
-                "余额核对记录不存在"
+                "余额核对记录${ValidationErrorText.NOT_FOUND_SUFFIX}"
             }
             if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
                 throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)
             }
-            val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             account.requireOpenForMutation("修改余额核对")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
             val context = resolveBalanceUpdateContextUseCase(

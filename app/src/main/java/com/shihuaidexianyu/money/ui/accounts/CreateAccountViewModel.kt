@@ -13,6 +13,8 @@ import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
+import com.shihuaidexianyu.money.ui.common.FormError
+import com.shihuaidexianyu.money.ui.common.toFormError
 import com.shihuaidexianyu.money.util.AmountInputParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
 
 data class CreateAccountUiState(
     val name: String = "",
+    val nameError: String? = null,
     val colorName: String = DEFAULT_ACCOUNT_COLOR_NAME,
     val iconName: String = DEFAULT_ACCOUNT_ICON_NAME,
     val kind: AccountKind = AccountKind.DEFAULT,
@@ -57,7 +60,7 @@ class CreateAccountViewModel(
     val effectFlow = effects.asSharedFlow()
 
     fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH))
+        _uiState.value = _uiState.value.copy(name = value.take(MAX_ACCOUNT_NAME_LENGTH), nameError = null)
     }
 
     fun updateColorName(value: String) {
@@ -96,6 +99,12 @@ class CreateAccountViewModel(
         )
     }
 
+    fun updateReminderEnabled(value: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            reminderConfig = _uiState.value.reminderConfig.copy(isEnabled = value),
+        )
+    }
+
     fun updateAmountText(value: String) {
         _uiState.value = _uiState.value.copy(amountText = value)
     }
@@ -121,8 +130,25 @@ class CreateAccountViewModel(
             }.onSuccess {
                 effects.emit(CreateAccountEffect.Saved)
             }.onFailure { throwable ->
-                _uiState.value = _uiState.value.copy(isSaving = false)
-                effects.emit(CreateAccountEffect.ShowMessage(throwable.message.orEmpty(), messageRes = R.string.account_create_failed))
+                // Blank/duplicate names point at the name field, so surface them inline under
+                // the input instead of as a transient snackbar.
+                when (val formError = throwable.toFormError()) {
+                    is FormError.MissingField ->
+                        if (formError.field == FormError.Field.NAME) {
+                            _uiState.value = _uiState.value.copy(isSaving = false, nameError = formError.message)
+                        } else {
+                            _uiState.value = _uiState.value.copy(isSaving = false)
+                            effects.emit(CreateAccountEffect.ShowMessage(formError.message, messageRes = R.string.account_create_failed))
+                        }
+
+                    FormError.DuplicateName ->
+                        _uiState.value = _uiState.value.copy(isSaving = false, nameError = formError.message)
+
+                    else -> {
+                        _uiState.value = _uiState.value.copy(isSaving = false)
+                        effects.emit(CreateAccountEffect.ShowMessage(throwable.message.orEmpty(), messageRes = R.string.account_create_failed))
+                    }
+                }
             }
         }
     }

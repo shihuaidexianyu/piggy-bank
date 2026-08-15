@@ -94,11 +94,7 @@ class EditCashFlowViewModel(
         copy(
             note = value,
             noteTouched = true,
-            noteError = if (value.trim().length > MAX_LEDGER_NOTE_LENGTH) {
-                "备注不能超过 $MAX_LEDGER_NOTE_LENGTH 个字符"
-            } else {
-                null
-            },
+            noteError = ledgerNoteLengthError(value),
             isDirty = true,
         )
     }

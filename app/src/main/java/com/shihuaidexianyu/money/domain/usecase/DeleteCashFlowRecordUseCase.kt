@@ -23,7 +23,7 @@ class DeleteCashFlowRecordUseCase(
         if (expectedUpdatedAt != null && existing.updatedAt != expectedUpdatedAt) {
             throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
         }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("删除收支记录")
         val deletedAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.softDeleteCashFlowRecord(

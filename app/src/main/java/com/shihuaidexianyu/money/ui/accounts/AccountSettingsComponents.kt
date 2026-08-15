@@ -23,6 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -356,11 +357,26 @@ private fun AccountColorChoiceDialog(
 @Composable
 internal fun AccountReminderFields(
     reminderConfig: BalanceUpdateReminderConfig,
+    onReminderEnabledChange: (Boolean) -> Unit,
     onReminderPeriodClick: () -> Unit,
     onReminderWeekdayClick: () -> Unit,
     onReminderMonthDayClick: () -> Unit,
     onReminderTimeClick: () -> Unit,
 ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.account_reminder_enabled),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = reminderConfig.isEnabled,
+            onCheckedChange = onReminderEnabledChange,
+        )
+    }
     MoneySelectionField(
         label = stringResource(R.string.account_reminder_period),
         value = reminderConfig.period.displayName,
@@ -394,16 +410,34 @@ internal fun AccountVisualFields(
     onColorClick: () -> Unit,
     onIconClick: () -> Unit,
 ) {
-    MoneySelectionField(
-        label = stringResource(R.string.account_icon_title),
-        value = accountPatternLabel(iconName),
-        onClick = onIconClick,
-    )
-    MoneySelectionField(
-        label = stringResource(R.string.account_color_title),
-        value = accountColorLabel(colorName),
-        onClick = onColorClick,
-    )
+    // Leading previews mirror AccountVisualListRows on the edit page: users should see the real
+    // icon/color, not just a pattern number or color name.
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp)
+        MoneySelectionField(
+            label = stringResource(R.string.account_icon_title),
+            value = accountPatternLabel(iconName),
+            onClick = onIconClick,
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AccountColorSwatch(colorName = colorName, size = 18.dp)
+        MoneySelectionField(
+            label = stringResource(R.string.account_color_title),
+            value = accountColorLabel(colorName),
+            onClick = onColorClick,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 /**
@@ -452,12 +486,26 @@ internal fun accountKindLabel(kind: AccountKind): String = when (kind) {
 @Composable
 internal fun AccountReminderListSection(
     reminderConfig: BalanceUpdateReminderConfig,
+    onReminderEnabledChange: (Boolean) -> Unit,
     onReminderPeriodClick: () -> Unit,
     onReminderWeekdayClick: () -> Unit,
     onReminderMonthDayClick: () -> Unit,
     onReminderTimeClick: () -> Unit,
 ) {
     MoneyListSection {
+        MoneyListRow(
+            title = stringResource(R.string.account_reminder_enabled),
+            showChevron = false,
+            switchChecked = reminderConfig.isEnabled,
+            onClick = { onReminderEnabledChange(!reminderConfig.isEnabled) },
+            accessory = {
+                Switch(
+                    checked = reminderConfig.isEnabled,
+                    onCheckedChange = onReminderEnabledChange,
+                )
+            },
+        )
+        MoneySectionDivider()
         MoneyListRow(
             title = stringResource(R.string.account_reminder_period),
             subtitle = stringResource(R.string.account_reminder_description),

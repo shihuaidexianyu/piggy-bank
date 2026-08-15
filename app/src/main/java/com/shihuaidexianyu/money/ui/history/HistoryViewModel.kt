@@ -102,6 +102,8 @@ data class HistoryUiState(
     val records: List<HistoryRecordUiModel> = emptyList(),
     /** Totals over the WHOLE filtered set (not just loaded pages); null when no filter is active. */
     val filterSummary: HistoryFilterSummary? = null,
+    /** Total hits of the active filter across the whole set; null when no filter is active. */
+    val filterMatchCount: Int? = null,
     val totalRecordCount: Int = 0,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -418,25 +420,30 @@ class HistoryViewModel(
             }
             val summaryNeeded = filterState.value.hasAnyFilter()
             runCatching {
-                // One transaction for page + totals: two separate reads could straddle a ledger
-                // write and show a summary that contradicts the visible rows.
+                // One transaction for page + totals + hit count: separate reads could straddle a
+                // ledger write and show numbers that contradict the visible rows.
                 transactionRepository.runInTransaction {
                     val page = transactionRepository.queryHistoryRecords(
                         filters = filters,
                         cursor = null,
                         limit = HISTORY_PAGE_SIZE + 1,
                     )
-                    // Whole-set totals: summing the visible page would misreport whenever more
-                    // pages exist. Skipped when no filter is active — the row only shows for
-                    // filtered views.
+                    // Whole-set totals and hit count: summing the visible page would misreport
+                    // whenever more pages exist. Skipped when no filter is active — the summary
+                    // row and the matched-count label only show for filtered views.
                     val summary = if (summaryNeeded) {
                         transactionRepository.queryHistoryFilterSummary(filters)
                     } else {
                         null
                     }
-                    page to summary
+                    val matchCount = if (summaryNeeded) {
+                        transactionRepository.countHistoryRecords(filters)
+                    } else {
+                        null
+                    }
+                    Triple(page, summary, matchCount)
                 }
-            }.onSuccess { (queriedRecords, summary) ->
+            }.onSuccess { (queriedRecords, summary, matchCount) ->
                 if (!shouldApplyHistoryLoadResult(generation, loadGeneration, cancelled = false)) return@onSuccess
                 val records = queriedRecords.take(HISTORY_PAGE_SIZE)
                 val hasMore = queriedRecords.size > HISTORY_PAGE_SIZE
@@ -448,6 +455,7 @@ class HistoryViewModel(
                     it.copy(
                         records = records.toUiModels(),
                         filterSummary = summary,
+                        filterMatchCount = matchCount,
                         totalRecordCount = total,
                         isLoading = false,
                         isRefreshing = false,

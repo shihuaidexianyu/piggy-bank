@@ -197,20 +197,29 @@ class AppLockViewModel(
                     )
                     BiometricAuthenticationResult.Cancelled,
                     BiometricAuthenticationResult.Failed,
-                    is BiometricAuthenticationResult.Error,
-                    -> {
-                        val failedBeforeEnable = authenticationEnablesLock && !biometricEnabled
-                        authenticationEnablesLock = false
-                        _state.value = if (failedBeforeEnable) {
-                            _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_failed))
-                            AppLockState.Unlocked
-                        } else {
-                            AppLockState.Locked
-                        }
-                    }
+                    -> authenticationFailed()
+                    is BiometricAuthenticationResult.Error -> authenticationFailed(result.kind)
                 }
             }
         }
+    }
+
+    private fun authenticationFailed(errorKind: BiometricErrorKind? = null) {
+        val failedBeforeEnable = authenticationEnablesLock && !biometricEnabled
+        authenticationEnablesLock = false
+        _state.value = if (failedBeforeEnable) {
+            _feedback.tryEmit(AppLockFeedback(R.string.lock_enable_failed))
+            AppLockState.Unlocked
+        } else {
+            errorKind?.let(::errorFeedbackRes)?.let { _feedback.tryEmit(AppLockFeedback(it)) }
+            AppLockState.Locked
+        }
+    }
+
+    private fun errorFeedbackRes(kind: BiometricErrorKind): Int? = when (kind) {
+        BiometricErrorKind.LOCKOUT -> R.string.lock_error_lockout
+        BiometricErrorKind.NO_DEVICE_CREDENTIAL -> R.string.lock_error_no_device_credential
+        BiometricErrorKind.UNKNOWN -> null
     }
 
     private suspend fun authenticationSucceeded(enablesLock: Boolean, requestToken: Long) {

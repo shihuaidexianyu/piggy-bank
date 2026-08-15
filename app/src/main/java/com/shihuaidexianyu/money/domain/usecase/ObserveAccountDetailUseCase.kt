@@ -29,6 +29,8 @@ data class AccountDetailSnapshot(
     val isStale: Boolean,
     val monthInflow: Long = 0L,
     val monthOutflow: Long = 0L,
+    /** Signed sum of this month's reconciliation deltas (investment P&L for investment accounts). */
+    val monthInvestmentDelta: Long = 0L,
     val recentRecords: List<AccountDetailRecentRecord> = emptyList(),
 )
 
@@ -103,9 +105,10 @@ class ObserveAccountDetailUseCase(
         // Recent 5 ledger events for this account, newest first. Balance checks and manual
         // corrections are the events that change the balance most directly, so they belong in
         // the timeline alongside cash flow and transfers.
+        val balanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(account.id)
         val recentCashFlows = transactionRepository.queryCashFlowRecordsByAccountId(account.id).take(5)
         val recentTransfers = transactionRepository.queryTransferRecordsByAccountId(account.id).take(5)
-        val recentBalanceUpdates = transactionRepository.queryBalanceUpdateRecordsByAccountId(account.id).take(5)
+        val recentBalanceUpdates = balanceUpdates.take(5)
         val recentAdjustments = transactionRepository.queryBalanceAdjustmentRecordsByAccountId(account.id).take(5)
         val recentRecords = (
             recentCashFlows.map { it.toRecentRecord() } +
@@ -115,6 +118,11 @@ class ObserveAccountDetailUseCase(
             )
             .sortedByDescending { it.occurredAt }
             .take(5)
+
+        // This month's reconciliation deltas read as investment P&L on investment accounts.
+        val monthInvestmentDelta = balanceUpdates
+            .filter { it.occurredAt >= monthRange.startInclusive && it.occurredAt < monthRange.endExclusive }
+            .sumOf { it.delta }
 
         return AccountDetailSnapshot(
             account = account,
@@ -130,6 +138,7 @@ class ObserveAccountDetailUseCase(
             ),
             monthInflow = inflow,
             monthOutflow = outflow,
+            monthInvestmentDelta = monthInvestmentDelta,
             recentRecords = recentRecords,
         )
     }

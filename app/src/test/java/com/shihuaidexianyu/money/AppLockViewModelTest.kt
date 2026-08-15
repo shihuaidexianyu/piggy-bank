@@ -1,14 +1,17 @@
 package com.shihuaidexianyu.money
 
+import app.cash.turbine.test
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
+import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
 import com.shihuaidexianyu.money.ui.lock.AppLockState
 import com.shihuaidexianyu.money.ui.lock.AppLockUnavailableReason
 import com.shihuaidexianyu.money.ui.lock.AppLockViewModel
 import com.shihuaidexianyu.money.ui.lock.BiometricAuthenticationGateway
 import com.shihuaidexianyu.money.ui.lock.BiometricAuthenticationResult
 import com.shihuaidexianyu.money.ui.lock.BiometricCapability
+import com.shihuaidexianyu.money.ui.lock.BiometricErrorKind
 import com.shihuaidexianyu.money.ui.lock.ElapsedRealtimeClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -114,6 +117,71 @@ class AppLockViewModelTest {
         fixture.gateway.complete(BiometricAuthenticationResult.Succeeded)
         advanceUntilIdle()
         assertEquals(AppLockState.Unlocked, fixture.viewModel.state.value)
+    }
+
+    @Test
+    fun `lockout error keeps the app locked and surfaces lockout feedback`() = runTest(dispatcher) {
+        val fixture = Fixture(enabled = true)
+        advanceUntilIdle()
+        fixture.viewModel.authenticate()
+        advanceUntilIdle()
+        assertEquals(AppLockState.Authenticating, fixture.viewModel.state.value)
+
+        fixture.viewModel.feedback.test {
+            fixture.gateway.complete(
+                BiometricAuthenticationResult.Error("lockout", BiometricErrorKind.LOCKOUT),
+            )
+            advanceUntilIdle()
+
+            assertEquals(AppLockFeedback(R.string.lock_error_lockout), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
+    }
+
+    @Test
+    fun `missing device credential error keeps the app locked and guides to settings`() =
+        runTest(dispatcher) {
+            val fixture = Fixture(enabled = true)
+            advanceUntilIdle()
+            fixture.viewModel.authenticate()
+            advanceUntilIdle()
+
+            fixture.viewModel.feedback.test {
+                fixture.gateway.complete(
+                    BiometricAuthenticationResult.Error(
+                        "no credential",
+                        BiometricErrorKind.NO_DEVICE_CREDENTIAL,
+                    ),
+                )
+                advanceUntilIdle()
+
+                assertEquals(AppLockFeedback(R.string.lock_error_no_device_credential), awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+            assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
+        }
+
+    @Test
+    fun `user cancellation and unknown errors stay silent`() = runTest(dispatcher) {
+        val fixture = Fixture(enabled = true)
+        advanceUntilIdle()
+
+        fixture.viewModel.feedback.test {
+            fixture.viewModel.authenticate()
+            advanceUntilIdle()
+            fixture.gateway.complete(BiometricAuthenticationResult.Cancelled)
+            advanceUntilIdle()
+
+            fixture.viewModel.authenticate()
+            advanceUntilIdle()
+            fixture.gateway.complete(BiometricAuthenticationResult.Error("sensor error"))
+            advanceUntilIdle()
+
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(AppLockState.Locked, fixture.viewModel.state.value)
     }
 
     @Test

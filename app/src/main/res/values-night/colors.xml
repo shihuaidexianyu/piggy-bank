@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Home-screen widget (dark). Kept in sync with ui/theme/Color.kt MoneyColors (dark). -->
-    <color name="widget_background">#201C18</color>
-    <color name="widget_stroke">#3B342D</color>
+    <!-- Home-screen widget (dark). Background/stroke match the app's dark card baseline:
+         pure-black #000000 canvas, #141414 cards (Theme.kt dark surfaceContainerLowest),
+         #2A2A2A stroke (Color.kt Night600). Text/amount colors stay in sync with
+         ui/theme/Color.kt MoneyColors (dark). -->
+    <color name="widget_background">#141414</color>
+    <color name="widget_stroke">#2A2A2A</color>
     <color name="widget_text_primary">#E8E6E3</color>
     <color name="widget_text_secondary">#A9A39C</color>
     <color name="widget_income">#E57373</color>
     <color name="widget_expense">#66BB6A</color>
 
-    <!-- Launcher icon (dark): same geometry, light-on-dark surfaces. -->
-    <color name="launcher_icon_background">#1C1C1E</color>
-    <color name="launcher_icon_ink">#E6E6E6</color>
-    <color name="launcher_icon_body">#FFCDCD</color>
-    <color name="launcher_icon_coin">#FFF3C4</color>
+    <!-- Launcher icon (dark): same geometry and dark ink as light, on the brand teal
+         disc (matches shortcut_icon_background) so the outline work stays readable. -->
+    <color name="launcher_icon_background">#256F70</color>
+    <color name="launcher_icon_ink">#333333</color>
+    <color name="launcher_icon_body">#FFC7C7</color>
+    <color name="launcher_icon_coin">#FFE08A</color>
 </resources>

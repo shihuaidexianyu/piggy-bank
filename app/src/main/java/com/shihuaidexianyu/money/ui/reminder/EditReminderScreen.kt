@@ -1,8 +1,10 @@
 package com.shihuaidexianyu.money.ui.reminder
 
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +25,8 @@ import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneyListRow
+import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneyPickerField
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerHost
 import com.shihuaidexianyu.money.ui.common.MoneyDateTimePickerField
@@ -127,11 +131,25 @@ fun EditReminderScreen(
                 )
                 MoneyPickerField(
                     label = stringResource(R.string.field_direction),
-                    value = state.direction.displayName,
+                    value = stringResource(
+                        if (state.direction == CashFlowDirection.INFLOW) {
+                            R.string.ledger_income
+                        } else {
+                            R.string.ledger_expense
+                        },
+                    ),
                     dialogTitle = stringResource(R.string.cash_flow_direction_dialog),
                     options = CashFlowDirection.entries.toList(),
                     selected = state.direction,
-                    optionLabel = { it.displayName },
+                    optionLabel = {
+                        stringResource(
+                            if (it == CashFlowDirection.INFLOW) {
+                                R.string.ledger_income
+                            } else {
+                                R.string.ledger_expense
+                            },
+                        )
+                    },
                     onSelect = viewModel::updateDirection,
                 )
             }
@@ -156,6 +174,17 @@ fun EditReminderScreen(
                     optionLabel = { it.displayName },
                     onSelect = viewModel::updatePeriodType,
                 )
+                reminderPeriodHint(
+                    periodType = state.periodType,
+                    anchorDateText = state.anchorDateText,
+                    periodCustomDays = state.periodCustomDays,
+                )?.let { hint ->
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 when (state.periodType) {
                     ReminderPeriodType.MONTHLY,
                     ReminderPeriodType.YEARLY,
@@ -184,14 +213,18 @@ fun EditReminderScreen(
             }
         }
         item {
-            MoneyCard {
-                MoneySelectionField(
-                    label = stringResource(R.string.field_enabled),
-                    value = stringResource(if (state.isEnabled) R.string.answer_yes else R.string.answer_no),
-                )
-                Switch(
-                    checked = state.isEnabled,
-                    onCheckedChange = viewModel::updateEnabled,
+            MoneyListSection {
+                MoneyListRow(
+                    title = stringResource(R.string.field_enabled),
+                    showChevron = false,
+                    switchChecked = state.isEnabled,
+                    onClick = { viewModel.updateEnabled(!state.isEnabled) },
+                    accessory = {
+                        Switch(
+                            checked = state.isEnabled,
+                            onCheckedChange = viewModel::updateEnabled,
+                        )
+                    },
                 )
             }
         }

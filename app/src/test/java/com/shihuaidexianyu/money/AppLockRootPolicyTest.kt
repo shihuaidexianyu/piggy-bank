@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.ui.lock.AppLockState
 import com.shihuaidexianyu.money.ui.lock.AppLockUnavailableReason
 import com.shihuaidexianyu.money.ui.lock.AppRootSurface
 import com.shihuaidexianyu.money.ui.lock.BiometricCapability
+import com.shihuaidexianyu.money.ui.lock.BiometricErrorKind
 import com.shihuaidexianyu.money.ui.lock.mapBiometricCapability
 import com.shihuaidexianyu.money.ui.lock.mapBiometricError
 import com.shihuaidexianyu.money.ui.lock.BiometricAuthenticationResult
@@ -66,7 +67,7 @@ class AppLockRootPolicyTest {
     }
 
     @Test
-    fun `android cancellation codes remain cancelled and other errors remain locked errors`() {
+    fun `android cancellation codes remain cancelled and other errors keep their kind`() {
         for (code in listOf(
             BiometricPrompt.ERROR_CANCELED,
             BiometricPrompt.ERROR_USER_CANCELED,
@@ -75,16 +76,31 @@ class AppLockRootPolicyTest {
             assertEquals(BiometricAuthenticationResult.Cancelled, mapBiometricError(code, "cancel"))
         }
         assertEquals(
-            BiometricAuthenticationResult.Error("lockout"),
+            BiometricAuthenticationResult.Error("lockout", BiometricErrorKind.LOCKOUT),
             mapBiometricError(BiometricPrompt.ERROR_LOCKOUT, "lockout"),
+        )
+        assertEquals(
+            BiometricAuthenticationResult.Error("lockout", BiometricErrorKind.LOCKOUT),
+            mapBiometricError(BiometricPrompt.ERROR_LOCKOUT_PERMANENT, "lockout"),
+        )
+        assertEquals(
+            BiometricAuthenticationResult.Error("no credential", BiometricErrorKind.NO_DEVICE_CREDENTIAL),
+            mapBiometricError(BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL, "no credential"),
+        )
+        assertEquals(
+            BiometricAuthenticationResult.Error("sensor", BiometricErrorKind.UNKNOWN),
+            mapBiometricError(BiometricPrompt.ERROR_HW_UNAVAILABLE, "sensor"),
         )
     }
 
     @Test
-    fun `biometric capability policy does not treat device credential as biometric`() {
+    fun `biometric capability policy falls back to the device credential`() {
         val authenticators = biometricAuthenticators()
-        assertEquals(BiometricManager.Authenticators.BIOMETRIC_WEAK, authenticators)
-        assertEquals(0, authenticators and BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+        assertEquals(
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            authenticators,
+        )
         assertNull(mapBiometricNonTerminalFailure())
     }
 

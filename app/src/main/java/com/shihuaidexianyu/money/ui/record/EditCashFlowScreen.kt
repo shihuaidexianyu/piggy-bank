@@ -117,7 +117,16 @@ fun EditCashFlowScreen(
     MoneyFormPage(
         title = when (val titleRes = editCashFlowTitleRes(state)) {
             R.string.cash_flow_edit_title -> stringResource(titleRes)
-            else -> stringResource(titleRes, state.direction.displayName)
+            else -> stringResource(
+                titleRes,
+                stringResource(
+                    if (state.direction == CashFlowDirection.INFLOW) {
+                        R.string.ledger_income
+                    } else {
+                        R.string.ledger_expense
+                    },
+                ),
+            )
         },
         modifier = modifier,
         snackbarHostState = snackbarHostState,

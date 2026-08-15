@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AccountKind
+import com.shihuaidexianyu.money.domain.model.PortableSettings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.MoneyCard
@@ -35,7 +36,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
-import com.shihuaidexianyu.money.util.AmountFormatter
+import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 
 @Composable
 fun ReorderAccountsScreen(
@@ -46,6 +47,10 @@ fun ReorderAccountsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
+    // LocalCurrencySymbol already carries the user-configured symbol app-wide; rebuilding a
+    // lightweight settings object here lets formatInAppAmount apply privacy masking without
+    // threading PortableSettings through the reorder ViewModel.
+    val currencySettings = PortableSettings(currencySymbol = LocalCurrencySymbol.current)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
         if (effect is ReorderAccountsEffect.Saved) onBack()
@@ -75,6 +80,11 @@ fun ReorderAccountsScreen(
                 MoneyEmptyStateCard(
                     title = stringResource(R.string.accounts_none),
                     subtitle = stringResource(R.string.accounts_reorder_empty_description),
+                    action = {
+                        MoneyTonalButton(onClick = onBack) {
+                            Text(stringResource(R.string.action_back))
+                        }
+                    },
                 )
             }
         } else {
@@ -119,7 +129,7 @@ fun ReorderAccountsScreen(
                 }
             }
             item {
-                MoneySectionHeader(title = stringResource(R.string.accounts_order))
+                MoneySectionHeader(title = stringResource(R.string.accounts_reorder_drag_hint))
             }
             itemsIndexed(
                 state.accounts,
@@ -139,7 +149,7 @@ fun ReorderAccountsScreen(
                             },
                         ) + " · " + stringResource(
                             R.string.account_picker_balance_format,
-                            "${LocalCurrencySymbol.current}${AmountFormatter.formatPlain(account.balance)}",
+                            formatInAppAmount(account.balance, currencySettings),
                         ) + if (account.isHidden) {
                             " · " + stringResource(R.string.accounts_hidden_short)
                         } else {

@@ -11,12 +11,13 @@ import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.ReminderNextDueCalculator
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.UiEffect
 import com.shihuaidexianyu.money.ui.common.toAccountOptionUiModels
 import com.shihuaidexianyu.money.ui.common.userMessage
 import com.shihuaidexianyu.money.util.RecordValidator
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,10 +58,14 @@ class CreateReminderViewModel(
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
 ) : ViewModel() {
-    private val defaultAnchor = ReminderNextDueCalculator.defaultFutureAnchor(
-        clockProvider.nowMillis(),
-        zoneIdProvider.zoneId(),
-    )
+    // Default to the same local time tomorrow: a bare "now + 1 minute" anchor is already
+    // due by the time the user saves, producing an instantly overdue reminder.
+    private val defaultAnchor = Instant.ofEpochMilli(clockProvider.nowMillis())
+        .atZone(zoneIdProvider.zoneId())
+        .truncatedTo(ChronoUnit.MINUTES)
+        .plusDays(1)
+        .toInstant()
+        .toEpochMilli()
     private val defaultDraft = formatReminderAnchor(defaultAnchor, zoneIdProvider.zoneId())
     private val _uiState = MutableStateFlow(
         CreateReminderUiState(

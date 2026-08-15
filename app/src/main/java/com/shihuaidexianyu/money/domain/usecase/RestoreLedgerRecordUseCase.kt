@@ -40,7 +40,7 @@ class RestoreLedgerRecordUseCase(
         val existing = transactionRepository.queryStoredCashFlowRecordById(token.recordId)
             ?: return missingOrStale(token)
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("恢复收支记录")
         val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreCashFlowRecord(
@@ -58,8 +58,8 @@ class RestoreLedgerRecordUseCase(
         val existing = transactionRepository.queryStoredTransferRecordById(token.recordId)
             ?: return missingOrStale(token)
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
-        val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户不存在" }
-        val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户不存在" }
+        val fromAccount = requireNotNull(accountRepository.getAccountById(existing.fromAccountId)) { "转出账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+        val toAccount = requireNotNull(accountRepository.getAccountById(existing.toAccountId)) { "转入账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         fromAccount.requireOpenForMutation("恢复转账记录")
         toAccount.requireOpenForMutation("恢复转账记录")
         val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
@@ -80,7 +80,7 @@ class RestoreLedgerRecordUseCase(
         val existing = transactionRepository.queryStoredBalanceUpdateRecordById(token.recordId)
             ?: return missingOrStale(token)
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("恢复余额核对")
         val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreBalanceUpdateRecord(
@@ -98,7 +98,7 @@ class RestoreLedgerRecordUseCase(
         val existing = transactionRepository.queryStoredBalanceAdjustmentRecordById(token.recordId)
             ?: return missingOrStale(token)
         validateStoredIdentity(existing.operationId, existing.deletedAt, token)?.let { return it }
-        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("恢复余额调整")
         val restoredAt = nextMutationTimestamp(clockProvider.nowMillis(), existing.updatedAt)
         if (!transactionRepository.restoreBalanceAdjustmentRecord(

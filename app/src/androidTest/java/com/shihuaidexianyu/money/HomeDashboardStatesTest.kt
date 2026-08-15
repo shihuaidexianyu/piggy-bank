@@ -152,7 +152,7 @@ class HomeDashboardStatesTest {
             }
         }
 
-        composeRule.onNodeWithText("150.01%").assertIsDisplayed()
+        composeRule.onNodeWithText("目标 ¥100.00 · 已用 150.01%").assertIsDisplayed()
         composeRule.onNodeWithText("超支 50.01% · ¥50.01").assertIsDisplayed()
         composeRule.onNodeWithText("宽带费").performClick()
         composeRule.onNodeWithText("现金").performClick()

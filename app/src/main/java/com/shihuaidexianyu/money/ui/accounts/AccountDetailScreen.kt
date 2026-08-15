@@ -56,6 +56,7 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -135,6 +136,18 @@ fun AccountDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // Kind tag: the kind reinterprets reconciliation deltas at read time, so the
+                // detail header states it explicitly instead of implying it from the list.
+                MoneyStatusPill(
+                    text = stringResource(
+                        if (state.isInvestment) R.string.account_kind_investment else R.string.account_kind_funding,
+                    ),
+                    accent = if (state.isInvestment) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
                 val closure = accountClosurePresentation(state.isClosed, state.currentBalance)
                 if (state.isClosed) {
                     MoneyStatusPill(text = stringResource(closure.statusTextRes), accent = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -161,14 +174,17 @@ fun AccountDetailScreen(
                         )
                     }
                 } else {
-                    Text(
-                        text = stringResource(
-                            R.string.account_detail_reminder_time_format,
-                            state.reminderConfig.displayText,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // The reminder schedule line only makes sense while the reminder is enabled.
+                    if (state.reminderConfig.isEnabled) {
+                        Text(
+                            text = stringResource(
+                                R.string.account_detail_reminder_time_format,
+                                state.reminderConfig.displayText,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 if (state.isStale && !state.isClosed) {
                     MoneyStatusPill(
@@ -276,6 +292,29 @@ fun AccountDetailScreen(
                             text = formatInAppAmount(state.monthOutflow, state.settings),
                             style = MaterialTheme.typography.titleLarge,
                             color = moneyColors.expense,
+                        )
+                    }
+                }
+                if (state.isInvestment) {
+                    MoneySectionDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.account_detail_month_investment_pnl),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = signedFormatInAppAmount(state.monthInvestmentDelta, state.settings),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = if (state.monthInvestmentDelta >= 0L) {
+                                moneyColors.income
+                            } else {
+                                moneyColors.expense
+                            },
                         )
                     }
                 }

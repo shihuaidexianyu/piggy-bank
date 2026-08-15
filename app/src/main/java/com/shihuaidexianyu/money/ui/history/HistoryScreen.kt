@@ -153,12 +153,11 @@ fun HistoryScreen(
             val anchor = pendingAnchorDate
             pendingAnchorDate = null
             if (anchor == null || state.records.isEmpty()) return@LaunchedEffect
-            val groupIndex = state.records
-                .map { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
-                .indexOf(anchor)
-            if (groupIndex < 0) return@LaunchedEffect
-            val baseItems = 1 + if (state.filterSummary != null) 1 else 0
-            listState.scrollToItem(baseItems + groupIndex * 2)
+            val scrollIndex = historyAnchorScrollIndex(
+                anchorDateLabel = anchor,
+                recordDateLabels = state.records.map { DateTimeTextFormatter.formatDateOnly(it.occurredAt) },
+            ) ?: return@LaunchedEffect
+            listState.scrollToItem(scrollIndex)
         }
     }
     val historyLoadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
@@ -431,7 +430,13 @@ fun HistoryScreen(
                     ) {
                         if (state.hasCommittedContent) {
                             Text(
-                                text = pluralStringResource(
+                                text = state.filterMatchCount?.let { matchCount ->
+                                    pluralStringResource(
+                                        R.plurals.history_matched_count,
+                                        matchCount,
+                                        matchCount,
+                                    )
+                                } ?: pluralStringResource(
                                     R.plurals.history_loaded_count,
                                     state.records.size,
                                     state.records.size,
@@ -500,7 +505,11 @@ fun HistoryScreen(
                             }
                         }
                     } else {
-                        null
+                        {
+                            MoneyTonalButton(onClick = onClearAllFilters) {
+                                Text(stringResource(R.string.history_clear_filters))
+                            }
+                        }
                     },
                 )
             }
@@ -1008,20 +1017,30 @@ internal fun historyEndDateFieldText(
 private fun dateSheetSummary(state: HistoryUiState): String {
     val start = state.dateStartAt
     val end = state.dateEndAt
+    val nowMillis = System.currentTimeMillis()
     return if (start == null && end == null) {
         stringResource(R.string.history_unlimited)
     } else if (start != null && end != null) {
         stringResource(
             R.string.history_date_range_format,
-            DateTimeTextFormatter.formatDateOnly(start),
-            DateTimeTextFormatter.formatDisplayedEndDate(end),
+            DateTimeTextFormatter.formatDayInYear(start, nowMillis),
+            DateTimeTextFormatter.formatDayInYear(
+                DateTimeTextFormatter.startOfDisplayedEndDateMillis(end),
+                nowMillis,
+            ),
         )
     } else if (start != null) {
-        stringResource(R.string.history_date_from_format, DateTimeTextFormatter.formatDateOnly(start))
+        stringResource(
+            R.string.history_date_from_format,
+            DateTimeTextFormatter.formatDayInYear(start, nowMillis),
+        )
     } else {
         stringResource(
             R.string.history_date_until_format,
-            DateTimeTextFormatter.formatDisplayedEndDate(requireNotNull(end)),
+            DateTimeTextFormatter.formatDayInYear(
+                DateTimeTextFormatter.startOfDisplayedEndDateMillis(requireNotNull(end)),
+                nowMillis,
+            ),
         )
     }
 }

@@ -75,10 +75,12 @@ private val BrandDarkColorScheme = darkColorScheme(
     background = Color.Black,
     surface = Color.Black,
     surfaceVariant = Night700,
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = Night800,
-    surfaceContainer = Night700,
-    surfaceContainerHigh = Color(0xFF1E1E1E),
+    // Cards and sheets sit on the pure-black canvas, so the container ladder starts just above
+    // black — a pure-black surfaceContainerLowest made cards indistinguishable from the page.
+    surfaceContainerLowest = Night700,
+    surfaceContainerLow = Color(0xFF181818),
+    surfaceContainer = Color(0xFF1D1D1D),
+    surfaceContainerHigh = Color(0xFF232323),
     surfaceContainerHighest = Night600,
     surfaceDim = Color.Black,
     surfaceBright = Night600,

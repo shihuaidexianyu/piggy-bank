@@ -18,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AccountKind
-import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -31,14 +30,13 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySaveButton
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
-import com.shihuaidexianyu.money.ui.common.MoneyTextInputDialog
+import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
 import com.shihuaidexianyu.money.ui.common.rememberDirtyFormBackAction
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 
 private sealed interface EditAccountDialog {
-    data object Name : EditAccountDialog
     data object CloseConfirm : EditAccountDialog
     data class KindSwitch(val target: AccountKind) : EditAccountDialog
 }
@@ -54,10 +52,10 @@ fun EditAccountScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<EditAccountDialog?>(null) }
     var picker by remember { mutableStateOf<AccountSettingsPicker?>(null) }
-    var nameDraft by remember(state.name) { mutableStateOf(state.name) }
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
     val rootDispatcher = LocalRootSnackbarDispatcher.current
     val hiddenDoneMessage = stringResource(R.string.account_hidden_done)
+    val unhiddenDoneMessage = stringResource(R.string.account_unhidden_done)
     val undoLabel = stringResource(R.string.action_undo)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) { effect ->
@@ -72,6 +70,8 @@ fun EditAccountScreen(
                         action = RootSnackbarAction.UnhideAccount(effect.accountId),
                     ),
                 )
+            } else {
+                rootDispatcher?.dispatch(rootSnackbarEffect(message = unhiddenDoneMessage))
             }
             else -> {}
         }
@@ -79,19 +79,6 @@ fun EditAccountScreen(
 
     dialog?.let { currentDialog ->
         when (currentDialog) {
-            EditAccountDialog.Name -> {
-                MoneyTextInputDialog(
-                    title = stringResource(R.string.account_name),
-                    value = nameDraft,
-                    onValueChange = { nameDraft = it.take(MAX_ACCOUNT_NAME_LENGTH) },
-                    onConfirm = {
-                        viewModel.updateName(nameDraft)
-                        dialog = null
-                    },
-                    onDismiss = { dialog = null },
-                )
-            }
-
             is EditAccountDialog.KindSwitch -> {
                 MoneyConfirmDialog(
                     title = stringResource(R.string.account_kind_switch_title),
@@ -153,17 +140,19 @@ fun EditAccountScreen(
         }
         item { MoneySectionHeader(title = stringResource(R.string.account_information)) }
         item {
-            MoneyListSection {
-                MoneyListRow(
-                    title = stringResource(R.string.account_name),
-                    trailing = state.name,
-                    showChevron = !state.isClosed,
-                    enabled = !state.isClosed,
-                    onClick = {
-                        nameDraft = state.name
-                        dialog = EditAccountDialog.Name
-                    },
+            // Inline name editing matches the create page; dirty tracking still flows through
+            // viewModel.updateName, so the discard-on-back guard keeps working.
+            MoneyCard {
+                MoneySingleLineField(
+                    value = state.name,
+                    onValueChange = viewModel::updateName,
+                    label = stringResource(R.string.account_name),
+                    enabled = !state.isClosed && !state.isSaving,
                 )
+            }
+        }
+        item {
+            MoneyListSection {
                 if (!state.isClosed) {
                     AccountVisualListRows(
                         colorName = state.colorName,
@@ -233,6 +222,7 @@ fun EditAccountScreen(
             item {
                 AccountReminderListSection(
                     reminderConfig = state.reminderConfig,
+                    onReminderEnabledChange = viewModel::setReminderEnabled,
                     onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
                     onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
                     onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },

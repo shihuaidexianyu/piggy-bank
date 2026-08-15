@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.ui.record
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Icon
@@ -123,6 +124,7 @@ fun RecordTransferScreen(
                     isError = state.amountError != null,
                     supportingText = state.amountError,
                     enabled = !state.isSaving,
+                    autoOpenKeypad = true,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 LazyRow(
@@ -176,11 +178,28 @@ fun RecordTransferScreen(
                     isError = state.noteError != null,
                     supportingText = state.noteError,
                 )
+                if (state.noteSuggestions.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.heightIn(min = 36.dp),
+                    ) {
+                        items(state.noteSuggestions) { suggestion ->
+                            SuggestionChip(
+                                onClick = { viewModel.applyNoteSuggestion(suggestion) },
+                                label = { Text(suggestion) },
+                            )
+                        }
+                    }
+                }
                 MoneyDateTimeFields(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
+                    timeSubtitle = if (state.timeEdited) {
+                        null
+                    } else {
+                        stringResource(R.string.ledger_default_current_time)
+                    },
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(

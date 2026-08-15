@@ -9,7 +9,7 @@ class ReopenAccountUseCase(
 ) {
     suspend operator fun invoke(accountId: Long) {
         transactionRunner.runInTransaction {
-            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+            val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
             if (account.isClosed) {
                 accountRepository.reopenAccount(accountId)
             }

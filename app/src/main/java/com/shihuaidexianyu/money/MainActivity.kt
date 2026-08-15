@@ -13,8 +13,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.ContextCompat
@@ -72,11 +74,15 @@ class MainActivity : FragmentActivity() {
         }
     }
     private var screenOffReceiverRegistered = false
+    private var devicePreferencesLoaded by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Hold the splash screen until device preferences arrive so cold starts
+        // never flash the lock Loading state for users without the app lock.
+        splashScreen.setKeepOnScreenCondition { !devicePreferencesLoaded }
 
         val moneyApplication = application as MoneyApplication
         moneyApplication.biometricAuthenticationGateway.attachHost(this)
@@ -104,7 +110,10 @@ class MainActivity : FragmentActivity() {
                 }
             }
             val loadedDevicePreferences by produceState<DevicePreferences?>(initialValue = null) {
-                devicePreferencesFlow.collect { value = it }
+                devicePreferencesFlow.collect {
+                    value = it
+                    devicePreferencesLoaded = true
+                }
             }
             val devicePreferences = loadedDevicePreferences ?: DevicePreferences()
             val pendingLaunchRequests by appLaunchQueueViewModel.pending.collectAsStateWithLifecycle()

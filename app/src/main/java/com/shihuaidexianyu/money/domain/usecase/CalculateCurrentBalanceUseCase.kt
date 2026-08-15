@@ -18,13 +18,13 @@ class CalculateCurrentBalanceUseCase(
     }
 
     private suspend fun at(accountId: Long, atTimeMillis: Long): Long {
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         val aggregate = ledgerAggregateRepository.queryAt(listOf(account), atTimeMillis).getValue(accountId)
         return LedgerBalanceCalculator.balanceAt(account, atTimeMillis, aggregate)
     }
 
     suspend fun before(accountId: Long, endExclusive: Long): Long {
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         if (LedgerBalanceCalculator.openingAt(account) >= endExclusive) return 0L
         val aggregate = ledgerAggregateRepository.queryBefore(listOf(account), endExclusive).getValue(accountId)
         return LedgerBalanceCalculator.balanceBefore(account, endExclusive, aggregate)

@@ -10,6 +10,7 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
+import com.shihuaidexianyu.money.domain.usecase.ValidationErrorText
 import com.shihuaidexianyu.money.domain.usecase.savedOperationId
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.FormTerminalKind
@@ -39,6 +40,7 @@ data class RecordTransferUiState(
     val amountText: String = "",
     val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val timeEdited: Boolean = false,
     val noteSuggestions: List<String> = emptyList(),
     val noteError: String? = null,
     val fromAccountError: String? = null,
@@ -83,6 +85,7 @@ class RecordTransferViewModel(
                 amountText = draft.amountText,
                 note = draft.note,
                 occurredAtMillis = draft.occurredAtMillis,
+                timeEdited = draft.timeEdited,
                 noteError = draft.noteError,
                 fromAccountError = draft.fromAccountError,
                 toAccountError = draft.toAccountError,
@@ -142,6 +145,7 @@ class RecordTransferViewModel(
                     isLoading = false,
                     loadErrorMessageRes = null,
                 )
+                refreshNoteSuggestions()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -207,11 +211,7 @@ class RecordTransferViewModel(
         updateDraft {
             copy(
                 note = value,
-                noteError = if (value.trim().length > MAX_LEDGER_NOTE_LENGTH) {
-                    "备注不能超过 $MAX_LEDGER_NOTE_LENGTH 个字符"
-                } else {
-                    null
-                },
+                noteError = ledgerNoteLengthError(value),
                 isDirty = true,
             )
         }
@@ -225,6 +225,7 @@ class RecordTransferViewModel(
         updateDraft {
             copy(
                 occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+                timeEdited = true,
                 occurredAtError = null,
                 isDirty = true,
             )
@@ -271,8 +272,8 @@ class RecordTransferViewModel(
                 saveInFlight = false
                 updateDraft {
                     copy(
-                        fromAccountError = "请选择不同的转出和转入账户",
-                        toAccountError = "请选择不同的转出和转入账户",
+                        fromAccountError = ValidationErrorText.SAME_TRANSFER_ACCOUNTS,
+                        toAccountError = ValidationErrorText.SAME_TRANSFER_ACCOUNTS,
                     )
                 }
                 return@launch
@@ -379,6 +380,7 @@ class RecordTransferViewModel(
             amountText = next.amountText,
             note = next.note,
             occurredAtMillis = next.occurredAtMillis,
+            timeEdited = next.timeEdited,
             noteError = next.noteError,
             fromAccountError = next.fromAccountError,
             toAccountError = next.toAccountError,

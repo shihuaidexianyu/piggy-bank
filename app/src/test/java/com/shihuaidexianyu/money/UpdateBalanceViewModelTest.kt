@@ -151,6 +151,21 @@ class UpdateBalanceViewModelTest {
         assertEquals(9_900, viewModel.uiState.value.deltaPreview)
     }
 
+    @Test
+    fun `time is marked edited only after the user picks a time`() = runTest(dispatcher) {
+        val accountRepo = InMemoryAccountRepository()
+        accountRepo.createAccount(Account(name = "现金", initialBalance = 10_000, createdAt = 1L))
+        val vm = buildViewModel(accountRepo = accountRepo)
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.timeEdited)
+
+        vm.updateOccurredAt(1_000_042L) // 16m 42s → floor to 960_000
+        advanceUntilIdle()
+
+        assertEquals(true, vm.uiState.value.timeEdited)
+        assertEquals(960_000L, vm.uiState.value.occurredAtMillis)
+    }
+
     private fun buildViewModel(
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),

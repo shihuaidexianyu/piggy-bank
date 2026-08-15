@@ -42,6 +42,7 @@ data class RecordCashFlowUiState(
     val amountText: String = "",
     val note: String = "",
     val occurredAtMillis: Long = DateTimeTextFormatter.floorToMinute(System.currentTimeMillis()),
+    val timeEdited: Boolean = false,
     val noteSuggestions: List<String> = emptyList(),
     val noteError: String? = null,
     val accountError: String? = null,
@@ -91,6 +92,7 @@ class RecordCashFlowViewModel(
                 amountText = draft.amountText,
                 note = draft.note,
                 occurredAtMillis = draft.occurredAtMillis,
+                timeEdited = draft.timeEdited,
                 noteError = draft.noteError,
                 accountError = draft.accountError,
                 amountError = draft.amountError,
@@ -180,11 +182,7 @@ class RecordCashFlowViewModel(
         updateDraft {
             copy(
                 note = value,
-                noteError = if (value.trim().length > MAX_LEDGER_NOTE_LENGTH) {
-                    "备注不能超过 $MAX_LEDGER_NOTE_LENGTH 个字符"
-                } else {
-                    null
-                },
+                noteError = ledgerNoteLengthError(value),
                 isDirty = true,
             )
         }
@@ -198,6 +196,7 @@ class RecordCashFlowViewModel(
         updateDraft {
             copy(
                 occurredAtMillis = DateTimeTextFormatter.floorToMinute(value),
+                timeEdited = true,
                 occurredAtError = null,
                 isDirty = true,
             )
@@ -345,6 +344,7 @@ class RecordCashFlowViewModel(
             amountText = next.amountText,
             note = next.note,
             occurredAtMillis = next.occurredAtMillis,
+            timeEdited = next.timeEdited,
             noteError = next.noteError,
             accountError = next.accountError,
             amountError = next.amountError,

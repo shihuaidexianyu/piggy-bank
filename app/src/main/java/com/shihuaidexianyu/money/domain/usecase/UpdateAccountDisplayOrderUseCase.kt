@@ -17,7 +17,7 @@ class UpdateAccountDisplayOrderUseCase(
 
             val accountById = openAccounts.associateBy { it.id }
             orderedAccountIds.forEachIndexed { index, accountId ->
-                val account = requireNotNull(accountById[accountId]) { "账户不存在" }
+                val account = requireNotNull(accountById[accountId]) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
                 account.requireOpenForMutation("调整顺序")
                 if (account.displayOrder != index) {
                     accountRepository.updateAccount(account.copy(displayOrder = index))

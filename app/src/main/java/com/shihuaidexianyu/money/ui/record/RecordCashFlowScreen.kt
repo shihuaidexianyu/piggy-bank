@@ -82,7 +82,13 @@ fun RecordCashFlowScreen(
     )
 
     MoneyFormPage(
-        title = state.direction.displayName,
+        title = stringResource(
+            if (state.direction == CashFlowDirection.INFLOW) {
+                R.string.ledger_record_income_title
+            } else {
+                R.string.ledger_record_expense_title
+            },
+        ),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
@@ -150,7 +156,11 @@ fun RecordCashFlowScreen(
                     valueMillis = state.occurredAtMillis,
                     onDateClick = { dateTimeField = MoneyDateTimePickerField.DATE },
                     onTimeClick = { dateTimeField = MoneyDateTimePickerField.TIME },
-                    timeSubtitle = stringResource(R.string.ledger_default_current_time),
+                    timeSubtitle = if (state.timeEdited) {
+                        null
+                    } else {
+                        stringResource(R.string.ledger_default_current_time)
+                    },
                     errorText = state.occurredAtError,
                 )
                 MoneySaveButton(

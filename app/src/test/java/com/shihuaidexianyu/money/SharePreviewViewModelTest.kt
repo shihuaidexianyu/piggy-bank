@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import androidx.lifecycle.SavedStateHandle
+import app.cash.turbine.test
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
 import com.shihuaidexianyu.money.domain.time.ClockProvider
@@ -10,8 +11,10 @@ import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
+import com.shihuaidexianyu.money.ui.record.MAX_LEDGER_NOTE_LENGTH
 import com.shihuaidexianyu.money.ui.share.ShareCashFlowPayload
 import com.shihuaidexianyu.money.ui.share.SharePreviewAccountLoader
+import com.shihuaidexianyu.money.ui.share.SharePreviewEffect
 import com.shihuaidexianyu.money.ui.share.SharePreviewSubmitter
 import com.shihuaidexianyu.money.ui.share.SharePreviewViewModel
 import kotlinx.coroutines.CompletableDeferred
@@ -28,6 +31,8 @@ import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -93,16 +98,65 @@ class SharePreviewViewModelTest {
         var calls = 0
         val viewModel = viewModel(SavedStateHandle()) { calls++ }
         runCurrent()
-        val longNote = "备".repeat(201)
+        val longNote = "备".repeat(MAX_LEDGER_NOTE_LENGTH + 1)
 
         viewModel.updateNote(longNote)
         viewModel.save()
         runCurrent()
 
         assertEquals(longNote, viewModel.uiState.value.note)
-        assertEquals("备注不能超过 200 字", viewModel.uiState.value.fieldError)
+        assertEquals("备注不能超过 200 个字符", viewModel.uiState.value.fieldError)
         assertEquals(0, calls)
     }
+
+    @Test
+    fun `note limit ignores surrounding whitespace like the record form`() = runTest(dispatcher) {
+        var calls = 0
+        val viewModel = viewModel(SavedStateHandle()) { calls++ }
+        runCurrent()
+
+        viewModel.updateNote("  " + "备".repeat(MAX_LEDGER_NOTE_LENGTH))
+        viewModel.save()
+        runCurrent()
+
+        assertNull(viewModel.uiState.value.fieldError)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `save failure reports only a generic snackbar message`() = runTest(dispatcher) {
+        var calls = 0
+        val viewModel = viewModel(SavedStateHandle()) {
+            calls++
+            error("raw sqlite constraint failure")
+        }
+        runCurrent()
+
+        viewModel.effectFlow.test {
+            viewModel.save()
+            runCurrent()
+
+            val effect = awaitItem()
+            assertIs<SharePreviewEffect.ShowMessage>(effect)
+            assertEquals(R.string.share_save_failed_retry, effect.messageRes)
+            assertTrue(effect.message.isBlank())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertNull(viewModel.uiState.value.fieldError)
+        assertFalse(viewModel.uiState.value.isSaving)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `auto selected account stays clean while a manual change marks the draft dirty`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel(SavedStateHandle()) {}
+            runCurrent()
+
+            assertFalse(viewModel.uiState.value.isDirty)
+            viewModel.updateAccount(9L)
+            assertTrue(viewModel.uiState.value.isDirty)
+        }
 
     @Test
     fun `recreate and replay through real create use case leaves one ledger row`() = runTest(dispatcher) {

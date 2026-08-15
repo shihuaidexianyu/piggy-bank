@@ -34,13 +34,13 @@ class UpdateReminderUseCase(
         expectedUpdatedAt: Long? = null,
     ) {
         require(name.isNotBlank()) { "名称不能为空" }
-        require(amount > 0) { "金额必须大于 0" }
-        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户不存在" }
+        require(amount > 0) { ValidationErrorText.AMOUNT_MUST_BE_POSITIVE }
+        val account = requireNotNull(accountRepository.getAccountById(accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         account.requireOpenForMutation("修改提醒")
         ReminderScheduleValidator.validate(periodType, periodValue, periodMonth)
 
-        val existing = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒不存在" }
-        val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户不存在" }
+        val existing = requireNotNull(reminderRepository.getReminderById(reminderId)) { "提醒${ValidationErrorText.NOT_FOUND_SUFFIX}" }
+        val existingAccount = requireNotNull(accountRepository.getAccountById(existing.accountId)) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
         existingAccount.requireOpenForMutation("修改提醒")
 
         val requestedAnchorDueAt = anchorDueAt ?: existing.anchorDueAt
