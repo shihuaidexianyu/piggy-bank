@@ -15,8 +15,10 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
+import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
+import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import java.time.Instant
@@ -171,6 +173,8 @@ class HomeRecentRecordsViewModelTest {
                 transactionRepository = ledger,
                 calculateAccountBalancesUseCase = balances,
             ),
+            upsertSavingsGoalUseCase = UpsertSavingsGoalUseCase(savingsGoalRepository, clock),
+            clearSavingsGoalUseCase = ClearSavingsGoalUseCase(savingsGoalRepository),
             devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
             portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             savedStateHandle = SavedStateHandle(),

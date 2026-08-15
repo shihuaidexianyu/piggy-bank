@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -133,6 +134,10 @@ fun ReminderListScreen(
     }
 
     Scaffold(
+        // The outer scaffold (MoneyNavGraph) already applies the bottom/horizontal insets and
+        // the TopAppBar below consumes the status bar inset itself; reserving insets here too
+        // would double-pad the header and the list bottom.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
                 Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.reminder_add))

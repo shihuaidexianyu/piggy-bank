@@ -74,6 +74,7 @@ data class HistoryRecordUiModel(
     val recordId: Long,
     val kind: HistoryRecordKind,
     val title: String,
+    /** Account display name, or "from → to" for transfers. */
     val subtitle: String,
     val amount: Long,
     val occurredAt: Long,
@@ -83,6 +84,23 @@ data class HistoryRecordUiModel(
     val isInvestmentAccount: Boolean = false,
     /** Closed or missing related accounts make the ledger record read-only. */
     val canMutate: Boolean = true,
+    /**
+     * Book balance of the record's account immediately before this record (the FROM account for
+     * transfers): [balanceAfter] minus this row's contribution. Computed over the full ledger —
+     * independent of the active filters and page. Null only when the data layer could not
+     * provide it.
+     */
+    val balanceBefore: Long? = null,
+    /**
+     * Book balance of the record's account immediately after this record (the FROM account for
+     * transfers), computed over the full ledger — independent of the active filters and page.
+     * Null only when the data layer could not provide it.
+     */
+    val balanceAfter: Long? = null,
+    /** Receiving account's before-balance for transfers; null for other kinds. */
+    val relatedBalanceBefore: Long? = null,
+    /** Receiving account's after-balance for transfers; null for other kinds. */
+    val relatedBalanceAfter: Long? = null,
 )
 
 data class HistoryUiState(
@@ -493,15 +511,19 @@ class HistoryViewModel(
             } else {
                 setOf(record.accountId, relatedAccountId)
             }
+            // Prefer the data-layer-resolved names (they travel with the row); the account map is
+            // the fallback for rows produced before names were threaded through.
+            val fromName = record.accountName.ifBlank { accountMap[record.accountId]?.name ?: "—" }
             HistoryRecordUiModel(
                 id = "${kind.name.lowercase()}_${record.recordId}",
                 recordId = record.recordId,
                 kind = kind,
                 title = record.title,
                 subtitle = if (record.type == HistoryRecordType.TRANSFER && relatedAccountId != null) {
-                    "${accountMap[record.accountId]?.name ?: "—"} → ${accountMap[relatedAccountId]?.name ?: "—"}"
+                    val toName = record.relatedAccountName ?: accountMap[relatedAccountId]?.name ?: "—"
+                    "$fromName → $toName"
                 } else {
-                    accountMap[record.accountId]?.name ?: "—"
+                    fromName
                 },
                 amount = record.amount,
                 occurredAt = record.occurredAt,
@@ -509,6 +531,10 @@ class HistoryViewModel(
                 keywordSource = record.keywordSource,
                 isInvestmentAccount = accountMap[record.accountId]?.isInvestment == true,
                 canMutate = accountIds.all { accountId -> accountMap[accountId]?.isClosed == false },
+                balanceBefore = record.balanceBefore,
+                balanceAfter = record.balanceAfter,
+                relatedBalanceBefore = record.relatedBalanceBefore,
+                relatedBalanceAfter = record.relatedBalanceAfter,
             )
         }
     }

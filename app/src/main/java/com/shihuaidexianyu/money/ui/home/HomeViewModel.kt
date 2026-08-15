@@ -15,10 +15,12 @@ import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.BudgetPace
+import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
 import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
+import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.calculatePeriodDelta
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.common.AsyncContent
@@ -110,6 +112,11 @@ data class HomeUiState(
     @param:StringRes val monthlyBudgetInputErrorRes: Int? = null,
     @param:StringRes val monthlyBudgetSaveErrorRes: Int? = null,
     val isMonthlyBudgetSaving: Boolean = false,
+    val showSavingsGoalEditor: Boolean = false,
+    val savingsGoalInput: String = "",
+    @param:StringRes val savingsGoalInputErrorRes: Int? = null,
+    @param:StringRes val savingsGoalSaveErrorRes: Int? = null,
+    val isSavingsGoalSaving: Boolean = false,
 )
 
 internal fun HomeUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<HomeUiState> {
@@ -123,6 +130,8 @@ internal fun HomeUiState.toAsyncContent(errorMessage: String = ""): AsyncContent
 class HomeViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
     private val observeSavingsGoalUseCase: ObserveSavingsGoalUseCase,
+    private val upsertSavingsGoalUseCase: UpsertSavingsGoalUseCase,
+    private val clearSavingsGoalUseCase: ClearSavingsGoalUseCase,
     private val devicePreferencesRepository: DevicePreferencesRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
@@ -134,6 +143,10 @@ class HomeViewModel(
             monthlyBudgetInput = savedStateHandle.get<String>(KEY_BUDGET_INPUT).orEmpty(),
             monthlyBudgetInputErrorRes = savedStateHandle.get<Int>(KEY_BUDGET_INPUT_ERROR),
             monthlyBudgetSaveErrorRes = savedStateHandle.get<Int>(KEY_BUDGET_SAVE_ERROR),
+            showSavingsGoalEditor = savedStateHandle[KEY_GOAL_EDITOR_OPEN] ?: false,
+            savingsGoalInput = savedStateHandle.get<String>(KEY_GOAL_INPUT).orEmpty(),
+            savingsGoalInputErrorRes = savedStateHandle.get<Int>(KEY_GOAL_INPUT_ERROR),
+            savingsGoalSaveErrorRes = savedStateHandle.get<Int>(KEY_GOAL_SAVE_ERROR),
         ),
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -418,6 +431,136 @@ class HomeViewModel(
         savedStateHandle.remove<String>(KEY_BUDGET_SAVE_ERROR)
     }
 
+    fun openSavingsGoalEditor() {
+        clearPendingGoalAction()
+        val input = _uiState.value.savingsGoalProgress?.targetAmount?.toEditableAmount().orEmpty()
+        updateGoalEditor(
+            show = true,
+            input = input,
+            inputErrorRes = null,
+            saveErrorRes = null,
+        )
+    }
+
+    fun dismissSavingsGoalEditor() {
+        if (_uiState.value.isSavingsGoalSaving) return
+        updateGoalEditor(show = false)
+    }
+
+    fun updateSavingsGoalInput(value: String) {
+        if (_uiState.value.isSavingsGoalSaving) return
+        clearPendingGoalAction()
+        updateGoalEditor(
+            input = value,
+            inputErrorRes = null,
+            saveErrorRes = null,
+        )
+    }
+
+    fun saveSavingsGoal() {
+        val current = _uiState.value
+        if (current.isSavingsGoalSaving) return
+        val amount = AmountInputParser.parseUnsignedToMinor(current.savingsGoalInput)
+        if (amount == null || amount <= 0L) {
+            clearPendingGoalAction()
+            updateGoalEditor(inputErrorRes = R.string.goal_amount_invalid, saveErrorRes = null)
+            return
+        }
+        persistSavingsGoal(GoalPendingAction.SET, amount)
+    }
+
+    fun retrySavingsGoalSave() {
+        if (_uiState.value.isSavingsGoalSaving) return
+        val pendingAction = savedStateHandle.get<String>(KEY_GOAL_PENDING_ACTION)?.let { value ->
+            runCatching { GoalPendingAction.valueOf(value) }.getOrNull()
+        }
+        when (pendingAction) {
+            GoalPendingAction.SET -> {
+                val amount = savedStateHandle.get<Long>(KEY_GOAL_PENDING_AMOUNT)
+                    ?: return saveSavingsGoal()
+                persistSavingsGoal(GoalPendingAction.SET, amount)
+            }
+            GoalPendingAction.CLEAR -> persistSavingsGoal(GoalPendingAction.CLEAR, null)
+            null -> saveSavingsGoal()
+        }
+    }
+
+    fun clearSavingsGoal() {
+        if (_uiState.value.isSavingsGoalSaving) return
+        persistSavingsGoal(GoalPendingAction.CLEAR, null)
+    }
+
+    private fun persistSavingsGoal(action: GoalPendingAction, amount: Long?) {
+        savedStateHandle[KEY_GOAL_PENDING_ACTION] = action.name
+        if (amount == null) {
+            savedStateHandle.remove<Long>(KEY_GOAL_PENDING_AMOUNT)
+        } else {
+            savedStateHandle[KEY_GOAL_PENDING_AMOUNT] = amount
+        }
+        savedStateHandle.remove<String>(KEY_GOAL_SAVE_ERROR)
+        _uiState.value = _uiState.value.copy(
+            isSavingsGoalSaving = true,
+            savingsGoalInputErrorRes = null,
+            savingsGoalSaveErrorRes = null,
+        )
+        savedStateHandle[KEY_GOAL_INPUT_ERROR] = null
+        viewModelScope.launch {
+            try {
+                if (action == GoalPendingAction.SET) {
+                    upsertSavingsGoalUseCase(requireNotNull(amount))
+                } else {
+                    clearSavingsGoalUseCase()
+                }
+                clearPendingGoalAction()
+                updateGoalEditor(
+                    show = false,
+                    input = "",
+                    inputErrorRes = null,
+                    saveErrorRes = null,
+                    saving = false,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                updateGoalEditor(
+                    show = true,
+                    saveErrorRes = R.string.home_savings_goal_save_failed,
+                    saving = false,
+                )
+            }
+        }
+    }
+
+    private fun updateGoalEditor(
+        show: Boolean = _uiState.value.showSavingsGoalEditor,
+        input: String = _uiState.value.savingsGoalInput,
+        @StringRes inputErrorRes: Int? = _uiState.value.savingsGoalInputErrorRes,
+        @StringRes saveErrorRes: Int? = _uiState.value.savingsGoalSaveErrorRes,
+        saving: Boolean = _uiState.value.isSavingsGoalSaving,
+    ) {
+        savedStateHandle[KEY_GOAL_EDITOR_OPEN] = show
+        savedStateHandle[KEY_GOAL_INPUT] = input
+        savedStateHandle[KEY_GOAL_INPUT_ERROR] = inputErrorRes
+        if (saveErrorRes == null) {
+            savedStateHandle.remove<String>(KEY_GOAL_SAVE_ERROR)
+        } else {
+            savedStateHandle[KEY_GOAL_SAVE_ERROR] = saveErrorRes
+        }
+        _uiState.value = _uiState.value.copy(
+            showSavingsGoalEditor = show,
+            savingsGoalInput = input,
+            savingsGoalInputErrorRes = inputErrorRes,
+            savingsGoalSaveErrorRes = saveErrorRes,
+            isSavingsGoalSaving = saving,
+        )
+    }
+
+    private fun clearPendingGoalAction() {
+        savedStateHandle.remove<String>(KEY_GOAL_PENDING_ACTION)
+        savedStateHandle.remove<Long>(KEY_GOAL_PENDING_AMOUNT)
+        savedStateHandle.remove<String>(KEY_GOAL_SAVE_ERROR)
+    }
+
     private fun HistoryRecordType.toHomeRecordKind(): HistoryRecordKind {
         return when (this) {
             HistoryRecordType.CASH_FLOW -> HistoryRecordKind.CASH_FLOW
@@ -432,6 +575,11 @@ class HomeViewModel(
         CLOSE,
     }
 
+    private enum class GoalPendingAction {
+        SET,
+        CLEAR,
+    }
+
     private companion object {
         const val KEY_BUDGET_EDITOR_OPEN = "home_budget_editor_open"
         const val KEY_BUDGET_INPUT = "home_budget_input"
@@ -439,6 +587,12 @@ class HomeViewModel(
         const val KEY_BUDGET_SAVE_ERROR = "home_budget_save_error"
         const val KEY_BUDGET_PENDING_ACTION = "home_budget_pending_action"
         const val KEY_BUDGET_PENDING_AMOUNT = "home_budget_pending_amount"
+        const val KEY_GOAL_EDITOR_OPEN = "home_goal_editor_open"
+        const val KEY_GOAL_INPUT = "home_goal_input"
+        const val KEY_GOAL_INPUT_ERROR = "home_goal_input_error"
+        const val KEY_GOAL_SAVE_ERROR = "home_goal_save_error"
+        const val KEY_GOAL_PENDING_ACTION = "home_goal_pending_action"
+        const val KEY_GOAL_PENDING_AMOUNT = "home_goal_pending_amount"
         const val KEY_SELECTED_PERIOD = "home_selected_period"
     }
 }

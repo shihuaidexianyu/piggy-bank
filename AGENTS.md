@@ -153,7 +153,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── lock/                    # Biometric app lock (AppLockScreen, AppLockViewModel, gateway)
 │   ├── record/                  # Record/edit cash flow & transfer
 │   ├── reminder/                # Recurring reminders + notification permission gateway
-│   ├── settings/                # App settings (incl. export/import) + savings goal screen
+│   ├── settings/                # App settings (incl. export/import)
 │   ├── share/                   # Share-to-record preview (ACTION_SEND text/plain)
 │   └── theme/                   # Material 3 theming (light + dark + dynamic color)
 └── util/                        # Formatters, parsers, time utilities, validators, share-text extractor

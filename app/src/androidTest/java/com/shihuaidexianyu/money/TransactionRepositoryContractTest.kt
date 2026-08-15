@@ -65,14 +65,16 @@ class TransactionRepositoryContractTest {
             historyRecordDao = db.historyRecordDao(),
             ledgerAggregateDao = db.ledgerAggregateDao(),
         )
-        memoryRepo = InMemoryTransactionRepository { accountId ->
-            when (accountId) {
-                1L -> "测试账户"
-                2L -> "第二账户"
-                3L -> "第三账户"
-                else -> null
-            }
-        }
+        memoryRepo = InMemoryTransactionRepository(
+            accountNameLookup = { accountId ->
+                when (accountId) {
+                    1L -> "测试账户"
+                    2L -> "第二账户"
+                    3L -> "第三账户"
+                    else -> null
+                }
+            },
+        )
     }
 
     @After

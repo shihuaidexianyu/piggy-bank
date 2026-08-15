@@ -60,6 +60,26 @@ data class HistoryRecord(
     val amount: Long,
     val occurredAt: Long,
     val keywordSource: String,
+    /** Display name of [accountId] resolved by the data layer; "" when the account is missing. */
+    val accountName: String = "",
+    /** Transfer counterparty name; null for non-transfer records or a missing account. */
+    val relatedAccountName: String? = null,
+    /**
+     * Book balance of [accountId] immediately before this record: [balanceAfter] minus this
+     * row's signed contribution (`amount`; for transfers the outgoing leg is `-amount`). Computed
+     * over the full ledger — history filters and pagination never change it.
+     */
+    val balanceBefore: Long? = null,
+    /**
+     * Book balance of [accountId] immediately after this record, computed over the full ledger —
+     * history filters and pagination never change it. TRANSFER rows carry the FROM account's
+     * pair here; the receiving account's pair is on [relatedBalanceBefore]/[relatedBalanceAfter].
+     */
+    val balanceAfter: Long? = null,
+    /** Receiving account's balance right before a TRANSFER record; null for other types. */
+    val relatedBalanceBefore: Long? = null,
+    /** Receiving account's balance right after a TRANSFER record; null for other types. */
+    val relatedBalanceAfter: Long? = null,
 ) {
     val cursor: HistoryPageCursor
         get() = HistoryPageCursor(

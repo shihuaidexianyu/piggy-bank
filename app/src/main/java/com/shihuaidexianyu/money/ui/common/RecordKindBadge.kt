@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.TrendingDown
-import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material.icons.automirrored.rounded.FactCheck
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.SouthWest
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Badge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -34,22 +33,12 @@ private fun recordKindAccent(kind: HistoryRecordKind, amount: Long): Color {
     }
 }
 
-/** Compact Material 3 badge marker for dense ledger lists. */
-@Composable
-fun RecordKindDot(
-    kind: HistoryRecordKind,
-    amount: Long,
-    modifier: Modifier = Modifier,
-) {
-    Badge(
-        modifier = modifier.size(8.dp),
-        containerColor = recordKindAccent(kind, amount),
-    )
-}
-
 /**
- * Small circular badge for a ledger record row, color-coded and icon-coded by record kind.
- * Shares its visual language with [AccountIconBadge] (tinted icon on a 12% alpha tinted disc).
+ * Circular type badge for ledger record rows: a semantic-tinted disc (16% alpha) with a
+ * semantic-colored icon — income points down-left (SouthWest arrow, money coming in), expense
+ * points up-right (NorthEast arrow, money going out), transfer swaps, balance events check. The
+ * diagonal arrows have no AutoMirrored variant in the icons library (they are not text-direction
+ * sensitive); `Check` is direction-neutral. Shares its visual language with [AccountIconBadge].
  */
 @Composable
 fun RecordKindBadge(
@@ -62,15 +51,15 @@ fun RecordKindBadge(
     val accent = recordKindAccent(kind, amount)
     val icon = when (kind) {
         HistoryRecordKind.CASH_FLOW ->
-            if (amount > 0) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown
+            if (amount > 0) Icons.Rounded.SouthWest else Icons.Rounded.NorthEast
         HistoryRecordKind.TRANSFER -> Icons.Rounded.SwapHoriz
         HistoryRecordKind.BALANCE_UPDATE,
         HistoryRecordKind.BALANCE_ADJUSTMENT,
-        -> Icons.AutoMirrored.Rounded.FactCheck
+        -> Icons.Rounded.Check
     }
     Surface(
         modifier = modifier.size(size),
-        color = accent.copy(alpha = 0.12f),
+        color = accent.copy(alpha = 0.16f),
         shape = CircleShape,
     ) {
         Box(

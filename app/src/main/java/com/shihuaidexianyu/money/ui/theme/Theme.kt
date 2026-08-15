@@ -72,20 +72,20 @@ private val BrandDarkColorScheme = darkColorScheme(
     onTertiary = Color(0xFF1F3048),
     tertiaryContainer = Color(0xFF36465F),
     onTertiaryContainer = Color(0xFFD3E4FF),
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceVariant = Night700,
-    // Cards and sheets sit on the pure-black canvas, so the container ladder starts just above
-    // black — a pure-black surfaceContainerLowest made cards indistinguishable from the page.
-    surfaceContainerLowest = Night700,
-    surfaceContainerLow = Color(0xFF181818),
-    surfaceContainer = Color(0xFF1D1D1D),
-    surfaceContainerHigh = Color(0xFF232323),
-    surfaceContainerHighest = Night600,
-    surfaceDim = Color.Black,
-    surfaceBright = Night600,
-    onBackground = Color.White,
-    onSurface = Color.White,
+    background = Color(0xFF161616),
+    surface = Color(0xFF161616),
+    surfaceVariant = Color(0xFF2A2A2A),
+    // Deep-gray ladder instead of a pure-black canvas: the page sits at #161616 and cards/sheets
+    // step up from #242424, so elevation stays readable without flattening into one black plane.
+    surfaceContainerLowest = Color(0xFF242424),
+    surfaceContainerLow = Color(0xFF282828),
+    surfaceContainer = Color(0xFF2E2E2E),
+    surfaceContainerHigh = Color(0xFF343434),
+    surfaceContainerHighest = Color(0xFF3B3B3B),
+    surfaceDim = Color(0xFF161616),
+    surfaceBright = Color(0xFF3B3B3B),
+    onBackground = Color(0xFFF2F2F2),
+    onSurface = Color(0xFFF2F2F2),
     onSurfaceVariant = Color(0xFFB0B0B0),
     surfaceTint = BrandTealPrimaryDark,
     inverseSurface = Color(0xFFE1E3E3),
@@ -94,8 +94,8 @@ private val BrandDarkColorScheme = darkColorScheme(
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
-    outline = Color(0xFF4A4A4A),
-    outlineVariant = Night600,
+    outline = Color(0xFF555555),
+    outlineVariant = Color(0xFF3A3A3A),
     scrim = Color.Black,
 )
 
@@ -132,6 +132,7 @@ fun MoneyTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MoneyTypography,
+            shapes = MoneyShapes,
             content = content,
         )
     }

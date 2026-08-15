@@ -4,34 +4,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddCircle
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.RemoveCircle
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -54,8 +40,11 @@ import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneyStatusPill
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
+import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import kotlinx.coroutines.flow.SharedFlow
@@ -65,10 +54,6 @@ fun AccountDetailScreen(
     state: AccountDetailUiState,
     effectFlow: SharedFlow<AccountDetailEffect>,
     onManageAccount: () -> Unit,
-    onRecordIncome: () -> Unit,
-    onRecordExpense: () -> Unit,
-    onRecordTransfer: () -> Unit,
-    onStartUpdateBalance: () -> Unit,
     onReopenAccount: () -> Unit,
     onBackToAccounts: () -> Unit,
     onViewAllHistory: () -> Unit = {},
@@ -200,60 +185,6 @@ fun AccountDetailScreen(
                 }
             }
         }
-        if (state.canMutateLedger()) {
-            item { MoneySectionHeader(title = stringResource(R.string.account_detail_quick_actions)) }
-            item {
-                val moneyColors = LocalMoneyColors.current
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        QuickActionButton(
-                            label = stringResource(R.string.account_detail_record_income),
-                            icon = Icons.Rounded.AddCircle,
-                            iconTint = moneyColors.income,
-                            onClick = onRecordIncome,
-                            modifier = Modifier.weight(1f),
-                        )
-                        QuickActionButton(
-                            label = stringResource(R.string.account_detail_record_expense),
-                            icon = Icons.Rounded.RemoveCircle,
-                            iconTint = moneyColors.expense,
-                            onClick = onRecordExpense,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        QuickActionButton(
-                            label = stringResource(R.string.history_transfer),
-                            icon = Icons.Rounded.SwapHoriz,
-                            iconTint = moneyColors.transfer,
-                            onClick = onRecordTransfer,
-                            enabled = state.openAccountCount >= 2,
-                            modifier = Modifier.weight(1f),
-                        )
-                        QuickActionButton(
-                            label = stringResource(R.string.account_detail_reconcile),
-                            icon = Icons.Rounded.CheckCircle,
-                            iconTint = moneyColors.current,
-                            onClick = onStartUpdateBalance,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-                if (state.openAccountCount < 2) {
-                    Text(
-                        text = stringResource(R.string.account_detail_transfer_unavailable),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
         // === This month summary ===
         item {
             MoneySectionHeader(
@@ -350,53 +281,6 @@ fun AccountDetailScreen(
     }
 }
 
-/**
- * Circular quick action: a tonal circle carries the semantic-tinted icon, with the label below —
- * the same circular language as the home header icons, no filled rectangle blocks.
- */
-@Composable
-private fun QuickActionButton(
-    label: String,
-    icon: ImageVector,
-    iconTint: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        IconButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.size(52.dp),
-            shape = CircleShape,
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (enabled) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            maxLines = 1,
-        )
-    }
-}
-
 @Composable
 private fun RecentRecordRow(
     record: AccountDetailRecentRecord,
@@ -411,7 +295,10 @@ private fun RecentRecordRow(
         AccountDetailRecordKind.BALANCE_UPDATE, AccountDetailRecordKind.BALANCE_ADJUSTMENT ->
             moneyColors.current
     }
-    val amountText = formatInAppAmount(record.amount, settings)
+    // Same row language as the history ledger (V1): type badge, compact-time subtitle (the
+    // account is the page itself), signed amount, and this account's before → after balance.
+    val amountText = signedFormatInAppAmount(record.amount, settings)
+    val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
     val kindLabel = when (record.kind) {
         AccountDetailRecordKind.CASH_FLOW -> stringResource(R.string.history_cash_flow)
         AccountDetailRecordKind.TRANSFER -> stringResource(
@@ -427,56 +314,116 @@ private fun RecentRecordRow(
         )
         AccountDetailRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
     }
-    val recordContentDescription = stringResource(
-        R.string.account_detail_record_semantics_format,
-        record.title,
-        kindLabel,
-        amountText,
-        DateTimeTextFormatter.format(record.occurredAt),
-    )
+    // Zero-delta checks confirm a balance without moving it: keep the single confirmed value
+    // ("余额 ¥x") instead of a "x → x" transition. Every other row shows this account's
+    // before → after pair (transfers included — the viewer-relative leg only).
+    val isZeroDeltaCheck = record.kind == AccountDetailRecordKind.BALANCE_UPDATE && record.amount == 0L
+    val zeroDeltaBalanceText = if (isZeroDeltaCheck) {
+        record.balanceAfter?.let { balance ->
+            stringResource(R.string.account_picker_balance_format, formatInAppAmount(balance, settings))
+        }
+    } else {
+        null
+    }
+    val recordContentDescription = buildString {
+        append(
+            stringResource(
+                R.string.account_detail_record_semantics_format,
+                record.title,
+                kindLabel,
+                amountText,
+                DateTimeTextFormatter.format(record.occurredAt),
+            ),
+        )
+        when {
+            isZeroDeltaCheck -> record.balanceAfter?.let { balance ->
+                append(
+                    stringResource(
+                        R.string.account_detail_balance_confirmed_semantics_format,
+                        formatInAppAmount(balance, settings),
+                    ),
+                )
+            }
+            record.balanceBefore != null && record.balanceAfter != null -> append(
+                stringResource(
+                    R.string.history_balance_change_semantics_format,
+                    formatInAppAmount(record.balanceBefore, settings),
+                    formatInAppAmount(record.balanceAfter, settings),
+                ),
+            )
+        }
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = recordContentDescription
             },
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Left accent bar
-        Surface(
-            modifier = Modifier
-                .width(4.dp)
-                .height(36.dp),
-            color = accent,
-            shape = CircleShape,
-            content = {},
+        RecordKindBadge(
+            kind = record.kind.toHistoryRecordKind(),
+            amount = record.amount,
+            modifier = Modifier.padding(top = 2.dp),
         )
-        Spacer(modifier = Modifier.width(12.dp))
-        // Title + type label
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = record.title,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "$kindLabel · ${DateTimeTextFormatter.format(record.occurredAt)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // Same shared-line layout as the history row: title+amount, then time and balance.
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = record.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = amountText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = accent,
+                    maxLines = 1,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = timeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                when {
+                    zeroDeltaBalanceText != null -> Text(
+                        text = zeroDeltaBalanceText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    record.balanceBefore != null && record.balanceAfter != null -> BalanceTransitionText(
+                        before = record.balanceBefore,
+                        after = record.balanceAfter,
+                        settings = settings,
+                    )
+                }
+            }
         }
-        // Amount with direction color
-        Text(
-            text = amountText,
-            style = MaterialTheme.typography.titleMedium,
-            color = accent,
-            maxLines = 1,
-        )
     }
+}
+
+private fun AccountDetailRecordKind.toHistoryRecordKind(): HistoryRecordKind = when (this) {
+    AccountDetailRecordKind.CASH_FLOW -> HistoryRecordKind.CASH_FLOW
+    AccountDetailRecordKind.TRANSFER -> HistoryRecordKind.TRANSFER
+    AccountDetailRecordKind.BALANCE_UPDATE -> HistoryRecordKind.BALANCE_UPDATE
+    AccountDetailRecordKind.BALANCE_ADJUSTMENT -> HistoryRecordKind.BALANCE_ADJUSTMENT
 }

@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
@@ -74,9 +75,10 @@ import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
 import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.RecordKindDot
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
@@ -895,7 +897,12 @@ private fun HistoryRow(
     onEdit: () -> Unit = {},
 ) {
     val moneyColors = LocalMoneyColors.current
-    val amountText = formatInAppAmount(record.amount, settings)
+    // Bank-statement style: cash flow and balance events carry an explicit sign; transfers stay
+    // neutral (unsigned, transfer color).
+    val amountText = when (record.kind) {
+        HistoryRecordKind.TRANSFER -> formatInAppAmount(record.amount, settings)
+        else -> signedFormatInAppAmount(record.amount, settings)
+    }
     val amountStyle = when {
         amountText.length > 16 -> MaterialTheme.typography.labelMedium
         amountText.length > 12 -> MaterialTheme.typography.bodyMedium
@@ -909,6 +916,57 @@ private fun HistoryRow(
             record.amount < 0 -> moneyColors.expense
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
+    }
+    val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
+    val subtitleText = if (record.subtitle.isBlank()) timeLabel else "${record.subtitle} · $timeLabel"
+    // Bank-statement transition "before → after" for the record's own account; transfer rows add
+    // the receiving account's transition on a second, dimmer line (same order as the subtitle).
+    // Statement transition pairs rendered by BalanceTransitionText; transfer rows add the
+    // receiving account's pair on a second, dimmer line (same order as the subtitle).
+    val balanceTransition = if (record.balanceBefore != null && record.balanceAfter != null) {
+        record.balanceBefore to record.balanceAfter
+    } else {
+        null
+    }
+    val relatedBalanceTransition = if (
+        record.kind == HistoryRecordKind.TRANSFER &&
+        record.relatedBalanceBefore != null &&
+        record.relatedBalanceAfter != null
+    ) {
+        record.relatedBalanceBefore to record.relatedBalanceAfter
+    } else {
+        null
+    }
+    // TalkBack segments ("余额从 x 变为 y"; transfers read both accounts, subtitle order).
+    val balanceChangeSemantics = if (record.balanceBefore != null && record.balanceAfter != null) {
+        if (record.kind == HistoryRecordKind.TRANSFER) {
+            stringResource(
+                R.string.history_transfer_from_balance_semantics_format,
+                formatInAppAmount(record.balanceBefore, settings),
+                formatInAppAmount(record.balanceAfter, settings),
+            )
+        } else {
+            stringResource(
+                R.string.history_balance_change_semantics_format,
+                formatInAppAmount(record.balanceBefore, settings),
+                formatInAppAmount(record.balanceAfter, settings),
+            )
+        }
+    } else {
+        null
+    }
+    val relatedBalanceChangeSemantics = if (
+        record.kind == HistoryRecordKind.TRANSFER &&
+        record.relatedBalanceBefore != null &&
+        record.relatedBalanceAfter != null
+    ) {
+        stringResource(
+            R.string.history_transfer_to_balance_semantics_format,
+            formatInAppAmount(record.relatedBalanceBefore, settings),
+            formatInAppAmount(record.relatedBalanceAfter, settings),
+        )
+    } else {
+        null
     }
     val deleteAction = if (deleteEnabled) {
         SwipeRevealAction(
@@ -944,56 +1002,103 @@ private fun HistoryRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = contentClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
                 .semantics(mergeDescendants = true) {
                     contentDescription = buildString {
                         append(record.title)
                         append("，$kindLabel")
+                        // For transfers the subtitle names both accounts ("from → to").
                         record.subtitle.takeIf { it.isNotBlank() }?.let { append("，$it") }
                         append("，$amountText")
                         append("，${DateTimeTextFormatter.format(record.occurredAt)}")
+                        balanceChangeSemantics?.let { append(it) }
+                        relatedBalanceChangeSemantics?.let { append(it) }
                     }
                     role = Role.Button
                 },
-            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RecordKindDot(kind = record.kind, amount = record.amount)
-            Column(
-                modifier = Modifier.weight(0.58f),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(
-                    text = record.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "$kindLabel · ${record.subtitle}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-            }
-            Column(
-                modifier = Modifier.weight(0.42f),
-                horizontalAlignment = Alignment.End,
-            ) {
-                Text(
-                    text = amountText,
-                    style = amountStyle,
-                    color = amountColor,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = DateTimeTextFormatter.formatTimeOnly(record.occurredAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+            RecordKindBadge(
+                kind = record.kind,
+                amount = record.amount,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            // Two-line statement layout: title+amount, then subtitle and the balance transition
+            // sharing one line. Transfers are the exception — their "from → to · time" subtitle
+            // needs the full width, so both transitions drop to their own right-aligned lines.
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        text = record.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = amountText,
+                        style = amountStyle,
+                        color = amountColor,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                if (relatedBalanceTransition != null) {
+                    Text(
+                        text = subtitleText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                    balanceTransition?.let { (before, after) ->
+                        BalanceTransitionText(
+                            before = before,
+                            after = after,
+                            settings = settings,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 3.dp),
+                        )
+                    }
+                    BalanceTransitionText(
+                        before = relatedBalanceTransition.first,
+                        after = relatedBalanceTransition.second,
+                        settings = settings,
+                        // Receiving account sits one shade quieter under the FROM account's line.
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = subtitleText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        balanceTransition?.let { (before, after) ->
+                            BalanceTransitionText(before = before, after = after, settings = settings)
+                        }
+                    }
+                }
             }
         }
     }

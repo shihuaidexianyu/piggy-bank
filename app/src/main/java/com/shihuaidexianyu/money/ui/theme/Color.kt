@@ -35,13 +35,6 @@ val TextDisabled = Color(0xFFDADCE0)
 val BorderNeutral = Color(0xFFE0E0E0)
 val BorderFocusedNeutral = Color(0xFFBDBDBD)
 
-// ===== Dark mode =====
-// Neutral near-black surfaces; no warm/brown tint so dark mode stays clean and Google-like.
-val Night950 = Color(0xFF000000)
-val Night800 = Color(0xFF0A0A0A)
-val Night700 = Color(0xFF141414)
-val Night600 = Color(0xFF2A2A2A)
-
 // ===== Brand colors (primary teal) =====
 val BrandTealPrimary = Color(0xFF256F70)
 val BrandTealPrimaryContainer = Color(0xFFDCEEEF)

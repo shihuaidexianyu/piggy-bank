@@ -53,7 +53,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
 import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
-import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
@@ -81,7 +80,6 @@ fun AccountsScreen(
     onCreateAccount: () -> Unit,
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
-    onManageSavingsGoal: () -> Unit,
     onReorderAccounts: () -> Unit = {},
     accountSwipeReconcileEnabled: Boolean = true,
     onReconcileAccount: (Long) -> Unit = {},
@@ -91,9 +89,6 @@ fun AccountsScreen(
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
     val loadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
-    val positiveAssetsTotal = (state.openAccounts + state.closedAccounts)
-        .mapNotNull { account -> account.balance.takeIf { it > 0L } }
-        .sum()
     val normalKindGroups = buildList<Pair<AccountKind?, List<AccountListItemUiModel>>> {
         val funding = groups.normal.filter { it.kind == AccountKind.FUNDING }
         val investment = groups.normal.filter { it.kind == AccountKind.INVESTMENT }
@@ -233,7 +228,6 @@ fun AccountsScreen(
                             AccountCard(
                                 account = account,
                                 currencySettings = state.settings,
-                                positiveAssetsTotal = positiveAssetsTotal,
                                 onClick = { onAccountClick(account.id) },
                                 reconcileEnabled = accountSwipeReconcileEnabled,
                                 onReconcile = { onReconcileAccount(account.id) },
@@ -257,7 +251,6 @@ fun AccountsScreen(
                         AccountCard(
                             account = account,
                             currencySettings = state.settings,
-                            positiveAssetsTotal = positiveAssetsTotal,
                             onClick = { onAccountClick(account.id) },
                             reconcileEnabled = accountSwipeReconcileEnabled,
                             onReconcile = { onReconcileAccount(account.id) },
@@ -297,27 +290,8 @@ fun AccountsScreen(
                     AccountCard(
                         account = account,
                         currencySettings = state.settings,
-                        positiveAssetsTotal = 0L,
                         modifier = Modifier.animateItem(),
                         onClick = { onAccountClick(account.id) },
-                    )
-                }
-            }
-            item {
-                MoneySectionHeader(title = stringResource(R.string.account_management_title))
-            }
-            item {
-                MoneyCard(contentPadding = PaddingValues(0.dp)) {
-                    MoneyListRow(
-                        title = stringResource(
-                            if (state.savingsGoal == null) {
-                                R.string.savings_goal_set_title
-                            } else {
-                                R.string.savings_goal_edit_title
-                            },
-                        ),
-                        subtitle = stringResource(R.string.accounts_goal_manage_description),
-                        onClick = onManageSavingsGoal,
                     )
                 }
             }
@@ -329,7 +303,6 @@ fun AccountsScreen(
 private fun AccountCard(
     account: AccountListItemUiModel,
     currencySettings: PortableSettings,
-    positiveAssetsTotal: Long,
     onClick: () -> Unit,
     reconcileEnabled: Boolean = true,
     onReconcile: () -> Unit = {},
@@ -358,11 +331,6 @@ private fun AccountCard(
         else -> MaterialTheme.typography.titleLarge
     }
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
-    val shareText = if (!account.isClosed && account.balance > 0L && positiveAssetsTotal > 0L) {
-        formatSharePercent(account.balance, positiveAssetsTotal)
-    } else {
-        null
-    }
     val reconcileAction = if (reconcileEnabled && !account.isClosed) {
         SwipeRevealAction(
             label = stringResource(R.string.account_swipe_reconcile),
@@ -445,14 +413,6 @@ private fun AccountCard(
                         },
                         maxLines = 1,
                     )
-                    shareText?.let {
-                        Text(
-                            text = stringResource(R.string.accounts_share_of_total, it),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
                 }
             }
         }

@@ -18,7 +18,6 @@ import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
 import com.shihuaidexianyu.money.ui.history.HistoryViewModel
-import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 
 internal fun NavGraphBuilder.addAccountsGraph(
     navController: NavHostController,
@@ -84,14 +83,6 @@ internal fun NavGraphBuilder.addAccountsGraph(
             state = state,
             effectFlow = viewModel.effectFlow,
             onManageAccount = { navController.navigate(MoneyDestination.editAccountRoute(accountId)) },
-            onRecordIncome = {
-                navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.INFLOW, accountId))
-            },
-            onRecordExpense = {
-                navController.navigate(MoneyDestination.recordCashFlowRoute(CashFlowDirection.OUTFLOW, accountId))
-            },
-            onRecordTransfer = { navController.navigate(MoneyDestination.recordTransferRoute(accountId)) },
-            onStartUpdateBalance = { navController.navigate(MoneyDestination.updateBalanceRoute(accountId)) },
             onReopenAccount = viewModel::reopenAccount,
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,

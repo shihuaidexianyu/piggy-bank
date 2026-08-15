@@ -152,7 +152,7 @@ fun AccountIconBadge(
 
 /**
  * Both palettes were validated with the dataviz six-checks validator against the app's real
- * surfaces (light: #FFFFFF cards; dark: a pure-black #000000 canvas with #141414 cards) in the
+ * surfaces (light: #FFFFFF cards; dark: a #161616 canvas with #242424 cards) in the
  * exact order of [ACCOUNT_COLOR_NAMES] — every value clears the lightness band, chroma floor,
  * adjacent-pair CVD separation, and the 3:1 contrast floor. Change a hex or the order only
  * together with a re-run of the validator.

@@ -84,7 +84,7 @@ import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.RecordKindDot
+import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
@@ -112,7 +112,12 @@ fun HomeScreen(
     onRetryMonthlyBudgetSave: () -> Unit = {},
     onCloseMonthlyBudget: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onOpenSavingsGoal: () -> Unit = {},
+    onOpenSavingsGoalEditor: () -> Unit = {},
+    onDismissSavingsGoalEditor: () -> Unit = {},
+    onSavingsGoalInputChange: (String) -> Unit = {},
+    onSaveSavingsGoal: () -> Unit = {},
+    onRetrySavingsGoalSave: () -> Unit = {},
+    onClearSavingsGoal: () -> Unit = {},
     onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
 ) {
@@ -136,19 +141,23 @@ fun HomeScreen(
 
     var showCloseBudgetConfirm by remember { mutableStateOf(false) }
     if (state.showMonthlyBudgetEditor) {
-        MonthlyBudgetEditorDialog(
+        val hasBudget = state.monthlyBudget != null
+        HomeAmountEditorDialog(
+            titleRes = if (hasBudget) R.string.home_edit_monthly_budget else R.string.home_set_monthly_budget,
+            fieldLabelRes = R.string.home_monthly_budget_field,
+            clearActionLabelRes = R.string.home_close_monthly_budget,
             input = state.monthlyBudgetInput,
             inputErrorRes = state.monthlyBudgetInputErrorRes,
             saveErrorRes = state.monthlyBudgetSaveErrorRes,
             isSaving = state.isMonthlyBudgetSaving,
-            hasBudget = state.monthlyBudget != null,
+            hasValue = hasBudget,
             onInputChange = onMonthlyBudgetInputChange,
             onSave = if (state.monthlyBudgetSaveErrorRes != null) {
                 onRetryMonthlyBudgetSave
             } else {
                 onSaveMonthlyBudget
             },
-            onCloseBudget = { showCloseBudgetConfirm = true },
+            onClearValue = { showCloseBudgetConfirm = true },
             onDismiss = onDismissMonthlyBudgetEditor,
         )
     }
@@ -161,6 +170,41 @@ fun HomeScreen(
                 onCloseMonthlyBudget()
             },
             onDismiss = { showCloseBudgetConfirm = false },
+        )
+    }
+    var showClearGoalConfirm by remember { mutableStateOf(false) }
+    if (state.showSavingsGoalEditor) {
+        val hasGoal = state.savingsGoalProgress != null
+        HomeAmountEditorDialog(
+            titleRes = if (hasGoal) R.string.savings_goal_edit_title else R.string.savings_goal_set_title,
+            fieldLabelRes = R.string.savings_goal_amount,
+            clearActionLabelRes = R.string.savings_goal_clear_action,
+            input = state.savingsGoalInput,
+            inputErrorRes = state.savingsGoalInputErrorRes,
+            saveErrorRes = state.savingsGoalSaveErrorRes,
+            isSaving = state.isSavingsGoalSaving,
+            hasValue = hasGoal,
+            onInputChange = onSavingsGoalInputChange,
+            onSave = if (state.savingsGoalSaveErrorRes != null) {
+                onRetrySavingsGoalSave
+            } else {
+                onSaveSavingsGoal
+            },
+            onClearValue = { showClearGoalConfirm = true },
+            onDismiss = onDismissSavingsGoalEditor,
+        )
+    }
+    if (showClearGoalConfirm) {
+        MoneyConfirmDialog(
+            title = stringResource(R.string.savings_goal_clear_title),
+            message = stringResource(R.string.savings_goal_clear_message),
+            onConfirm = {
+                showClearGoalConfirm = false
+                onClearSavingsGoal()
+            },
+            onDismiss = { showClearGoalConfirm = false },
+            confirmLabel = stringResource(R.string.action_clear),
+            destructive = true,
         )
     }
     Column(modifier = modifier) {
@@ -243,14 +287,12 @@ fun HomeScreen(
                             onEdit = onOpenMonthlyBudgetEditor,
                         )
                     }
-                    renderedState.savingsGoalProgress?.let { savingsGoalProgress ->
-                        item {
-                            HomeSavingsGoalBlock(
-                                progress = savingsGoalProgress,
-                                settings = renderedState.settings,
-                                onOpenSavingsGoal = onOpenSavingsGoal,
-                            )
-                        }
+                    item {
+                        HomeSavingsGoalBlock(
+                            progress = renderedState.savingsGoalProgress,
+                            settings = renderedState.settings,
+                            onEdit = onOpenSavingsGoalEditor,
+                        )
                     }
                     if (renderedState.dueReminders.isNotEmpty()) {
                         item {
@@ -1049,54 +1091,74 @@ private fun staleAccountCheckedText(lastBalanceUpdateAt: Long?): String {
 
 @Composable
 private fun HomeSavingsGoalBlock(
-    progress: SavingsGoalProgress,
+    progress: SavingsGoalProgress?,
     settings: PortableSettings,
-    onOpenSavingsGoal: () -> Unit,
+    onEdit: () -> Unit,
 ) {
-    val presentation = netWorthGoalProgressPresentation(
-        currentAmount = progress.currentAmount,
-        targetAmount = progress.targetAmount,
-    )
     MoneySectionHeader(title = stringResource(R.string.home_savings_goal))
     Card(
-        onClick = onOpenSavingsGoal,
+        onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         shape = MaterialTheme.shapes.medium,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+        if (progress == null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = formatInAppAmount(progress.targetAmount, settings),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
-                Text(
-                    text = if (presentation.remainingAmount <= 0L) {
-                        stringResource(R.string.home_savings_goal_achieved)
-                    } else {
-                        stringResource(
-                            R.string.home_savings_goal_progress_format,
-                            formatInAppAmount(progress.currentAmount, settings),
-                            formatInAppAmount(presentation.remainingAmount, settings),
-                        )
-                    },
-                    style = MaterialTheme.typography.bodySmall,
+                    stringResource(R.string.home_savings_goal_not_set_description),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    stringResource(R.string.savings_goal_set_action),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
-            LinearProgressIndicator(
-                progress = { presentation.geometryPercent / 100f },
-                modifier = Modifier.fillMaxWidth(),
+        } else {
+            val presentation = netWorthGoalProgressPresentation(
+                currentAmount = progress.currentAmount,
+                targetAmount = progress.targetAmount,
             )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = formatInAppAmount(progress.targetAmount, settings),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = if (presentation.remainingAmount <= 0L) {
+                            stringResource(R.string.home_savings_goal_achieved)
+                        } else {
+                            stringResource(
+                                R.string.home_savings_goal_progress_format,
+                                formatInAppAmount(progress.currentAmount, settings),
+                                formatInAppAmount(presentation.remainingAmount, settings),
+                            )
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { presentation.geometryPercent / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
@@ -1135,7 +1197,14 @@ private fun HomeRecentRecordRow(
     onClick: () -> Unit,
 ) {
     val moneyColors = LocalMoneyColors.current
-    val kindLabel = homeRecentRecordKindLabel(record)
+    // Same row language as the history ledger (V1): type badge, "account · time" subtitle, and a
+    // signed amount. Transfers stay neutral (unsigned, transfer color). The running balance is
+    // deliberately omitted here — rows from different accounts interleave, so a per-row account
+    // balance reads as noise on the home dashboard.
+    val amountText = when (record.kind) {
+        HistoryRecordKind.TRANSFER -> formatInAppAmount(record.amount, settings)
+        else -> signedFormatInAppAmount(record.amount, settings)
+    }
     val amountColor = when (record.kind) {
         HistoryRecordKind.TRANSFER -> moneyColors.transfer
         else -> when {
@@ -1144,6 +1213,8 @@ private fun HomeRecentRecordRow(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     }
+    val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
+    val subtitleText = if (record.subtitle.isBlank()) timeLabel else "${record.subtitle} · $timeLabel"
     Surface(
         onClick = onClick,
         color = Color.Transparent,
@@ -1151,11 +1222,11 @@ private fun HomeRecentRecordRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RecordKindDot(kind = record.kind, amount = record.amount)
+            RecordKindBadge(kind = record.kind, amount = record.amount)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -1167,78 +1238,47 @@ private fun HomeRecentRecordRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "$kindLabel · ${record.subtitle}",
+                    text = subtitleText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatInAppAmount(record.amount, settings),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = amountColor,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = recentRecordTimeLabel(record.occurredAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-            }
+            Text(
+                text = amountText,
+                style = MaterialTheme.typography.titleMedium,
+                color = amountColor,
+                maxLines = 1,
+            )
         }
     }
 }
 
+/**
+ * Shared single-amount editor for the home dashboard cards (monthly budget, savings goal).
+ * Titles, the field label and the clear-action label are parameterized so each card keeps its own
+ * wording while the layout, validation display and retry behaviour stay identical.
+ */
 @Composable
-private fun homeRecentRecordKindLabel(record: HomeRecentRecordUiModel): String {
-    return when (record.kind) {
-        HistoryRecordKind.CASH_FLOW -> stringResource(
-            if (record.amount > 0) R.string.history_inflow else R.string.history_outflow,
-        )
-        HistoryRecordKind.TRANSFER -> stringResource(R.string.history_transfer)
-        HistoryRecordKind.BALANCE_UPDATE -> stringResource(
-            when {
-                record.amount == 0L -> R.string.history_balance_update
-                record.isInvestmentAccount && record.amount > 0L -> R.string.history_investment_gain
-                record.isInvestmentAccount -> R.string.history_investment_loss
-                else -> R.string.history_reconciliation_adjustment
-            },
-        )
-        HistoryRecordKind.BALANCE_ADJUSTMENT -> stringResource(R.string.history_balance_adjustment)
-    }
-}
-
-private fun recentRecordTimeLabel(occurredAt: Long): String {
-    val now = System.currentTimeMillis()
-    return if (DateTimeTextFormatter.formatDateOnly(occurredAt) == DateTimeTextFormatter.formatDateOnly(now)) {
-        DateTimeTextFormatter.formatTimeOnly(occurredAt)
-    } else {
-        DateTimeTextFormatter.formatDayInYear(occurredAt, now)
-    }
-}
-
-@Composable
-private fun MonthlyBudgetEditorDialog(
+private fun HomeAmountEditorDialog(
+    @androidx.annotation.StringRes titleRes: Int,
+    @androidx.annotation.StringRes fieldLabelRes: Int,
+    @androidx.annotation.StringRes clearActionLabelRes: Int,
     input: String,
     @androidx.annotation.StringRes inputErrorRes: Int?,
     @androidx.annotation.StringRes saveErrorRes: Int?,
     isSaving: Boolean,
-    hasBudget: Boolean,
+    hasValue: Boolean,
     onInputChange: (String) -> Unit,
     onSave: () -> Unit,
-    onCloseBudget: () -> Unit,
+    onClearValue: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                stringResource(
-                    if (hasBudget) R.string.home_edit_monthly_budget else R.string.home_set_monthly_budget,
-                ),
-            )
+            Text(stringResource(titleRes))
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1246,7 +1286,7 @@ private fun MonthlyBudgetEditorDialog(
                     value = input,
                     onValueChange = onInputChange,
                     enabled = !isSaving,
-                    label = { Text(stringResource(R.string.home_monthly_budget_field)) },
+                    label = { Text(stringResource(fieldLabelRes)) },
                     isError = inputErrorRes != null || saveErrorRes != null,
                     supportingText = {
                         (inputErrorRes ?: saveErrorRes)?.let { Text(stringResource(it)) }
@@ -1254,9 +1294,9 @@ private fun MonthlyBudgetEditorDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
-                if (hasBudget) {
-                    TextButton(onClick = onCloseBudget, enabled = !isSaving) {
-                        Text(stringResource(R.string.home_close_monthly_budget))
+                if (hasValue) {
+                    TextButton(onClick = onClearValue, enabled = !isSaving) {
+                        Text(stringResource(clearActionLabelRes))
                     }
                 }
             }

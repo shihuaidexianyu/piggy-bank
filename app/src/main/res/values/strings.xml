@@ -76,6 +76,8 @@
     <string name="home_savings_goal">储蓄目标</string>
     <string name="home_savings_goal_progress_format">当前净资产 %1$s · 还差 %2$s</string>
     <string name="home_savings_goal_achieved">已达成目标</string>
+    <string name="home_savings_goal_not_set_description">尚未设置净资产目标</string>
+    <string name="home_savings_goal_save_failed">净资产目标保存失败，请重试</string>
     <string name="home_recent_records">最近记录</string>
     <string name="home_view_all">查看全部</string>
     <string name="action_retry">重试</string>
@@ -112,11 +114,7 @@
     <string name="reminder_undo_stale">提醒已发生变化，无法撤销</string>
     <string name="reminder_undo_not_found">提醒已删除，无法撤销</string>
     <string name="share_accounts_load_failed">无法读取开放账户</string>
-    <string name="goal_load_failed">净资产目标加载失败，请重试</string>
     <string name="goal_amount_invalid">请输入有效的目标金额</string>
-    <string name="goal_edit_failed">修改失败</string>
-    <string name="goal_set_failed">设置失败</string>
-    <string name="goal_clear_failed">清除失败</string>
     <string name="migration_preparing">正在准备账本…</string>
     <string name="migration_needed_title">账本迁移需要处理</string>
     <string name="migration_use_current">保留当前账本并忽略旧文件</string>
@@ -156,14 +154,12 @@
     <string name="accounts_show_closed">查看已关闭</string>
     <string name="accounts_create_first">创建第一个账户</string>
     <string name="accounts_normal">正常账户</string>
-    <string name="accounts_share_of_total">占正资产 %1$s</string>
     <string name="accounts_group_total_format">共 %1$d 个</string>
     <string name="accounts_group_total_stale_format">共 %1$d 个 · 待核对 %2$d</string>
     <string name="accounts_hidden">隐藏账户</string>
     <string name="accounts_closed">已关闭账户</string>
     <string name="action_collapse">收起</string>
     <string name="action_view">查看</string>
-    <string name="accounts_goal_manage_description">设置、修改或清除净资产目标</string>
     <string name="account_status_open">开放</string>
     <string name="account_status_reopen_settle">需重新开启并结清</string>
     <string name="account_status_closed">已关闭</string>
@@ -242,6 +238,10 @@
     <string name="history_summary_net_change">实际变动</string>
     <string name="history_investment_gain">投资收益</string>
     <string name="history_investment_loss">投资亏损</string>
+    <string name="history_balance_change_semantics_format">，余额从 %1$s 变为 %2$s</string>
+    <string name="history_transfer_from_balance_semantics_format">，转出账户余额从 %1$s 变为 %2$s</string>
+    <string name="history_transfer_to_balance_semantics_format">，转入账户余额从 %1$s 变为 %2$s</string>
+    <string name="account_detail_balance_confirmed_semantics_format">，余额确认为 %1$s</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>
@@ -341,13 +341,6 @@
     <string name="account_detail_reopening">正在重新开启…</string>
     <string name="account_detail_reopen">重新开启账户</string>
     <string name="account_detail_reminder_time_format">提醒时间 %1$s</string>
-    <string name="account_detail_quick_actions">快捷记账</string>
-    <string name="account_detail_record_income">记录收入</string>
-    <string name="account_detail_record_expense">记录支出</string>
-    <string name="account_detail_preselected">已预选当前账户</string>
-    <string name="account_detail_transfer_from">当前账户作为转出账户</string>
-    <string name="account_detail_transfer_unavailable">至少需要两个开放账户才能转账</string>
-    <string name="account_detail_reconcile">核对余额</string>
     <string name="account_detail_view_all">查看全部</string>
     <string name="account_detail_month_cash_flow">本月现金流</string>
     <string name="transfer_in">转入</string>
@@ -566,14 +559,8 @@
     <string name="savings_goal_edit_title">修改净资产目标</string>
     <string name="savings_goal_set_title">设置净资产目标</string>
     <string name="savings_goal_amount">目标金额</string>
-    <string name="savings_goal_description">进度按所有账户当前余额之和计算，包括隐藏账户和旧版非零关闭账户。</string>
-    <string name="savings_goal_edit_action">修改目标</string>
     <string name="savings_goal_set_action">设置目标</string>
     <string name="savings_goal_clear_action">清除目标</string>
-    <string name="savings_goal_current_net_worth">当前净资产</string>
-    <string name="savings_goal_progress_format">%1$s · 进度 %2$s</string>
-    <string name="savings_goal_saved_feedback">净资产目标已保存</string>
-    <string name="savings_goal_cleared_feedback">净资产目标已清除</string>
     <string name="share_choose_open_account">选择开放账户</string>
     <string name="share_preview_title">分享内容预览</string>
     <string name="share_uncertain">解析结果需要确认</string>

@@ -4,24 +4,17 @@ import androidx.lifecycle.SavedStateHandle
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
-import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.LedgerOperationIdFactory
-import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ResolveBalanceUpdateContextUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateAccountDisplayOrderUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateBalanceUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
 import com.shihuaidexianyu.money.ui.balance.BatchReconcileViewModel
-import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -102,31 +95,6 @@ class ManagementAsyncLoadTest {
         viewModel.retryLoad(); advanceUntilIdle()
     }
 
-    @Test
-    fun `savings goal load failure is error rather than no goal and retry succeeds`() = runTest(dispatcher) {
-        val delegate = InMemorySavingsGoalRepository()
-        val repository = ToggleSavingsGoalRepository(delegate)
-        val viewModel = SavingsGoalViewModel(
-            repository,
-            ObserveSavingsGoalUseCase(
-                InMemoryAccountRepository(),
-                repository,
-                InMemoryTransactionRepository(),
-                CalculateAccountBalancesUseCase(InMemoryTransactionRepository(), testClockProvider),
-            ),
-            UpsertSavingsGoalUseCase(repository, testClockProvider),
-            ClearSavingsGoalUseCase(repository),
-        )
-        advanceUntilIdle()
-        assertEquals(R.string.goal_load_failed, viewModel.uiState.value.loadErrorMessageRes)
-        assertFalse(viewModel.uiState.value.hasGoal)
-
-        repository.available = true
-        viewModel.retryLoad(); advanceUntilIdle()
-        assertNull(viewModel.uiState.value.loadErrorMessageRes)
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
-
     private suspend fun accountRepository() = InMemoryAccountRepository().also {
         it.createAccount(Account(name = "现金", initialBalance = 100L, createdAt = 1L))
     }
@@ -144,15 +112,5 @@ private class ToggleOpenAccountsRepository(
 
     override fun observeOpenAccounts(): Flow<List<Account>> =
         if (available) flowOf(kotlinx.coroutines.runBlocking { delegate.queryOpenAccounts() })
-        else flow { error("database unavailable") }
-}
-
-private class ToggleSavingsGoalRepository(
-    private val delegate: SavingsGoalRepository,
-) : SavingsGoalRepository by delegate {
-    var available: Boolean = false
-
-    override fun observe(): Flow<SavingsGoal?> =
-        if (available) flowOf(kotlinx.coroutines.runBlocking { delegate.query() })
         else flow { error("database unavailable") }
 }

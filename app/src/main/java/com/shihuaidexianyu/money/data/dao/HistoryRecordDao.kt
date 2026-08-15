@@ -13,6 +13,29 @@ data class HistoryRecordRow(
     val amount: Long,
     val occurredAt: Long,
     val keywordSource: String,
+    val accountName: String,
+    val relatedAccountName: String?,
+    /**
+     * Book balance of [accountId] immediately before this record: [balanceAfter] minus this
+     * row's signed contribution to the account (`amount` for cash flow / reconciliation /
+     * adjustment rows, `-amount` for the outgoing transfer leg). Same full-ledger semantics as
+     * [balanceAfter] — outer filters and pagination never change it.
+     */
+    val balanceBefore: Long?,
+    /**
+     * Book balance of [accountId] immediately after this record, computed over the FULL ledger —
+     * outer filters and pagination never change it. For TRANSFER rows this is the FROM account's
+     * balance; the receiving account's pair surfaces via [relatedBalanceBefore] /
+     * [relatedBalanceAfter].
+     */
+    val balanceAfter: Long?,
+    /**
+     * Receiving account's balance right before a TRANSFER record; null for every other type and
+     * when the receiving account contributes no leg (defensive only).
+     */
+    val relatedBalanceBefore: Long?,
+    /** Receiving account's balance right after a TRANSFER record; null for non-transfer rows. */
+    val relatedBalanceAfter: Long?,
 )
 
 /**
@@ -87,6 +110,105 @@ internal const val HISTORY_UNION_FRAGMENT = """
 """
 
 /**
+ * Per-account signed contribution stream feeding the running-balance window. Unlike
+ * [HISTORY_UNION_FRAGMENT] (one DISPLAY row per record), a transfer contributes TWO legs here —
+ * outgoing (`-amount` on `fromAccountId`) and incoming (`+amount` on `toAccountId`) — so the
+ * receiving account's later rows reflect the incoming money. The leg ordering key
+ * (`occurredAt`, `sourceOrder`, `recordId`) matches the union's, keeping every display row joined
+ * to exactly one balance row. Zero-delta balance checks contribute 0 and are simply never joined
+ * (they are absent from the display union). Self-transfers cannot be created
+ * ([com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase] rejects them); the
+ * defensive zero leg keeps the key unique and the balance unchanged if one ever slips in.
+ */
+internal const val HISTORY_BALANCE_LEGS_FRAGMENT = """
+    SELECT accountId AS accountId,
+        occurredAt AS occurredAt,
+        4 AS sourceOrder,
+        id AS recordId,
+        CASE WHEN direction = 'inflow' THEN amount ELSE -amount END AS contribution
+    FROM cash_flow_records
+    WHERE deletedAt IS NULL
+    UNION ALL
+    SELECT accountId, occurredAt, 2, id, delta
+    FROM balance_update_records
+    WHERE deletedAt IS NULL
+    UNION ALL
+    SELECT accountId, occurredAt, 1, id, delta
+    FROM balance_adjustment_records
+    WHERE deletedAt IS NULL
+    UNION ALL
+    SELECT fromAccountId, occurredAt, 3, id, -amount
+    FROM transfer_records
+    WHERE deletedAt IS NULL AND fromAccountId != toAccountId
+    UNION ALL
+    SELECT toAccountId, occurredAt, 3, id, amount
+    FROM transfer_records
+    WHERE deletedAt IS NULL AND fromAccountId != toAccountId
+    UNION ALL
+    SELECT fromAccountId, occurredAt, 3, id, 0
+    FROM transfer_records
+    WHERE deletedAt IS NULL AND fromAccountId = toAccountId
+"""
+
+/**
+ * Running-balance window over [HISTORY_BALANCE_LEGS_FRAGMENT]: one row per leg carrying the leg's
+ * own contribution plus the account's book balance right after it (`initialBalance`, 0 when the
+ * account row is missing, plus every contribution up to and including the leg, accumulated in the
+ * same order the pages are sorted — `occurredAt, sourceOrder, recordId` ascending here vs
+ * descending for display). `balanceBefore` is derived by the caller as
+ * `balanceAfter - legContribution`, which also keeps the defensive self-transfer zero leg
+ * consistent (before == after). Factored out of [HISTORY_ENRICHED_FRAGMENT] so the FROM-side and
+ * the TO-side joins share one window definition.
+ */
+internal const val HISTORY_RUNNING_BALANCE_FRAGMENT = """
+    SELECT
+        legs.accountId AS legsAccountId,
+        legs.occurredAt AS legsOccurredAt,
+        legs.sourceOrder AS legsSourceOrder,
+        legs.recordId AS legsRecordId,
+        legs.contribution AS legContribution,
+        COALESCE((SELECT initialBalance FROM accounts WHERE accounts.id = legs.accountId), 0) +
+            SUM(legs.contribution) OVER (
+                PARTITION BY legs.accountId
+                ORDER BY legs.occurredAt, legs.sourceOrder, legs.recordId
+                ROWS UNBOUNDED PRECEDING
+            ) AS balanceAfter
+    FROM ($HISTORY_BALANCE_LEGS_FRAGMENT) AS legs
+"""
+
+/**
+ * [HISTORY_UNION_FRAGMENT] enriched with the per-row running balances and resolved account names.
+ * The window runs INSIDE this subquery — over the complete, unfiltered legs stream — so the
+ * outer [HISTORY_FILTER_FRAGMENT] (keyword/account/date/amount) and keyset pagination cannot
+ * change any row's balance pair. Every display row INNER JOINs its own leg on
+ * (accountId, occurredAt, sourceOrder, recordId); TRANSFER rows additionally LEFT JOIN the
+ * receiving account's leg (same key pinned to `relatedAccountId`) to surface both accounts'
+ * before/after balances. The LEFT JOIN key stays unique because a transfer's two legs differ in
+ * `accountId`; non-transfer rows have a NULL `relatedAccountId` and simply get NULLs.
+ */
+internal const val HISTORY_ENRICHED_FRAGMENT = """
+    SELECT
+        unioned.*,
+        COALESCE((SELECT name FROM accounts WHERE accounts.id = unioned.accountId), '') AS accountName,
+        (SELECT name FROM accounts WHERE accounts.id = unioned.relatedAccountId) AS relatedAccountName,
+        running.balanceAfter - running.legContribution AS balanceBefore,
+        running.balanceAfter AS balanceAfter,
+        relatedRunning.balanceAfter - relatedRunning.legContribution AS relatedBalanceBefore,
+        relatedRunning.balanceAfter AS relatedBalanceAfter
+    FROM ($HISTORY_UNION_FRAGMENT) AS unioned
+    INNER JOIN ($HISTORY_RUNNING_BALANCE_FRAGMENT) AS running
+        ON running.legsAccountId = unioned.accountId
+        AND running.legsOccurredAt = unioned.occurredAt
+        AND running.legsSourceOrder = unioned.sourceOrder
+        AND running.legsRecordId = unioned.recordId
+    LEFT JOIN ($HISTORY_RUNNING_BALANCE_FRAGMENT) AS relatedRunning
+        ON relatedRunning.legsAccountId = unioned.relatedAccountId
+        AND relatedRunning.legsOccurredAt = unioned.occurredAt
+        AND relatedRunning.legsSourceOrder = unioned.sourceOrder
+        AND relatedRunning.legsRecordId = unioned.recordId
+"""
+
+/**
  * Shared `WHERE` clause applied to the union result. Both query methods use this so filter
  * semantics stay in sync. Note: `LIKE ... ESCAPE '\'` requires the caller to escape `\`, `%`,
  * and `_` in [keyword]/[excludeKeyword] — see [com.shihuaidexianyu.money.data.repository.escapeHistoryLikeLiteral].
@@ -115,9 +237,12 @@ internal const val HISTORY_FILTER_FRAGMENT = """
 
 @Dao
 interface HistoryRecordDao {
+    // The page query reads the enriched union: the running balance is windowed over the complete
+    // ledger inside the subquery, so the filter fragment and the keyset cursor only choose WHICH
+    // rows appear, never their balanceAfter values.
     @Query(
         """
-        SELECT * FROM ($HISTORY_UNION_FRAGMENT)
+        SELECT * FROM ($HISTORY_ENRICHED_FRAGMENT)
         WHERE $HISTORY_FILTER_FRAGMENT
             AND (
                 :cursorOccurredAt IS NULL

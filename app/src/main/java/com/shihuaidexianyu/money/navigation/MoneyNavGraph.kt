@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FactCheck
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -30,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -67,6 +71,7 @@ import com.shihuaidexianyu.money.ui.common.RootActionExecutionResult
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.rootSnackbarDuration
 import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
+import com.shihuaidexianyu.money.ui.theme.LocalDarkTheme
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
@@ -352,6 +357,12 @@ fun MoneyNavGraph(
     ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        // Every screen hosts its own top app bar, which consumes the status bar inset itself;
+        // this Scaffold has no topBar, so reserving the top inset here too would double-pad
+        // the header with dead space. Keep only the bottom/horizontal insets for content.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(
+            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+        ),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
@@ -359,6 +370,10 @@ fun MoneyNavGraph(
                     onClick = { fabExpanded = true },
                     icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.ledger_fab_title)) },
+                    // Standard M3 roles: deep teal + white in light; light mint + dark ink in
+                    // dark — matching the filled primary button used inside dark dialogs.
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 )
             }
         },
@@ -518,11 +533,21 @@ private fun LedgerActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Tinted chip: a low-alpha accent wash replaces the muddy solid tonal block, keeping the
+    // full-strength accent icon/label clean on top (a stronger wash in dark mode). The accent
+    // palette already ships brighter dark variants, so the accent itself stays legible.
+    val containerColor = accent.copy(
+        alpha = if (LocalDarkTheme.current) 0.16f else 0.10f,
+    )
     FilledTonalButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 92.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
         shape = MaterialTheme.shapes.large,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = containerColor,
+            contentColor = accent,
+        ),
     ) {
         Column(
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,

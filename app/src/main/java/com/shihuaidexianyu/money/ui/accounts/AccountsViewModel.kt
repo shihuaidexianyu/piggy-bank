@@ -9,10 +9,8 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
-import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.ui.common.AsyncContent
@@ -41,12 +39,6 @@ data class AccountListItemUiModel(
     val displayOrder: Int,
 )
 
-data class SavingsGoalUiModel(
-    val targetAmount: Long,
-    val currentAmount: Long,
-    val isAchieved: Boolean,
-)
-
 data class AccountsUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -57,7 +49,6 @@ data class AccountsUiState(
     val showClosed: Boolean = false,
     val openAccounts: List<AccountListItemUiModel> = emptyList(),
     val closedAccounts: List<AccountListItemUiModel> = emptyList(),
-    val savingsGoal: SavingsGoalUiModel? = null,
 )
 
 internal fun AccountsUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<AccountsUiState> {
@@ -74,7 +65,6 @@ private data class AccountsSnapshot(
     val settings: PortableSettings,
     val openAccounts: List<AccountListItemUiModel>,
     val closedAccounts: List<AccountListItemUiModel>,
-    val savingsGoal: SavingsGoalUiModel?,
 )
 
 class AccountsViewModel(
@@ -82,7 +72,6 @@ class AccountsViewModel(
     private val accountRepository: AccountRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
-    private val savingsGoalRepository: SavingsGoalRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
@@ -117,8 +106,7 @@ class AccountsViewModel(
                     accountReminderSettingsRepository.observeReminderConfigs(),
                     portableSettingsRepository.observe(),
                     transactionRepository.observeChangeVersion(),
-                    savingsGoalRepository.observe(),
-                ) { _, _, _, _, _ ->
+                ) { _, _, _, _ ->
                     Unit
                 }
                 val snapshots = invalidations.map { readConsistentSnapshot() }
@@ -132,7 +120,6 @@ class AccountsViewModel(
                         showClosed = showClosed,
                         openAccounts = snapshot.openAccounts,
                         closedAccounts = snapshot.closedAccounts,
-                        savingsGoal = snapshot.savingsGoal,
                     )
                 }
             } catch (e: CancellationException) {
@@ -156,26 +143,17 @@ class AccountsViewModel(
             val accounts = accountRepository.queryAllAccounts()
             val reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs()
             val settings = portableSettingsRepository.query()
-            val goal = savingsGoalRepository.query()
             val balances = calculateAccountBalancesUseCase(accounts)
             val open = accounts.filterNot(Account::isClosed)
             val closed = accounts.filter(Account::isClosed)
             val issueIds = closed.asSequence()
                 .filter { balances.getValue(it.id) != 0L }
                 .mapTo(mutableSetOf(), Account::id)
-            val totalAssets = balances.values.ledgerSumExact()
             AccountsSnapshot(
                 settings = settings,
                 openAccounts = buildItems(open, reminderConfigs, balances),
                 closedAccounts = buildItems(closed, reminderConfigs, balances).map { account ->
                     account.copy(requiresReopenAndSettle = account.id in issueIds)
-                },
-                savingsGoal = goal?.let {
-                    SavingsGoalUiModel(
-                        targetAmount = it.targetAmount,
-                        currentAmount = totalAssets,
-                        isAchieved = totalAssets >= it.targetAmount,
-                    )
                 },
             )
         }

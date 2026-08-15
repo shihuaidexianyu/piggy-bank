@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Home-screen widget (dark). Background/stroke match the app's dark card baseline:
-         pure-black #000000 canvas, #141414 cards (Theme.kt dark surfaceContainerLowest),
-         #2A2A2A stroke (Color.kt Night600). Text/amount colors stay in sync with
+         #161616 canvas, #242424 cards (Theme.kt dark surfaceContainerLowest),
+         #3A3A3A stroke (Theme.kt dark outlineVariant). Text/amount colors stay in sync with
          ui/theme/Color.kt MoneyColors (dark). -->
-    <color name="widget_background">#141414</color>
-    <color name="widget_stroke">#2A2A2A</color>
+    <color name="widget_background">#242424</color>
+    <color name="widget_stroke">#3A3A3A</color>
     <color name="widget_text_primary">#E8E6E3</color>
     <color name="widget_text_secondary">#A9A39C</color>
     <color name="widget_income">#E57373</color>

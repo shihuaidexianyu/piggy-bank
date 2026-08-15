@@ -195,4 +195,10 @@ internal fun HistoryRecordRow.toDomain(): HistoryRecord = HistoryRecord(
     amount = amount,
     occurredAt = occurredAt,
     keywordSource = keywordSource,
+    accountName = accountName,
+    relatedAccountName = relatedAccountName,
+    balanceBefore = balanceBefore,
+    balanceAfter = balanceAfter,
+    relatedBalanceBefore = relatedBalanceBefore,
+    relatedBalanceAfter = relatedBalanceAfter,
 )

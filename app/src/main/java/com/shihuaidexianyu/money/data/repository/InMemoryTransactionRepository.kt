@@ -32,8 +32,38 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+// Keep in sync with the `sourceOrder` constants in HISTORY_UNION_FRAGMENT (HistoryRecordDao):
+// both the SQL running-balance window and the in-memory fold order same-instant rows identically.
+private const val HISTORY_SOURCE_ORDER_CASH_FLOW = 4
+private const val HISTORY_SOURCE_ORDER_TRANSFER = 3
+private const val HISTORY_SOURCE_ORDER_BALANCE_UPDATE = 2
+private const val HISTORY_SOURCE_ORDER_BALANCE_ADJUSTMENT = 1
+
+/** Join key between a history display row and its running balance, mirroring the SQL window. */
+private data class HistoryBalanceKey(
+    val accountId: Long,
+    val occurredAt: Long,
+    val sourceOrder: Int,
+    val recordId: Long,
+)
+
+/** Before/after book balance around one leg, mirroring `balanceAfter - legContribution` in SQL. */
+private data class HistoryBalancePoint(
+    val balanceBefore: Long,
+    val balanceAfter: Long,
+)
+
+private data class HistoryBalanceLeg(
+    val accountId: Long,
+    val occurredAt: Long,
+    val sourceOrder: Int,
+    val recordId: Long,
+    val contribution: Long,
+)
+
 class InMemoryTransactionRepository(
     private val accountNameLookup: (Long) -> String? = { null },
+    private val accountInitialBalanceLookup: (Long) -> Long = { 0L },
 ) : TransactionRepository, LedgerAggregateRepository {
     var transactionInvocationCount: Int = 0
         private set
@@ -788,26 +818,40 @@ class InMemoryTransactionRepository(
     }
 
     private fun buildHistoryRecords(): List<HistoryRecord> = synchronized(ledgerLock) {
+        val runningBalances = computeHistoryRunningBalances()
         val cashRecords = cashFlowRecords.filter { it.deletedAt == null }.map { record ->
             val title = record.note.ifBlank { "未填写备注" }
+            val balancePoint = runningBalances[
+                HistoryBalanceKey(record.accountId, record.occurredAt, HISTORY_SOURCE_ORDER_CASH_FLOW, record.id),
+            ]
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.CASH_FLOW,
-                sourceOrder = 4,
+                sourceOrder = HISTORY_SOURCE_ORDER_CASH_FLOW,
                 accountId = record.accountId,
                 relatedAccountId = null,
                 title = title,
                 amount = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
                 occurredAt = record.occurredAt,
                 keywordSource = listOfNotNull(record.note, title, accountNameLookup(record.accountId)).joinToString(" "),
+                accountName = accountNameLookup(record.accountId).orEmpty(),
+                balanceBefore = balancePoint?.balanceBefore,
+                balanceAfter = balancePoint?.balanceAfter,
             )
         }
         val transferHistoryRecords = transferRecords.filter { it.deletedAt == null }.map { record ->
             val title = record.note.ifBlank { "账户间转移" }
+            // Display rows key on the FROM account; the receiving leg carries the TO account's pair.
+            val fromBalancePoint = runningBalances[
+                HistoryBalanceKey(record.fromAccountId, record.occurredAt, HISTORY_SOURCE_ORDER_TRANSFER, record.id),
+            ]
+            val toBalancePoint = runningBalances[
+                HistoryBalanceKey(record.toAccountId, record.occurredAt, HISTORY_SOURCE_ORDER_TRANSFER, record.id),
+            ]
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.TRANSFER,
-                sourceOrder = 3,
+                sourceOrder = HISTORY_SOURCE_ORDER_TRANSFER,
                 accountId = record.fromAccountId,
                 relatedAccountId = record.toAccountId,
                 title = title,
@@ -820,34 +864,52 @@ class InMemoryTransactionRepository(
                     accountNameLookup(record.fromAccountId),
                     accountNameLookup(record.toAccountId),
                 ).joinToString(" "),
+                accountName = accountNameLookup(record.fromAccountId).orEmpty(),
+                relatedAccountName = accountNameLookup(record.toAccountId),
+                balanceBefore = fromBalancePoint?.balanceBefore,
+                balanceAfter = fromBalancePoint?.balanceAfter,
+                relatedBalanceBefore = toBalancePoint?.balanceBefore,
+                relatedBalanceAfter = toBalancePoint?.balanceAfter,
             )
         }
         val updateHistoryRecords = balanceUpdates.filter { it.deletedAt == null && it.delta != 0L }.map { record ->
             val title = "对账调整"
+            val balancePoint = runningBalances[
+                HistoryBalanceKey(record.accountId, record.occurredAt, HISTORY_SOURCE_ORDER_BALANCE_UPDATE, record.id),
+            ]
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_UPDATE,
-                sourceOrder = 2,
+                sourceOrder = HISTORY_SOURCE_ORDER_BALANCE_UPDATE,
                 accountId = record.accountId,
                 relatedAccountId = null,
                 title = title,
                 amount = record.delta,
                 occurredAt = record.occurredAt,
                 keywordSource = listOfNotNull(title, accountNameLookup(record.accountId)).joinToString(" "),
+                accountName = accountNameLookup(record.accountId).orEmpty(),
+                balanceBefore = balancePoint?.balanceBefore,
+                balanceAfter = balancePoint?.balanceAfter,
             )
         }
         val adjustmentHistoryRecords = adjustments.filter { it.deletedAt == null }.map { record ->
             val title = "余额校正"
+            val balancePoint = runningBalances[
+                HistoryBalanceKey(record.accountId, record.occurredAt, HISTORY_SOURCE_ORDER_BALANCE_ADJUSTMENT, record.id),
+            ]
             HistoryRecord(
                 recordId = record.id,
                 type = HistoryRecordType.BALANCE_ADJUSTMENT,
-                sourceOrder = 1,
+                sourceOrder = HISTORY_SOURCE_ORDER_BALANCE_ADJUSTMENT,
                 accountId = record.accountId,
                 relatedAccountId = null,
                 title = title,
                 amount = record.delta,
                 occurredAt = record.occurredAt,
                 keywordSource = listOfNotNull(title, "余额校正", accountNameLookup(record.accountId)).joinToString(" "),
+                accountName = accountNameLookup(record.accountId).orEmpty(),
+                balanceBefore = balancePoint?.balanceBefore,
+                balanceAfter = balancePoint?.balanceAfter,
             )
         }
         (cashRecords + transferHistoryRecords + updateHistoryRecords + adjustmentHistoryRecords)
@@ -856,6 +918,68 @@ class InMemoryTransactionRepository(
                     .thenByDescending { it.sourceOrder }
                     .thenByDescending { it.recordId },
             )
+    }
+
+    /**
+     * Running book balance per display-row key, mirroring the SQL window in
+     * [com.shihuaidexianyu.money.data.dao.HistoryRecordDao]: legs accumulate over the COMPLETE
+     * ledger (soft-deleted rows excluded) ordered by (occurredAt, sourceOrder, recordId)
+     * ascending, starting from the account's initial balance. A transfer contributes two legs
+     * (out `-amount`, in `+amount`) so the receiving account's later rows reflect the incoming
+     * money; self-transfers (rejected at creation) degrade to a single zero leg. Each key maps to
+     * the before/after pair around its leg, the fold-side twin of
+     * `balanceAfter - legContribution`.
+     */
+    private fun computeHistoryRunningBalances(): Map<HistoryBalanceKey, HistoryBalancePoint> {
+        val legs = mutableListOf<HistoryBalanceLeg>()
+        cashFlowRecords.filter { it.deletedAt == null }.forEach { record ->
+            legs += HistoryBalanceLeg(
+                accountId = record.accountId,
+                occurredAt = record.occurredAt,
+                sourceOrder = HISTORY_SOURCE_ORDER_CASH_FLOW,
+                recordId = record.id,
+                contribution = if (record.direction == CashFlowDirection.INFLOW.value) record.amount else -record.amount,
+            )
+        }
+        balanceUpdates.filter { it.deletedAt == null }.forEach { record ->
+            legs += HistoryBalanceLeg(
+                accountId = record.accountId,
+                occurredAt = record.occurredAt,
+                sourceOrder = HISTORY_SOURCE_ORDER_BALANCE_UPDATE,
+                recordId = record.id,
+                contribution = record.delta,
+            )
+        }
+        adjustments.filter { it.deletedAt == null }.forEach { record ->
+            legs += HistoryBalanceLeg(
+                accountId = record.accountId,
+                occurredAt = record.occurredAt,
+                sourceOrder = HISTORY_SOURCE_ORDER_BALANCE_ADJUSTMENT,
+                recordId = record.id,
+                contribution = record.delta,
+            )
+        }
+        transferRecords.filter { it.deletedAt == null }.forEach { record ->
+            if (record.fromAccountId == record.toAccountId) {
+                legs += HistoryBalanceLeg(record.fromAccountId, record.occurredAt, HISTORY_SOURCE_ORDER_TRANSFER, record.id, 0L)
+            } else {
+                legs += HistoryBalanceLeg(record.fromAccountId, record.occurredAt, HISTORY_SOURCE_ORDER_TRANSFER, record.id, -record.amount)
+                legs += HistoryBalanceLeg(record.toAccountId, record.occurredAt, HISTORY_SOURCE_ORDER_TRANSFER, record.id, record.amount)
+            }
+        }
+        val balances = HashMap<HistoryBalanceKey, HistoryBalancePoint>(legs.size)
+        legs.groupBy(HistoryBalanceLeg::accountId).forEach { (accountId, accountLegs) ->
+            var running = accountInitialBalanceLookup(accountId)
+            accountLegs
+                .sortedWith(compareBy(HistoryBalanceLeg::occurredAt, HistoryBalanceLeg::sourceOrder, HistoryBalanceLeg::recordId))
+                .forEach { leg ->
+                    val before = running
+                    running = ledgerAddExact(running, leg.contribution)
+                    balances[HistoryBalanceKey(accountId, leg.occurredAt, leg.sourceOrder, leg.recordId)] =
+                        HistoryBalancePoint(balanceBefore = before, balanceAfter = running)
+                }
+        }
+        return balances
     }
 
     private fun HistoryRecord.matches(filters: HistoryRecordFilters): Boolean {

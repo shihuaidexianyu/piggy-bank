@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
@@ -36,11 +35,10 @@ class AccountsSnapshotQueryCountTest {
     }
 
     @Test
-    fun `account page shares one balance aggregate across cards goal and closure issues`() =
+    fun `account page shares one balance aggregate across cards and closure issues`() =
         runTest(dispatcher) {
             val accounts = InMemoryAccountRepository()
             val transactions = InMemoryTransactionRepository()
-            val goals = InMemorySavingsGoalRepository()
             val openId = accounts.createAccount(
                 Account(name = "开放", initialBalance = 100L, createdAt = 1L),
             )
@@ -48,14 +46,12 @@ class AccountsSnapshotQueryCountTest {
                 Account(name = "旧关闭", initialBalance = 50L, createdAt = 1L),
             )
             accounts.closeAccount(closedId, 2L)
-            goals.upsert(120L, 2L)
 
             val viewModel = AccountsViewModel(
                 accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
                 accountRepository = accounts,
                 portableSettingsRepository = InMemoryPortableSettingsRepository(),
                 transactionRepository = transactions,
-                savingsGoalRepository = goals,
                 calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions) { 10L },
             )
             runCurrent()
@@ -63,7 +59,6 @@ class AccountsSnapshotQueryCountTest {
             val state = viewModel.uiState.value
             assertEquals(openId, state.openAccounts.single().id)
             assertTrue(state.closedAccounts.single().requiresReopenAndSettle)
-            assertEquals(150L, state.savingsGoal?.currentAmount)
             assertEquals(1, transactions.transactionInvocationCount)
 
             viewModel.toggleClosedVisibility()

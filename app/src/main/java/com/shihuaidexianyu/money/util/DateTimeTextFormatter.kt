@@ -108,6 +108,21 @@ object DateTimeTextFormatter {
     }
 
     /**
+     * Bank-statement row timestamp: "HH:mm" when the record falls on [nowMillis]'s day, otherwise
+     * "M月d日 HH:mm" (or "yyyy年M月d日 HH:mm" across years, via [formatDayInYear]).
+     */
+    fun formatCompactDayTime(
+        timeMillis: Long,
+        nowMillis: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        val day = Instant.ofEpochMilli(timeMillis).atZone(zoneId).toLocalDate()
+        val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        val time = Instant.ofEpochMilli(timeMillis).atZone(zoneId).format(timeFormatter)
+        return if (day == today) time else "${formatDayInYear(timeMillis, nowMillis, zoneId)} $time"
+    }
+
+    /**
      * Material 3's date picker encodes a calendar date as midnight UTC rather than as an instant
      * in the device time zone. Convert a real timestamp before handing it to the picker so dates
      * near local midnight do not appear as the previous or next day.

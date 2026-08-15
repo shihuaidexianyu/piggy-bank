@@ -26,8 +26,6 @@ import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
-import com.shihuaidexianyu.money.ui.settings.SavingsGoalScreen
-import com.shihuaidexianyu.money.ui.settings.SavingsGoalViewModel
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -49,6 +47,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                     observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
+                    upsertSavingsGoalUseCase = container.upsertSavingsGoalUseCase,
+                    clearSavingsGoalUseCase = container.clearSavingsGoalUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     savedStateHandle = savedStateHandle,
@@ -82,7 +82,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onOpenHistory = {
                     navController.navigateToTopLevelTab(MoneyDestination.History)
                 },
-                onOpenSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
+                onOpenSavingsGoalEditor = viewModel::openSavingsGoalEditor,
+                onDismissSavingsGoalEditor = viewModel::dismissSavingsGoalEditor,
+                onSavingsGoalInputChange = viewModel::updateSavingsGoalInput,
+                onSaveSavingsGoal = viewModel::saveSavingsGoal,
+                onRetrySavingsGoalSave = viewModel::retrySavingsGoalSave,
+                onClearSavingsGoal = viewModel::clearSavingsGoal,
                 onOpenRecord = { record ->
                     when (record.kind) {
                         HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
@@ -214,7 +219,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     accountRepository = container.accountRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
-                    savingsGoalRepository = container.savingsGoalRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
                 )
             },
@@ -225,7 +229,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
-                onManageSavingsGoal = { navController.navigate(MoneyDestination.SavingsGoalRoute) },
                 onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
                 accountSwipeReconcileEnabled = devicePreferences.accountSwipeReconcileEnabled,
                 onReconcileAccount = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
@@ -280,23 +283,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onConfirmImport = viewModel::confirmImport,
             onRollbackImport = viewModel::rollbackImport,
             onRetryImportHistory = viewModel::retryImportHistory,
-        )
-    }
-
-    composable(MoneyDestination.SavingsGoalRoute) {
-        val viewModel = viewModel<SavingsGoalViewModel>(
-            factory = moneyViewModelFactory {
-                SavingsGoalViewModel(
-                    savingsGoalRepository = container.savingsGoalRepository,
-                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
-                    upsertSavingsGoalUseCase = container.upsertSavingsGoalUseCase,
-                    clearSavingsGoalUseCase = container.clearSavingsGoalUseCase,
-                )
-            },
-        )
-        SavingsGoalScreen(
-            viewModel = viewModel,
-            onBack = { navController.popBackStack() },
         )
     }
 }
