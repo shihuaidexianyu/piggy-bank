@@ -120,6 +120,13 @@ fun HistoryScreen(
     onClearAllFilters: () -> Unit,
     onLoadMore: () -> Unit,
     onRecordClick: (HistoryRecordUiModel) -> Unit,
+    /**
+     * Account drill-down mode (`history/account/{accountId}`): the account scope is fixed by the
+     * route — the title shows the account name, the account picker/chip stay hidden, and the
+     * locked account is not counted as a user filter. Null on the History tab itself.
+     */
+    lockedAccountId: Long? = null,
+    onBack: (() -> Unit)? = null,
     onRecordIncome: () -> Unit = {},
     onRecordExpense: () -> Unit = {},
     historySwipeDeleteEnabled: Boolean = true,
@@ -182,7 +189,7 @@ fun HistoryScreen(
         }
     }
 
-    if (sheet == HistoryFilterSheet.ACCOUNT) {
+    if (sheet == HistoryFilterSheet.ACCOUNT && lockedAccountId == null) {
         AccountPickerDialog(
             title = stringResource(R.string.history_filter_account),
             accounts = state.accountOptions,
@@ -256,12 +263,14 @@ fun HistoryScreen(
                             onClick = { sheet = HistoryFilterSheet.TYPE },
                         )
                         MoneySectionDivider()
-                        MoneyListRow(
-                            title = stringResource(R.string.accounts_title),
-                            trailing = accountSheetSummary(state),
-                            onClick = { sheet = HistoryFilterSheet.ACCOUNT },
-                        )
-                        MoneySectionDivider()
+                        if (lockedAccountId == null) {
+                            MoneyListRow(
+                                title = stringResource(R.string.accounts_title),
+                                trailing = accountSheetSummary(state),
+                                onClick = { sheet = HistoryFilterSheet.ACCOUNT },
+                            )
+                            MoneySectionDivider()
+                        }
                         MoneyListRow(
                             title = stringResource(R.string.field_date),
                             trailing = dateSheetSummary(state),
@@ -398,9 +407,16 @@ fun HistoryScreen(
     }
 
     val recordGroups = state.records.groupBy { DateTimeTextFormatter.formatDateOnly(it.occurredAt) }
+    val accountLocked = lockedAccountId != null
+    // Locked mode: the page title IS the account name, falling back to the tab title while the
+    // account list is still loading.
+    val pageTitle = lockedAccountId?.let { id ->
+        state.accountOptions.firstOrNull { it.id == id }?.name
+    } ?: stringResource(R.string.history_title)
 
     MoneyFormPage(
-        title = stringResource(R.string.history_title),
+        title = pageTitle,
+        onBack = onBack,
         modifier = modifier,
         listState = listState,
         contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
@@ -422,9 +438,9 @@ fun HistoryScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilterChip(
-                        selected = hasActiveFilters(state),
+                        selected = hasActiveFilters(state, accountLocked),
                         onClick = { sheet = HistoryFilterSheet.OVERVIEW },
-                        label = { Text(filterChipLabel(state)) },
+                        label = { Text(filterChipLabel(state, accountLocked)) },
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -447,16 +463,17 @@ fun HistoryScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        if (hasActiveFilters(state)) {
+                        if (hasActiveFilters(state, accountLocked)) {
                             TextButton(onClick = onClearAllFilters) {
                                 Text(stringResource(R.string.action_clear))
                             }
                         }
                     }
                 }
-                if (hasActiveFilters(state)) {
+                if (hasActiveFilters(state, accountLocked)) {
                     ActiveFilterChips(
                         state = state,
+                        accountLocked = accountLocked,
                         onOpenSheet = { sheet = it },
                     )
                 }
@@ -814,6 +831,7 @@ private fun HistoryDateHeader(
 @Composable
 private fun ActiveFilterChips(
     state: HistoryUiState,
+    accountLocked: Boolean,
     onOpenSheet: (HistoryFilterSheet) -> Unit,
 ) {
     FlowRow(
@@ -834,7 +852,7 @@ private fun ActiveFilterChips(
                 label = { Text(typeSheetSummary(state)) },
             )
         }
-        if (state.selectedAccountId != null) {
+        if (!accountLocked && state.selectedAccountId != null) {
             FilterChip(
                 selected = true,
                 onClick = { onOpenSheet(HistoryFilterSheet.ACCOUNT) },
@@ -1188,8 +1206,8 @@ private fun historyTypeLabel(type: HistoryRecordType): String = when (type) {
 }
 
 @Composable
-private fun filterChipLabel(state: HistoryUiState): String {
-    val count = activeFilterCount(state)
+private fun filterChipLabel(state: HistoryUiState, accountLocked: Boolean): String {
+    val count = activeFilterCount(state, accountLocked)
     return if (count == 0) {
         stringResource(R.string.history_filter)
     } else {
@@ -1197,16 +1215,18 @@ private fun filterChipLabel(state: HistoryUiState): String {
     }
 }
 
-private fun hasActiveFilters(state: HistoryUiState): Boolean {
-    return activeFilterCount(state) > 0
+private fun hasActiveFilters(state: HistoryUiState, accountLocked: Boolean): Boolean {
+    return activeFilterCount(state, accountLocked) > 0
 }
 
-private fun activeFilterCount(state: HistoryUiState): Int {
+// A locked account is the page's scope, not a user-chosen filter — it never counts toward
+// the "筛选 · N" badge, the chip row, or the clear button.
+private fun activeFilterCount(state: HistoryUiState, accountLocked: Boolean): Int {
     return listOf(
         state.keyword.isNotBlank(),
         state.excludeKeyword.isNotBlank(),
         state.selectedRecordTypes.isNotEmpty(),
-        state.selectedAccountId != null,
+        !accountLocked && state.selectedAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),
         state.amountDirectionFilter != AmountDirectionFilter.ALL,

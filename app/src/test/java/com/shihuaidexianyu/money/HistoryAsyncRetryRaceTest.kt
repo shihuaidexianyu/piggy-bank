@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money
 
-import androidx.lifecycle.SavedStateHandle
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
@@ -301,7 +300,7 @@ class HistoryAsyncRetryRaceTest {
     }
 
     @Test
-    fun `one-shot account filter arriving before initialization is not lost`() = runTest(dispatcher) {
+    fun `locked account drill-down scopes records and ignores persisted tab filters`() = runTest(dispatcher) {
         val accounts = InMemoryAccountRepository()
         val wechatId = accounts.createAccount(Account(name = "微信零钱", initialBalance = 0L, createdAt = 1L))
         val bankId = accounts.createAccount(Account(name = "招商银行", initialBalance = 0L, createdAt = 1L))
@@ -330,22 +329,82 @@ class HistoryAsyncRetryRaceTest {
                 operationId = testOperationId(),
             ),
         )
-        // The filter lands in the saved-state handle BEFORE the view model finishes
-        // initializing (account detail "查看全部" sets it right after navigating).
-        val handle = SavedStateHandle(
-            mapOf(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER to wechatId),
+        // The tab's persisted filters point at the other account — the drill-down must not
+        // read them (its scope comes from the route).
+        val devicePreferences = InMemoryDevicePreferencesRepository(
+            DevicePreferences(historyFilters = HistoryFilters(accountId = bankId, keyword = "银行")),
         )
         val viewModel = HistoryViewModel(
             accountRepository = accounts,
             transactionRepository = transactions,
             portableSettingsRepository = InMemoryPortableSettingsRepository(),
-            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
-            savedStateHandle = handle,
+            devicePreferencesRepository = devicePreferences,
+            lockedAccountId = wechatId,
         )
         runCurrent()
 
         assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
-        assertNull(handle.get<Long>(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER))
+    }
+
+    @Test
+    fun `locked account drill-down keeps scope on clear and never persists filters`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val wechatId = accounts.createAccount(Account(name = "微信零钱", initialBalance = 0L, createdAt = 1L))
+        val bankId = accounts.createAccount(Account(name = "招商银行", initialBalance = 0L, createdAt = 1L))
+        val transactions = InMemoryTransactionRepository()
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = wechatId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100L,
+                note = "微信记录",
+                occurredAt = 2L,
+                createdAt = 2L,
+                updatedAt = 2L,
+                operationId = testOperationId(),
+            ),
+        )
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = bankId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100L,
+                note = "银行记录",
+                occurredAt = 3L,
+                createdAt = 3L,
+                updatedAt = 3L,
+                operationId = testOperationId(),
+            ),
+        )
+        val devicePreferences = InMemoryDevicePreferencesRepository()
+        val viewModel = HistoryViewModel(
+            accountRepository = accounts,
+            transactionRepository = transactions,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = devicePreferences,
+            lockedAccountId = wechatId,
+        )
+        runCurrent()
+        assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
+
+        // The account picker is hidden in locked mode; the guard ignores stray calls.
+        viewModel.updateAccount(bankId)
+        runCurrent()
+        assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
+
+        // Filter edits work but stay session-only: past the 500ms save debounce, the tab's
+        // persisted filters are still untouched.
+        viewModel.updateKeyword("微信")
+        advanceTimeBy(600L)
+        runCurrent()
+        assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
+        assertEquals(HistoryFilters(), devicePreferences.query().historyFilters)
+
+        // Clearing drops the keyword but keeps the account scope.
+        viewModel.clearFilters()
+        runCurrent()
+        assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
+        assertEquals(HistoryFilters(), devicePreferences.query().historyFilters)
     }
 
 }

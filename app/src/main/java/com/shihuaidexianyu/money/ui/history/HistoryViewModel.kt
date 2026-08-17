@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money.ui.history
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
@@ -153,7 +152,12 @@ class HistoryViewModel(
     private val transactionRepository: TransactionRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val devicePreferencesRepository: DevicePreferencesRepository,
-    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    /**
+     * Non-null in the account drill-down (`history/account/{accountId}`): the account scope is
+     * fixed by the route, the user's persisted tab filters are neither read nor written, and
+     * the account picker stays hidden. Null on the History tab itself.
+     */
+    private val lockedAccountId: Long? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -167,34 +171,12 @@ class HistoryViewModel(
     private var loadMoreJob: Job? = null
     private var loadGeneration = 0
     private var initialized = false
-    private var pendingAccountFilter: Long? = null
     private var initializationJob: Job? = null
     private var accountCollectionJob: Job? = null
     private var accountUpdates: ReceiveChannel<List<Account>>? = null
 
     init {
-        // External entry (account detail "查看全部"): applies a one-shot account filter once
-        // the view model is ready, so a deep link arriving before initialization is not lost.
-        viewModelScope.launch {
-            savedStateHandle.getStateFlow<Long?>(KEY_INITIAL_ACCOUNT_FILTER, null)
-                .collect { accountId ->
-                    if (accountId != null) {
-                        savedStateHandle.remove<Long>(KEY_INITIAL_ACCOUNT_FILTER)
-                        if (initialized) {
-                            applyLocalFilter { copy(selectedAccountId = accountId) }
-                        } else {
-                            // Initialization reloads persisted filters from scratch, so applying
-                            // now would be overwritten — stash and fold it in when ready.
-                            pendingAccountFilter = accountId
-                        }
-                    }
-                }
-        }
         initializeSafely()
-    }
-
-    companion object {
-        const val KEY_INITIAL_ACCOUNT_FILTER = "history_initial_account_filter"
     }
 
     fun retry() {
@@ -238,7 +220,11 @@ class HistoryViewModel(
     fun updateKeyword(value: String) = applyLocalFilter(debounceReload = true) { copy(keyword = value) }
     fun updateExcludeKeyword(value: String) = applyLocalFilter(debounceReload = true) { copy(excludeKeyword = value) }
     fun updateRecordTypes(value: Set<HistoryRecordType>) = applyLocalFilter { copy(selectedRecordTypes = value) }
-    fun updateAccount(accountId: Long?) = applyLocalFilter { copy(selectedAccountId = accountId) }
+    fun updateAccount(accountId: Long?) {
+        // Guard only — the account picker is hidden in locked mode.
+        if (lockedAccountId != null) return
+        applyLocalFilter { copy(selectedAccountId = accountId) }
+    }
     fun updateDateRange(startAt: Long?, endAt: Long?) {
         val (normalizedStart, normalizedEnd) = normalizeHistoryDateRange(startAt, endAt)
         applyLocalFilter { copy(dateStartAt = normalizedStart, dateEndAt = normalizedEnd) }
@@ -250,7 +236,8 @@ class HistoryViewModel(
         applyLocalFilter { copy(amountDirectionFilter = filter) }
 
     fun clearFilters() {
-        val cleared = HistoryFilterState()
+        // Clearing never drops the locked account scope — it is the page, not a filter.
+        val cleared = HistoryFilterState(selectedAccountId = lockedAccountId)
         filterState.value = cleared
         applyFiltersToState(cleared)
         scheduleFilterSave(cleared)
@@ -308,7 +295,13 @@ class HistoryViewModel(
 
     private suspend fun initialize() {
         val initialSettings = portableSettingsRepository.query()
-        val initialFilters = devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
+        // Locked mode: the account scope comes from the route and the tab's persisted filters
+        // are left untouched — the drill-down always starts clean apart from its account.
+        val initialFilters = if (lockedAccountId != null) {
+            HistoryFilterState(selectedAccountId = lockedAccountId)
+        } else {
+            devicePreferencesRepository.query().historyFilters.toHistoryFilterState()
+        }
         filterState.value = initialFilters
         applySettings(initialSettings)
         applyFiltersToState(initialFilters)
@@ -318,15 +311,6 @@ class HistoryViewModel(
         accountUpdates = updates
         applyAccounts(updates.receive())
         initialized = true
-        // A one-shot account filter that arrived before initialization was stashed — fold it
-        // into the filter state now so the first page load below already uses it.
-        pendingAccountFilter?.let { accountId ->
-            pendingAccountFilter = null
-            val updatedFilters = filterState.value.copy(selectedAccountId = accountId)
-            filterState.value = updatedFilters
-            applyFiltersToState(updatedFilters)
-            scheduleFilterSave(updatedFilters)
-        }
 
         viewModelScope.launch {
             portableSettingsRepository.observe()
@@ -402,6 +386,9 @@ class HistoryViewModel(
     }
 
     private fun scheduleFilterSave(filters: HistoryFilterState) {
+        // Locked mode is a scoped drill-down: its filters are session-only and must never
+        // overwrite the History tab's persisted preferences.
+        if (lockedAccountId != null) return
         saveFiltersJob?.cancel()
         saveFiltersJob = viewModelScope.launch {
             delay(500)

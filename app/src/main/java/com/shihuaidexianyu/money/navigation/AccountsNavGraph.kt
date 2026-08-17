@@ -17,7 +17,6 @@ import com.shihuaidexianyu.money.ui.accounts.EditAccountScreen
 import com.shihuaidexianyu.money.ui.accounts.EditAccountViewModel
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.ReorderAccountsViewModel
-import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 
 internal fun NavGraphBuilder.addAccountsGraph(
     navController: NavHostController,
@@ -87,14 +86,9 @@ internal fun NavGraphBuilder.addAccountsGraph(
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,
             onViewAllHistory = {
-                // Navigate FIRST: tab switching pops to the start destination, so the History
-                // entry only exists on the back stack after the navigate — reading its entry
-                // beforehand throws when the tab was never visited this session.
-                navController.navigateToTopLevelTab(MoneyDestination.History)
-                navController.currentBackStackEntry
-                    ?.takeIf { it.destination.route == MoneyDestination.History.route }
-                    ?.savedStateHandle
-                    ?.set(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER, accountId)
+                // Drill-down (not a tab switch): the account scope rides the route, so back
+                // returns here and the History tab's own filters stay untouched.
+                navController.navigate(MoneyDestination.accountHistoryRoute(accountId))
             },
         )
     }

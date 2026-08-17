@@ -32,6 +32,7 @@ sealed class MoneyDestination(
         const val RecordCashFlowRoute = "records/cashflow/{direction}/{accountId}"
         const val RecordTransferRoute = "records/transfer/{fromAccountId}"
         const val EditCashFlowRoute = "history/cashflow/{recordId}"
+        const val AccountHistoryRoute = "history/account/{accountId}"
         const val EditTransferRoute = "history/transfer/{recordId}"
         const val BalanceUpdateDetailRoute = "history/balance-update/{recordId}"
         const val EditBalanceUpdateRoute = "history/balance-update/{recordId}/edit"
@@ -72,6 +73,7 @@ sealed class MoneyDestination(
 
         fun recordTransferRoute(fromAccountId: Long = 0L): String = "records/transfer/$fromAccountId"
         fun editCashFlowRoute(recordId: Long): String = "history/cashflow/$recordId"
+        fun accountHistoryRoute(accountId: Long): String = "history/account/$accountId"
         fun editTransferRoute(recordId: Long): String = "history/transfer/$recordId"
         fun balanceUpdateDetailRoute(recordId: Long): String = "history/balance-update/$recordId"
         fun editBalanceUpdateRoute(recordId: Long): String = "history/balance-update/$recordId/edit"
