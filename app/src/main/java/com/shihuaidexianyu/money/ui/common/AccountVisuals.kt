@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.BarChart
@@ -27,13 +29,11 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Pets
 import androidx.compose.material.icons.rounded.PieChart
 import androidx.compose.material.icons.rounded.QrCode2
-import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -283,8 +283,8 @@ private fun accountIconVector(name: String): ImageVector = when (semanticIconNam
     "qr_code" -> Icons.Rounded.QrCode2
     "wechat" -> WeChatIcon
     "alipay" -> AlipayIcon
-    "receipt" -> Icons.Rounded.ReceiptLong
-    "investment" -> Icons.Rounded.TrendingUp
+    "receipt" -> Icons.AutoMirrored.Rounded.ReceiptLong
+    "investment" -> Icons.AutoMirrored.Rounded.TrendingUp
     "chart" -> Icons.Rounded.BarChart
     "pie_chart" -> Icons.Rounded.PieChart
     "currency" -> Icons.Rounded.CurrencyYuan
