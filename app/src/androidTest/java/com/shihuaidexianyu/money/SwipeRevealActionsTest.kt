@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.dp
@@ -77,6 +78,44 @@ class SwipeRevealActionsTest {
         composeRule.waitForIdle()
 
         composeRule.runOnIdle { assertEquals(0, deleteCount) }
+    }
+
+    @Test
+    fun verticalDominantDragNeverRevealsActions() {
+        var deleteCount = 0
+        setSwipeContent(onDelete = { deleteCount += 1 })
+
+        // List-scroll drift: strong vertical motion with a slight sideways component.
+        composeRule.onNodeWithTag(SWIPE_TAG).performTouchInput {
+            swipe(
+                start = Offset(width * 0.5f, centerY),
+                end = Offset(width * 0.4f, centerY - 600f),
+                durationMillis = 200,
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("删除").assertDoesNotExist()
+        composeRule.runOnIdle { assertEquals(0, deleteCount) }
+    }
+
+    @Test
+    fun slightlyDiagonalHorizontalSwipeStillRevealsActions() {
+        var deleteCount = 0
+        setSwipeContent(onDelete = { deleteCount += 1 })
+
+        // Imperfect real-world swipe: mostly horizontal, some vertical drift.
+        composeRule.onNodeWithTag(SWIPE_TAG).performTouchInput {
+            swipe(
+                start = Offset(width * 0.9f, centerY),
+                end = Offset(width * 0.1f, centerY - 120f),
+                durationMillis = 200,
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("删除").assertIsDisplayed().performClick()
+        composeRule.runOnIdle { assertEquals(1, deleteCount) }
     }
 
     private fun setSwipeContent(

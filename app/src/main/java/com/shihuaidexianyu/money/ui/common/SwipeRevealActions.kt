@@ -2,12 +2,11 @@ package com.shihuaidexianyu.money.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.exponentialDecay
-import androidx.compose.animation.core.spring
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +29,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -41,9 +41,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 enum class SwipeRevealValue {
     SETTLED,
@@ -62,10 +64,24 @@ data class SwipeRevealAction(
 private const val REVEAL_WIDTH_DP = 104
 
 /**
+ * A mostly-vertical flick must never reveal the actions: the horizontal component has to
+ * dominate by this factor before the gesture is claimed (~27° from the horizontal axis).
+ */
+private const val HORIZONTAL_DOMINANCE = 2f
+
+/** Fling speed that settles into the revealed state even without a 50% drag. */
+private val REVEAL_VELOCITY_THRESHOLD = 125.dp
+
+/**
  * iOS-style swipe reveal: dragging reveals an action button at the row edge; the action fires
  * only on an explicit tap of that button. A long or fast swipe can reveal the action but never
  * dispatch it. Short drags and scroll drift snap straight back. The row stays interactive and is
  * returned to the settled position after a button tap.
+ *
+ * Gesture entry goes through a custom direction gate instead of `anchoredDraggable`: the row
+ * claims the gesture only once the horizontal component crosses touch slop AND dominates the
+ * vertical one by [HORIZONTAL_DOMINANCE]. Diagonal scrolls through the list therefore stay with
+ * the LazyColumn and no longer flash the action buttons mid-scroll.
  */
 @Composable
 fun SwipeRevealActionsBox(
@@ -96,11 +112,6 @@ fun SwipeRevealActionsBox(
             anchors = anchors,
         )
     }
-    val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
-        state,
-        { distance: Float -> distance * 0.5f },
-        spring(stiffness = Spring.StiffnessMediumLow),
-    )
 
     val rowClick: () -> Unit = {
         if (state.currentValue == SwipeRevealValue.SETTLED) {
@@ -148,14 +159,88 @@ fun SwipeRevealActionsBox(
                 .fillMaxWidth()
                 .offset { IntOffset(state.requireOffset().roundToInt(), 0) }
                 .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .anchoredDraggable(
+                .directionGatedSwipeReveal(
                     state = state,
-                    orientation = Orientation.Horizontal,
-                    enabled = startAction != null || endAction != null,
-                    flingBehavior = flingBehavior,
+                    revealWidthPx = revealWidthPx,
+                    hasStartAction = hasStartAction,
+                    hasEndAction = hasEndAction,
+                    scope = scope,
                 ),
         ) {
             content(rowClick)
+        }
+    }
+}
+
+/**
+ * Drives [state] from raw pointer events with a direction gate. Nothing is consumed while the
+ * gesture is ambiguous: if the vertical component crosses touch slop first (or the horizontal
+ * drag has no action to reveal), the gesture is left for the surrounding scrollable untouched.
+ * Only a clearly horizontal drag is claimed and forwarded via [AnchoredDraggableState.dispatchRawDelta];
+ * release settles to the nearest anchor by 50% displacement or a [REVEAL_VELOCITY_THRESHOLD] fling.
+ */
+private fun Modifier.directionGatedSwipeReveal(
+    state: AnchoredDraggableState<SwipeRevealValue>,
+    revealWidthPx: Float,
+    hasStartAction: Boolean,
+    hasEndAction: Boolean,
+    scope: CoroutineScope,
+): Modifier {
+    if (!hasStartAction && !hasEndAction) return this
+    return pointerInput(hasStartAction, hasEndAction) {
+        val velocityThresholdPx = REVEAL_VELOCITY_THRESHOLD.toPx()
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val velocityTracker = VelocityTracker()
+            var totalDx = 0f
+            var totalDy = 0f
+            var claimed = false
+            // Direction gate: watch the initial movement without consuming anything. Claim only
+            // a clearly horizontal drag toward a side that actually has an action; otherwise the
+            // LazyColumn keeps the scroll.
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) break
+                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                val delta = change.positionChangeIgnoreConsumed()
+                totalDx += delta.x
+                totalDy += delta.y
+                val absDx = abs(totalDx)
+                val absDy = abs(totalDy)
+                if (absDy > viewConfiguration.touchSlop && absDy >= absDx) break
+                if (absDx > viewConfiguration.touchSlop && absDx > absDy * HORIZONTAL_DOMINANCE) {
+                    claimed = (totalDx > 0f && hasStartAction) || (totalDx < 0f && hasEndAction)
+                    break
+                }
+            }
+            if (!claimed) return@awaitEachGesture
+
+            // Over-slop only: the row starts moving from where the finger is, no visual jump.
+            state.dispatchRawDelta(totalDx - totalDx.sign * viewConfiguration.touchSlop)
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) break
+                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                state.dispatchRawDelta(change.positionChange().x)
+                change.consume()
+            }
+
+            val velocity = velocityTracker.calculateVelocity().x
+            val offset = state.requireOffset()
+            val target = when {
+                velocity <= -velocityThresholdPx && hasEndAction -> SwipeRevealValue.END_REVEALED
+                velocity >= velocityThresholdPx && hasStartAction -> SwipeRevealValue.START_REVEALED
+                offset <= -revealWidthPx / 2f && hasEndAction -> SwipeRevealValue.END_REVEALED
+                offset >= revealWidthPx / 2f && hasStartAction -> SwipeRevealValue.START_REVEALED
+                else -> SwipeRevealValue.SETTLED
+            }
+            // awaitEachGesture is a restricted suspension scope, so the settle animation has to
+            // leave it: launch on the composable's scope instead of calling animateTo inline.
+            // The fling velocity already decided the target above; the spring settle itself
+            // doesn't need it.
+            scope.launch { state.animateTo(target) }
         }
     }
 }
