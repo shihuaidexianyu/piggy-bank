@@ -103,17 +103,21 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             )
     }
 
-    composable(MoneyDestination.History.route) {
+    composable(MoneyDestination.History.route) { entry ->
         val devicePreferences by container.devicePreferencesRepository.observe()
             .collectAsStateWithLifecycle(initialValue = DevicePreferences())
+        // The view model MUST share the nav entry's own savedStateHandle: account detail's
+        // "查看全部" writes KEY_INITIAL_ACCOUNT_FILTER onto the entry, and a handle built by
+        // createSavedStateHandle() (moneySavedStateViewModelFactory) is a separate store that
+        // never sees that write.
         val viewModel = viewModel<HistoryViewModel>(
-            factory = moneySavedStateViewModelFactory { savedStateHandle ->
+            factory = moneyViewModelFactory {
                 HistoryViewModel(
                     accountRepository = container.accountRepository,
                     transactionRepository = container.transactionRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     devicePreferencesRepository = container.devicePreferencesRepository,
-                    savedStateHandle = savedStateHandle,
+                    savedStateHandle = entry.savedStateHandle,
                 )
             },
         )

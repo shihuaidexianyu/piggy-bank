@@ -167,6 +167,7 @@ class HistoryViewModel(
     private var loadMoreJob: Job? = null
     private var loadGeneration = 0
     private var initialized = false
+    private var pendingAccountFilter: Long? = null
     private var initializationJob: Job? = null
     private var accountCollectionJob: Job? = null
     private var accountUpdates: ReceiveChannel<List<Account>>? = null
@@ -181,6 +182,10 @@ class HistoryViewModel(
                         savedStateHandle.remove<Long>(KEY_INITIAL_ACCOUNT_FILTER)
                         if (initialized) {
                             applyLocalFilter { copy(selectedAccountId = accountId) }
+                        } else {
+                            // Initialization reloads persisted filters from scratch, so applying
+                            // now would be overwritten — stash and fold it in when ready.
+                            pendingAccountFilter = accountId
                         }
                     }
                 }
@@ -313,6 +318,15 @@ class HistoryViewModel(
         accountUpdates = updates
         applyAccounts(updates.receive())
         initialized = true
+        // A one-shot account filter that arrived before initialization was stashed — fold it
+        // into the filter state now so the first page load below already uses it.
+        pendingAccountFilter?.let { accountId ->
+            pendingAccountFilter = null
+            val updatedFilters = filterState.value.copy(selectedAccountId = accountId)
+            filterState.value = updatedFilters
+            applyFiltersToState(updatedFilters)
+            scheduleFilterSave(updatedFilters)
+        }
 
         viewModelScope.launch {
             portableSettingsRepository.observe()

@@ -87,9 +87,14 @@ internal fun NavGraphBuilder.addAccountsGraph(
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,
             onViewAllHistory = {
-                navController.getBackStackEntry(MoneyDestination.History.route)
-                    .savedStateHandle[HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER] = accountId
+                // Navigate FIRST: tab switching pops to the start destination, so the History
+                // entry only exists on the back stack after the navigate — reading its entry
+                // beforehand throws when the tab was never visited this session.
                 navController.navigateToTopLevelTab(MoneyDestination.History)
+                navController.currentBackStackEntry
+                    ?.takeIf { it.destination.route == MoneyDestination.History.route }
+                    ?.savedStateHandle
+                    ?.set(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER, accountId)
             },
         )
     }

@@ -1,5 +1,6 @@
 package com.shihuaidexianyu.money
 
+import androidx.lifecycle.SavedStateHandle
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
@@ -297,6 +298,54 @@ class HistoryAsyncRetryRaceTest {
         val records = viewModel.uiState.value.records.associateBy { it.title }
         assertTrue(requireNotNull(records["开放记录"]).canMutate)
         assertFalse(requireNotNull(records["关闭记录"]).canMutate)
+    }
+
+    @Test
+    fun `one-shot account filter arriving before initialization is not lost`() = runTest(dispatcher) {
+        val accounts = InMemoryAccountRepository()
+        val wechatId = accounts.createAccount(Account(name = "微信零钱", initialBalance = 0L, createdAt = 1L))
+        val bankId = accounts.createAccount(Account(name = "招商银行", initialBalance = 0L, createdAt = 1L))
+        val transactions = InMemoryTransactionRepository()
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = wechatId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100L,
+                note = "微信记录",
+                occurredAt = 2L,
+                createdAt = 2L,
+                updatedAt = 2L,
+                operationId = testOperationId(),
+            ),
+        )
+        transactions.insertCashFlowRecord(
+            CashFlowRecord(
+                accountId = bankId,
+                direction = CashFlowDirection.OUTFLOW.value,
+                amount = 100L,
+                note = "银行记录",
+                occurredAt = 3L,
+                createdAt = 3L,
+                updatedAt = 3L,
+                operationId = testOperationId(),
+            ),
+        )
+        // The filter lands in the saved-state handle BEFORE the view model finishes
+        // initializing (account detail "查看全部" sets it right after navigating).
+        val handle = SavedStateHandle(
+            mapOf(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER to wechatId),
+        )
+        val viewModel = HistoryViewModel(
+            accountRepository = accounts,
+            transactionRepository = transactions,
+            portableSettingsRepository = InMemoryPortableSettingsRepository(),
+            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
+            savedStateHandle = handle,
+        )
+        runCurrent()
+
+        assertEquals(listOf("微信记录"), viewModel.uiState.value.records.map { it.title })
+        assertNull(handle.get<Long>(HistoryViewModel.KEY_INITIAL_ACCOUNT_FILTER))
     }
 
 }
