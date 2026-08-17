@@ -93,29 +93,6 @@ class TimeRangeCalculatorTest {
     }
 
     @Test
-    fun `previous range is adjacent to the current range for every period`() {
-        val now = Instant.parse("2024-02-15T10:00:00Z").toEpochMilli()
-
-        DashboardPeriod.entries.forEach { period ->
-            val current = TimeRangeCalculator.rangeFor(period, utc, now)
-            val previous = TimeRangeCalculator.previousRangeFor(period, utc, now)
-
-            assertEquals(current.startInclusive, previous.endExclusive, "gap or overlap for $period")
-            assertTrue(previous.startInclusive < previous.endExclusive, "empty previous range for $period")
-        }
-    }
-
-    @Test
-    fun `previous month handles the leap-year boundary`() {
-        // Comparing March against February must not slide off the end of a 29-day month.
-        val march = Instant.parse("2024-03-31T10:00:00Z").toEpochMilli()
-        val previous = TimeRangeCalculator.previousRangeFor(DashboardPeriod.MONTH, utc, march)
-
-        assertEquals(Instant.parse("2024-02-01T00:00:00Z").toEpochMilli(), previous.startInclusive)
-        assertEquals(Instant.parse("2024-03-01T00:00:00Z").toEpochMilli(), previous.endExclusive)
-    }
-
-    @Test
     fun `progress days count today as elapsed`() {
         // 2024-02-15 is the 15th day of a 29-day month.
         val feb15 = Instant.parse("2024-02-15T23:59:00Z").toEpochMilli()

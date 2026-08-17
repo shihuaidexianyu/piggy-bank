@@ -9,6 +9,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesReposi
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
+import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.model.MAX_RECENT_ACCOUNT_IDS
@@ -22,26 +23,28 @@ import kotlin.test.assertFailsWith
 
 class PortableAndDeviceSettingsRepositoryTest {
     @Test
-    fun `portable settings normalize currency and validate monthly budget`() = runBlocking {
+    fun `portable settings normalize currency and validate the spending budget`() = runBlocking {
         val repository = InMemoryPortableSettingsRepository()
 
         assertEquals(PortableSettings(), repository.query())
         repository.updateCurrencySymbol("  元人民币  ")
         repository.updateAmountColorMode(AmountColorMode.GREEN_INCOME_RED_EXPENSE)
-        repository.updateMonthlyBudgetAmount(10_000L)
+        repository.updateBudget(10_000L, BudgetPeriod.YEARLY)
 
         assertEquals(
             PortableSettings(
                 currencySymbol = "元人民币",
                 amountColorMode = AmountColorMode.GREEN_INCOME_RED_EXPENSE,
-                monthlyBudgetAmount = 10_000L,
+                budgetAmount = 10_000L,
+                budgetPeriod = BudgetPeriod.YEARLY,
             ),
             repository.observe().first(),
         )
-        repository.updateMonthlyBudgetAmount(null)
-        assertEquals(null, repository.query().monthlyBudgetAmount)
-        assertFailsWith<IllegalArgumentException> { repository.updateMonthlyBudgetAmount(0L) }
-        assertFailsWith<IllegalArgumentException> { repository.updateMonthlyBudgetAmount(-1L) }
+        repository.updateBudget(null, BudgetPeriod.MONTHLY)
+        assertEquals(null, repository.query().budgetAmount)
+        assertEquals(BudgetPeriod.MONTHLY, repository.query().budgetPeriod)
+        assertFailsWith<IllegalArgumentException> { repository.updateBudget(0L, BudgetPeriod.MONTHLY) }
+        assertFailsWith<IllegalArgumentException> { repository.updateBudget(-1L, BudgetPeriod.MONTHLY) }
         Unit
     }
 

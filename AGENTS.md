@@ -21,7 +21,7 @@ It supports multi-account management (ordering, hiding, closing, reopening), cas
 | ------- | ------------ |
 | UI | Jetpack Compose (BOM 2025.10.01) + Material 3 |
 | Architecture | Clean Architecture (Domain / Data / UI) + MVVM |
-| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 15 |
+| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 16 |
 | Settings | Room (`portable_settings`, backupable) + DataStore Preferences 1.1.7 (device-local) |
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON backup export/import) |
@@ -166,13 +166,13 @@ app/src/main/java/com/shihuaidexianyu/money/
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
    - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, `MONEY_BACKUP_SCHEMA_VERSION = 5`).
    - `repository/`: Interfaces only — `AccountRepository`, `TransactionRepository`, `LedgerAggregateRepository`, `PortableSettingsRepository`, `DevicePreferencesRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `SavingsGoalRepository`, `BackupRepository`, `BackupJsonEncoder`, `DatabaseTransactionRunner`. (The former monolithic `SettingsRepository` was split: portable settings live in Room and travel with backups; device preferences live in DataStore and never leave the device.)
-   - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `MonthlyBudgetPolicy`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
+   - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
 
 2. **Data** (`data/`):
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. All four ledger record types use `deletedAt` soft deletion and unique `operationId` values. `HistoryRecordDao` unions 4 tables with keyset pagination; `LedgerAggregateDao` serves aggregate queries.
    - `repository/`: Concrete implementations plus `InMemory*` variants (`InMemoryAccountRepository`, `InMemoryTransactionRepository`, `InMemoryAccountReminderSettingsRepository`, `InMemoryRecurringReminderRepository`, `InMemorySavingsGoalRepository`, `InMemoryPortableSettingsRepository`, `InMemoryDevicePreferencesRepository`) for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 14, `exportSchema = true` to `app/schemas/`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 16, `exportSchema = true` to `app/schemas/`).
    - `migration/`: `StartupMigrationCoordinator` runs the legacy-store/settings upgrade before the ledger is exposed, surfacing recoverable-error states (retry, use current database, reset settings, export legacy source).
    - `export/`: `ExportJsonFileWriter` writes plaintext `.json` files with collision-resistant names.
    - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v4 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
@@ -247,7 +247,7 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **15**.
+Room schema is exported to `app/schemas/`. Current database version is **16**.
 
 Existing migrations:
 
@@ -265,6 +265,7 @@ Existing migrations:
 - `12 → 13`: Removed savings-goal account links and reduced the goal model to a net-worth target.
 - `13 → 14`: Rebuilt accounts and ledger tables for hidden/closed lifecycle state, tombstones, operation IDs, reminder anchors, portable settings, reminder configs, and migration state.
 - `14 → 15`: Added `accounts.kind` (`funding`/`investment`, default `funding`). Reconciliation deltas on investment accounts are presented as investment P&L at read time.
+- `15 → 16`: Added `portable_settings.budgetPeriod` (`weekly`/`monthly`/`yearly`, default `monthly`) — the spending budget can be measured against the calendar week, month, or year. The DB column and backup JSON key for the amount keep the legacy `monthlyBudgetAmount` name for compatibility.
 
 When modifying entities:
 

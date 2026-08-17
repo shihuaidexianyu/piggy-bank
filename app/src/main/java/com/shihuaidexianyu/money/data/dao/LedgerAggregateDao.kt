@@ -35,6 +35,11 @@ data class AccountReconciliationNetProjection(
     val net: Long,
 )
 
+data class AccountAmountProjection(
+    val accountId: Long,
+    val amount: Long,
+)
+
 @Dao
 interface LedgerAggregateDao {
     @Query(
@@ -104,6 +109,44 @@ interface LedgerAggregateDao {
         startInclusive: Long,
         endExclusive: Long,
     ): List<AccountReconciliationNetProjection>
+
+    @Query(
+        """
+        SELECT accountId, COALESCE(SUM(signedAmount), 0) AS amount
+        FROM (
+            SELECT accountId,
+                CASE WHEN direction = :inflowDirection THEN amount ELSE -amount END AS signedAmount
+            FROM cash_flow_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT toAccountId, amount FROM transfer_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT fromAccountId, -amount FROM transfer_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT accountId, delta FROM balance_update_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+
+            UNION ALL
+
+            SELECT accountId, delta FROM balance_adjustment_records
+            WHERE deletedAt IS NULL AND occurredAt >= :startInclusive AND occurredAt < :endExclusive
+        ) signed_ledger
+        GROUP BY accountId
+        """,
+    )
+    suspend fun queryNetAmountChangeByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+        inflowDirection: String,
+    ): List<AccountAmountProjection>
 
     @Query(
         """

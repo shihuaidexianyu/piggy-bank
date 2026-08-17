@@ -36,10 +36,8 @@ internal object HomeProjector {
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
         period: DashboardPeriod = DashboardPeriod.DEFAULT,
-        previousCashInflow: Long = 0L,
-        previousCashOutflow: Long = 0L,
-        monthCashOutflow: Long = cashOutflow,
-        monthProgressDays: PeriodProgressDays = PeriodProgressDays(elapsed = 1, total = 1),
+        budgetCashOutflow: Long = cashOutflow,
+        budgetProgressDays: PeriodProgressDays = PeriodProgressDays(elapsed = 1, total = 1),
         reconciliationNetByAccount: Map<Long, Long> = emptyMap(),
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
@@ -70,9 +68,9 @@ internal object HomeProjector {
                 zoneId = zoneId,
             )
         }
-        val monthlyBudget = calculateMonthlyBudgetStatus(
-            targetAmount = settings.monthlyBudgetAmount,
-            spentAmount = monthCashOutflow,
+        val budget = calculateBudgetStatus(
+            targetAmount = settings.budgetAmount,
+            spentAmount = budgetCashOutflow,
         )
         return HomeDashboardSnapshot(
             settings = settings,
@@ -84,31 +82,17 @@ internal object HomeProjector {
             staleAccounts = staleAccounts,
             accountBalances = balances,
             dueReminders = dueReminders,
-            monthlyBudget = monthlyBudget,
+            budget = budget,
             recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
             period = period,
-            // Measured against the period's own opening rather than the previous period's closing:
-            // both numbers are already known here, so the comparison costs no extra ledger reads.
-            netWorthDelta = calculatePeriodDelta(
-                currentAmount = totalAssets,
-                baselineAmount = openingTotalAssets,
-            ),
-            cashInflowDelta = calculatePeriodDelta(
-                currentAmount = cashInflow,
-                baselineAmount = previousCashInflow,
-            ),
-            cashOutflowDelta = calculatePeriodDelta(
-                currentAmount = cashOutflow,
-                baselineAmount = previousCashOutflow,
-            ),
-            budgetPace = monthlyBudget?.let { budget ->
+            budgetPace = budget?.let { status ->
                 calculateBudgetPace(
-                    targetAmount = budget.targetAmount,
-                    spentAmount = budget.spentAmount,
-                    daysElapsed = monthProgressDays.elapsed,
-                    daysTotal = monthProgressDays.total,
+                    targetAmount = status.targetAmount,
+                    spentAmount = status.spentAmount,
+                    daysElapsed = budgetProgressDays.elapsed,
+                    daysTotal = budgetProgressDays.total,
                 )
             },
             hasInvestmentAccounts = accounts.any(Account::isInvestment),

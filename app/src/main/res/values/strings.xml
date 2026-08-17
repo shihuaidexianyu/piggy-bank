@@ -22,8 +22,8 @@
     <!-- Home -->
     <string name="home_title">首页</string>
     <string name="home_load_failed">首页加载失败，请重试</string>
-    <string name="home_budget_positive_error">月预算必须大于 0</string>
-    <string name="home_budget_save_failed">月预算保存失败，请重试</string>
+    <string name="home_budget_positive_error">预算必须大于 0</string>
+    <string name="home_budget_save_failed">预算保存失败，请重试</string>
     <string name="home_create_first_account">创建第一个账户</string>
     <string name="home_create_first_account_description">创建账户后，就能开始记录收入、支出和转账。</string>
     <string name="home_create_now">立即创建</string>
@@ -51,16 +51,16 @@
     <string name="home_week_investment_pnl">本周投资损益</string>
     <string name="home_month_investment_pnl">本月投资损益</string>
     <string name="home_year_investment_pnl">今年投资损益</string>
-    <string name="home_change_with_percent_format">%1$s (%2$s)</string>
-    <string name="home_change_none">持平</string>
-    <string name="home_change_increase">增加</string>
-    <string name="home_change_decrease">减少</string>
+    <string name="home_budget_title">预算</string>
+    <string name="home_weekly_budget">周预算</string>
     <string name="home_monthly_budget">月预算</string>
-    <string name="home_budget_not_set_description">尚未设置本月支出预算</string>
-    <string name="home_set_monthly_budget">设置月预算</string>
-    <string name="home_edit_monthly_budget">修改月预算</string>
-    <string name="home_close_monthly_budget">关闭月预算</string>
-    <string name="home_close_monthly_budget_confirm_message">关闭后首页不再展示本月预算进度，历史记录不受影响。</string>
+    <string name="home_yearly_budget">年预算</string>
+    <string name="home_budget_period_label">预算周期</string>
+    <string name="home_budget_not_set_description">尚未设置支出预算</string>
+    <string name="home_set_budget">设置预算</string>
+    <string name="home_edit_budget">修改预算</string>
+    <string name="home_close_budget">关闭预算</string>
+    <string name="home_close_budget_confirm_message">关闭后首页不再展示预算进度，历史记录不受影响。</string>
     <string name="home_budget_over_format">超支 %1$s · %2$s</string>
     <string name="home_budget_spent_summary_format">目标 %1$s · 已用 %2$s</string>
     <string name="home_budget_pace_format">剩余 %1$d 天 · 日均 %2$s</string>
@@ -72,7 +72,7 @@
     <string name="home_due_reminder_subtitle_format">%1$s · %2$s</string>
     <string name="home_tomorrow">明天</string>
     <string name="home_stale_accounts">待核对账户</string>
-    <string name="home_monthly_budget_field">每月支出预算</string>
+    <string name="home_budget_field">支出预算</string>
     <string name="home_savings_goal">储蓄目标</string>
     <string name="home_savings_goal_progress_format">当前净资产 %1$s · 还差 %2$s</string>
     <string name="home_savings_goal_achieved">已达成目标</string>
@@ -155,6 +155,7 @@
     <string name="accounts_create_first">创建第一个账户</string>
     <string name="accounts_normal">正常账户</string>
     <string name="accounts_group_total_format">共 %1$d 个</string>
+    <string name="accounts_month_change_note">变化为本月口径</string>
     <string name="accounts_group_total_stale_format">共 %1$d 个 · 待核对 %2$d</string>
     <string name="accounts_hidden">隐藏账户</string>
     <string name="accounts_closed">已关闭账户</string>
@@ -166,6 +167,8 @@
     <string name="account_status_hidden">已隐藏 · 仍计入净资产</string>
     <string name="account_status_stale">余额待核对</string>
     <string name="account_balance_semantics_format">，余额 %1$s</string>
+    <string name="account_share_semantics_format">占比 %1$s</string>
+    <string name="account_month_change_format">本月变化 %1$s</string>
     <string name="account_stale_badge">待核对</string>
 
     <!-- Common actions and fields -->
@@ -394,18 +397,39 @@
 
     <!-- Account appearance and reconciliation reminders -->
     <string name="account_color_title">账户颜色</string>
-    <string name="account_icon_title">账户图案</string>
-    <string name="account_pattern_1">图案 1</string>
-    <string name="account_pattern_2">图案 2</string>
-    <string name="account_pattern_3">图案 3</string>
-    <string name="account_pattern_4">图案 4</string>
-    <string name="account_pattern_5">图案 5</string>
-    <string name="account_pattern_6">图案 6</string>
-    <string name="account_pattern_7">图案 7</string>
-    <string name="account_pattern_8">图案 8</string>
-    <string name="account_pattern_9">图案 9</string>
-    <string name="account_pattern_10">图案 10</string>
-    <string name="account_pattern_format">图案 %1$d</string>
+    <string name="account_icon_title">账户图标</string>
+    <string name="account_icon_wallet">钱包</string>
+    <string name="account_icon_cash">现金</string>
+    <string name="account_icon_bank">银行</string>
+    <string name="account_icon_credit_card">信用卡</string>
+    <string name="account_icon_savings">储蓄</string>
+    <string name="account_icon_qr_code">收付款</string>
+    <string name="account_icon_wechat">微信</string>
+    <string name="account_icon_alipay">支付宝</string>
+    <string name="account_icon_receipt">报销</string>
+    <string name="account_icon_investment">投资</string>
+    <string name="account_icon_chart">图表</string>
+    <string name="account_icon_pie_chart">基金</string>
+    <string name="account_icon_currency">人民币</string>
+    <string name="account_icon_currency_exchange">外币兑换</string>
+    <string name="account_icon_stock">股票</string>
+    <string name="account_icon_insurance">保险</string>
+    <string name="account_icon_home">房产</string>
+    <string name="account_icon_car">汽车</string>
+    <string name="account_icon_subway">公共交通</string>
+    <string name="account_icon_flight">旅行</string>
+    <string name="account_icon_restaurant">餐饮</string>
+    <string name="account_icon_shopping">购物</string>
+    <string name="account_icon_utilities">水电煤</string>
+    <string name="account_icon_entertainment">娱乐</string>
+    <string name="account_icon_medical">医疗</string>
+    <string name="account_icon_school">教育</string>
+    <string name="account_icon_fitness">运动</string>
+    <string name="account_icon_pets">宠物</string>
+    <string name="account_icon_child_care">儿童</string>
+    <string name="account_icon_gift">礼物</string>
+    <string name="account_icon_phone">手机</string>
+    <string name="account_icon_work">工作</string>
     <string name="account_kind_title">账户类型</string>
     <string name="account_kind_funding">日常</string>
     <string name="account_kind_investment">投资</string>

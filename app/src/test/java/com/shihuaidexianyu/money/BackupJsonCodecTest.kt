@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.AccountKind
+import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import java.io.InputStream
@@ -75,6 +76,8 @@ class BackupJsonCodecTest {
 
         assertEquals(snapshot, BackupJsonCodec.decode(BackupJsonCodec.encode(snapshot)))
         assertEquals(500_000L, snapshot.portableSettings.monthlyBudgetAmount)
+        // Files written before the budget-period field existed decode as a monthly budget.
+        assertEquals(BudgetPeriod.DEFAULT.value, snapshot.portableSettings.budgetPeriod)
         assertTrue(snapshot.accounts.single().isHidden)
         assertEquals("cash:v4:1", snapshot.cashFlowRecords.single().operationId)
         assertEquals(300L, snapshot.cashFlowRecords.single().deletedAt)

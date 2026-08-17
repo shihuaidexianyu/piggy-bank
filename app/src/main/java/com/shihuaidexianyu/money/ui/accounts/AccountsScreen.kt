@@ -1,7 +1,7 @@
 package com.shihuaidexianyu.money.ui.accounts
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Reorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -41,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContent
@@ -50,10 +47,13 @@ import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
+import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
 import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
+import com.shihuaidexianyu.money.ui.common.formatSharePercent
+import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 data class AccountGroups(
@@ -88,6 +88,9 @@ fun AccountsScreen(
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
+    // Share denominator for every open row: the full open-book total (hidden accounts included —
+    // hiding never changes calculations). Closed accounts sit at zero and simply show no share.
+    val openTotalBalance = (groups.normal + groups.hidden).map { it.balance }.ledgerSumExact()
     val loadErrorMessage = state.errorMessageRes?.let { stringResource(it) }.orEmpty()
     val normalKindGroups = buildList<Pair<AccountKind?, List<AccountListItemUiModel>>> {
         val funding = groups.normal.filter { it.kind == AccountKind.FUNDING }
@@ -224,15 +227,30 @@ fun AccountsScreen(
                                 },
                             )
                         }
-                        itemsIndexed(accounts, key = { _, account -> account.id }) { _, account ->
-                            AccountCard(
-                                account = account,
-                                currencySettings = state.settings,
-                                onClick = { onAccountClick(account.id) },
-                                reconcileEnabled = accountSwipeReconcileEnabled,
-                                onReconcile = { onReconcileAccount(account.id) },
+                        item {
+                            // One grouped card per section (the history list's language) instead of
+                            // a card per account — the per-account pastel cards read heavy and
+                            // wasted a full card's padding on at most two lines of text.
+                            MoneyCard(
+                                contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier.animateItem(),
-                            )
+                            ) {
+                                accounts.forEachIndexed { index, account ->
+                                    AccountRow(
+                                        account = account,
+                                        currencySettings = state.settings,
+                                        totalBalance = openTotalBalance,
+                                        // With kind-split sections the kind is the header; only a
+                                        // mixed list needs the per-row tag.
+                                        onClick = { onAccountClick(account.id) },
+                                        reconcileEnabled = accountSwipeReconcileEnabled,
+                                        onReconcile = { onReconcileAccount(account.id) },
+                                    )
+                                    if (index != accounts.lastIndex) {
+                                        MoneySectionDivider()
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -247,15 +265,25 @@ fun AccountsScreen(
                             ),
                         )
                     }
-                    itemsIndexed(groups.hidden, key = { _, account -> account.id }) { _, account ->
-                        AccountCard(
-                            account = account,
-                            currencySettings = state.settings,
-                            onClick = { onAccountClick(account.id) },
-                            reconcileEnabled = accountSwipeReconcileEnabled,
-                            onReconcile = { onReconcileAccount(account.id) },
+                    item {
+                        MoneyCard(
+                            contentPadding = PaddingValues(0.dp),
                             modifier = Modifier.animateItem(),
-                        )
+                        ) {
+                            groups.hidden.forEachIndexed { index, account ->
+                                AccountRow(
+                                    account = account,
+                                    currencySettings = state.settings,
+                                    totalBalance = openTotalBalance,
+                                    onClick = { onAccountClick(account.id) },
+                                    reconcileEnabled = accountSwipeReconcileEnabled,
+                                    onReconcile = { onReconcileAccount(account.id) },
+                                )
+                                if (index != groups.hidden.lastIndex) {
+                                    MoneySectionDivider()
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -286,13 +314,23 @@ fun AccountsScreen(
                 }
             }
             if (state.showClosed) {
-                itemsIndexed(state.closedAccounts, key = { _, account -> account.id }) { _, account ->
-                    AccountCard(
-                        account = account,
-                        currencySettings = state.settings,
+                item {
+                    MoneyCard(
+                        contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.animateItem(),
-                        onClick = { onAccountClick(account.id) },
-                    )
+                    ) {
+                        state.closedAccounts.forEachIndexed { index, account ->
+                            AccountRow(
+                                account = account,
+                                currencySettings = state.settings,
+                                totalBalance = openTotalBalance,
+                                onClick = { onAccountClick(account.id) },
+                            )
+                            if (index != state.closedAccounts.lastIndex) {
+                                MoneySectionDivider()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -300,16 +338,19 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountCard(
+private fun AccountRow(
     account: AccountListItemUiModel,
     currencySettings: PortableSettings,
+    totalBalance: Long,
     onClick: () -> Unit,
     reconcileEnabled: Boolean = true,
     onReconcile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val cardColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val balanceText = formatInAppAmount(account.balance, currencySettings)
+    // Empty for zero/negative balances or a non-positive total — a share is only meaningful
+    // for money actually present.
+    val shareText = formatSharePercent(account.balance, totalBalance)
     val statusText = when {
         account.requiresReopenAndSettle -> stringResource(R.string.account_status_reopen_settle)
         account.isClosed -> stringResource(R.string.account_status_closed)
@@ -317,20 +358,38 @@ private fun AccountCard(
         account.isStale -> stringResource(R.string.account_status_stale)
         else -> null
     }
-    // Normal accounts stay silent; only investment accounts carry a type tag so the kind is
-    // visible while scrolling without repeating it on every row.
-    val caption = statusText ?: if (account.kind == AccountKind.INVESTMENT) {
-        stringResource(R.string.account_kind_investment)
+    // Second line for healthy rows: the account's signed net change this calendar month,
+    // colored by direction. The "本月" window is stated once in the overview caption above the
+    // list rather than repeated on every row; TalkBack still hears the full sentence.
+    // Zero (a quiet month, or perfectly offsetting moves) stays silent.
+    val monthChangeText = if (account.monthNetChange != 0L) {
+        signedFormatInAppAmount(account.monthNetChange, currencySettings)
     } else {
         null
     }
+    val monthChangeSemantics = monthChangeText?.let {
+        stringResource(R.string.account_month_change_format, it)
+    }
+    val caption = statusText ?: monthChangeText
+    val captionSemantics = statusText ?: monthChangeSemantics
+    val captionColor = when {
+        statusText != null -> MaterialTheme.colorScheme.onSurfaceVariant
+        account.monthNetChange > 0L -> LocalMoneyColors.current.income
+        account.monthNetChange < 0L -> LocalMoneyColors.current.expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val isDimmed = account.isClosed || account.isHidden
-    val balanceStyle = when {
-        balanceText.length > 18 -> MaterialTheme.typography.bodyMedium
-        balanceText.length > 14 -> MaterialTheme.typography.titleMedium
-        else -> MaterialTheme.typography.titleLarge
+    val balanceStyle = if (balanceText.length > 18) {
+        MaterialTheme.typography.bodyMedium
+    } else {
+        MaterialTheme.typography.titleMedium
     }
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
+    val shareSemantics = if (shareText.isNotEmpty()) {
+        stringResource(R.string.account_share_semantics_format, shareText)
+    } else {
+        null
+    }
     val reconcileAction = if (reconcileEnabled && !account.isClosed) {
         SwipeRevealAction(
             label = stringResource(R.string.account_swipe_reconcile),
@@ -348,69 +407,78 @@ private fun AccountCard(
         contentClick = onClick,
         modifier = modifier,
     ) { contentClick ->
-        Card(
-            onClick = contentClick,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = contentClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .semantics(mergeDescendants = true) {
                     contentDescription = buildString {
                         append(account.name)
                         append(balanceSemantics)
-                        caption?.let { append("，$it") }
+                        captionSemantics?.let { append("，$it") }
+                        shareSemantics?.let { append("，$it") }
                     }
                     role = Role.Button
                 },
-            colors = CardDefaults.cardColors(containerColor = cardColor),
-            shape = MaterialTheme.shapes.medium,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            AccountIconBadge(
+                iconName = account.iconName,
+                colorName = account.colorName,
+                isClosed = account.isClosed,
+                size = 40.dp,
+                iconSize = 22.dp,
+                // The ring visualizes the same share printed at the row's trailing edge. Every
+                // open account gets one (a zero balance draws the bare track) so badge sizes —
+                // and therefore name alignment — stay uniform down the list.
+                shareFraction = if (!account.isClosed && totalBalance > 0L) {
+                    (account.balance.toDouble() / totalBalance.toDouble()).toFloat()
+                } else {
+                    null
+                },
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                AccountIconBadge(
-                    iconName = account.iconName,
-                    colorName = account.colorName,
-                    isClosed = account.isClosed,
+                Text(
+                    text = account.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isDimmed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
+                caption?.let {
                     Text(
-                        text = account.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isDimmed) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = captionColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
-                    caption?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
                 }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = balanceText,
+                    style = balanceStyle,
+                    color = if (account.isClosed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onBackground
+                    },
+                    maxLines = 1,
+                )
+                if (shareText.isNotEmpty()) {
                     Text(
-                        text = balanceText,
-                        style = balanceStyle,
-                        color = if (account.isClosed) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onBackground
-                        },
+                        text = shareText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                 }
@@ -422,7 +490,8 @@ private fun AccountCard(
 /**
  * Page-level summary limited to what the home dashboard does not already show: open and stale
  * account counts. The total-assets amount and the funding/investment split live on home only,
- * so each piece of information keeps a single source.
+ * so each piece of information keeps a single source. This is also where the per-row change
+ * stat's calendar-month window is stated — once, instead of on every row.
  */
 @Composable
 private fun AccountsOverviewCard(
@@ -436,6 +505,11 @@ private fun AccountsOverviewCard(
     ) {
         Text(
             text = stringResource(R.string.accounts_open_count_format, openCount),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.accounts_month_change_note),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

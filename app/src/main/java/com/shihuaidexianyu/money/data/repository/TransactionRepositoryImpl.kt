@@ -454,6 +454,17 @@ class TransactionRepositoryImpl(
             .associate { it.accountId to it.net }
     }
 
+    override suspend fun queryNetAmountChangeByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long> = translateLedgerSqlOverflow {
+        ledgerAggregateDao.queryNetAmountChangeByAccount(
+            startInclusive,
+            endExclusive,
+            CashFlowDirection.INFLOW.value,
+        ).associate { it.accountId to it.amount }
+    }
+
     override suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,

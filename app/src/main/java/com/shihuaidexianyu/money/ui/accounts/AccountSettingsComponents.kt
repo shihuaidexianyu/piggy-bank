@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,7 +47,8 @@ import com.shihuaidexianyu.money.ui.common.AccountColorSwatch
 import com.shihuaidexianyu.money.ui.common.accountVisualColor
 import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AccountIconOptions
-import com.shihuaidexianyu.money.ui.common.accountPatternIndex
+import com.shihuaidexianyu.money.ui.common.accountIconLabelRes
+import com.shihuaidexianyu.money.ui.common.semanticIconName
 import com.shihuaidexianyu.money.ui.common.accountColorLabel
 import com.shihuaidexianyu.money.ui.common.MoneyChoiceDialog
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -63,6 +65,9 @@ internal enum class AccountSettingsPicker {
     REMINDER_MONTH_DAY,
     REMINDER_TIME,
 }
+
+/** Fixed icon-picker cell height — see [AccountIconChoiceDialog] for why the grid snaps to rows. */
+private val IconPickerCellHeight = 92.dp
 
 @Composable
 internal fun AccountSettingsPickerDialog(
@@ -164,8 +169,13 @@ internal fun AccountSettingsPickerDialog(
 }
 
 /**
- * Icon picker as a scrollable 4-column grid: 19 options no longer fit the old full-width list
- * inside a dialog, and a grid shows every glyph at once instead of behind labels.
+ * Icon picker as a scrollable 4-column grid: the full semantic catalog no longer fits the old
+ * full-width list inside a dialog, and a grid shows every glyph at once instead of behind labels.
+ *
+ * Cells are a fixed height and the grid height is a whole number of rows (5 × 92dp cell +
+ * 4 × 10dp gap), so the viewport never slices a row in half and the catalog (32 icons = 8 full
+ * rows) never leaves a lone orphan cell on the last row — both read as a broken, asymmetric
+ * layout. On short screens `heightIn` still lets the grid shrink into the dialog's constraints.
  */
 @Composable
 private fun AccountIconChoiceDialog(
@@ -179,13 +189,13 @@ private fun AccountIconChoiceDialog(
         text = {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
-                modifier = Modifier.heightIn(max = 360.dp),
+                modifier = Modifier.heightIn(max = IconPickerCellHeight * 5 + 10.dp * 4),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(AccountIconOptions, key = { it.name }) { option ->
-                    val selected = accountPatternIndex(option.name) ==
-                        accountPatternIndex(selectedIconName)
+                    // A geo-era stored name highlights its mapped semantic slot.
+                    val selected = option.name == semanticIconName(selectedIconName)
                     val label = stringResource(option.labelRes)
                     Card(
                         onClick = { onSelect(option.name) },
@@ -201,9 +211,12 @@ private fun AccountIconChoiceDialog(
                         ),
                     ) {
                         Column(
-                            modifier = Modifier.padding(vertical = 8.dp),
+                            modifier = Modifier.height(IconPickerCellHeight),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(
+                                4.dp,
+                                Alignment.CenterVertically,
+                            ),
                         ) {
                             Surface(
                                 modifier = Modifier
@@ -411,7 +424,7 @@ internal fun AccountVisualFields(
     onIconClick: () -> Unit,
 ) {
     // Leading previews mirror AccountVisualListRows on the edit page: users should see the real
-    // icon/color, not just a pattern number or color name.
+    // icon/color, not just a name.
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -420,7 +433,7 @@ internal fun AccountVisualFields(
         AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp)
         MoneySelectionField(
             label = stringResource(R.string.account_icon_title),
-            value = accountPatternLabel(iconName),
+            value = accountIconLabel(iconName),
             onClick = onIconClick,
             modifier = Modifier.weight(1f),
         )
@@ -545,7 +558,7 @@ internal fun AccountVisualListRows(
     MoneySectionDivider()
     MoneyListRow(
         title = stringResource(R.string.account_icon_title),
-        trailing = accountPatternLabel(iconName),
+        trailing = accountIconLabel(iconName),
         leading = { AccountIconBadge(iconName = iconName, colorName = colorName, size = 28.dp, iconSize = 16.dp) },
         onClick = onIconClick,
     )
@@ -559,5 +572,5 @@ internal fun AccountVisualListRows(
 }
 
 @Composable
-private fun accountPatternLabel(iconName: String): String =
-    stringResource(R.string.account_pattern_format, accountPatternIndex(iconName) + 1)
+private fun accountIconLabel(iconName: String): String =
+    stringResource(accountIconLabelRes(iconName))

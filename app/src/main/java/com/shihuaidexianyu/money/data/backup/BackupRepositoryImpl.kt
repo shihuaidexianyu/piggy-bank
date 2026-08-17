@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
+import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
@@ -187,7 +188,8 @@ private fun BackupRecurringReminder.toDomain() = RecurringReminder(
 private fun BackupPortableSettings.toDomain() = PortableSettings(
     currencySymbol = normalizeCurrencySymbol(currencySymbol),
     amountColorMode = AmountColorMode.fromValue(amountColorMode),
-    monthlyBudgetAmount = monthlyBudgetAmount,
+    budgetAmount = monthlyBudgetAmount,
+    budgetPeriod = BudgetPeriod.fromValue(budgetPeriod),
 )
 
 private fun BackupBalanceUpdateReminderConfig.toDomain() = BalanceUpdateReminderConfig(

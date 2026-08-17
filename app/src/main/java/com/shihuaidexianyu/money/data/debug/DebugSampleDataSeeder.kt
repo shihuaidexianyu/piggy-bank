@@ -14,7 +14,6 @@ import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
-import com.shihuaidexianyu.money.domain.model.ACCOUNT_GEOMETRY_NAMES
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
@@ -131,7 +130,8 @@ object DebugSampleDataSeeder {
         zoneId: ZoneId,
         today: LocalDate,
     ): Map<String, Long> {
-        val names = listOf("微信零钱", "招商银行", "应急储蓄", "指数基金", "旅行预算").shuffled(random)
+        // Name order pairs with `keys` so each sample account's icon matches its purpose.
+        val names = listOf("微信零钱", "招商银行", "应急储蓄", "指数基金", "旅行预算")
         val colors = listOf("green", "blue", "teal", "purple", "orange")
         val keys = listOf("wallet", "salary", "savings", "investment", "travel")
         return keys.mapIndexed { index, key ->
@@ -168,7 +168,13 @@ object DebugSampleDataSeeder {
                     },
                     displayOrder = index,
                     colorName = colors[index],
-                    iconName = ACCOUNT_GEOMETRY_NAMES[index % ACCOUNT_GEOMETRY_NAMES.size],
+                    iconName = when (key) {
+                        "wallet" -> "wechat"
+                        "salary" -> "bank"
+                        "savings" -> "savings"
+                        "investment" -> "investment"
+                        else -> "flight"
+                    },
                     kind = if (key == "investment") {
                         AccountKind.INVESTMENT.value
                     } else {

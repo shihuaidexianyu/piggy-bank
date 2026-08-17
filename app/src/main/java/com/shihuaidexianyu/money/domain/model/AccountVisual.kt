@@ -3,33 +3,54 @@ package com.shihuaidexianyu.money.domain.model
 const val DEFAULT_ACCOUNT_COLOR_NAME = "blue"
 const val DEFAULT_ACCOUNT_ICON_NAME = "wallet"
 
+/**
+ * Semantic icon catalog shown in the account picker; list order is the picker's display order.
+ * Names are stored on accounts and in backups, so they are stable API — never rename or remove,
+ * only append.
+ */
 val ACCOUNT_ICON_NAMES = listOf(
+    // Money containers
     "wallet",
-    "bank",
     "cash",
+    "bank",
     "credit_card",
     "savings",
+    "qr_code",
+    // Payment brands (glyphs in ui/common/AccountBrandIcons.kt)
+    "wechat",
+    "alipay",
+    "receipt",
+    // Investing
     "investment",
     "chart",
+    "pie_chart",
     "currency",
+    "currency_exchange",
+    "stock",
+    "insurance",
+    // Life
     "home",
-    "phone",
-    "shopping",
-    "restaurant",
     "car",
+    "subway",
     "flight",
-    "gift",
-    "school",
+    "restaurant",
+    "shopping",
+    "utilities",
+    "entertainment",
     "medical",
+    "school",
+    "fitness",
     "pets",
+    "child_care",
+    "gift",
+    "phone",
     "work",
 )
 
 /**
- * Generated geometric patterns shown in the account picker. Unlike the legacy icon catalog
- * ([ACCOUNT_ICON_NAMES]), these names select a procedurally drawn motif instead of a semantic
- * icon — each account gets a distinctive abstract badge derived from its color + pattern slot.
- * Legacy names stay valid forever (they map to a fixed pattern slot) so backups never break.
+ * Abstract pattern names produced by a past design revision. They are no longer offered in the
+ * picker, but existing accounts and old backups may still carry them, so they stay valid forever
+ * and render as a fixed semantic-icon slot (see `semanticIconName` in ui/common/AccountVisuals).
  */
 val ACCOUNT_GEOMETRY_NAMES = listOf(
     "geo_rings",

@@ -3,7 +3,7 @@ package com.shihuaidexianyu.money.domain.usecase
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-data class MonthlyBudgetStatus(
+data class BudgetStatus(
     val targetAmount: Long,
     val spentAmount: Long,
     val progressFraction: Float,
@@ -12,13 +12,13 @@ data class MonthlyBudgetStatus(
     val overBudgetPercentageText: String?,
 )
 
-fun calculateMonthlyBudgetStatus(
+fun calculateBudgetStatus(
     targetAmount: Long?,
     spentAmount: Long,
-): MonthlyBudgetStatus? {
-    require(spentAmount >= 0L) { "月支出不能为负数" }
+): BudgetStatus? {
+    require(spentAmount >= 0L) { "支出不能为负数" }
     if (targetAmount == null) return null
-    require(targetAmount > 0L) { "月预算必须大于 0" }
+    require(targetAmount > 0L) { "预算必须大于 0" }
 
     val spent = BigDecimal.valueOf(spentAmount)
     val target = BigDecimal.valueOf(targetAmount)
@@ -39,7 +39,7 @@ fun calculateMonthlyBudgetStatus(
             "${percentageOver.stripTrailingZeros().toPlainString()}%"
         }
     }
-    return MonthlyBudgetStatus(
+    return BudgetStatus(
         targetAmount = targetAmount,
         spentAmount = spentAmount,
         progressFraction = ratio.coerceIn(BigDecimal.ZERO, BigDecimal.ONE).toFloat(),

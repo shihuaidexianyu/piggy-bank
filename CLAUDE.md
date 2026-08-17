@@ -45,7 +45,7 @@ Two Gradle modules: `:app` and `:benchmark` (self-instrumenting `com.android.tes
 
 Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
-- **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `MonthlyBudgetPolicy`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
+- **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - **`navigation/`, `notification/`, `widget/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, home-screen widget, formatters/parsers.
@@ -94,7 +94,7 @@ A nullable singleton (`id = 1`) represents one net-worth target. Progress uses t
 
 ## Database migrations
 
-Room schema version **15**, exported to `app/schemas/` (bundled as androidTest assets). When changing entities:
+Room schema version **16**, exported to `app/schemas/` (bundled as androidTest assets). When changing entities:
 
 1. Bump `MONEY_DATABASE_VERSION` in `MoneyDatabase.kt`.
 2. Add the `Migration` object there and register it in `MONEY_DATABASE_MIGRATIONS`.

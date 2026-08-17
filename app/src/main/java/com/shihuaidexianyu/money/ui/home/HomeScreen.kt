@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
@@ -34,6 +33,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,12 +64,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.BudgetPace
-import com.shihuaidexianyu.money.domain.usecase.MonthlyBudgetStatus
-import com.shihuaidexianyu.money.domain.usecase.PeriodDelta
+import com.shihuaidexianyu.money.domain.usecase.BudgetStatus
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
@@ -105,12 +105,13 @@ fun HomeScreen(
     onManageAccounts: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onRetry: () -> Unit = {},
-    onOpenMonthlyBudgetEditor: () -> Unit = {},
-    onDismissMonthlyBudgetEditor: () -> Unit = {},
-    onMonthlyBudgetInputChange: (String) -> Unit = {},
-    onSaveMonthlyBudget: () -> Unit = {},
-    onRetryMonthlyBudgetSave: () -> Unit = {},
-    onCloseMonthlyBudget: () -> Unit = {},
+    onOpenBudgetEditor: () -> Unit = {},
+    onDismissBudgetEditor: () -> Unit = {},
+    onBudgetInputChange: (String) -> Unit = {},
+    onBudgetPeriodChange: (BudgetPeriod) -> Unit = {},
+    onSaveBudget: () -> Unit = {},
+    onRetryBudgetSave: () -> Unit = {},
+    onCloseBudget: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenSavingsGoalEditor: () -> Unit = {},
     onDismissSavingsGoalEditor: () -> Unit = {},
@@ -140,34 +141,61 @@ fun HomeScreen(
     }
 
     var showCloseBudgetConfirm by remember { mutableStateOf(false) }
-    if (state.showMonthlyBudgetEditor) {
-        val hasBudget = state.monthlyBudget != null
+    if (state.showBudgetEditor) {
+        val hasBudget = state.budget != null
         HomeAmountEditorDialog(
-            titleRes = if (hasBudget) R.string.home_edit_monthly_budget else R.string.home_set_monthly_budget,
-            fieldLabelRes = R.string.home_monthly_budget_field,
-            clearActionLabelRes = R.string.home_close_monthly_budget,
-            input = state.monthlyBudgetInput,
-            inputErrorRes = state.monthlyBudgetInputErrorRes,
-            saveErrorRes = state.monthlyBudgetSaveErrorRes,
-            isSaving = state.isMonthlyBudgetSaving,
+            titleRes = if (hasBudget) R.string.home_edit_budget else R.string.home_set_budget,
+            fieldLabelRes = R.string.home_budget_field,
+            clearActionLabelRes = R.string.home_close_budget,
+            input = state.budgetInput,
+            inputErrorRes = state.budgetInputErrorRes,
+            saveErrorRes = state.budgetSaveErrorRes,
+            isSaving = state.isBudgetSaving,
             hasValue = hasBudget,
-            onInputChange = onMonthlyBudgetInputChange,
-            onSave = if (state.monthlyBudgetSaveErrorRes != null) {
-                onRetryMonthlyBudgetSave
+            onInputChange = onBudgetInputChange,
+            onSave = if (state.budgetSaveErrorRes != null) {
+                onRetryBudgetSave
             } else {
-                onSaveMonthlyBudget
+                onSaveBudget
             },
             onClearValue = { showCloseBudgetConfirm = true },
-            onDismiss = onDismissMonthlyBudgetEditor,
+            onDismiss = onDismissBudgetEditor,
+            extraContent = {
+                Text(
+                    text = stringResource(R.string.home_budget_period_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = state.budgetEditorPeriod == BudgetPeriod.WEEKLY,
+                        onClick = { onBudgetPeriodChange(BudgetPeriod.WEEKLY) },
+                        enabled = !state.isBudgetSaving,
+                        label = { Text(stringResource(R.string.home_weekly_budget)) },
+                    )
+                    FilterChip(
+                        selected = state.budgetEditorPeriod == BudgetPeriod.MONTHLY,
+                        onClick = { onBudgetPeriodChange(BudgetPeriod.MONTHLY) },
+                        enabled = !state.isBudgetSaving,
+                        label = { Text(stringResource(R.string.home_monthly_budget)) },
+                    )
+                    FilterChip(
+                        selected = state.budgetEditorPeriod == BudgetPeriod.YEARLY,
+                        onClick = { onBudgetPeriodChange(BudgetPeriod.YEARLY) },
+                        enabled = !state.isBudgetSaving,
+                        label = { Text(stringResource(R.string.home_yearly_budget)) },
+                    )
+                }
+            },
         )
     }
     if (showCloseBudgetConfirm) {
         MoneyConfirmDialog(
-            title = stringResource(R.string.home_close_monthly_budget),
-            message = stringResource(R.string.home_close_monthly_budget_confirm_message),
+            title = stringResource(R.string.home_close_budget),
+            message = stringResource(R.string.home_close_budget_confirm_message),
             onConfirm = {
                 showCloseBudgetConfirm = false
-                onCloseMonthlyBudget()
+                onCloseBudget()
             },
             onDismiss = { showCloseBudgetConfirm = false },
         )
@@ -265,9 +293,6 @@ fun HomeScreen(
                             settings = renderedState.settings,
                             period = renderedState.period,
                             selectedPeriod = renderedState.selectedPeriod,
-                            netWorthDelta = renderedState.netWorthDelta,
-                            cashInflowDelta = renderedState.cashInflowDelta,
-                            cashOutflowDelta = renderedState.cashOutflowDelta,
                             hasInvestmentAccounts = renderedState.hasInvestmentAccounts,
                             investmentAssets = renderedState.investmentAssets,
                             periodInvestmentPnl = renderedState.periodInvestmentPnl,
@@ -280,11 +305,11 @@ fun HomeScreen(
                         }
                     }
                     item {
-                        MonthlyBudgetBlock(
-                            budget = renderedState.monthlyBudget,
+                        BudgetBlock(
+                            budget = renderedState.budget,
                             pace = renderedState.budgetPace,
                             settings = renderedState.settings,
-                            onEdit = onOpenMonthlyBudgetEditor,
+                            onEdit = onOpenBudgetEditor,
                         )
                     }
                     item {
@@ -425,9 +450,6 @@ private fun PeriodOverviewBlock(
     settings: PortableSettings,
     period: DashboardPeriod,
     selectedPeriod: DashboardPeriod,
-    netWorthDelta: PeriodDelta,
-    cashInflowDelta: PeriodDelta,
-    cashOutflowDelta: PeriodDelta,
     hasInvestmentAccounts: Boolean,
     investmentAssets: Long,
     periodInvestmentPnl: Long,
@@ -439,7 +461,6 @@ private fun PeriodOverviewBlock(
             settings = settings,
             period = period,
             selectedPeriod = selectedPeriod,
-            netWorthDelta = netWorthDelta,
             hasInvestmentAccounts = hasInvestmentAccounts,
             investmentAssets = investmentAssets,
             onSelectPeriod = onSelectPeriod,
@@ -449,8 +470,6 @@ private fun PeriodOverviewBlock(
             cashOutflow = cashOutflow,
             settings = settings,
             period = period,
-            cashInflowDelta = cashInflowDelta,
-            cashOutflowDelta = cashOutflowDelta,
             hasInvestmentAccounts = hasInvestmentAccounts,
             periodInvestmentPnl = periodInvestmentPnl,
         )
@@ -458,8 +477,8 @@ private fun PeriodOverviewBlock(
 }
 
 /**
- * First story on home: how much money there is right now. The period switcher and the net-worth
- * delta live here; everything about how money moved lives in [PeriodFlowsCard].
+ * First story on home: how much money there is right now. The period switcher lives here;
+ * everything about how money moved lives in [PeriodFlowsCard].
  */
 @Composable
 private fun NetWorthHeroCard(
@@ -467,7 +486,6 @@ private fun NetWorthHeroCard(
     settings: PortableSettings,
     period: DashboardPeriod,
     selectedPeriod: DashboardPeriod,
-    netWorthDelta: PeriodDelta,
     hasInvestmentAccounts: Boolean,
     investmentAssets: Long,
     onSelectPeriod: (DashboardPeriod) -> Unit,
@@ -504,12 +522,6 @@ private fun NetWorthHeroCard(
                 style = recordStyle,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            DeltaLabel(
-                delta = netWorthDelta,
-                settings = settings,
-                increaseIsPositive = true,
-                style = MaterialTheme.typography.bodyMedium,
-            )
             if (hasInvestmentAccounts) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 val fundingAssets = totalAssets - investmentAssets
@@ -521,6 +533,20 @@ private fun NetWorthHeroCard(
                 } else {
                     ""
                 }
+                // Teal vs amber: the palette's warm accent keeps the two asset kinds clearly
+                // distinguishable where teal/slate were too close.
+                val fundingColor = MaterialTheme.colorScheme.primary
+                val investmentColor = LocalMoneyColors.current.current
+                // Legacy ledgers can go negative; a proportion bar only makes sense for a
+                // positive, fully-attributed total.
+                if (fundingAssets >= 0L && investmentAssets >= 0L && totalAssets > 0L) {
+                    AssetSplitBar(
+                        fundingAssets = fundingAssets,
+                        investmentAssets = investmentAssets,
+                        fundingColor = fundingColor,
+                        investmentColor = investmentColor,
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -529,12 +555,14 @@ private fun NetWorthHeroCard(
                         label = stringResource(R.string.home_funding_assets),
                         value = formatInAppAmount(fundingAssets, settings),
                         share = fundingShare,
+                        dotColor = fundingColor,
                         modifier = Modifier.weight(1f),
                     )
                     AssetSplitCell(
                         label = stringResource(R.string.home_investment_assets),
                         value = formatInAppAmount(investmentAssets, settings),
                         share = investmentShare,
+                        dotColor = investmentColor,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -604,14 +632,30 @@ private fun AssetSplitCell(
     label: String,
     value: String,
     share: String? = null,
+    dotColor: Color? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (dotColor != null) {
+                // Matches the segment color in the AssetSplitBar above, so each cell reads as the
+                // legend for its bar segment.
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(dotColor),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
@@ -630,7 +674,9 @@ private fun AssetSplitCell(
 }
 
 /**
- * Second story on home: how cash moved during the selected period.
+ * Second story on home: how cash moved during the selected period. The net figure is the
+ * headline — "did this period save money" is the question the card answers — with income and
+ * expense as the supporting cells, mirroring the hero card's headline-plus-breakdown language.
  */
 @Composable
 private fun PeriodFlowsCard(
@@ -638,8 +684,6 @@ private fun PeriodFlowsCard(
     cashOutflow: Long,
     settings: PortableSettings,
     period: DashboardPeriod,
-    cashInflowDelta: PeriodDelta,
-    cashOutflowDelta: PeriodDelta,
     hasInvestmentAccounts: Boolean,
     periodInvestmentPnl: Long,
 ) {
@@ -659,13 +703,21 @@ private fun PeriodFlowsCard(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (cashInflow > 0L && cashOutflow > 0L) {
-                FlowSplitBar(
-                    cashInflow = cashInflow,
-                    cashOutflow = cashOutflow,
-                    modifier = Modifier.fillMaxWidth(),
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(period.netCashFlowLabelRes()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
+                    text = formatInAppAmount(cashNet, settings),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = netColor,
+                    maxLines = 1,
                 )
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -674,33 +726,19 @@ private fun PeriodFlowsCard(
                     label = stringResource(period.incomeLabelRes()),
                     value = formatInAppAmount(cashInflow, settings),
                     color = moneyColors.income,
-                    delta = cashInflowDelta,
-                    // More income than last period is good news; more spending is not.
-                    increaseIsPositive = true,
-                    settings = settings,
                     modifier = Modifier.weight(1f),
                 )
                 PeriodMetricCell(
                     label = stringResource(period.expenseLabelRes()),
                     value = formatInAppAmount(cashOutflow, settings),
                     color = moneyColors.expense,
-                    delta = cashOutflowDelta,
-                    increaseIsPositive = false,
-                    settings = settings,
                     modifier = Modifier.weight(1f),
                 )
             }
-            NetCashFlowRow(
-                label = stringResource(period.netCashFlowLabelRes()),
-                value = formatInAppAmount(cashNet, settings),
-                color = netColor,
-            )
-            if (hasInvestmentAccounts) {
-                val pnlColor = when {
-                    periodInvestmentPnl > 0L -> moneyColors.income
-                    periodInvestmentPnl < 0L -> moneyColors.expense
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
+            // Zero P&L is the common case for investment accounts in quiet periods; the row only
+            // earns its place when there is something to report.
+            if (hasInvestmentAccounts && periodInvestmentPnl != 0L) {
+                val pnlColor = if (periodInvestmentPnl > 0L) moneyColors.income else moneyColors.expense
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -720,32 +758,6 @@ private fun PeriodFlowsCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun NetCashFlowRow(
-    label: String,
-    value: String,
-    color: Color,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            color = color,
-            maxLines = 1,
-        )
     }
 }
 
@@ -811,77 +823,18 @@ private fun PeriodSwitcher(
     }
 }
 
-/**
- * Renders a signed change as an arrow, an absolute amount, and an optional percentage. The arrow
- * direction always follows the sign of the change, but the colour follows [increaseIsPositive] —
- * spending more than last month is an increase and should still read as a warning, not as growth.
- */
 @Composable
-private fun DeltaLabel(
-    delta: PeriodDelta,
-    settings: PortableSettings,
-    increaseIsPositive: Boolean,
-    modifier: Modifier = Modifier,
-    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodySmall,
-) {
-    val moneyColors = LocalMoneyColors.current
-    if (delta.isUnchanged) {
-        Text(
-            text = stringResource(R.string.home_change_none),
-            style = style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = modifier,
-        )
-        return
-    }
-    val isFavourable = delta.isIncrease == increaseIsPositive
-    val color = if (isFavourable) moneyColors.income else moneyColors.expense
-    val amountText = formatInAppAmount(kotlin.math.abs(delta.deltaAmount), settings)
-    val text = delta.percentageText?.let { percentage ->
-        stringResource(R.string.home_change_with_percent_format, amountText, percentage)
-    } ?: amountText
-    val directionDescription = stringResource(
-        if (delta.isIncrease) R.string.home_change_increase else R.string.home_change_decrease,
-    )
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Icon(
-            imageVector = if (delta.isIncrease) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-            contentDescription = directionDescription,
-            tint = color,
-            modifier = Modifier.size(14.dp),
-        )
-        Text(
-            text = text,
-            style = style,
-            color = color,
-            maxLines = 2,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun MonthlyBudgetBlock(
-    budget: MonthlyBudgetStatus?,
+private fun BudgetBlock(
+    budget: BudgetStatus?,
     pace: BudgetPace?,
     settings: PortableSettings,
     onEdit: () -> Unit,
 ) {
-    MoneySectionHeader(
-        title = stringResource(R.string.home_monthly_budget),
-        trailingContent = if (budget != null) {
-            {
-                TextButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
-            }
-        } else {
-            null
-        },
-    )
+    // The whole card opens the editor, so the header carries no redundant edit action (mirroring
+    // the savings-goal card); closing the budget lives inside the editor dialog, keeping a
+    // destructive-leaning action off the always-visible dashboard. The title stays a plain "预算" —
+    // the chosen week/month/year window is visible in the editor, not on the dashboard.
+    MoneySectionHeader(title = stringResource(R.string.home_budget_title))
     Card(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
@@ -901,15 +854,12 @@ private fun MonthlyBudgetBlock(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    stringResource(R.string.home_set_monthly_budget),
+                    stringResource(R.string.home_set_budget),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
         } else {
-            // The whole card opens the editor (mirroring the savings-goal card); closing the
-            // budget lives inside the editor dialog, keeping a destructive-leaning action off
-            // the always-visible dashboard.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -963,7 +913,7 @@ private fun MonthlyBudgetBlock(
 @Composable
 private fun BudgetPaceRows(
     pace: BudgetPace,
-    budget: MonthlyBudgetStatus,
+    budget: BudgetStatus,
     settings: PortableSettings,
 ) {
     val moneyColors = LocalMoneyColors.current
@@ -1274,6 +1224,7 @@ private fun HomeAmountEditorDialog(
     onSave: () -> Unit,
     onClearValue: () -> Unit,
     onDismiss: () -> Unit,
+    extraContent: (@Composable () -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1282,6 +1233,7 @@ private fun HomeAmountEditorDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                extraContent?.invoke()
                 OutlinedTextField(
                     value = input,
                     onValueChange = onInputChange,
@@ -1318,9 +1270,6 @@ private fun PeriodMetricCell(
     value: String,
     color: Color,
     modifier: Modifier = Modifier,
-    delta: PeriodDelta? = null,
-    increaseIsPositive: Boolean = true,
-    settings: PortableSettings = PortableSettings(),
 ) {
     Column(
         modifier = modifier,
@@ -1337,15 +1286,6 @@ private fun PeriodMetricCell(
             color = color,
             maxLines = 1,
         )
-        // Only shown when there is a prior period to compare against — a first-ever month would
-        // otherwise report a meaningless "up 100%" against a baseline that never existed.
-        if (delta != null && delta.baselineAmount > 0L) {
-            DeltaLabel(
-                delta = delta,
-                settings = settings,
-                increaseIsPositive = increaseIsPositive,
-            )
-        }
     }
 }
 
@@ -1384,15 +1324,18 @@ private fun DashboardPeriod.investmentPnlLabelRes(): Int = when (this) {
     DashboardPeriod.YEAR -> R.string.home_year_investment_pnl
 }
 
+/** Two-segment proportion bar for the funding/investment asset split; colors come from the
+ * theme palette (not income/expense colors, which carry flow semantics). */
 @Composable
-private fun FlowSplitBar(
-    cashInflow: Long,
-    cashOutflow: Long,
+private fun AssetSplitBar(
+    fundingAssets: Long,
+    investmentAssets: Long,
+    fundingColor: Color,
+    investmentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val moneyColors = LocalMoneyColors.current
-    val total = (cashInflow + cashOutflow).coerceAtLeast(1L)
-    val inflowFraction = cashInflow.toFloat() / total.toFloat()
+    val total = (fundingAssets + investmentAssets).coerceAtLeast(1L)
+    val fundingFraction = (fundingAssets.toFloat() / total.toFloat()).coerceIn(0f, 1f)
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -1400,16 +1343,16 @@ private fun FlowSplitBar(
             .clip(CircleShape),
     ) {
         val gap = 2.dp.toPx()
-        val inflowWidth = (size.width - gap) * inflowFraction
+        val fundingWidth = (size.width - gap) * fundingFraction
         drawRoundRect(
-            color = moneyColors.income,
-            size = androidx.compose.ui.geometry.Size(inflowWidth, size.height),
+            color = fundingColor,
+            size = androidx.compose.ui.geometry.Size(fundingWidth, size.height),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
         )
         drawRoundRect(
-            color = moneyColors.expense,
-            topLeft = androidx.compose.ui.geometry.Offset(inflowWidth + gap, 0f),
-            size = androidx.compose.ui.geometry.Size(size.width - inflowWidth - gap, size.height),
+            color = investmentColor,
+            topLeft = androidx.compose.ui.geometry.Offset(fundingWidth + gap, 0f),
+            size = androidx.compose.ui.geometry.Size(size.width - fundingWidth - gap, size.height),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
         )
     }

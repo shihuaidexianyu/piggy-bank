@@ -682,6 +682,36 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion15To16DefaultsExistingBudgetsToMonthlyPeriod() {
+        val dbName = "$TEST_DB-v15-budget-period"
+        helper.createDatabase(dbName, 15).apply {
+            execSQL(
+                """
+                INSERT INTO portable_settings (id, currencySymbol, amountColorMode, monthlyBudgetAmount)
+                VALUES (1, '¥', 'red_income_green_expense', 500000)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 16,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query(
+            "SELECT monthlyBudgetAmount, budgetPeriod FROM portable_settings WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(500_000L, cursor.getLong(0))
+            assertEquals("monthly", cursor.getString(1))
+        }
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

@@ -135,6 +135,16 @@ interface TransactionRepository : DatabaseTransactionRunner {
         endExclusive: Long,
     ): Map<Long, Long>
 
+    /**
+     * Signed net change per account within a period — cash flow, transfers, reconciliation and
+     * manual adjustments all included, matching the balance formula. Feeds the accounts page's
+     * per-row month stat.
+     */
+    suspend fun queryNetAmountChangeByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long>
+
     // === Unified history ===
     suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,

@@ -33,19 +33,6 @@ object TimeRangeCalculator {
     }
 
     /**
-     * The range immediately preceding [rangeFor], used as the comparison baseline. Adjacent by
-     * construction: the previous range's end is exactly the current range's start.
-     */
-    fun previousRangeFor(
-        period: DashboardPeriod,
-        zoneId: ZoneId,
-        nowMillis: Long,
-    ): TimeRange {
-        val start = periodStart(period, localDate(zoneId, nowMillis))
-        return buildRange(previousPeriodStart(period, start), start, zoneId)
-    }
-
-    /**
      * Days elapsed in the current period including today, and the period's total day count.
      * Used by the budget burn-down to project spending pace.
      */
@@ -76,12 +63,6 @@ object TimeRangeCalculator {
         DashboardPeriod.WEEK -> start.plusWeeks(1)
         DashboardPeriod.MONTH -> start.plusMonths(1)
         DashboardPeriod.YEAR -> start.plusYears(1)
-    }
-
-    private fun previousPeriodStart(period: DashboardPeriod, start: LocalDate): LocalDate = when (period) {
-        DashboardPeriod.WEEK -> start.minusWeeks(1)
-        DashboardPeriod.MONTH -> start.minusMonths(1)
-        DashboardPeriod.YEAR -> start.minusYears(1)
     }
 
     private fun localDate(zoneId: ZoneId, millis: Long): LocalDate =

@@ -762,6 +762,39 @@ class InMemoryTransactionRepository(
             .mapValues { (_, records) -> records.map { it.delta }.ledgerSumExact() }
     }
 
+    override suspend fun queryNetAmountChangeByAccount(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Map<Long, Long> = synchronized(ledgerLock) {
+        val signed = mutableMapOf<Long, Long>()
+        fun accumulate(accountId: Long, amount: Long) {
+            signed[accountId] = ledgerAddExact(signed[accountId] ?: 0L, amount)
+        }
+        cashFlowRecords
+            .filter { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+            .forEach {
+                val signedAmount = if (it.direction == CashFlowDirection.INFLOW.value) {
+                    it.amount
+                } else {
+                    -it.amount
+                }
+                accumulate(it.accountId, signedAmount)
+            }
+        transferRecords
+            .filter { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+            .forEach {
+                accumulate(it.fromAccountId, -it.amount)
+                accumulate(it.toAccountId, it.amount)
+            }
+        balanceUpdates
+            .filter { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+            .forEach { accumulate(it.accountId, it.delta) }
+        adjustments
+            .filter { it.deletedAt == null && it.occurredAt.isInRange(startInclusive, endExclusive) }
+            .forEach { accumulate(it.accountId, it.delta) }
+        signed
+    }
+
     override suspend fun queryHistoryRecords(
         filters: HistoryRecordFilters,
         cursor: HistoryPageCursor?,

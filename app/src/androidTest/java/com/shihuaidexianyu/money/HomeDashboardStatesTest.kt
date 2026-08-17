@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.usecase.calculateMonthlyBudgetStatus
+import com.shihuaidexianyu.money.domain.usecase.calculateBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.home.DueReminderUiModel
 import com.shihuaidexianyu.money.ui.home.HomeScreen
@@ -97,7 +97,7 @@ class HomeDashboardStatesTest {
                     onStartUpdateBalance = {},
                     onAllRemindersClick = {},
                     onOpenSettings = {},
-                    onOpenMonthlyBudgetEditor = { budgetClicks += 1 },
+                    onOpenBudgetEditor = { budgetClicks += 1 },
                 )
             }
         }
@@ -108,7 +108,7 @@ class HomeDashboardStatesTest {
         composeRule.onNodeWithText("本月净现金流").assertIsDisplayed()
         composeRule.onNodeWithText("暂无到期提醒").assertDoesNotExist()
         composeRule.onNodeWithText("暂无待核对账户").assertDoesNotExist()
-        composeRule.onNodeWithText("设置月预算").performClick()
+        composeRule.onNodeWithText("设置预算").performClick()
         composeRule.runOnIdle {
             assertEquals(1, budgetClicks)
         }
@@ -122,7 +122,7 @@ class HomeDashboardStatesTest {
             MoneyTheme {
                 HomeScreen(
                     state = dataState().copy(
-                        monthlyBudget = calculateMonthlyBudgetStatus(10_000L, 15_001L),
+                        budget = calculateBudgetStatus(10_000L, 15_001L),
                         dueReminders = listOf(
                             DueReminderUiModel(
                                 id = 3L,

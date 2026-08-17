@@ -13,6 +13,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.di.SystemClockProvider
+import com.shihuaidexianyu.money.di.SystemZoneIdProvider
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
@@ -73,12 +75,13 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
-                onOpenMonthlyBudgetEditor = viewModel::openMonthlyBudgetEditor,
-                onDismissMonthlyBudgetEditor = viewModel::dismissMonthlyBudgetEditor,
-                onMonthlyBudgetInputChange = viewModel::updateMonthlyBudgetInput,
-                onSaveMonthlyBudget = viewModel::saveMonthlyBudget,
-                onRetryMonthlyBudgetSave = viewModel::retryMonthlyBudgetSave,
-                onCloseMonthlyBudget = viewModel::closeMonthlyBudget,
+                onOpenBudgetEditor = viewModel::openBudgetEditor,
+                onDismissBudgetEditor = viewModel::dismissBudgetEditor,
+                onBudgetInputChange = viewModel::updateBudgetInput,
+                onBudgetPeriodChange = viewModel::updateBudgetEditorPeriod,
+                onSaveBudget = viewModel::saveBudget,
+                onRetryBudgetSave = viewModel::retryBudgetSave,
+                onCloseBudget = viewModel::closeBudget,
                 onOpenHistory = {
                     navController.navigateToTopLevelTab(MoneyDestination.History)
                 },
@@ -220,6 +223,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
+                    clockProvider = SystemClockProvider,
+                    zoneIdProvider = SystemZoneIdProvider,
                 )
             },
         )

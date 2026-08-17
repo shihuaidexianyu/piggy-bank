@@ -250,7 +250,7 @@ class RoomStartupMigrationBackend(
             PortableSettings(
                 currencySymbol = normalizeCurrencySymbol(app[LegacyKeys.CurrencySymbol] ?: "¥"),
                 amountColorMode = AmountColorMode.fromValue(app[LegacyKeys.AmountColorMode]),
-                monthlyBudgetAmount = app[LegacyKeys.MonthlyBudget]?.takeIf { it > 0L },
+                budgetAmount = app[LegacyKeys.MonthlyBudget]?.takeIf { it > 0L },
             )
         }.getOrElsePreservingCancellation { error ->
             corruptSettingsSources = corruptSettingsSources + LocalSettingsSource.APP
@@ -372,7 +372,8 @@ private fun PortableSettings.toEntity(): PortableSettingsEntity = PortableSettin
     id = 1,
     currencySymbol = currencySymbol,
     amountColorMode = amountColorMode.value,
-    monthlyBudgetAmount = monthlyBudgetAmount,
+    monthlyBudgetAmount = budgetAmount,
+    budgetPeriod = budgetPeriod.value,
 )
 
 private fun BalanceUpdateReminderConfig.toEntity(accountId: Long): AccountReminderConfigEntity =

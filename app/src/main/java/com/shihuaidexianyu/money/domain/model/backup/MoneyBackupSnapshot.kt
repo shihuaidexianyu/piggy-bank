@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.domain.model.backup
 
 import com.shihuaidexianyu.money.domain.model.AccountKind
+import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DEFAULT_ACCOUNT_ICON_NAME
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_MONTH_DAY
 import com.shihuaidexianyu.money.domain.model.DEFAULT_BALANCE_UPDATE_REMINDER_PERIOD
@@ -40,6 +41,9 @@ data class BackupPortableSettings(
     val currencySymbol: String,
     val amountColorMode: String,
     val monthlyBudgetAmount: Long? = null,
+    // The serial default keeps v1–v5 backups decodable — absent means a monthly budget. Unknown
+    // values are rejected during import validation, not silently coerced.
+    val budgetPeriod: String = BudgetPeriod.DEFAULT.value,
 )
 
 @Serializable
