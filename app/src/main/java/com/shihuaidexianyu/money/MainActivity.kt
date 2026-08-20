@@ -26,7 +26,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
 import com.shihuaidexianyu.money.domain.model.failClosedDevicePreferences
 import com.shihuaidexianyu.money.ui.lock.AppLockScreen
 import com.shihuaidexianyu.money.ui.lock.AppLockViewModel
@@ -166,7 +165,6 @@ class MainActivity : FragmentActivity() {
                                 appLockViewModel.disableBiometricLock()
                             }
                         },
-                        amountPrivacy = AmountPrivacy.from(devicePreferences),
                         appLockFeedback = appLockViewModel.feedback,
                     )
                 }

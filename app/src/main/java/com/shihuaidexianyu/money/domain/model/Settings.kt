@@ -40,7 +40,6 @@ data class DevicePreferences(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
-    val maskAmountsInApp: Boolean = false,
     val hideNotificationAmounts: Boolean = false,
     val hideRecentTasks: Boolean = false,
     val notificationPermissionRequested: Boolean = false,
@@ -49,7 +48,6 @@ data class DevicePreferences(
 )
 
 fun failClosedDevicePreferences(): DevicePreferences = DevicePreferences(
-    maskAmountsInApp = true,
     hideNotificationAmounts = true,
     hideRecentTasks = true,
 )

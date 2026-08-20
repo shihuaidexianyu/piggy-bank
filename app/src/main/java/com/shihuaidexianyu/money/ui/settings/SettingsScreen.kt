@@ -67,7 +67,6 @@ fun SettingsScreen(
     onCurrencySymbolChange: (String) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
     onRelockDelayChange: (AppRelockDelay) -> Unit,
-    onMaskAmountsInAppChange: (Boolean) -> Unit,
     onHideNotificationAmountsChange: (Boolean) -> Unit,
     onHideRecentTasksChange: (Boolean) -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
@@ -292,12 +291,6 @@ fun SettingsScreen(
                         currencyDraft = settings.currencySymbol
                         dialog = SettingsDialog.CurrencySymbol
                     },
-                )
-                MoneySectionDivider()
-                PrivacySwitchRow(
-                    title = stringResource(R.string.settings_mask_in_app),
-                    checked = devicePreferences.maskAmountsInApp,
-                    onCheckedChange = onMaskAmountsInAppChange,
                 )
             }
         }

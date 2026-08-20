@@ -25,8 +25,7 @@ import com.shihuaidexianyu.money.domain.notification.NotificationCapability
 import com.shihuaidexianyu.money.domain.notification.PublishResult
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
-import com.shihuaidexianyu.money.domain.model.AmountSurface
+import com.shihuaidexianyu.money.domain.model.AmountVisibility
 import com.shihuaidexianyu.money.util.AmountFormatter
 import kotlinx.coroutines.CancellationException
 
@@ -36,16 +35,17 @@ class DefaultMoneyNotificationContentPolicy(
 ) : MoneyNotificationContentPolicy {
     override suspend fun content(command: MoneyNotificationCommand): MoneyNotificationContent {
         val settings = portableSettingsRepository.query()
-        val visibility = devicePreferencesRepository
-            ?.query()
-            ?.let(AmountPrivacy::from)
-            ?.visibilityFor(AmountSurface.NOTIFICATION)
+        val visibility = if (devicePreferencesRepository?.query()?.hideNotificationAmounts == true) {
+            AmountVisibility.MASKED
+        } else {
+            AmountVisibility.VISIBLE
+        }
         return when (command) {
             is MoneyNotificationCommand.Recurring -> {
                 val amount = AmountFormatter.format(
                     command.amount,
                     settings,
-                    visibility ?: com.shihuaidexianyu.money.domain.model.AmountVisibility.VISIBLE,
+                    visibility,
                 )
                 MoneyNotificationContent(
                     title = "${command.reminderName} · ${command.accountName}",
@@ -59,7 +59,7 @@ class DefaultMoneyNotificationContentPolicy(
                 val amount = AmountFormatter.format(
                     command.balance,
                     settings,
-                    visibility ?: com.shihuaidexianyu.money.domain.model.AmountVisibility.VISIBLE,
+                    visibility,
                 )
                 MoneyNotificationContent(
                     title = "${command.accountName} 余额待核对",

@@ -231,7 +231,6 @@
     <string name="settings_relock_title">离开后重新锁定</string>
     <string name="settings_import_complete">导入完成</string>
     <string name="settings_import_complete_message">已保存导入前安全快照。若结果不符合预期，如需撤销本次导入，可在导入记录中操作。</string>
-    <string name="settings_mask_in_app">应用内隐藏金额</string>
     <string name="settings_biometric_lock">生物识别锁定</string>
     <string name="settings_biometric_description">启动应用时需验证生物识别或屏幕锁定方式</string>
     <string name="settings_relock_time">重新锁定时间</string>

@@ -6,11 +6,8 @@ import com.shihuaidexianyu.money.R
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
-import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
-import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -22,7 +19,6 @@ import com.shihuaidexianyu.money.util.AmountFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -102,7 +98,6 @@ internal fun HomeUiState.toAsyncContent(errorMessage: String = ""): AsyncContent
 
 class HomeViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
-    private val devicePreferencesRepository: DevicePreferencesRepository,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -149,15 +144,8 @@ class HomeViewModel(
         )
         observationJob = viewModelScope.launch {
             try {
-                combine(
-                    observeHomeDashboardUseCase(selectedPeriod),
-                    devicePreferencesRepository.observe(),
-                ) { snapshot, devicePreferences ->
-                    snapshot to devicePreferences
-                }
-                    .collect { (snapshot, devicePreferences) ->
-                    val visibility = AmountPrivacy.from(devicePreferences)
-                        .visibilityFor(AmountSurface.IN_APP)
+                observeHomeDashboardUseCase(selectedPeriod)
+                    .collect { snapshot ->
                     val staleAccountIds = snapshot.staleAccounts.map { it.id }.toSet()
                     val accountNames = snapshot.openAccounts.associate { it.id to it.name }
                     val investmentAccountIds = snapshot.openAccounts
@@ -208,7 +196,6 @@ class HomeViewModel(
                                     amountFormatted = AmountFormatter.format(
                                         reminder.amount,
                                         snapshot.settings,
-                                        visibility,
                                     ),
                                     accountId = reminder.accountId,
                                     accountName = accountNames[reminder.accountId] ?: "—",

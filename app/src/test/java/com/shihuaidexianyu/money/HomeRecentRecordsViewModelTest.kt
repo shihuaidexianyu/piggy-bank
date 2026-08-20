@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money
 import androidx.lifecycle.SavedStateHandle
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
-import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
@@ -136,7 +135,6 @@ class HomeRecentRecordsViewModelTest {
         )
         return HomeViewModel(
             observeHomeDashboardUseCase = home,
-            devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
             savedStateHandle = SavedStateHandle(),
         )
     }

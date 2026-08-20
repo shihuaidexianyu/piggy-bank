@@ -207,7 +207,6 @@ class AppLockViewModelTest {
         assertTrue(enabledPreferences.biometricLock)
         assertTrue(enabledPreferences.hideRecentTasks)
         assertTrue(enabledPreferences.hideNotificationAmounts)
-        assertFalse(enabledPreferences.maskAmountsInApp)
         assertEquals(AppLockState.Unlocked, fixture.viewModel.state.value)
     }
 

@@ -3,10 +3,6 @@ package com.shihuaidexianyu.money.ui.reminder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
-import com.shihuaidexianyu.money.domain.model.AmountSurface
-import com.shihuaidexianyu.money.domain.model.AmountVisibility
-import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
 import com.shihuaidexianyu.money.domain.model.ReminderPeriodType
@@ -15,7 +11,6 @@ import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.domain.model.UndoReminderSkipResult
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
-import com.shihuaidexianyu.money.domain.repository.DevicePreferencesRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
@@ -103,7 +98,6 @@ class ReminderListViewModel(
     private val observeHomeDashboardUseCase: ObserveHomeDashboardUseCase,
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
-    private val devicePreferencesRepository: DevicePreferencesRepository,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReminderListUiState(pendingSkip = savedStateHandle[PENDING_SKIP_KEY]))
@@ -119,13 +113,11 @@ class ReminderListViewModel(
             combine(
                 reminderRepository.observeAllReminders(),
                 observeHomeDashboardUseCase(),
-                devicePreferencesRepository.observe(),
                 accountRepository.observeAllAccounts(),
-            ) { reminders, snapshot, devicePreferences, accounts ->
+            ) { reminders, snapshot, accounts ->
                 ReminderListSource(
                     reminders = reminders,
                     snapshot = snapshot,
-                    devicePreferences = devicePreferences,
                     closedAccountIds = accounts.asSequence()
                         .filter { it.isClosed }
                         .map { it.id }
@@ -135,15 +127,11 @@ class ReminderListViewModel(
             }.collect { source ->
                 val reminders = source.reminders
                 val snapshot = source.snapshot
-                val devicePreferences = source.devicePreferences
-                val visibility = AmountPrivacy.from(devicePreferences)
-                    .visibilityFor(AmountSurface.IN_APP)
                 val projection = partitionReminderModels(
                     reminders = reminders,
                     settings = snapshot.settings,
                     nowMillis = clockProvider.nowMillis(),
                     zoneId = zoneIdProvider.zoneId(),
-                    amountVisibility = visibility,
                     closedAccountIds = source.closedAccountIds,
                     accountNames = source.accountNames,
                 )
@@ -156,7 +144,6 @@ class ReminderListViewModel(
                             currentBalanceFormatted = AmountFormatter.format(
                                 snapshot.accountBalances[account.id] ?: 0L,
                                 snapshot.settings,
-                                visibility,
                             ),
                             lastBalanceUpdateAt = account.lastBalanceUpdateAt,
                         )
@@ -238,7 +225,6 @@ internal fun partitionReminderModels(
     settings: PortableSettings,
     nowMillis: Long,
     zoneId: ZoneId,
-    amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
     closedAccountIds: Set<Long> = emptySet(),
     accountNames: Map<Long, String> = emptyMap(),
 ): ReminderListProjection {
@@ -249,7 +235,6 @@ internal fun partitionReminderModels(
                 settings = settings,
                 nowMillis = nowMillis,
                 zoneId = zoneId,
-                amountVisibility = amountVisibility,
                 canMutate = reminder.accountId !in closedAccountIds,
                 accountName = accountNames[reminder.accountId].orEmpty(),
             )
@@ -265,7 +250,6 @@ internal fun RecurringReminder.toUiModel(
     settings: PortableSettings,
     nowMillis: Long,
     zoneId: ZoneId,
-    amountVisibility: AmountVisibility = AmountVisibility.VISIBLE,
     canMutate: Boolean = true,
     accountName: String = "",
 ): ReminderUiModel {
@@ -273,7 +257,7 @@ internal fun RecurringReminder.toUiModel(
         id = id,
         name = name,
         type = ReminderType.fromValue(type),
-        amountFormatted = AmountFormatter.format(amount, settings, amountVisibility),
+        amountFormatted = AmountFormatter.format(amount, settings),
         periodType = ReminderPeriodType.fromValue(periodType),
         periodValue = periodValue,
         periodMonth = periodMonth,
@@ -292,7 +276,6 @@ internal fun RecurringReminder.toUiModel(
 private data class ReminderListSource(
     val reminders: List<RecurringReminder>,
     val snapshot: HomeDashboardSnapshot,
-    val devicePreferences: DevicePreferences,
     val closedAccountIds: Set<Long>,
     val accountNames: Map<Long, String>,
 )

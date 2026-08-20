@@ -14,10 +14,11 @@ import com.shihuaidexianyu.money.ui.reminder.partitionReminderModels
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class AmountPrivacyPresentationTest {
+class AmountMaskingPresentationTest {
     @Test
     fun `shared amount formatter masks value without leaking digits`() {
         val rendered = AmountFormatter.format(
@@ -32,9 +33,8 @@ class AmountPrivacyPresentationTest {
     }
 
     @Test
-    fun `device preference read failure fallback keeps every presentation surface private`() {
+    fun `device preference read failure fallback keeps external surfaces private`() {
         val fallback = failClosedDevicePreferences()
-        assertTrue(fallback.maskAmountsInApp)
         assertTrue(fallback.hideRecentTasks)
         assertTrue(fallback.hideNotificationAmounts)
     }
@@ -65,7 +65,7 @@ class AmountPrivacyPresentationTest {
     }
 
     @Test
-    fun `reminder projection masks in app preformatted amount`() {
+    fun `reminder projection formats in app amount as plain digits`() {
         val reminder = RecurringReminder(
             id = 1L,
             name = "测试",
@@ -88,9 +88,8 @@ class AmountPrivacyPresentationTest {
             settings = PortableSettings(),
             nowMillis = 20L,
             zoneId = ZoneId.of("Asia/Shanghai"),
-            amountVisibility = AmountVisibility.MASKED,
         )
 
-        assertFalse(projection.due.single().amountFormatted.any(Char::isDigit))
+        assertEquals("¥12,345.67", projection.due.single().amountFormatted)
     }
 }

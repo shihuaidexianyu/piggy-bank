@@ -48,7 +48,6 @@ class InMemoryDevicePreferencesRepository(
         }
     }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = update { copy(relockDelay = delay) }
-    override suspend fun updateMaskAmountsInApp(enabled: Boolean) = update { copy(maskAmountsInApp = enabled) }
     override suspend fun updateHideNotificationAmounts(enabled: Boolean) = update { copy(hideNotificationAmounts = enabled) }
     override suspend fun updateHideRecentTasks(enabled: Boolean) = update { copy(hideRecentTasks = enabled) }
     override suspend fun updateNotificationPermissionRequested(requested: Boolean) =

@@ -44,7 +44,6 @@ class PortableAndDeviceSettingsRepositoryTest {
             themeMode = ThemeMode.DARK,
             biometricLock = true,
             relockDelay = AppRelockDelay.FIVE_MINUTES,
-            maskAmountsInApp = true,
             hideNotificationAmounts = true,
             hideRecentTasks = true,
             notificationPermissionRequested = true,

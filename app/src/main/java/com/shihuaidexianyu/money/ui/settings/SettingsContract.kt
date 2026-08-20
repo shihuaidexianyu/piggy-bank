@@ -14,7 +14,7 @@ data class SettingsSectionContract(
 val SETTINGS_SECTION_CONTRACTS: List<SettingsSectionContract> = listOf(
     SettingsSectionContract(
         R.string.settings_section_display,
-        listOf("theme", "amount_color", "currency_symbol", "mask_in_app"),
+        listOf("theme", "amount_color", "currency_symbol"),
     ),
     SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_notification")),
     SettingsSectionContract(R.string.settings_section_notifications, listOf("permission_channels", "reminder_management", "account_reminder_config")),

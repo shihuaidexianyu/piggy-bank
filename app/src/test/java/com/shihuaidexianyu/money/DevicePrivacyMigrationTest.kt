@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DevicePrivacyMigrationTest {
@@ -14,7 +13,6 @@ class DevicePrivacyMigrationTest {
         val repository = InMemoryDevicePreferencesRepository(
             initial = DevicePreferences(
                 biometricLock = true,
-                maskAmountsInApp = false,
                 hideRecentTasks = false,
                 hideNotificationAmounts = false,
             ),
@@ -23,7 +21,6 @@ class DevicePrivacyMigrationTest {
         repository.migrateExternalPrivacyDefaultsIfNeeded()
 
         val migrated = repository.query()
-        assertFalse(migrated.maskAmountsInApp)
         assertTrue(migrated.hideRecentTasks)
         assertTrue(migrated.hideNotificationAmounts)
 

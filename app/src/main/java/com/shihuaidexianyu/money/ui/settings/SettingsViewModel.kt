@@ -179,10 +179,6 @@ class SettingsViewModel(
         viewModelScope.launch { devicePreferencesRepository.updateRelockDelay(delay) }
     }
 
-    fun updateMaskAmountsInApp(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateMaskAmountsInApp(enabled) }
-    }
-
     fun updateHideNotificationAmounts(enabled: Boolean) {
         viewModelScope.launch {
             onNotificationPrivacyChanging(enabled)

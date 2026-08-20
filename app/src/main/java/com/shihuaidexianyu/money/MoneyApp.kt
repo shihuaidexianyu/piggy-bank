@@ -32,8 +32,6 @@ import com.shihuaidexianyu.money.ui.lock.AppLockFeedback
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
-import com.shihuaidexianyu.money.ui.common.LocalAmountPrivacy
 
 @Composable
 fun MoneyApp(
@@ -41,18 +39,15 @@ fun MoneyApp(
     appLaunchRequest: AppLaunchRequest? = null,
     onAppLaunchConsumed: (String) -> Unit = {},
     onBiometricLockChange: (Boolean) -> Unit = {},
-    amountPrivacy: AmountPrivacy = AmountPrivacy.Visible,
     appLockFeedback: Flow<AppLockFeedback>? = null,
 ) {
-    CompositionLocalProvider(LocalAmountPrivacy provides amountPrivacy) {
-        MoneyNavGraph(
-            container = container,
-            appLaunchRequest = appLaunchRequest,
-            onAppLaunchConsumed = onAppLaunchConsumed,
-            onBiometricLockChange = onBiometricLockChange,
-            appLockFeedback = appLockFeedback,
-        )
-    }
+    MoneyNavGraph(
+        container = container,
+        appLaunchRequest = appLaunchRequest,
+        onAppLaunchConsumed = onAppLaunchConsumed,
+        onBiometricLockChange = onBiometricLockChange,
+        appLockFeedback = appLockFeedback,
+    )
 }
 
 @Composable

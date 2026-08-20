@@ -38,7 +38,6 @@ class SettingsSectionContractTest {
                     "theme",
                     "amount_color",
                     "currency_symbol",
-                    "mask_in_app",
                 ),
                 R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification"),
                 R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),

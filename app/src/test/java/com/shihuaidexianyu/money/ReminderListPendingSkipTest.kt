@@ -110,7 +110,6 @@ class ReminderListPendingSkipTest {
         val transactions = InMemoryTransactionRepository()
         val reminderSettings = InMemoryAccountReminderSettingsRepository()
         val portable = InMemoryPortableSettingsRepository()
-        val preferences = InMemoryDevicePreferencesRepository()
         val accountId = runBlocking { accounts.createAccount(Account(name = "现金", initialBalance = 0, createdAt = 1)) }
         val reminderId = runBlocking {
             reminders.insertReminder(RecurringReminder(
@@ -137,7 +136,7 @@ class ReminderListPendingSkipTest {
         fun viewModel(handle: SavedStateHandle) = ReminderListViewModel(
             accounts, reminders, DeleteReminderUseCase(accounts, reminders), SkipReminderUseCase(accounts, reminders, clock, zone),
             UndoSkipReminderUseCase(reminders, clock, com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester),
-            dashboard, clock, zone, preferences, handle,
+            dashboard, clock, zone, handle,
         )
     }
 

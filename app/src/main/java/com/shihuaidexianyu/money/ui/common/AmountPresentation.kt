@@ -20,13 +20,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.unit.sp
-import com.shihuaidexianyu.money.domain.model.AmountPrivacy
-import com.shihuaidexianyu.money.domain.model.AmountSurface
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.util.AmountFormatter
-
-val LocalAmountPrivacy = compositionLocalOf { AmountPrivacy.Visible }
 
 /** User-configured currency symbol ("¥" by default), provided app-wide from PortableSettings. */
 val LocalCurrencySymbol = compositionLocalOf { "¥" }
@@ -38,7 +34,6 @@ fun formatInAppAmount(
 ): String = AmountFormatter.format(
     amountInMinor = amountInMinor,
     settings = settings,
-    visibility = LocalAmountPrivacy.current.visibilityFor(AmountSurface.IN_APP),
 )
 
 /** Signed presentation for quantities where the plus sign carries meaning (P&L, net change). */

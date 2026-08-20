@@ -46,7 +46,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
-                    devicePreferencesRepository = container.devicePreferencesRepository,
                     savedStateHandle = savedStateHandle,
                 )
             },
@@ -153,7 +152,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onBiometricLockChange = onBiometricLockChange,
             onRelockDelayChange = viewModel::updateRelockDelay,
-            onMaskAmountsInAppChange = viewModel::updateMaskAmountsInApp,
             onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
             onHideRecentTasksChange = viewModel::updateHideRecentTasks,
             notificationPermissionState = notificationPermissionGateway.state,
