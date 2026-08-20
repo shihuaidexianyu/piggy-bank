@@ -1,7 +1,6 @@
 package com.shihuaidexianyu.money.domain.repository
 
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -10,6 +9,5 @@ interface PortableSettingsRepository {
     suspend fun query(): PortableSettings
     suspend fun updateCurrencySymbol(symbol: String)
     suspend fun updateAmountColorMode(mode: AmountColorMode)
-    suspend fun updateBudget(amount: Long?, period: BudgetPeriod)
     suspend fun replace(settings: PortableSettings)
 }

@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.shihuaidexianyu.money.domain.model.ReminderType
-import com.shihuaidexianyu.money.domain.usecase.calculateBudgetStatus
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
 import com.shihuaidexianyu.money.ui.home.DueReminderUiModel
 import com.shihuaidexianyu.money.ui.home.HomeScreen
@@ -88,8 +87,7 @@ class HomeDashboardStatesTest {
     }
 
     @Test
-    fun successfulDashboardHidesEmptyAttentionSectionsAndKeepsBudgetEntry() {
-        var budgetClicks = 0
+    fun successfulDashboardHidesEmptyAttentionSections() {
         composeRule.setContent {
             MoneyTheme {
                 HomeScreen(
@@ -97,7 +95,6 @@ class HomeDashboardStatesTest {
                     onStartUpdateBalance = {},
                     onAllRemindersClick = {},
                     onOpenSettings = {},
-                    onOpenBudgetEditor = { budgetClicks += 1 },
                 )
             }
         }
@@ -108,21 +105,16 @@ class HomeDashboardStatesTest {
         composeRule.onNodeWithText("本月净现金流").assertIsDisplayed()
         composeRule.onNodeWithText("暂无到期提醒").assertDoesNotExist()
         composeRule.onNodeWithText("暂无待核对账户").assertDoesNotExist()
-        composeRule.onNodeWithText("设置预算").performClick()
-        composeRule.runOnIdle {
-            assertEquals(1, budgetClicks)
-        }
     }
 
     @Test
-    fun dueAndStaleRowsRemainActionableAndOverBudgetTextIsNotCapped() {
+    fun dueAndStaleRowsRemainActionable() {
         var reminderClicks = 0
         var reconciledAccount: Long? = null
         composeRule.setContent {
             MoneyTheme {
                 HomeScreen(
                     state = dataState().copy(
-                        budget = calculateBudgetStatus(10_000L, 15_001L),
                         dueReminders = listOf(
                             DueReminderUiModel(
                                 id = 3L,
@@ -152,8 +144,6 @@ class HomeDashboardStatesTest {
             }
         }
 
-        composeRule.onNodeWithText("目标 ¥100.00 · 已用 150.01%").assertIsDisplayed()
-        composeRule.onNodeWithText("超支 50.01% · ¥50.01").assertIsDisplayed()
         composeRule.onNodeWithText("宽带费").performClick()
         composeRule.onNodeWithText("现金").performClick()
         composeRule.runOnIdle {

@@ -36,8 +36,6 @@ internal object HomeProjector {
         manualAdjustmentRecordCount: Int,
         recentRecords: List<HistoryRecord> = emptyList(),
         period: DashboardPeriod = DashboardPeriod.DEFAULT,
-        budgetCashOutflow: Long = cashOutflow,
-        budgetProgressDays: PeriodProgressDays = PeriodProgressDays(elapsed = 1, total = 1),
         reconciliationNetByAccount: Map<Long, Long> = emptyMap(),
         snapshotTimeMillis: Long,
         zoneId: ZoneId,
@@ -68,10 +66,6 @@ internal object HomeProjector {
                 zoneId = zoneId,
             )
         }
-        val budget = calculateBudgetStatus(
-            targetAmount = settings.budgetAmount,
-            spentAmount = budgetCashOutflow,
-        )
         return HomeDashboardSnapshot(
             settings = settings,
             totalAssets = totalAssets,
@@ -82,19 +76,10 @@ internal object HomeProjector {
             staleAccounts = staleAccounts,
             accountBalances = balances,
             dueReminders = dueReminders,
-            budget = budget,
             recentRecords = recentRecords,
             hasAnyAccounts = accounts.isNotEmpty(),
             allAccountCount = accounts.size,
             period = period,
-            budgetPace = budget?.let { status ->
-                calculateBudgetPace(
-                    targetAmount = status.targetAmount,
-                    spentAmount = status.spentAmount,
-                    daysElapsed = budgetProgressDays.elapsed,
-                    daysTotal = budgetProgressDays.total,
-                )
-            },
             hasInvestmentAccounts = accounts.any(Account::isInvestment),
             // Closed investment accounts still count toward the split (their balance is zero by
             // the closing rule) and their historical deltas still count as P&L for past periods.

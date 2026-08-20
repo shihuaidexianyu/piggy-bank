@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.domain.model.ACCOUNT_COLOR_NAMES
 import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderPeriod
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderWeekday
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.MAX_CURRENCY_SYMBOL_LENGTH
@@ -55,15 +54,6 @@ class ValidateBackupSnapshotUseCase(
             AmountColorMode.entries.map { it.value },
             "portableSettings.amountColorMode",
         )
-        snapshot.portableSettings.monthlyBudgetAmount?.let {
-            requirePositive(it, "portableSettings.monthlyBudgetAmount")
-        }
-        requireKnown(
-            snapshot.portableSettings.budgetPeriod,
-            BudgetPeriod.entries.map { it.value },
-            "portableSettings.budgetPeriod",
-        )
-
         val ledgerCount = Math.addExact(
             Math.addExact(snapshot.cashFlowRecords.size, snapshot.transferRecords.size),
             Math.addExact(snapshot.balanceUpdateRecords.size, snapshot.balanceAdjustmentRecords.size),

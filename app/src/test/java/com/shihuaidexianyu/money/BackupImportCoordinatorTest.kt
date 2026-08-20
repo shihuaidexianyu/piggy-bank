@@ -12,6 +12,7 @@ import com.shihuaidexianyu.money.data.backup.SafetySnapshotStore
 import com.shihuaidexianyu.money.data.backup.StagedBackupStore
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
+import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
@@ -163,11 +164,16 @@ class BackupImportCoordinatorTest {
         val stage = coordinator.stage(ByteArrayInputStream(BackupJsonCodec.encode(target).encodeToByteArray()))
         val receipt = coordinator.confirm(stage.id)
         repository.current = repository.current.copy(
-            portableSettings = repository.current.portableSettings.copy(monthlyBudgetAmount = 123L),
+            portableSettings = repository.current.portableSettings.copy(
+                amountColorMode = AmountColorMode.GREEN_INCOME_RED_EXPENSE.value,
+            ),
         )
 
         assertFailsWith<IllegalArgumentException> { coordinator.rollback(receipt.id) }
-        assertEquals(123L, repository.current.portableSettings.monthlyBudgetAmount)
+        assertEquals(
+            AmountColorMode.GREEN_INCOME_RED_EXPENSE.value,
+            repository.current.portableSettings.amountColorMode,
+        )
     }
 
     @Test
@@ -183,7 +189,9 @@ class BackupImportCoordinatorTest {
         assertEquals(imported.id, eligible.rollbackEligibleReceiptId)
 
         repository.current = repository.current.copy(
-            portableSettings = repository.current.portableSettings.copy(monthlyBudgetAmount = 123L),
+            portableSettings = repository.current.portableSettings.copy(
+                amountColorMode = AmountColorMode.GREEN_INCOME_RED_EXPENSE.value,
+            ),
         )
         val changed = coordinator.historyWithRollbackEligibility()
         assertEquals(null, changed.rollbackEligibleReceiptId)
@@ -200,7 +208,9 @@ class BackupImportCoordinatorTest {
         val receipt = coordinator.confirm(stage.id)
         repository.afterSnapshot = {
             repository.current = repository.current.copy(
-                portableSettings = repository.current.portableSettings.copy(monthlyBudgetAmount = 321L),
+                portableSettings = repository.current.portableSettings.copy(
+                    amountColorMode = AmountColorMode.GREEN_INCOME_RED_EXPENSE.value,
+                ),
             )
             repository.afterSnapshot = null
         }
@@ -208,7 +218,10 @@ class BackupImportCoordinatorTest {
         assertFailsWith<IllegalArgumentException> { coordinator.rollback(receipt.id) }
 
         assertEquals("$", repository.current.portableSettings.currencySymbol)
-        assertEquals(321L, repository.current.portableSettings.monthlyBudgetAmount)
+        assertEquals(
+            AmountColorMode.GREEN_INCOME_RED_EXPENSE.value,
+            repository.current.portableSettings.amountColorMode,
+        )
     }
 
     @Test

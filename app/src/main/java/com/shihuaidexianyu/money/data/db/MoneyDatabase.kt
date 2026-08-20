@@ -27,7 +27,7 @@ import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 17
+const val MONEY_DATABASE_VERSION = 18
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -318,6 +318,29 @@ private val MIGRATION_16_17 = object : Migration(16, 17) {
     }
 }
 
+private val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS "portable_settings_v18" (
+                "id" INTEGER NOT NULL,
+                "currencySymbol" TEXT NOT NULL,
+                "amountColorMode" TEXT NOT NULL,
+                PRIMARY KEY("id")
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO "portable_settings_v18" ("id", "currencySymbol", "amountColorMode")
+            SELECT "id", "currencySymbol", "amountColorMode" FROM "portable_settings"
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE \"portable_settings\"")
+        db.execSQL("ALTER TABLE \"portable_settings_v18\" RENAME TO \"portable_settings\"")
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -335,6 +358,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_14_15,
     MIGRATION_15_16,
     MIGRATION_16_17,
+    MIGRATION_17_18,
 )
 
 @Database(

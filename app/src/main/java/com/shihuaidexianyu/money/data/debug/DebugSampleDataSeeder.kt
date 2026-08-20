@@ -131,7 +131,7 @@ object DebugSampleDataSeeder {
         today: LocalDate,
     ): Map<String, Long> {
         // Name order pairs with `keys` so each sample account's icon matches its purpose.
-        val names = listOf("微信零钱", "招商银行", "应急储蓄", "指数基金", "旅行预算")
+        val names = listOf("微信零钱", "招商银行", "应急储蓄", "指数基金", "旅行基金")
         val colors = listOf("green", "blue", "teal", "purple", "orange")
         val keys = listOf("wallet", "salary", "savings", "investment", "travel")
         return keys.mapIndexed { index, key ->
@@ -272,7 +272,7 @@ object DebugSampleDataSeeder {
         zoneId: ZoneId,
         today: LocalDate,
     ) {
-        val notes = listOf("月度储蓄", "基金定投", "旅行预留", "信用卡还款", "账户归集", "周末预算")
+        val notes = listOf("月度储蓄", "基金定投", "旅行预留", "信用卡还款", "账户归集", "周末开支")
         val routes = listOf(
             accounts.getValue("salary") to accounts.getValue("savings"),
             accounts.getValue("salary") to accounts.getValue("investment"),

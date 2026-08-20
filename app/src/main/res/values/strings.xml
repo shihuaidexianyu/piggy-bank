@@ -12,8 +12,6 @@
     <!-- Home -->
     <string name="home_title">首页</string>
     <string name="home_load_failed">首页加载失败，请重试</string>
-    <string name="home_budget_positive_error">预算必须大于 0</string>
-    <string name="home_budget_save_failed">预算保存失败，请重试</string>
     <string name="home_create_first_account">创建第一个账户</string>
     <string name="home_create_first_account_description">创建账户后，就能开始记录收入、支出和转账。</string>
     <string name="home_create_now">立即创建</string>
@@ -41,28 +39,10 @@
     <string name="home_week_investment_pnl">本周投资损益</string>
     <string name="home_month_investment_pnl">本月投资损益</string>
     <string name="home_year_investment_pnl">今年投资损益</string>
-    <string name="home_budget_title">预算</string>
-    <string name="home_weekly_budget">周预算</string>
-    <string name="home_monthly_budget">月预算</string>
-    <string name="home_yearly_budget">年预算</string>
-    <string name="home_budget_period_label">预算周期</string>
-    <string name="home_budget_not_set_description">尚未设置支出预算</string>
-    <string name="home_set_budget">设置预算</string>
-    <string name="home_edit_budget">修改预算</string>
-    <string name="home_close_budget">关闭预算</string>
-    <string name="home_close_budget_confirm_message">关闭后首页不再展示预算进度，历史记录不受影响。</string>
-    <string name="home_budget_over_format">超支 %1$s · %2$s</string>
-    <string name="home_budget_spent_summary_format">目标 %1$s · 已用 %2$s</string>
-    <string name="home_budget_pace_format">剩余 %1$d 天 · 日均 %2$s</string>
-    <string name="home_budget_last_day">最后一天 · 日均 %1$s</string>
-    <string name="home_budget_projected_overspend_format">按此速度将超支 %1$s</string>
-    <string name="home_budget_projected_surplus_format">按此速度可结余 %1$s</string>
-    <string name="home_budget_safe_daily_format">剩余每天可用 %1$s</string>
     <string name="home_due_reminders">待处理提醒</string>
     <string name="home_due_reminder_subtitle_format">%1$s · %2$s</string>
     <string name="home_tomorrow">明天</string>
     <string name="home_stale_accounts">待核对账户</string>
-    <string name="home_budget_field">支出预算</string>
     <string name="home_savings_goal">储蓄目标</string>
     <string name="home_savings_goal_progress_format">当前净资产 %1$s · 还差 %2$s</string>
     <string name="home_savings_goal_achieved">已达成目标</string>

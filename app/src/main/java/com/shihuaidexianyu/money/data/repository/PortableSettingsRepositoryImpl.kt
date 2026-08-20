@@ -5,10 +5,8 @@ import com.shihuaidexianyu.money.data.dao.PortableSettingsDao
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
-import com.shihuaidexianyu.money.domain.model.requireValidBudgetAmount
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,11 +28,6 @@ class PortableSettingsRepositoryImpl(
         copy(amountColorMode = mode)
     }
 
-    override suspend fun updateBudget(amount: Long?, period: BudgetPeriod) {
-        requireValidBudgetAmount(amount)
-        mutate { copy(budgetAmount = amount, budgetPeriod = period) }
-    }
-
     override suspend fun replace(settings: PortableSettings) {
         val normalized = settings.normalized()
         dao.upsert(normalized.toEntity())
@@ -48,22 +41,16 @@ class PortableSettingsRepositoryImpl(
     }
 }
 
-private fun PortableSettings.normalized(): PortableSettings {
-    requireValidBudgetAmount(budgetAmount)
-    return copy(currencySymbol = normalizeCurrencySymbol(currencySymbol))
-}
+private fun PortableSettings.normalized(): PortableSettings =
+    copy(currencySymbol = normalizeCurrencySymbol(currencySymbol))
 
 private fun PortableSettingsEntity.toDomain(): PortableSettings = PortableSettings(
     currencySymbol = normalizeCurrencySymbol(currencySymbol),
     amountColorMode = AmountColorMode.fromValue(amountColorMode),
-    budgetAmount = monthlyBudgetAmount?.takeIf { it > 0L },
-    budgetPeriod = BudgetPeriod.fromValue(budgetPeriod),
 )
 
 private fun PortableSettings.toEntity(): PortableSettingsEntity = PortableSettingsEntity(
     id = 1,
     currencySymbol = currencySymbol,
     amountColorMode = amountColorMode.value,
-    monthlyBudgetAmount = budgetAmount,
-    budgetPeriod = budgetPeriod.value,
 )

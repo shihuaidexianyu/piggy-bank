@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
@@ -35,8 +34,6 @@ internal class RoomBackupSnapshotReader(
             portableSettings = BackupPortableSettings(
                 currencySymbol = portable?.currencySymbol ?: "¥",
                 amountColorMode = portable?.amountColorMode ?: AmountColorMode.RED_INCOME_GREEN_EXPENSE.value,
-                monthlyBudgetAmount = portable?.monthlyBudgetAmount,
-                budgetPeriod = portable?.budgetPeriod ?: BudgetPeriod.DEFAULT.value,
             ),
             accounts = accounts.map {
                 BackupAccount(

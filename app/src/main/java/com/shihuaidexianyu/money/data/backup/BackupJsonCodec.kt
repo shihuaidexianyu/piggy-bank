@@ -217,7 +217,6 @@ private fun migrateV3ToV4(root: JsonObject): JsonObject {
                 mapOf(
                     "currencySymbol" to JsonPrimitive(oldSettings.requiredString("currencySymbol")),
                     "amountColorMode" to JsonPrimitive(oldSettings.requiredString("amountColorMode")),
-                    "monthlyBudgetAmount" to JsonNull,
                 ),
             ),
             "accounts" to JsonArray(migratedAccounts),

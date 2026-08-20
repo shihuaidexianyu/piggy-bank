@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesReposi
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.model.MAX_RECENT_ACCOUNT_IDS
@@ -19,33 +18,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class PortableAndDeviceSettingsRepositoryTest {
     @Test
-    fun `portable settings normalize currency and validate the spending budget`() = runBlocking {
+    fun `portable settings normalize currency and persist amount colors`() = runBlocking {
         val repository = InMemoryPortableSettingsRepository()
 
         assertEquals(PortableSettings(), repository.query())
         repository.updateCurrencySymbol("  元人民币  ")
         repository.updateAmountColorMode(AmountColorMode.GREEN_INCOME_RED_EXPENSE)
-        repository.updateBudget(10_000L, BudgetPeriod.YEARLY)
 
         assertEquals(
             PortableSettings(
                 currencySymbol = "元人民币",
                 amountColorMode = AmountColorMode.GREEN_INCOME_RED_EXPENSE,
-                budgetAmount = 10_000L,
-                budgetPeriod = BudgetPeriod.YEARLY,
             ),
             repository.observe().first(),
         )
-        repository.updateBudget(null, BudgetPeriod.MONTHLY)
-        assertEquals(null, repository.query().budgetAmount)
-        assertEquals(BudgetPeriod.MONTHLY, repository.query().budgetPeriod)
-        assertFailsWith<IllegalArgumentException> { repository.updateBudget(0L, BudgetPeriod.MONTHLY) }
-        assertFailsWith<IllegalArgumentException> { repository.updateBudget(-1L, BudgetPeriod.MONTHLY) }
-        Unit
     }
 
     @Test

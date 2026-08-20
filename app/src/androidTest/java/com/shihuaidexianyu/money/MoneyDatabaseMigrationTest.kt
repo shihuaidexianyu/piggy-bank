@@ -738,6 +738,44 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion17To18RemovesBudgetColumnsAndKeepsDisplaySettings() {
+        val dbName = "$TEST_DB-v17-remove-budget"
+        helper.createDatabase(dbName, 17).apply {
+            execSQL(
+                """
+                INSERT INTO portable_settings (
+                    id, currencySymbol, amountColorMode, monthlyBudgetAmount, budgetPeriod
+                ) VALUES (1, '元', 'green_income_red_expense', 500000, 'yearly')
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 18,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query(
+            "SELECT id, currencySymbol, amountColorMode FROM portable_settings WHERE id = 1",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1L, cursor.getLong(0))
+            assertEquals("元", cursor.getString(1))
+            assertEquals("green_income_red_expense", cursor.getString(2))
+        }
+        val columns = buildList {
+            migrated.query("PRAGMA table_info(portable_settings)").use { cursor ->
+                while (cursor.moveToNext()) add(cursor.getString(1))
+            }
+        }
+        assertEquals(listOf("id", "currencySymbol", "amountColorMode"), columns)
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

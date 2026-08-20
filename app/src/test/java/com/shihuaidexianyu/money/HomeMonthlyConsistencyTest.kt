@@ -8,7 +8,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
@@ -35,19 +34,13 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class HomeMonthlyConsistencyTest {
-    /**
-     * The dashboard period is freely selectable; the budget is not — it is measured against its
-     * configured calendar window (the month by default, or the year) whichever period the user is
-     * looking at. This replaces an earlier guard that forbade a period selector outright — the
-     * invariant that guard protected was budget/aggregate scope consistency, asserted here.
-     */
     @Test
-    fun `selecting a shorter period rescopes cash flow but leaves the budget on the calendar month`() = runBlocking {
+    fun `selecting a shorter period rescopes cash flow`() = runBlocking {
         // 2026-02-19 is a Thursday; its week starts Monday 2026-02-16, well inside February.
         val now = Instant.parse("2026-02-19T10:00:00Z").toEpochMilli()
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        val settings = InMemoryPortableSettingsRepository(PortableSettings(budgetAmount = 100_000L))
+        val settings = InMemoryPortableSettingsRepository()
         val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
         val earlierInMonth = Instant.parse("2026-02-03T09:00:00Z").toEpochMilli()
         val insideThisWeek = Instant.parse("2026-02-17T09:00:00Z").toEpochMilli()
@@ -65,8 +58,6 @@ class HomeMonthlyConsistencyTest {
 
         assertEquals(DashboardPeriod.WEEK, weekSnapshot.period)
         assertEquals(250L, weekSnapshot.periodBreakdown.cashOutflow)
-        // The budget still counts the whole month, not just the selected week.
-        assertEquals(650L, requireNotNull(weekSnapshot.budget).spentAmount)
 
         val monthSnapshot = homeUseCase(
             now = now,
@@ -78,22 +69,14 @@ class HomeMonthlyConsistencyTest {
         ).first()
 
         assertEquals(650L, monthSnapshot.periodBreakdown.cashOutflow)
-        assertEquals(
-            requireNotNull(weekSnapshot.budget).spentAmount,
-            requireNotNull(monthSnapshot.budget).spentAmount,
-        )
     }
 
     @Test
-    fun `a weekly budget measures the calendar week even when the dashboard shows the month`() = runBlocking {
-        // 2026-02-19 is a Thursday of a Monday-anchored week: day 4 of 7. The early-month outflow
-        // is inside the dashboard's month but outside the budget's week.
+    fun `month dashboard includes outflows outside the current week`() = runBlocking {
         val now = Instant.parse("2026-02-19T10:00:00Z").toEpochMilli()
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        val settings = InMemoryPortableSettingsRepository(
-            PortableSettings(budgetAmount = 1_000L, budgetPeriod = BudgetPeriod.WEEKLY),
-        )
+        val settings = InMemoryPortableSettingsRepository()
         val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
         insertCash(
             ledger,
@@ -122,22 +105,14 @@ class HomeMonthlyConsistencyTest {
         ).first()
 
         assertEquals(650L, monthSnapshot.periodBreakdown.cashOutflow)
-        assertEquals(250L, requireNotNull(monthSnapshot.budget).spentAmount)
-        val pace = requireNotNull(monthSnapshot.budgetPace)
-        assertEquals(4, pace.daysElapsed)
-        assertEquals(7, pace.daysTotal)
     }
 
     @Test
-    fun `a yearly budget measures the calendar year and its pace spans the whole year`() = runBlocking {
-        // 2026-02-19: day 50 of a 365-day year. The January outflow is outside the current month
-        // and week but inside the budget's year.
+    fun `week and year dashboards use their own calendar ranges`() = runBlocking {
         val now = Instant.parse("2026-02-19T10:00:00Z").toEpochMilli()
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        val settings = InMemoryPortableSettingsRepository(
-            PortableSettings(budgetAmount = 100_000L, budgetPeriod = BudgetPeriod.YEARLY),
-        )
+        val settings = InMemoryPortableSettingsRepository()
         val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
         insertCash(
             ledger,
@@ -166,20 +141,16 @@ class HomeMonthlyConsistencyTest {
         ).first()
 
         assertEquals(250L, weekSnapshot.periodBreakdown.cashOutflow)
-        assertEquals(650L, requireNotNull(weekSnapshot.budget).spentAmount)
-        val pace = requireNotNull(weekSnapshot.budgetPace)
-        assertEquals(50, pace.daysElapsed)
-        assertEquals(365, pace.daysTotal)
 
-        val monthSnapshot = homeUseCase(
+        val yearSnapshot = homeUseCase(
             now = now,
             accounts = accounts,
             ledger = ledger,
             settings = settings,
             timeSignal = MutableStateFlow(now),
-            period = DashboardPeriod.MONTH,
+            period = DashboardPeriod.YEAR,
         ).first()
-        assertEquals(650L, requireNotNull(monthSnapshot.budget).spentAmount)
+        assertEquals(650L, yearSnapshot.periodBreakdown.cashOutflow)
     }
 
     @Test
@@ -216,13 +187,13 @@ class HomeMonthlyConsistencyTest {
     }
 
     @Test
-    fun `same collector resets monthly cash flow and budget when time signal enters next month`() = runBlocking {
+    fun `same collector resets monthly cash flow when time signal enters next month`() = runBlocking {
         val januaryNow = Instant.parse("2026-01-15T10:00:00Z").toEpochMilli()
         val februaryNow = Instant.parse("2026-02-15T10:00:00Z").toEpochMilli()
         val january = TimeRangeCalculator.currentMonthRange(ZoneOffset.UTC, januaryNow)
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        val settings = InMemoryPortableSettingsRepository(PortableSettings(budgetAmount = 1_000L))
+        val settings = InMemoryPortableSettingsRepository()
         val accountId = accounts.createAccount(Account(name = "现金", initialBalance = 0L, createdAt = 1L))
         insertCash(ledger, accountId, CashFlowDirection.OUTFLOW, 400L, january.startInclusive, "一月支出")
         val timeSignal = MutableStateFlow(januaryNow)
@@ -230,26 +201,22 @@ class HomeMonthlyConsistencyTest {
         homeUseCase(januaryNow, accounts, ledger, settings, timeSignal).test {
             val januarySnapshot = awaitItem()
             assertEquals(400L, januarySnapshot.periodBreakdown.cashOutflow)
-            assertEquals(400L, requireNotNull(januarySnapshot.budget).spentAmount)
 
             timeSignal.value = februaryNow
             val februarySnapshot = awaitItem()
             assertEquals(0L, februarySnapshot.periodBreakdown.cashInflow)
             assertEquals(0L, februarySnapshot.periodBreakdown.cashOutflow)
-            assertEquals(0L, requireNotNull(februarySnapshot.budget).spentAmount)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `home history and budget share one half-open active cash-flow scope`() = runBlocking {
+    fun `home and history share one half-open active cash-flow scope`() = runBlocking {
         val now = Instant.parse("2026-02-15T10:00:00Z").toEpochMilli()
         val range = TimeRangeCalculator.currentMonthRange(ZoneOffset.UTC, now)
         val accounts = InMemoryAccountRepository()
         val ledger = InMemoryTransactionRepository()
-        val settings = InMemoryPortableSettingsRepository(
-            PortableSettings(budgetAmount = 1_000L),
-        )
+        val settings = InMemoryPortableSettingsRepository()
         val firstId = accounts.createAccount(
             Account(name = "现金", initialBalance = -10_000L, createdAt = range.startInclusive - 1L),
         )
@@ -337,7 +304,6 @@ class HomeMonthlyConsistencyTest {
         assertEquals(historyIncome, home.periodBreakdown.cashInflow)
         assertEquals(historyExpense, home.periodBreakdown.cashOutflow)
         assertEquals(historyIncome - historyExpense, home.periodBreakdown.cashNet)
-        assertEquals(400L, requireNotNull(home.budget).spentAmount)
         assertEquals(-7_100L, home.totalAssets)
     }
 

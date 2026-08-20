@@ -10,7 +10,6 @@ import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -46,10 +45,9 @@ class SettingsRoomContractTest {
 
         repository.updateCurrencySymbol("  元人民币  ")
         repository.updateAmountColorMode(AmountColorMode.GREEN_INCOME_RED_EXPENSE)
-        repository.updateBudget(10_000L, BudgetPeriod.YEARLY)
 
         assertEquals(
-            PortableSettings("元人民币", AmountColorMode.GREEN_INCOME_RED_EXPENSE, 10_000L, BudgetPeriod.YEARLY),
+            PortableSettings("元人民币", AmountColorMode.GREEN_INCOME_RED_EXPENSE),
             repository.query(),
         )
     }

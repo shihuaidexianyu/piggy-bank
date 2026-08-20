@@ -22,25 +22,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,21 +53,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.usecase.BudgetPace
-import com.shihuaidexianyu.money.domain.usecase.BudgetStatus
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
-import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
@@ -104,13 +93,6 @@ fun HomeScreen(
     onManageAccounts: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onRetry: () -> Unit = {},
-    onOpenBudgetEditor: () -> Unit = {},
-    onDismissBudgetEditor: () -> Unit = {},
-    onBudgetInputChange: (String) -> Unit = {},
-    onBudgetPeriodChange: (BudgetPeriod) -> Unit = {},
-    onSaveBudget: () -> Unit = {},
-    onRetryBudgetSave: () -> Unit = {},
-    onCloseBudget: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
@@ -133,66 +115,6 @@ fun HomeScreen(
         }
     }
 
-    var showCloseBudgetConfirm by remember { mutableStateOf(false) }
-    if (state.showBudgetEditor) {
-        val hasBudget = state.budget != null
-        HomeAmountEditorDialog(
-            titleRes = if (hasBudget) R.string.home_edit_budget else R.string.home_set_budget,
-            fieldLabelRes = R.string.home_budget_field,
-            clearActionLabelRes = R.string.home_close_budget,
-            input = state.budgetInput,
-            inputErrorRes = state.budgetInputErrorRes,
-            saveErrorRes = state.budgetSaveErrorRes,
-            isSaving = state.isBudgetSaving,
-            hasValue = hasBudget,
-            onInputChange = onBudgetInputChange,
-            onSave = if (state.budgetSaveErrorRes != null) {
-                onRetryBudgetSave
-            } else {
-                onSaveBudget
-            },
-            onClearValue = { showCloseBudgetConfirm = true },
-            onDismiss = onDismissBudgetEditor,
-            extraContent = {
-                Text(
-                    text = stringResource(R.string.home_budget_period_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = state.budgetEditorPeriod == BudgetPeriod.WEEKLY,
-                        onClick = { onBudgetPeriodChange(BudgetPeriod.WEEKLY) },
-                        enabled = !state.isBudgetSaving,
-                        label = { Text(stringResource(R.string.home_weekly_budget)) },
-                    )
-                    FilterChip(
-                        selected = state.budgetEditorPeriod == BudgetPeriod.MONTHLY,
-                        onClick = { onBudgetPeriodChange(BudgetPeriod.MONTHLY) },
-                        enabled = !state.isBudgetSaving,
-                        label = { Text(stringResource(R.string.home_monthly_budget)) },
-                    )
-                    FilterChip(
-                        selected = state.budgetEditorPeriod == BudgetPeriod.YEARLY,
-                        onClick = { onBudgetPeriodChange(BudgetPeriod.YEARLY) },
-                        enabled = !state.isBudgetSaving,
-                        label = { Text(stringResource(R.string.home_yearly_budget)) },
-                    )
-                }
-            },
-        )
-    }
-    if (showCloseBudgetConfirm) {
-        MoneyConfirmDialog(
-            title = stringResource(R.string.home_close_budget),
-            message = stringResource(R.string.home_close_budget_confirm_message),
-            onConfirm = {
-                showCloseBudgetConfirm = false
-                onCloseBudget()
-            },
-            onDismiss = { showCloseBudgetConfirm = false },
-        )
-    }
     Column(modifier = modifier) {
         TopAppBar(
             title = { Text(stringResource(R.string.home_title)) },
@@ -261,14 +183,6 @@ fun HomeScreen(
                         item {
                             HomeOpenAccountCta(onManageAccounts = onManageAccounts)
                         }
-                    }
-                    item {
-                        BudgetBlock(
-                            budget = renderedState.budget,
-                            pace = renderedState.budgetPace,
-                            settings = renderedState.settings,
-                            onEdit = onOpenBudgetEditor,
-                        )
                     }
                     if (renderedState.dueReminders.isNotEmpty()) {
                         item {
@@ -774,150 +688,6 @@ private fun PeriodSwitcher(
     }
 }
 
-@Composable
-private fun BudgetBlock(
-    budget: BudgetStatus?,
-    pace: BudgetPace?,
-    settings: PortableSettings,
-    onEdit: () -> Unit,
-) {
-    // The whole card opens the editor, so the header carries no redundant edit action (mirroring
-    // the savings-goal card); closing the budget lives inside the editor dialog, keeping a
-    // destructive-leaning action off the always-visible dashboard. The title stays a plain "预算" —
-    // the chosen week/month/year window is visible in the editor, not on the dashboard.
-    MoneySectionHeader(title = stringResource(R.string.home_budget_title))
-    Card(
-        onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        if (budget == null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.home_budget_not_set_description),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.home_set_budget),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    // Headline is what was spent — the number a budget watcher checks daily;
-                    // the target and used share move to the subtitle.
-                    Text(
-                        text = formatInAppAmount(budget.spentAmount, settings),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.home_budget_spent_summary_format,
-                            formatInAppAmount(budget.targetAmount, settings),
-                            budget.percentageText,
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                LinearProgressIndicator(
-                    progress = { budget.progressFraction },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (budget.overBudgetAmount != null && budget.overBudgetPercentageText != null) {
-                    Text(
-                        text = stringResource(
-                            R.string.home_budget_over_format,
-                            budget.overBudgetPercentageText,
-                            formatInAppAmount(budget.overBudgetAmount, settings),
-                        ),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                pace?.let { BudgetPaceRows(pace = it, budget = budget, settings = settings) }
-            }
-        }
-    }
-}
-
-/**
- * The burn-down lines under the budget bar: how fast the month is being spent, and where that
- * pace lands. Once the budget is already blown, the projection is redundant with the over-budget
- * line above, so only the pace is shown.
- */
-@Composable
-private fun BudgetPaceRows(
-    pace: BudgetPace,
-    budget: BudgetStatus,
-    settings: PortableSettings,
-) {
-    val moneyColors = LocalMoneyColors.current
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = if (pace.daysRemaining > 0) {
-                stringResource(
-                    R.string.home_budget_pace_format,
-                    pace.daysRemaining,
-                    formatInAppAmount(pace.dailyAverageSpent, settings),
-                )
-            } else {
-                stringResource(
-                    R.string.home_budget_last_day,
-                    formatInAppAmount(pace.dailyAverageSpent, settings),
-                )
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val alreadyOverBudget = budget.overBudgetAmount != null
-        when {
-            alreadyOverBudget -> Unit
-            pace.projectedOverspend != null -> Text(
-                text = stringResource(
-                    R.string.home_budget_projected_overspend_format,
-                    formatInAppAmount(pace.projectedOverspend, settings),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = moneyColors.expense,
-            )
-            else -> Text(
-                text = stringResource(
-                    R.string.home_budget_projected_surplus_format,
-                    formatInAppAmount(budget.targetAmount - pace.projectedTotalSpend, settings),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = moneyColors.income,
-            )
-        }
-        pace.safeDailySpend?.let { safeDaily ->
-            Text(
-                text = stringResource(
-                    R.string.home_budget_safe_daily_format,
-                    formatInAppAmount(safeDaily, settings),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
 /** Only rendered when there are due reminders — the caller hides the whole section otherwise. */
 @Composable
 private fun HomeReminderSection(
@@ -1080,65 +850,6 @@ private fun HomeRecentRecordRow(
             )
         }
     }
-}
-
-/**
- * Shared single-amount editor for the home dashboard cards (monthly budget, savings goal).
- * Titles, the field label and the clear-action label are parameterized so each card keeps its own
- * wording while the layout, validation display and retry behaviour stay identical.
- */
-@Composable
-private fun HomeAmountEditorDialog(
-    @androidx.annotation.StringRes titleRes: Int,
-    @androidx.annotation.StringRes fieldLabelRes: Int,
-    @androidx.annotation.StringRes clearActionLabelRes: Int,
-    input: String,
-    @androidx.annotation.StringRes inputErrorRes: Int?,
-    @androidx.annotation.StringRes saveErrorRes: Int?,
-    isSaving: Boolean,
-    hasValue: Boolean,
-    onInputChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onClearValue: () -> Unit,
-    onDismiss: () -> Unit,
-    extraContent: (@Composable () -> Unit)? = null,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(titleRes))
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                extraContent?.invoke()
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = onInputChange,
-                    enabled = !isSaving,
-                    label = { Text(stringResource(fieldLabelRes)) },
-                    isError = inputErrorRes != null || saveErrorRes != null,
-                    supportingText = {
-                        (inputErrorRes ?: saveErrorRes)?.let { Text(stringResource(it)) }
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                )
-                if (hasValue) {
-                    TextButton(onClick = onClearValue, enabled = !isSaving) {
-                        Text(stringResource(clearActionLabelRes))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onSave, enabled = !isSaving) {
-                Text(stringResource(if (saveErrorRes != null) R.string.action_retry else R.string.action_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
 }
 
 @Composable

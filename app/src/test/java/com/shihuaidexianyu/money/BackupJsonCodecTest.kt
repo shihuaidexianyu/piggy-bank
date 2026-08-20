@@ -2,7 +2,6 @@ package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.domain.model.AccountKind
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.usecase.ValidateBackupSnapshotUseCase
 import java.io.InputStream
@@ -68,13 +67,13 @@ class BackupJsonCodecTest {
     }
 
     @Test
-    fun `v4 fixture round trips all portable fields and ledger metadata`() {
+    fun `v4 fixture ignores retired settings and round trips ledger metadata`() {
         val snapshot = BackupJsonCodec.decode(fixture("v4.json"))
 
-        assertEquals(snapshot, BackupJsonCodec.decode(BackupJsonCodec.encode(snapshot)))
-        assertEquals(500_000L, snapshot.portableSettings.monthlyBudgetAmount)
-        // Files written before the budget-period field existed decode as a monthly budget.
-        assertEquals(BudgetPeriod.DEFAULT.value, snapshot.portableSettings.budgetPeriod)
+        val encoded = BackupJsonCodec.encode(snapshot)
+        assertEquals(snapshot, BackupJsonCodec.decode(encoded))
+        assertFalse(encoded.contains("monthlyBudgetAmount"))
+        assertFalse(encoded.contains("budgetPeriod"))
         assertTrue(snapshot.accounts.single().isHidden)
         assertEquals("cash:v4:1", snapshot.cashFlowRecords.single().operationId)
         assertEquals(300L, snapshot.cashFlowRecords.single().deletedAt)

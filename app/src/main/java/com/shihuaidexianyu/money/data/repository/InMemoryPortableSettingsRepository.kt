@@ -1,10 +1,8 @@
 package com.shihuaidexianyu.money.data.repository
 
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
-import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
-import com.shihuaidexianyu.money.domain.model.requireValidBudgetAmount
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,17 +24,10 @@ class InMemoryPortableSettingsRepository(
         state.value = state.value.copy(amountColorMode = mode)
     }
 
-    override suspend fun updateBudget(amount: Long?, period: BudgetPeriod) {
-        requireValidBudgetAmount(amount)
-        state.value = state.value.copy(budgetAmount = amount, budgetPeriod = period)
-    }
-
     override suspend fun replace(settings: PortableSettings) {
         state.value = settings.normalized()
     }
 
-    private fun PortableSettings.normalized(): PortableSettings {
-        requireValidBudgetAmount(budgetAmount)
-        return copy(currencySymbol = normalizeCurrencySymbol(currencySymbol))
-    }
+    private fun PortableSettings.normalized(): PortableSettings =
+        copy(currencySymbol = normalizeCurrencySymbol(currencySymbol))
 }

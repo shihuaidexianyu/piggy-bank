@@ -47,7 +47,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
-                    portableSettingsRepository = container.portableSettingsRepository,
                     savedStateHandle = savedStateHandle,
                 )
             },
@@ -70,13 +69,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
-                onOpenBudgetEditor = viewModel::openBudgetEditor,
-                onDismissBudgetEditor = viewModel::dismissBudgetEditor,
-                onBudgetInputChange = viewModel::updateBudgetInput,
-                onBudgetPeriodChange = viewModel::updateBudgetEditorPeriod,
-                onSaveBudget = viewModel::saveBudget,
-                onRetryBudgetSave = viewModel::retryBudgetSave,
-                onCloseBudget = viewModel::closeBudget,
                 onOpenHistory = {
                     navController.navigateToTopLevelTab(MoneyDestination.History)
                 },

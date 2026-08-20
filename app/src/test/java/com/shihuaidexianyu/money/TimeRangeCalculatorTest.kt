@@ -92,37 +92,6 @@ class TimeRangeCalculatorTest {
         )
     }
 
-    @Test
-    fun `progress days count today as elapsed`() {
-        // 2024-02-15 is the 15th day of a 29-day month.
-        val feb15 = Instant.parse("2024-02-15T23:59:00Z").toEpochMilli()
-        val progress = TimeRangeCalculator.periodProgressDays(DashboardPeriod.MONTH, utc, feb15)
-
-        assertEquals(15, progress.elapsed)
-        assertEquals(29, progress.total)
-        assertEquals(14, progress.remaining)
-    }
-
-    @Test
-    fun `progress days on the first day of a week`() {
-        val monday = Instant.parse("2024-02-12T08:00:00Z").toEpochMilli()
-        val progress = TimeRangeCalculator.periodProgressDays(DashboardPeriod.WEEK, utc, monday)
-
-        assertEquals(1, progress.elapsed)
-        assertEquals(7, progress.total)
-        assertEquals(6, progress.remaining)
-    }
-
-    @Test
-    fun `progress days on the last day of a year`() {
-        val newYearsEve = Instant.parse("2024-12-31T23:00:00Z").toEpochMilli()
-        val progress = TimeRangeCalculator.periodProgressDays(DashboardPeriod.YEAR, utc, newYearsEve)
-
-        assertEquals(366, progress.elapsed)
-        assertEquals(366, progress.total)
-        assertEquals(0, progress.remaining)
-    }
-
     private fun contains(range: TimeRange, instant: Long): Boolean =
         instant >= range.startInclusive && instant < range.endExclusive
 }

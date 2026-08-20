@@ -9,7 +9,6 @@ import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
 import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
-import com.shihuaidexianyu.money.domain.model.dashboardPeriod
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
@@ -36,14 +35,11 @@ data class HomeDashboardSnapshot(
     val staleAccounts: List<Account>,
     val accountBalances: Map<Long, Long>,
     val dueReminders: List<RecurringReminder>,
-    val budget: BudgetStatus?,
     val recentRecords: List<HistoryRecord>,
     val hasAnyAccounts: Boolean,
     val allAccountCount: Int,
     /** Which period the aggregates above cover. */
     val period: DashboardPeriod = DashboardPeriod.DEFAULT,
-    /** Burn-down for the spending budget; null when no budget is set. */
-    val budgetPace: BudgetPace? = null,
     /** Whether any account (open or closed) is an investment account — gates investment UI. */
     val hasInvestmentAccounts: Boolean = false,
     /** Current balance summed over investment accounts; funding assets = total − this. */
@@ -128,8 +124,6 @@ class ObserveHomeDashboardUseCase(
                 manualAdjustmentRecordCount = input.manualAdjustmentRecordCount,
                 recentRecords = input.recentRecords,
                 period = period,
-                budgetCashOutflow = input.budgetCashOutflow,
-                budgetProgressDays = input.budgetProgressDays,
                 reconciliationNetByAccount = input.reconciliationNetByAccount,
                 snapshotTimeMillis = snapshotTimeMillis,
                 zoneId = input.zoneId,
@@ -146,7 +140,6 @@ class ObserveHomeDashboardUseCase(
         return transactionRepository.runInTransaction {
             val allAccounts = accountRepository.queryAllAccounts()
             val settings = portableSettingsRepository.query()
-            val budgetWindow = settings.budgetPeriod.dashboardPeriod
             val openingAccounts = allAccounts.filter {
                 LedgerBalanceCalculator.openingAt(it) < range.startInclusive
             }
@@ -154,18 +147,6 @@ class ObserveHomeDashboardUseCase(
                 range.startInclusive,
                 range.endExclusive,
             )
-            // The budget is measured against its own calendar window (month or year) no matter
-            // which period the dashboard is showing. When that window is the range we already
-            // read, skip the duplicate query.
-            val budgetCashOutflow = if (period == budgetWindow) {
-                periodSummary.cashOutflow
-            } else {
-                val budgetRange = TimeRangeCalculator.rangeFor(budgetWindow, zoneId, snapshotTimeMillis)
-                transactionRepository.queryHomePeriodLedgerSummary(
-                    budgetRange.startInclusive,
-                    budgetRange.endExclusive,
-                ).cashOutflow
-            }
             val balances = calculateAccountBalancesUseCase(allAccounts, snapshotTimeMillis)
             // Only read the per-account breakdown when it can matter — accounts without any
             // investment kind produce no investment P&L by definition.
@@ -180,12 +161,6 @@ class ObserveHomeDashboardUseCase(
             HomeDashboardInput(
                 zoneId = zoneId,
                 reconciliationNetByAccount = reconciliationNetByAccount,
-                budgetCashOutflow = budgetCashOutflow,
-                budgetProgressDays = TimeRangeCalculator.periodProgressDays(
-                    budgetWindow,
-                    zoneId,
-                    snapshotTimeMillis,
-                ),
                 allAccounts = allAccounts,
                 openAccounts = accountRepository.queryOpenAccounts(),
                 reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs(),
@@ -230,8 +205,6 @@ private const val HOME_RECENT_RECORD_LIMIT = 5
 private data class HomeDashboardInput(
     val zoneId: java.time.ZoneId,
     val reconciliationNetByAccount: Map<Long, Long>,
-    val budgetCashOutflow: Long,
-    val budgetProgressDays: PeriodProgressDays,
     val allAccounts: List<Account>,
     val openAccounts: List<Account>,
     val reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,

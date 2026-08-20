@@ -32,26 +32,6 @@ object TimeRangeCalculator {
         return buildRange(start, nextPeriodStart(period, start), zoneId)
     }
 
-    /**
-     * Days elapsed in the current period including today, and the period's total day count.
-     * Used by the budget burn-down to project spending pace.
-     */
-    fun periodProgressDays(
-        period: DashboardPeriod,
-        zoneId: ZoneId,
-        nowMillis: Long,
-    ): PeriodProgressDays {
-        val today = localDate(zoneId, nowMillis)
-        val start = periodStart(period, today)
-        val end = nextPeriodStart(period, start)
-        val total = (end.toEpochDay() - start.toEpochDay()).toInt()
-        val elapsed = (today.toEpochDay() - start.toEpochDay()).toInt() + 1
-        return PeriodProgressDays(
-            elapsed = elapsed.coerceIn(1, total),
-            total = total,
-        )
-    }
-
     private fun periodStart(period: DashboardPeriod, date: LocalDate): LocalDate = when (period) {
         // Weeks start on Monday, matching the calendar convention used in Simplified Chinese locales.
         DashboardPeriod.WEEK -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -78,11 +58,4 @@ object TimeRangeCalculator {
             endExclusive = endExclusive.atStartOfDay(zoneId).toInstant().toEpochMilli(),
         )
     }
-}
-
-data class PeriodProgressDays(
-    val elapsed: Int,
-    val total: Int,
-) {
-    val remaining: Int get() = (total - elapsed).coerceAtLeast(0)
 }

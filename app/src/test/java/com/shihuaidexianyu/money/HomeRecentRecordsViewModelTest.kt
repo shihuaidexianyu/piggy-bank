@@ -137,7 +137,6 @@ class HomeRecentRecordsViewModelTest {
         return HomeViewModel(
             observeHomeDashboardUseCase = home,
             devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
-            portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             savedStateHandle = SavedStateHandle(),
         )
     }

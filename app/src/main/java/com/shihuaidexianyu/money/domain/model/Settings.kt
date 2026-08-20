@@ -9,32 +9,7 @@ fun normalizeCurrencySymbol(value: String): String =
 data class PortableSettings(
     val currencySymbol: String = "¥",
     val amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
-    val budgetAmount: Long? = null,
-    val budgetPeriod: BudgetPeriod = BudgetPeriod.DEFAULT,
 )
-
-/** Which calendar window the spending budget is measured against. */
-enum class BudgetPeriod(val value: String) {
-    WEEKLY("weekly"),
-    MONTHLY("monthly"),
-    YEARLY("yearly"),
-    ;
-
-    companion object {
-        val DEFAULT = MONTHLY
-
-        fun fromValue(value: String?): BudgetPeriod =
-            entries.firstOrNull { it.value == value } ?: DEFAULT
-    }
-}
-
-/** The calendar window a budget period is measured against on the dashboard. */
-val BudgetPeriod.dashboardPeriod: DashboardPeriod
-    get() = when (this) {
-        BudgetPeriod.WEEKLY -> DashboardPeriod.WEEK
-        BudgetPeriod.MONTHLY -> DashboardPeriod.MONTH
-        BudgetPeriod.YEARLY -> DashboardPeriod.YEAR
-    }
 
 enum class AppRelockDelay(val value: String) {
     IMMEDIATELY("immediately"),
@@ -91,7 +66,3 @@ fun normalizeRecentAccountIds(accountIds: List<Long>): List<Long> =
         .distinct()
         .take(MAX_RECENT_ACCOUNT_IDS)
         .toList()
-
-fun requireValidBudgetAmount(amount: Long?) {
-    require(amount == null || amount > 0L) { "预算必须大于 0" }
-}

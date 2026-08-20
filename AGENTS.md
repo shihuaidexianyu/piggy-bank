@@ -5,10 +5,10 @@ This file contains essential context for AI coding agents working on the **Money
 ## Project Overview
 
 **Money** is a fully offline personal finance tracking app for Android, built with Kotlin and Jetpack Compose.
-It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, spending budgets, app shortcuts, biometric app lock, amount privacy masking, and dark mode.
+It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, app shortcuts, biometric app lock, amount privacy masking, and dark mode.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.5.28` (versionCode `137`)
+- **Version**: `2.5.29` (versionCode `138`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -21,7 +21,7 @@ It supports multi-account management (ordering, hiding, closing, reopening), cas
 | ------- | ------------ |
 | UI | Jetpack Compose (BOM 2025.10.01) + Material 3 |
 | Architecture | Clean Architecture (Domain / Data / UI) + MVVM |
-| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 17 |
+| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 18 |
 | Settings | Room (`portable_settings`, backupable) + DataStore Preferences 1.1.7 (device-local) |
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON backup export/import) |
@@ -111,7 +111,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   └── SystemTimeProviders.kt   #   System clock/zone providers
 ├── data/
 │   ├── dao/                     # Room DAOs (incl. HistoryRecordDao union query, LedgerAggregateDao)
-│   ├── db/                      # MoneyDatabase (version 14) + DataStore extensions
+│   ├── db/                      # MoneyDatabase (version 18) + DataStore extensions
 │   ├── migration/               # StartupMigrationCoordinator, RoomStartupMigrationBackend,
 │   │                            #   LegacySourceRecoveryExporter (legacy-store upgrade + recovery)
 │   ├── debug/                   # DebugSampleDataSeeder (debug builds only)
@@ -161,13 +161,13 @@ app/src/main/java/com/shihuaidexianyu/money/
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
    - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, `MONEY_BACKUP_SCHEMA_VERSION = 5`).
    - `repository/`: Interfaces only — `AccountRepository`, `TransactionRepository`, `LedgerAggregateRepository`, `PortableSettingsRepository`, `DevicePreferencesRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `BackupRepository`, `BackupJsonEncoder`, `DatabaseTransactionRunner`. (The former monolithic `SettingsRepository` was split: portable settings live in Room and travel with backups; device preferences live in DataStore and never leave the device.)
-   - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
+   - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
 
 2. **Data** (`data/`):
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. All four ledger record types use `deletedAt` soft deletion and unique `operationId` values. `HistoryRecordDao` unions 4 tables with keyset pagination; `LedgerAggregateDao` serves aggregate queries.
    - `repository/`: Concrete implementations plus `InMemory*` variants (`InMemoryAccountRepository`, `InMemoryTransactionRepository`, `InMemoryAccountReminderSettingsRepository`, `InMemoryRecurringReminderRepository`, `InMemoryPortableSettingsRepository`, `InMemoryDevicePreferencesRepository`) for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 17, `exportSchema = true` to `app/schemas/`).
+   - `db/MoneyDatabase.kt`: Room database (current version = 18, `exportSchema = true` to `app/schemas/`).
    - `migration/`: `StartupMigrationCoordinator` runs the legacy-store/settings upgrade before the ledger is exposed, surfacing recoverable-error states (retry, use current database, reset settings, export legacy source).
    - `export/`: `ExportJsonFileWriter` writes plaintext `.json` files with collision-resistant names.
    - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v5 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
@@ -242,7 +242,7 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **16**.
+Room schema is exported to `app/schemas/`. Current database version is **18**.
 
 Existing migrations:
 
@@ -262,6 +262,7 @@ Existing migrations:
 - `14 → 15`: Added `accounts.kind` (`funding`/`investment`, default `funding`). Reconciliation deltas on investment accounts are presented as investment P&L at read time.
 - `15 → 16`: Added `portable_settings.budgetPeriod` (`weekly`/`monthly`/`yearly`, default `monthly`) — the spending budget can be measured against the calendar week, month, or year. The DB column and backup JSON key for the amount keep the legacy `monthlyBudgetAmount` name for compatibility.
 - `16 → 17`: Removed the `savings_goals` table. Legacy backup goal fields are accepted for compatibility but ignored.
+- `17 → 18`: Removed the spending-budget columns from `portable_settings`. Legacy backup budget fields are accepted for compatibility but ignored.
 
 When modifying entities:
 

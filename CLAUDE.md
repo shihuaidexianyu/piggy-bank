@@ -45,7 +45,7 @@ Two Gradle modules: `:app` and `:benchmark` (self-instrumenting `com.android.tes
 
 Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
-- **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
+- **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
@@ -89,7 +89,7 @@ Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic u
 
 ## Database migrations
 
-Room schema version **17**, exported to `app/schemas/` (bundled as androidTest assets). Version 17 removes the former `savings_goals` table. When changing entities:
+Room schema version **18**, exported to `app/schemas/` (bundled as androidTest assets). Version 18 removes the former spending-budget columns from portable settings. When changing entities:
 
 1. Bump `MONEY_DATABASE_VERSION` in `MoneyDatabase.kt`.
 2. Add the `Migration` object there and register it in `MONEY_DATABASE_MIGRATIONS`.

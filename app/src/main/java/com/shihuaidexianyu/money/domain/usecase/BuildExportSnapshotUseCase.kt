@@ -161,8 +161,6 @@ private fun RecurringReminder.toBackup() = BackupRecurringReminder(
 private fun PortableSettings.toBackup() = BackupPortableSettings(
     currencySymbol = currencySymbol,
     amountColorMode = amountColorMode.value,
-    monthlyBudgetAmount = budgetAmount,
-    budgetPeriod = budgetPeriod.value,
 )
 
 private fun BalanceUpdateReminderConfig.toBackup() = BackupBalanceUpdateReminderConfig(
