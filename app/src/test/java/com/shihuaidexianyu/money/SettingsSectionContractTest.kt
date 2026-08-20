@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.ui.settings.NotificationSettingsAction
 import com.shihuaidexianyu.money.ui.settings.SETTINGS_SECTION_CONTRACTS
 import com.shihuaidexianyu.money.ui.settings.notificationSettingsPresentation
 import com.shihuaidexianyu.money.ui.settings.importReceiptHistoryRows
-import com.shihuaidexianyu.money.ui.settings.notificationChannelStatusRes
 import com.shihuaidexianyu.money.data.backup.ImportReceipt
 import com.shihuaidexianyu.money.data.backup.ImportReceiptCounts
 import com.shihuaidexianyu.money.data.backup.ImportReceiptKind
@@ -18,7 +17,7 @@ import org.junit.Test
 
 class SettingsSectionContractTest {
     @Test
-    fun `only newest committed receipt offers rollback while older receipts remain visible`() {
+    fun `only the rollback eligible receipt is shown`() {
         val older = receipt("older", importedAt = 100L)
         val latest = receipt("latest", importedAt = 200L)
 
@@ -27,26 +26,24 @@ class SettingsSectionContractTest {
             rollbackEligibleReceiptId = older.id,
         )
 
-        assertEquals(listOf("latest", "older"), rows.map { it.receipt.id })
-        assertFalse(rows.first().canRollback)
-        assertTrue(rows.last().canRollback)
+        assertEquals(listOf("older"), rows.map { it.receipt.id })
+        assertTrue(rows.single().canRollback)
     }
 
     @Test
-    fun `settings has exactly six sections with the approved ownership`() {
+    fun `settings has exactly five sections with the approved ownership`() {
         assertEquals(
             listOf(
                 R.string.settings_section_display to listOf(
                     "theme",
+                    "dynamic_color",
                     "amount_color",
                     "currency_symbol",
-                    "account_order",
                     "mask_in_app",
                 ),
-                R.string.settings_section_gestures to listOf("swipe_delete", "swipe_edit", "swipe_reconcile"),
-                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_widget", "hide_notification"),
+                R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification"),
                 R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
-                R.string.settings_section_data to listOf("plaintext_warning", "export_json", "import_preview", "receipt_history"),
+                R.string.settings_section_data to listOf("export_json", "import_preview", "receipt_rollback"),
                 R.string.settings_section_about to listOf("version", "offline_data_safety"),
             ),
             SETTINGS_SECTION_CONTRACTS.map { it.titleRes to it.itemKeys },
@@ -76,24 +73,6 @@ class SettingsSectionContractTest {
     }
 
     @Test
-    fun `recurring and balance channel rows use independent facts`() {
-        assertEquals(R.string.settings_channel_disabled, notificationChannelStatusRes(enabled = false))
-        assertEquals(R.string.settings_channel_enabled, notificationChannelStatusRes(enabled = true))
-        assertEquals(
-            listOf(R.string.settings_channel_disabled, R.string.settings_channel_enabled),
-            listOf(false, true).map(::notificationChannelStatusRes),
-        )
-        assertEquals(
-            listOf(R.string.settings_channel_disabled, R.string.settings_channel_disabled),
-            listOf(false, false).map(::notificationChannelStatusRes),
-        )
-        assertEquals(
-            listOf(R.string.settings_channel_enabled, R.string.settings_channel_enabled),
-            listOf(true, true).map(::notificationChannelStatusRes),
-        )
-    }
-
-    @Test
     fun `backup and about copy describe the actual offline plaintext model`() {
         val copy = java.io.File("src/main/res/values/strings.xml").readText()
         assertTrue(copy.contains("未加密 JSON"))
@@ -114,7 +93,7 @@ class SettingsSectionContractTest {
         safetySnapshotFileName = "money-pre-import-$importedAt-test.json",
         safetySnapshotSha256 = "c".repeat(64),
         schemaVersion = 4,
-        counts = ImportReceiptCounts(1, 2, 3, 4, 5, 6, 1),
+        counts = ImportReceiptCounts(1, 2, 3, 4, 5, 6),
         commitSequence = 0L,
     )
 }

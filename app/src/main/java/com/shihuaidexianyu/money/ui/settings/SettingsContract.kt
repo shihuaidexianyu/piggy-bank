@@ -14,15 +14,11 @@ data class SettingsSectionContract(
 val SETTINGS_SECTION_CONTRACTS: List<SettingsSectionContract> = listOf(
     SettingsSectionContract(
         R.string.settings_section_display,
-        listOf("theme", "amount_color", "currency_symbol", "account_order", "mask_in_app"),
+        listOf("theme", "dynamic_color", "amount_color", "currency_symbol", "mask_in_app"),
     ),
-    SettingsSectionContract(
-        R.string.settings_section_gestures,
-        listOf("swipe_delete", "swipe_edit", "swipe_reconcile"),
-    ),
-    SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_widget", "hide_notification")),
+    SettingsSectionContract(R.string.settings_section_privacy, listOf("biometric", "relock", "hide_recents", "hide_notification")),
     SettingsSectionContract(R.string.settings_section_notifications, listOf("permission_channels", "reminder_management", "account_reminder_config")),
-    SettingsSectionContract(R.string.settings_section_data, listOf("plaintext_warning", "export_json", "import_preview", "receipt_history")),
+    SettingsSectionContract(R.string.settings_section_data, listOf("export_json", "import_preview", "receipt_rollback")),
     SettingsSectionContract(R.string.settings_section_about, listOf("version", "offline_data_safety")),
 )
 
@@ -34,19 +30,9 @@ data class ImportReceiptHistoryRow(
 fun importReceiptHistoryRows(
     receipts: List<ImportReceipt>,
     rollbackEligibleReceiptId: String?,
-): List<ImportReceiptHistoryRow> = receipts.map { receipt ->
-        ImportReceiptHistoryRow(
-            receipt = receipt,
-            canRollback = receipt.id == rollbackEligibleReceiptId,
-        )
-    }
-
-@StringRes
-fun notificationChannelStatusRes(enabled: Boolean): Int = if (enabled) {
-    R.string.settings_channel_enabled
-} else {
-    R.string.settings_channel_disabled
-}
+): List<ImportReceiptHistoryRow> = receipts
+    .filter { it.id == rollbackEligibleReceiptId }
+    .map { ImportReceiptHistoryRow(receipt = it, canRollback = true) }
 
 enum class NotificationSettingsAction {
     REQUEST_PERMISSION,

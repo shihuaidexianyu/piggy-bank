@@ -205,5 +205,4 @@ private fun BackupValidationResult.toReceiptCounts() = ImportReceiptCounts(
     balanceUpdateCount,
     balanceAdjustmentCount,
     reminderCount,
-    savingsGoalCount,
 )

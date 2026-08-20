@@ -39,7 +39,6 @@ class DevicePreferencesRepositoryImpl(
             val current = DevicePreferencesMapper.fromPreferences(mutable)
             val migrated = if (current.biometricLock) {
                 current.copy(
-                    hideWidgetAmounts = true,
                     hideNotificationAmounts = true,
                     hideRecentTasks = true,
                 )
@@ -54,24 +53,16 @@ class DevicePreferencesRepositoryImpl(
     override suspend fun updateThemeMode(mode: ThemeMode) = edit { copy(themeMode = mode) }
     override suspend fun updateUseDynamicColor(enabled: Boolean) = edit { copy(useDynamicColor = enabled) }
     override suspend fun updateContinueRecording(enabled: Boolean) = edit { copy(continueRecording = enabled) }
-    override suspend fun updateHistorySwipeDeleteEnabled(enabled: Boolean) =
-        edit { copy(historySwipeDeleteEnabled = enabled) }
-    override suspend fun updateHistorySwipeEditEnabled(enabled: Boolean) =
-        edit { copy(historySwipeEditEnabled = enabled) }
-    override suspend fun updateAccountSwipeReconcileEnabled(enabled: Boolean) =
-        edit { copy(accountSwipeReconcileEnabled = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = edit { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() = edit {
         copy(
             biometricLock = true,
-            hideWidgetAmounts = true,
             hideNotificationAmounts = true,
             hideRecentTasks = true,
         )
     }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = edit { copy(relockDelay = delay) }
     override suspend fun updateMaskAmountsInApp(enabled: Boolean) = edit { copy(maskAmountsInApp = enabled) }
-    override suspend fun updateHideWidgetAmounts(enabled: Boolean) = edit { copy(hideWidgetAmounts = enabled) }
     override suspend fun updateHideNotificationAmounts(enabled: Boolean) = edit { copy(hideNotificationAmounts = enabled) }
     override suspend fun updateHideRecentTasks(enabled: Boolean) = edit { copy(hideRecentTasks = enabled) }
     override suspend fun updateNotificationPermissionRequested(requested: Boolean) =
@@ -110,13 +101,9 @@ object DevicePreferencesMapper {
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             useDynamicColor = preferences[Keys.UseDynamicColor] ?: false,
             continueRecording = preferences[Keys.ContinueRecording] ?: false,
-            historySwipeDeleteEnabled = preferences[Keys.HistorySwipeDeleteEnabled] ?: true,
-            historySwipeEditEnabled = preferences[Keys.HistorySwipeEditEnabled] ?: true,
-            accountSwipeReconcileEnabled = preferences[Keys.AccountSwipeReconcileEnabled] ?: true,
             biometricLock = preferences[Keys.BiometricLock] ?: false,
             relockDelay = AppRelockDelay.fromValue(preferences[Keys.RelockDelay]),
             maskAmountsInApp = preferences[Keys.MaskAmountsInApp] ?: false,
-            hideWidgetAmounts = preferences[Keys.HideWidgetAmounts] ?: false,
             hideNotificationAmounts = preferences[Keys.HideNotificationAmounts] ?: false,
             hideRecentTasks = preferences[Keys.HideRecentTasks] ?: false,
             notificationPermissionRequested = preferences[Keys.NotificationPermissionRequested] ?: false,
@@ -135,13 +122,9 @@ object DevicePreferencesMapper {
         preferences[Keys.ThemeMode] = value.themeMode.value
         preferences[Keys.UseDynamicColor] = value.useDynamicColor
         preferences[Keys.ContinueRecording] = value.continueRecording
-        preferences[Keys.HistorySwipeDeleteEnabled] = value.historySwipeDeleteEnabled
-        preferences[Keys.HistorySwipeEditEnabled] = value.historySwipeEditEnabled
-        preferences[Keys.AccountSwipeReconcileEnabled] = value.accountSwipeReconcileEnabled
         preferences[Keys.BiometricLock] = value.biometricLock
         preferences[Keys.RelockDelay] = value.relockDelay.value
         preferences[Keys.MaskAmountsInApp] = value.maskAmountsInApp
-        preferences[Keys.HideWidgetAmounts] = value.hideWidgetAmounts
         preferences[Keys.HideNotificationAmounts] = value.hideNotificationAmounts
         preferences[Keys.HideRecentTasks] = value.hideRecentTasks
         preferences[Keys.NotificationPermissionRequested] = value.notificationPermissionRequested
@@ -165,13 +148,9 @@ object DevicePreferencesMapper {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val UseDynamicColor = booleanPreferencesKey("use_dynamic_color")
         val ContinueRecording = booleanPreferencesKey("continue_recording")
-        val HistorySwipeDeleteEnabled = booleanPreferencesKey("history_swipe_delete_enabled")
-        val HistorySwipeEditEnabled = booleanPreferencesKey("history_swipe_edit_enabled")
-        val AccountSwipeReconcileEnabled = booleanPreferencesKey("account_swipe_reconcile_enabled")
         val BiometricLock = booleanPreferencesKey("biometric_lock")
         val RelockDelay = stringPreferencesKey("relock_delay")
         val MaskAmountsInApp = booleanPreferencesKey("mask_amounts_in_app")
-        val HideWidgetAmounts = booleanPreferencesKey("hide_widget_amounts")
         val HideNotificationAmounts = booleanPreferencesKey("hide_notification_amounts")
         val HideRecentTasks = booleanPreferencesKey("hide_recent_tasks")
         val NotificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")

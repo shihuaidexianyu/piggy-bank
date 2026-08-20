@@ -15,7 +15,6 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
 import com.shihuaidexianyu.money.domain.model.backup.BackupPortableSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
-import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
@@ -142,9 +141,6 @@ internal class RoomBackupSnapshotReader(
                         isEnabled = row?.isEnabled ?: fallback.isEnabled,
                     ),
                 )
-            },
-            savingsGoal = database.savingsGoalDao().query()?.let {
-                BackupSavingsGoal(it.id, it.targetAmount, it.createdAt, it.updatedAt)
             },
         )
     }

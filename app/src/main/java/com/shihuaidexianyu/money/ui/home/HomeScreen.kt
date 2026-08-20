@@ -67,7 +67,6 @@ import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.DashboardPeriod
 import com.shihuaidexianyu.money.domain.model.PortableSettings
-import com.shihuaidexianyu.money.domain.model.SavingsGoalProgress
 import com.shihuaidexianyu.money.domain.usecase.BudgetPace
 import com.shihuaidexianyu.money.domain.usecase.BudgetStatus
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -113,12 +112,6 @@ fun HomeScreen(
     onRetryBudgetSave: () -> Unit = {},
     onCloseBudget: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
-    onOpenSavingsGoalEditor: () -> Unit = {},
-    onDismissSavingsGoalEditor: () -> Unit = {},
-    onSavingsGoalInputChange: (String) -> Unit = {},
-    onSaveSavingsGoal: () -> Unit = {},
-    onRetrySavingsGoalSave: () -> Unit = {},
-    onClearSavingsGoal: () -> Unit = {},
     onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
 ) {
@@ -200,41 +193,6 @@ fun HomeScreen(
             onDismiss = { showCloseBudgetConfirm = false },
         )
     }
-    var showClearGoalConfirm by remember { mutableStateOf(false) }
-    if (state.showSavingsGoalEditor) {
-        val hasGoal = state.savingsGoalProgress != null
-        HomeAmountEditorDialog(
-            titleRes = if (hasGoal) R.string.savings_goal_edit_title else R.string.savings_goal_set_title,
-            fieldLabelRes = R.string.savings_goal_amount,
-            clearActionLabelRes = R.string.savings_goal_clear_action,
-            input = state.savingsGoalInput,
-            inputErrorRes = state.savingsGoalInputErrorRes,
-            saveErrorRes = state.savingsGoalSaveErrorRes,
-            isSaving = state.isSavingsGoalSaving,
-            hasValue = hasGoal,
-            onInputChange = onSavingsGoalInputChange,
-            onSave = if (state.savingsGoalSaveErrorRes != null) {
-                onRetrySavingsGoalSave
-            } else {
-                onSaveSavingsGoal
-            },
-            onClearValue = { showClearGoalConfirm = true },
-            onDismiss = onDismissSavingsGoalEditor,
-        )
-    }
-    if (showClearGoalConfirm) {
-        MoneyConfirmDialog(
-            title = stringResource(R.string.savings_goal_clear_title),
-            message = stringResource(R.string.savings_goal_clear_message),
-            onConfirm = {
-                showClearGoalConfirm = false
-                onClearSavingsGoal()
-            },
-            onDismiss = { showClearGoalConfirm = false },
-            confirmLabel = stringResource(R.string.action_clear),
-            destructive = true,
-        )
-    }
     Column(modifier = modifier) {
         TopAppBar(
             title = { Text(stringResource(R.string.home_title)) },
@@ -310,13 +268,6 @@ fun HomeScreen(
                             pace = renderedState.budgetPace,
                             settings = renderedState.settings,
                             onEdit = onOpenBudgetEditor,
-                        )
-                    }
-                    item {
-                        HomeSavingsGoalBlock(
-                            progress = renderedState.savingsGoalProgress,
-                            settings = renderedState.settings,
-                            onEdit = onOpenSavingsGoalEditor,
                         )
                     }
                     if (renderedState.dueReminders.isNotEmpty()) {
@@ -1036,80 +987,6 @@ private fun staleAccountCheckedText(lastBalanceUpdateAt: Long?): String {
         stringResource(R.string.balance_checked_today)
     } else {
         stringResource(R.string.balance_last_checked_days_format, days)
-    }
-}
-
-@Composable
-private fun HomeSavingsGoalBlock(
-    progress: SavingsGoalProgress?,
-    settings: PortableSettings,
-    onEdit: () -> Unit,
-) {
-    MoneySectionHeader(title = stringResource(R.string.home_savings_goal))
-    Card(
-        onClick = onEdit,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        if (progress == null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.home_savings_goal_not_set_description),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.savings_goal_set_action),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        } else {
-            val presentation = netWorthGoalProgressPresentation(
-                currentAmount = progress.currentAmount,
-                targetAmount = progress.targetAmount,
-            )
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = formatInAppAmount(progress.targetAmount, settings),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(presentation.percentageText, color = MaterialTheme.colorScheme.primary)
-                    Text(
-                        text = if (presentation.remainingAmount <= 0L) {
-                            stringResource(R.string.home_savings_goal_achieved)
-                        } else {
-                            stringResource(
-                                R.string.home_savings_goal_progress_format,
-                                formatInAppAmount(progress.currentAmount, settings),
-                                formatInAppAmount(presentation.remainingAmount, settings),
-                            )
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                LinearProgressIndicator(
-                    progress = { presentation.geometryPercent / 100f },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }
 }
 

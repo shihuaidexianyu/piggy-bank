@@ -7,7 +7,6 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
-import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccountReminderConfig
@@ -18,7 +17,6 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupMetadata
 import com.shihuaidexianyu.money.domain.model.backup.BackupPortableSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
-import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
@@ -26,7 +24,6 @@ import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsReposi
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
 
@@ -34,7 +31,6 @@ class BuildExportSnapshotUseCase(
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val accountRepository: AccountRepository,
     private val recurringReminderRepository: RecurringReminderRepository,
-    private val savingsGoalRepository: SavingsGoalRepository,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val databaseVersion: Int,
@@ -75,7 +71,6 @@ class BuildExportSnapshotUseCase(
                         config = (reminderConfigs[account.id] ?: BalanceUpdateReminderConfig()).toBackup(),
                     )
                 },
-                savingsGoal = savingsGoalRepository.query()?.toBackup(),
             )
         }
 }
@@ -177,11 +172,4 @@ private fun BalanceUpdateReminderConfig.toBackup() = BackupBalanceUpdateReminder
     hour = hour,
     minute = minute,
     isEnabled = isEnabled,
-)
-
-private fun SavingsGoal.toBackup() = BackupSavingsGoal(
-    id = id,
-    targetAmount = targetAmount,
-    createdAt = createdAt,
-    updatedAt = updatedAt,
 )

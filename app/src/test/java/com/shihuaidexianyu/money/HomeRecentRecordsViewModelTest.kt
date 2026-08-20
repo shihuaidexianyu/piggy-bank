@@ -6,7 +6,6 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryDevicePreferencesRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryPortableSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
@@ -15,16 +14,12 @@ import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.domain.usecase.CalculateCurrentBalanceUseCase
-import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,7 +90,6 @@ class HomeRecentRecordsViewModelTest {
         val viewModel = fixtureViewModel(
             accounts = accounts,
             ledger = ledger,
-            savingsGoalRepository = InMemorySavingsGoalRepository(),
             now = now,
         )
 
@@ -118,36 +112,11 @@ class HomeRecentRecordsViewModelTest {
         assertEquals("工资", records[2].title)
         assertEquals("现金", records[2].subtitle)
         assertEquals(12_345L, records[2].amount)
-        assertNull(state.savingsGoalProgress)
-    }
-
-    @Test
-    fun `savings goal progress is combined into home state`() = runBlocking {
-        val now = Instant.parse("2026-02-15T10:00:00Z").toEpochMilli()
-        val accounts = InMemoryAccountRepository()
-        val ledger = InMemoryTransactionRepository()
-        accounts.createAccount(Account(name = "现金", initialBalance = 30_000L, createdAt = 1L))
-        val savingsGoalRepository = InMemorySavingsGoalRepository()
-        savingsGoalRepository.upsert(targetAmount = 100_000L, now = now)
-        val viewModel = fixtureViewModel(
-            accounts = accounts,
-            ledger = ledger,
-            savingsGoalRepository = savingsGoalRepository,
-            now = now,
-        )
-
-        val progress = withTimeout(5_000L) {
-            viewModel.uiState.first { it.savingsGoalProgress != null || it.errorMessageRes != null }
-        }.savingsGoalProgress
-        assertEquals(100_000L, progress?.targetAmount)
-        assertEquals(30_000L, progress?.currentAmount)
-        assertEquals(false, progress?.isAchieved)
     }
 
     private fun fixtureViewModel(
         accounts: InMemoryAccountRepository,
         ledger: InMemoryTransactionRepository,
-        savingsGoalRepository: InMemorySavingsGoalRepository,
         now: Long,
     ): HomeViewModel {
         val clock = testClockProvider(now)
@@ -167,14 +136,6 @@ class HomeRecentRecordsViewModelTest {
         )
         return HomeViewModel(
             observeHomeDashboardUseCase = home,
-            observeSavingsGoalUseCase = ObserveSavingsGoalUseCase(
-                accountRepository = accounts,
-                savingsGoalRepository = savingsGoalRepository,
-                transactionRepository = ledger,
-                calculateAccountBalancesUseCase = balances,
-            ),
-            upsertSavingsGoalUseCase = UpsertSavingsGoalUseCase(savingsGoalRepository, clock),
-            clearSavingsGoalUseCase = ClearSavingsGoalUseCase(savingsGoalRepository),
             devicePreferencesRepository = InMemoryDevicePreferencesRepository(),
             portableSettingsRepository = InMemoryPortableSettingsRepository(PortableSettings()),
             savedStateHandle = SavedStateHandle(),

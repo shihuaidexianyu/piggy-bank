@@ -82,6 +82,7 @@ internal fun NavGraphBuilder.addAccountsGraph(
             state = state,
             effectFlow = viewModel.effectFlow,
             onManageAccount = { navController.navigate(MoneyDestination.editAccountRoute(accountId)) },
+            onReconcileAccount = { navController.navigate(MoneyDestination.updateBalanceRoute(accountId)) },
             onReopenAccount = viewModel::reopenAccount,
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,

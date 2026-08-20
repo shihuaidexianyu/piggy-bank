@@ -36,7 +36,6 @@ class AmountPrivacyPresentationTest {
         val fallback = failClosedDevicePreferences()
         assertTrue(fallback.maskAmountsInApp)
         assertTrue(fallback.hideRecentTasks)
-        assertTrue(fallback.hideWidgetAmounts)
         assertTrue(fallback.hideNotificationAmounts)
     }
 

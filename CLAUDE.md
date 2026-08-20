@@ -48,7 +48,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
-- **`navigation/`, `notification/`, `widget/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, home-screen widget, formatters/parsers.
+- **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
 
 ### Dependency injection is manual — do not add Hilt/Dagger/Koin
 
@@ -56,7 +56,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
 ### Startup gating
 
-`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before scheduling workers/widget refresh and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`. Debug sample data is seeded only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
+`MoneyApplication.onCreate` creates notification channels, builds the container, then on a background scope runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready` before scheduling notification workers and seeding debug sample data. **Never touch the ledger before `Ready`** — use `withReadyLedgerAccess`. Debug sample data is seeded only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.
 
 ### Ledger invariants
 
@@ -69,20 +69,15 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 
 ### External entry points
 
-App shortcuts, share-to-record (`ACTION_SEND` `text/plain`), the widget, and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
+App shortcuts and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
 
 ### Settings are split in two
 
-`PortableSettings` live in the Room `portable_settings` table and travel with backups. `DevicePreferences` live in DataStore (biometric lock, amount masks, recents hiding, widget/notification privacy) and never leave the device. There is no single `SettingsRepository`.
+`PortableSettings` live in the Room `portable_settings` table and travel with backups. `DevicePreferences` live in DataStore (biometric lock, in-app/notification amount masks, recents hiding) and never leave the device. There is no single `SettingsRepository`.
 
-### Savings goal
+### Notification refresh
 
-A nullable singleton (`id = 1`) represents one net-worth target. Progress uses total current net assets and has no deadline.
-
-### Widget and notification refresh
-
-- The widget is refreshed through `WidgetRefreshCoordinator`, with periodic `WidgetUpdateWorker` plus Room `InvalidationTracker` and a `hideWidgetAmounts` observer as triggers.
-- Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic unique work plus debounced one-time syncs). Legacy unique work names are cancelled at startup. Amounts can be masked independently via `hideNotificationAmounts`.
+Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic unique work plus debounced one-time syncs). Legacy unique work names are cancelled at startup. Amounts can be masked independently via `hideNotificationAmounts`.
 
 ## Code style
 
@@ -94,7 +89,7 @@ A nullable singleton (`id = 1`) represents one net-worth target. Progress uses t
 
 ## Database migrations
 
-Room schema version **16**, exported to `app/schemas/` (bundled as androidTest assets). When changing entities:
+Room schema version **17**, exported to `app/schemas/` (bundled as androidTest assets). Version 17 removes the former `savings_goals` table. When changing entities:
 
 1. Bump `MONEY_DATABASE_VERSION` in `MoneyDatabase.kt`.
 2. Add the `Migration` object there and register it in `MONEY_DATABASE_MIGRATIONS`.
@@ -112,4 +107,4 @@ Room schema version **16**, exported to `app/schemas/` (bundled as androidTest a
 - Import stages the URI into private cache, validates/previews the same bytes, writes a verified safety snapshot under `filesDir/pre_import_backups/`, then replaces portable data in one Room transaction, with durable receipts enabling rollback.
 - Release signing reads `signing/keystore.properties` (gitignored, as is all of `signing/`), falling back to `../timeline/keystore.properties`. Never commit keystores.
 - `allowBackup="false"` — the app deliberately does not use Android cloud/device-transfer backup.
-- Biometric app lock and amount privacy masking (in-app, widget, and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.
+- Biometric app lock and amount privacy masking (in-app and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.

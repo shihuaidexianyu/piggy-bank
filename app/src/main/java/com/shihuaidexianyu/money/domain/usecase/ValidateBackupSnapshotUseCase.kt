@@ -28,7 +28,6 @@ data class BackupValidationResult(
     val balanceUpdateCount: Int,
     val balanceAdjustmentCount: Int,
     val reminderCount: Int,
-    val savingsGoalCount: Int,
     val exportedAt: Long,
 ) {
     val ledgerRecordCount: Int
@@ -180,14 +179,6 @@ class ValidateBackupSnapshotUseCase(
         validateAggregateArithmetic(snapshot, accountsById)
         validateReminders(snapshot, accountsById)
         validateReminderConfigs(snapshot, accountsById)
-        snapshot.savingsGoal?.let { goal ->
-            require(goal.id == 1L) { "savingsGoal.id 必须为 1" }
-            requirePositive(goal.targetAmount, "savingsGoal.targetAmount")
-            requirePositive(goal.createdAt, "savingsGoal.createdAt")
-            require(goal.updatedAt >= goal.createdAt) { "savingsGoal.updatedAt 早于 createdAt" }
-            requireNotFuture(goal.updatedAt, snapshot.metadata.exportedAt, "savingsGoal.updatedAt")
-        }
-
         return BackupValidationResult(
             accountCount = snapshot.accounts.size,
             cashFlowCount = snapshot.cashFlowRecords.size,
@@ -195,7 +186,6 @@ class ValidateBackupSnapshotUseCase(
             balanceUpdateCount = snapshot.balanceUpdateRecords.size,
             balanceAdjustmentCount = snapshot.balanceAdjustmentRecords.size,
             reminderCount = snapshot.recurringReminders.size,
-            savingsGoalCount = if (snapshot.savingsGoal == null) 0 else 1,
             exportedAt = snapshot.metadata.exportedAt,
         )
     }

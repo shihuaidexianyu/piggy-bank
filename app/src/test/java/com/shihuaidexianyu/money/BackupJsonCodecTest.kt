@@ -29,7 +29,6 @@ class BackupJsonCodecTest {
         assertEquals("balance-adjustment:legacy-backup:41", snapshot.balanceAdjustmentRecords.single().operationId)
         assertEquals(snapshot.recurringReminders.single().nextDueAt, snapshot.recurringReminders.single().anchorDueAt)
         assertFalse(snapshot.accountReminderConfigs.single { it.accountId == 1L }.config.isEnabled)
-        assertNull(snapshot.savingsGoal)
     }
 
     @Test
@@ -53,14 +52,11 @@ class BackupJsonCodecTest {
     }
 
     @Test
-    fun `v3 fixture discards device fields and reduces smallest goal to singleton`() {
+    fun `v3 fixture discards removed device and savings goal fields`() {
         val snapshot = BackupJsonCodec.decode(fixture("v3.json"))
         val encoded = BackupJsonCodec.encode(snapshot)
 
         assertEquals("€", snapshot.portableSettings.currencySymbol)
-        assertEquals(1L, snapshot.savingsGoal?.id)
-        assertEquals(2_000L, snapshot.savingsGoal?.targetAmount)
-        assertEquals(200L, snapshot.savingsGoal?.updatedAt)
         assertEquals(300L, snapshot.accounts.single().closedAt)
         assertEquals("保留 purpose 原文", snapshot.cashFlowRecords.single().note)
         assertFalse(encoded.contains("themeMode"))
@@ -68,6 +64,7 @@ class BackupJsonCodecTest {
         assertFalse(encoded.contains("\"lastNotified"))
         assertFalse(encoded.contains("\"isArchived\""))
         assertFalse(encoded.contains("\"purpose\":"))
+        assertFalse(encoded.contains("savingsGoal"))
     }
 
     @Test

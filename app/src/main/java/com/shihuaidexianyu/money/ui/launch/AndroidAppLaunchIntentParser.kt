@@ -7,14 +7,11 @@ import com.shihuaidexianyu.money.domain.launch.AppLaunchRequest
 import com.shihuaidexianyu.money.domain.launch.AppLaunchRequestFactory
 import com.shihuaidexianyu.money.domain.notification.NotificationLaunchIdentity
 import com.shihuaidexianyu.money.notification.NotificationLaunchIntentConsumer
-import com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider
 
 object AndroidAppLaunchIntentParser {
     fun parse(intent: Intent?, token: String): AppLaunchRequest? {
         if (intent == null) return null
-        val external = intent.action == Intent.ACTION_SEND ||
-            intent.action == BalanceOverviewWidgetProvider.ACTION_OPEN_WIDGET_HOME ||
-            intent.hasExtra(SHORTCUT_ACTION_EXTRA) ||
+        val external = intent.hasExtra(SHORTCUT_ACTION_EXTRA) ||
             intent.action == com.shihuaidexianyu.money.domain.notification.MoneyNotificationIntentIdentity.ACTION_RECURRING ||
             intent.action == com.shihuaidexianyu.money.domain.notification.MoneyNotificationIntentIdentity.ACTION_BALANCE
         if (!external) return null
@@ -29,14 +26,6 @@ object AndroidAppLaunchIntentParser {
                 accountId = notification.accountId,
             )
             null -> when {
-                intent.action == BalanceOverviewWidgetProvider.ACTION_OPEN_WIDGET_HOME ->
-                    AppLaunchInput.WidgetHome
-                intent.action == Intent.ACTION_SEND -> {
-                    if (intent.type?.startsWith("text/") != true) return null
-                    intent.getStringExtra(Intent.EXTRA_TEXT)
-                        ?.let(AppLaunchInput::SharedText)
-                        ?: return null
-                }
                 intent.hasExtra(SHORTCUT_ACTION_EXTRA) -> intent
                     .getStringExtra(SHORTCUT_ACTION_EXTRA)
                     ?.let(AppLaunchInput::Shortcut)

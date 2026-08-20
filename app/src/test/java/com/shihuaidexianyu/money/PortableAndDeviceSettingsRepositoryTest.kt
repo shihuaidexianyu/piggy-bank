@@ -57,7 +57,6 @@ class PortableAndDeviceSettingsRepositoryTest {
             biometricLock = true,
             relockDelay = AppRelockDelay.FIVE_MINUTES,
             maskAmountsInApp = true,
-            hideWidgetAmounts = true,
             hideNotificationAmounts = true,
             hideRecentTasks = true,
             notificationPermissionRequested = true,

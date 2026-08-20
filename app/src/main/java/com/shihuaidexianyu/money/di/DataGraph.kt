@@ -17,14 +17,12 @@ import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.NotificationSyncingAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
-import com.shihuaidexianyu.money.data.repository.SavingsGoalRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
-import com.shihuaidexianyu.money.domain.repository.SavingsGoalRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.data.migration.RoomStartupMigrationBackend
 import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
@@ -91,11 +89,6 @@ internal class DataGraph(context: Context) {
             devicePreferencesRepository = devicePreferencesRepository,
         ),
     )
-
-    val savingsGoalRepository: SavingsGoalRepository =
-        SavingsGoalRepositoryImpl(
-            savingsGoalDao = moneyDatabase.savingsGoalDao(),
-        )
 
     val backupRepository: BackupRepository =
         BackupRepositoryImpl(

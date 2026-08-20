@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.domain.model.backup.MONEY_BACKUP_SCHEMA_VERSION
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryRecurringReminderRepository
-import com.shihuaidexianyu.money.data.repository.InMemorySavingsGoalRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.PortableSettings
@@ -28,37 +27,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class BuildExportJsonUseCaseTest {
-    @Test
-    fun `legacy v3 export emits zero or one singleton savings goal`() = runBlocking {
-        val goals = InMemorySavingsGoalRepository()
-        val reminderConfigs = InMemoryAccountReminderSettingsRepository()
-        val transactions = InMemoryTransactionRepository()
-        val accounts = InMemoryAccountRepository()
-        accounts.createAccount(Account(name = "A", initialBalance = 0L, createdAt = 1L))
-        accounts.createAccount(Account(name = "B", initialBalance = 0L, createdAt = 1L))
-        val useCase = BuildExportSnapshotUseCase(
-            accountReminderSettingsRepository = reminderConfigs,
-            accountRepository = accounts,
-            recurringReminderRepository = InMemoryRecurringReminderRepository(),
-            savingsGoalRepository = goals,
-            portableSettingsRepository = TestSettingsRepository(),
-            transactionRepository = transactions,
-            databaseVersion = 14,
-            clockProvider = { 99L },
-        )
-
-        assertEquals(null, useCase(1L).savingsGoal)
-        goals.upsert(10_000L, 2L)
-        goals.upsert(20_000L, 3L)
-        val exported = useCase(4L).savingsGoal
-
-        assertEquals(1L, exported?.id)
-        assertEquals(20_000L, exported?.targetAmount)
-        assertEquals(2, transactions.transactionInvocationCount)
-        assertEquals(2, reminderConfigs.queryInvocationCount)
-        assertEquals(0, reminderConfigs.getInvocationCount)
-    }
-
     @Test
     fun `export json includes metadata settings records reminders and deletion markers`() = runBlocking {
         val accountRepository = InMemoryAccountRepository()
@@ -173,7 +141,6 @@ class BuildExportJsonUseCaseTest {
                 accountReminderSettingsRepository = reminderSettingsRepository,
                 accountRepository = accountRepository,
                 recurringReminderRepository = reminderRepository,
-                savingsGoalRepository = InMemorySavingsGoalRepository(),
                 portableSettingsRepository = TestSettingsRepository(PortableSettings(currencySymbol = "元")),
                 transactionRepository = transactionRepository,
                 databaseVersion = 10,

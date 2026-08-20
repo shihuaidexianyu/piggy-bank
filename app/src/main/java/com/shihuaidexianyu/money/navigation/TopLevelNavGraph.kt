@@ -3,7 +3,6 @@ package com.shihuaidexianyu.money.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -19,9 +18,7 @@ import com.shihuaidexianyu.money.MoneyAppContainer
 import com.shihuaidexianyu.money.di.SystemClockProvider
 import com.shihuaidexianyu.money.di.SystemZoneIdProvider
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
-import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
-import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.accounts.AccountsScreen
 import com.shihuaidexianyu.money.ui.accounts.AccountsViewModel
@@ -32,8 +29,6 @@ import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
@@ -51,9 +46,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             factory = moneySavedStateViewModelFactory { savedStateHandle ->
                 HomeViewModel(
                     observeHomeDashboardUseCase = container.observeHomeDashboardUseCase,
-                    observeSavingsGoalUseCase = container.observeSavingsGoalUseCase,
-                    upsertSavingsGoalUseCase = container.upsertSavingsGoalUseCase,
-                    clearSavingsGoalUseCase = container.clearSavingsGoalUseCase,
                     devicePreferencesRepository = container.devicePreferencesRepository,
                     portableSettingsRepository = container.portableSettingsRepository,
                     savedStateHandle = savedStateHandle,
@@ -88,12 +80,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onOpenHistory = {
                     navController.navigateToTopLevelTab(MoneyDestination.History)
                 },
-                onOpenSavingsGoalEditor = viewModel::openSavingsGoalEditor,
-                onDismissSavingsGoalEditor = viewModel::dismissSavingsGoalEditor,
-                onSavingsGoalInputChange = viewModel::updateSavingsGoalInput,
-                onSaveSavingsGoal = viewModel::saveSavingsGoal,
-                onRetrySavingsGoalSave = viewModel::retrySavingsGoalSave,
-                onClearSavingsGoal = viewModel::clearSavingsGoal,
                 onOpenRecord = { record ->
                     when (record.kind) {
                         HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
@@ -127,8 +113,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     }
 
     composable(MoneyDestination.Accounts.route) {
-        val devicePreferences by container.devicePreferencesRepository.observe()
-            .collectAsStateWithLifecycle(initialValue = DevicePreferences())
         val viewModel = viewModel<AccountsViewModel>(
             factory = moneyViewModelFactory {
                 AccountsViewModel(
@@ -149,8 +133,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
                 onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
-                accountSwipeReconcileEnabled = devicePreferences.accountSwipeReconcileEnabled,
-                onReconcileAccount = { navController.navigate(MoneyDestination.updateBalanceRoute(it)) },
                 onRetry = viewModel::retry,
             )
     }
@@ -166,7 +148,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         // SettingsViewModel is Activity-scoped; recompute the current canonical content hash on
         // every Settings entry so rollback eligibility cannot survive an intervening mutation.
         LifecycleResumeEffect(viewModel) {
-            viewModel.retryImportHistory()
+            viewModel.refreshImportHistory()
             onPauseOrDispose { }
         }
         val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -178,30 +160,22 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onUseDynamicColorChange = viewModel::updateUseDynamicColor,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
-            onHistorySwipeDeleteChange = viewModel::updateHistorySwipeDeleteEnabled,
-            onHistorySwipeEditChange = viewModel::updateHistorySwipeEditEnabled,
-            onAccountSwipeReconcileChange = viewModel::updateAccountSwipeReconcileEnabled,
             onBiometricLockChange = onBiometricLockChange,
             onRelockDelayChange = viewModel::updateRelockDelay,
             onMaskAmountsInAppChange = viewModel::updateMaskAmountsInApp,
-            onHideWidgetAmountsChange = viewModel::updateHideWidgetAmounts,
             onHideNotificationAmountsChange = viewModel::updateHideNotificationAmounts,
             onHideRecentTasksChange = viewModel::updateHideRecentTasks,
             notificationPermissionState = notificationPermissionGateway.state,
-            recurringNotificationChannelEnabled = notificationPermissionGateway.recurringChannelEnabled,
-            balanceNotificationChannelEnabled = notificationPermissionGateway.balanceChannelEnabled,
             onRequestNotificationPermission = { notificationPermissionGateway.requestContextually() },
             onOpenNotificationSettings = notificationPermissionGateway.openSettings,
             onManageReminders = { navController.navigate(MoneyDestination.ReminderListRoute) },
             onManageAccountReminderConfigs = {
                 navController.navigateToTopLevelTab(MoneyDestination.Accounts)
             },
-            onManageAccountOrder = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
             onRollbackImport = viewModel::rollbackImport,
-            onRetryImportHistory = viewModel::retryImportHistory,
         )
     }
 }
@@ -209,7 +183,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
 /**
  * Shared wiring for the History tab and the account drill-down
  * (`history/account/{accountId}`). Both surfaces run the full History screen — search, filter
- * sheets, swipe actions, record editing — the drill-down just pins [lockedAccountId] into the
+ * sheets and record editing — the drill-down just pins [lockedAccountId] into the
  * view model so the account scope, title, and back affordance come from the route.
  */
 @Composable
@@ -219,8 +193,6 @@ private fun HistoryScreenHost(
     lockedAccountId: Long? = null,
     onBack: (() -> Unit)? = null,
 ) {
-    val devicePreferences by container.devicePreferencesRepository.observe()
-        .collectAsStateWithLifecycle(initialValue = DevicePreferences())
     val viewModel = viewModel<HistoryViewModel>(
         key = lockedAccountId?.let { "account_history_$it" },
         factory = moneyViewModelFactory {
@@ -234,13 +206,8 @@ private fun HistoryScreenHost(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
-    val deletedMessage = stringResource(R.string.ledger_record_deleted)
-    val deleteFailedMessage = stringResource(R.string.ledger_record_delete_failed)
     val closedAccountReadOnlyMessage = stringResource(R.string.account_closed_readonly_description)
-    val undoLabel = stringResource(R.string.action_undo)
-    val deletingRecordIds = remember { mutableSetOf<String>() }
     HistoryScreen(
         state = state,
         onKeywordChange = viewModel::updateKeyword,
@@ -284,58 +251,6 @@ private fun HistoryScreenHost(
                     HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
                     HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
                     HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
-                }
-            }
-        },
-        historySwipeDeleteEnabled = devicePreferences.historySwipeDeleteEnabled,
-        historySwipeEditEnabled = devicePreferences.historySwipeEditEnabled,
-        onDeleteRecord = delete@{ record ->
-            if (!record.canMutate || !deletingRecordIds.add(record.id)) return@delete
-            scope.launch {
-                try {
-                    val undoToken = when (record.kind) {
-                        HistoryRecordKind.CASH_FLOW ->
-                            container.deleteCashFlowRecordUseCase(record.recordId)
-                        HistoryRecordKind.TRANSFER ->
-                            container.deleteTransferRecordUseCase(record.recordId)
-                        HistoryRecordKind.BALANCE_UPDATE ->
-                            container.deleteBalanceUpdateRecordUseCase(record.recordId)
-                        HistoryRecordKind.BALANCE_ADJUSTMENT ->
-                            container.deleteBalanceAdjustmentUseCase(record.recordId)
-                    }
-                    if (undoToken != null) {
-                        rootSnackbarDispatcher?.dispatch(
-                            rootSnackbarEffect(
-                                message = deletedMessage,
-                                actionLabel = undoLabel,
-                                action = RootSnackbarAction.RestoreLedger(undoToken),
-                            ),
-                        )
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    rootSnackbarDispatcher?.dispatch(
-                        rootSnackbarEffect(error.message ?: deleteFailedMessage),
-                    )
-                } finally {
-                    deletingRecordIds.remove(record.id)
-                }
-            }
-        },
-        onEditRecord = { record ->
-            if (!record.canMutate) {
-                rootSnackbarDispatcher?.dispatch(rootSnackbarEffect(closedAccountReadOnlyMessage))
-            } else {
-                when (record.kind) {
-                    HistoryRecordKind.CASH_FLOW ->
-                        navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
-                    HistoryRecordKind.TRANSFER ->
-                        navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
-                    HistoryRecordKind.BALANCE_UPDATE ->
-                        navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
-                    HistoryRecordKind.BALANCE_ADJUSTMENT ->
-                        navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
                 }
             }
         },

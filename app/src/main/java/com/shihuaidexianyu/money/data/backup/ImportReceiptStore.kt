@@ -20,7 +20,6 @@ data class ImportReceiptCounts(
     val balanceUpdateCount: Int,
     val balanceAdjustmentCount: Int,
     val reminderCount: Int,
-    val savingsGoalCount: Int,
 )
 
 @Serializable

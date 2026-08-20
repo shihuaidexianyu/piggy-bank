@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Reorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,8 +48,6 @@ import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneyListSection
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.SwipeRevealAction
-import com.shihuaidexianyu.money.ui.common.SwipeRevealActionsBox
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
@@ -81,8 +78,6 @@ fun AccountsScreen(
     onAccountClick: (Long) -> Unit,
     onToggleClosedVisibility: () -> Unit,
     onReorderAccounts: () -> Unit = {},
-    accountSwipeReconcileEnabled: Boolean = true,
-    onReconcileAccount: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
 ) {
@@ -243,8 +238,6 @@ fun AccountsScreen(
                                         // With kind-split sections the kind is the header; only a
                                         // mixed list needs the per-row tag.
                                         onClick = { onAccountClick(account.id) },
-                                        reconcileEnabled = accountSwipeReconcileEnabled,
-                                        onReconcile = { onReconcileAccount(account.id) },
                                     )
                                     if (index != accounts.lastIndex) {
                                         MoneySectionDivider()
@@ -276,8 +269,6 @@ fun AccountsScreen(
                                     currencySettings = state.settings,
                                     totalBalance = openTotalBalance,
                                     onClick = { onAccountClick(account.id) },
-                                    reconcileEnabled = accountSwipeReconcileEnabled,
-                                    onReconcile = { onReconcileAccount(account.id) },
                                 )
                                 if (index != groups.hidden.lastIndex) {
                                     MoneySectionDivider()
@@ -343,8 +334,6 @@ private fun AccountRow(
     currencySettings: PortableSettings,
     totalBalance: Long,
     onClick: () -> Unit,
-    reconcileEnabled: Boolean = true,
-    onReconcile: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val balanceText = formatInAppAmount(account.balance, currencySettings)
@@ -390,98 +379,80 @@ private fun AccountRow(
     } else {
         null
     }
-    val reconcileAction = if (reconcileEnabled && !account.isClosed) {
-        SwipeRevealAction(
-            label = stringResource(R.string.account_swipe_reconcile),
-            icon = Icons.Rounded.CheckCircle,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            iconTint = LocalMoneyColors.current.current,
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(account.name)
+                    append(balanceSemantics)
+                    captionSemantics?.let { append("，$it") }
+                    shareSemantics?.let { append("，$it") }
+                }
+                role = Role.Button
+            },
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AccountIconBadge(
+            iconName = account.iconName,
+            colorName = account.colorName,
+            isClosed = account.isClosed,
+            size = 40.dp,
+            iconSize = 22.dp,
+            // The ring visualizes the same share printed at the row's trailing edge. Every
+            // open account gets one (a zero balance draws the bare track) so badge sizes —
+            // and therefore name alignment — stay uniform down the list.
+            shareFraction = if (!account.isClosed && totalBalance > 0L) {
+                (account.balance.toDouble() / totalBalance.toDouble()).toFloat()
+            } else {
+                null
+            },
         )
-    } else {
-        null
-    }
-    SwipeRevealActionsBox(
-        endAction = reconcileAction,
-        onEndAction = onReconcile,
-        contentClick = onClick,
-        modifier = modifier,
-    ) { contentClick ->
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = contentClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .semantics(mergeDescendants = true) {
-                    contentDescription = buildString {
-                        append(account.name)
-                        append(balanceSemantics)
-                        captionSemantics?.let { append("，$it") }
-                        shareSemantics?.let { append("，$it") }
-                    }
-                    role = Role.Button
-                },
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            AccountIconBadge(
-                iconName = account.iconName,
-                colorName = account.colorName,
-                isClosed = account.isClosed,
-                size = 40.dp,
-                iconSize = 22.dp,
-                // The ring visualizes the same share printed at the row's trailing edge. Every
-                // open account gets one (a zero balance draws the bare track) so badge sizes —
-                // and therefore name alignment — stay uniform down the list.
-                shareFraction = if (!account.isClosed && totalBalance > 0L) {
-                    (account.balance.toDouble() / totalBalance.toDouble()).toFloat()
+            Text(
+                text = account.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isDimmed) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
-                    null
+                    MaterialTheme.colorScheme.onSurface
                 },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
+            caption?.let {
                 Text(
-                    text = account.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isDimmed) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = captionColor,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
-                caption?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = captionColor,
-                        maxLines = 1,
-                    )
-                }
             }
-            Column(horizontalAlignment = Alignment.End) {
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = balanceText,
+                style = balanceStyle,
+                color = if (account.isClosed) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onBackground
+                },
+                maxLines = 1,
+            )
+            if (shareText.isNotEmpty()) {
                 Text(
-                    text = balanceText,
-                    style = balanceStyle,
-                    color = if (account.isClosed) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onBackground
-                    },
+                    text = shareText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
-                if (shareText.isNotEmpty()) {
-                    Text(
-                        text = shareText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }

@@ -15,7 +15,6 @@ import com.shihuaidexianyu.money.domain.model.BudgetPeriod
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.RecurringReminder
-import com.shihuaidexianyu.money.domain.model.SavingsGoal
 import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupAccount
 import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceAdjustmentRecord
@@ -24,7 +23,6 @@ import com.shihuaidexianyu.money.domain.model.backup.BackupBalanceUpdateReminder
 import com.shihuaidexianyu.money.domain.model.backup.BackupCashFlowRecord
 import com.shihuaidexianyu.money.domain.model.backup.BackupPortableSettings
 import com.shihuaidexianyu.money.domain.model.backup.BackupRecurringReminder
-import com.shihuaidexianyu.money.domain.model.backup.BackupSavingsGoal
 import com.shihuaidexianyu.money.domain.model.backup.BackupTransferRecord
 import com.shihuaidexianyu.money.domain.model.backup.MoneyBackupSnapshot
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
@@ -64,7 +62,6 @@ class BackupRepositoryImpl(
                     "生成安全快照后账本已发生变化，请重试导入"
                 }
             }
-            database.savingsGoalDao().deleteAll()
             database.recurringReminderDao().deleteAll()
             database.balanceAdjustmentRecordDao().deleteAll()
             database.balanceUpdateRecordDao().deleteAll()
@@ -82,7 +79,6 @@ class BackupRepositoryImpl(
                 normalized.balanceAdjustmentRecords.map { it.toDomain().toEntity() },
             )
             database.recurringReminderDao().insertAll(normalized.recurringReminders.map { it.toDomain().toEntity() })
-            normalized.savingsGoal?.let { database.savingsGoalDao().insert(it.toDomain().toEntity()) }
             portableSettingsRepository.replace(normalized.portableSettings.toDomain())
             accountReminderSettingsRepository.replaceReminderConfigs(
                 normalized.accountReminderConfigs.associate { row ->
@@ -200,11 +196,4 @@ private fun BackupBalanceUpdateReminderConfig.toDomain() = BalanceUpdateReminder
     minute = minute,
     isEnabled = isEnabled,
     lastNotifiedBoundaryAt = null,
-)
-
-private fun BackupSavingsGoal.toDomain() = SavingsGoal(
-    id = id,
-    targetAmount = targetAmount,
-    createdAt = createdAt,
-    updatedAt = updatedAt,
 )

@@ -16,7 +16,6 @@ class DevicePrivacyMigrationTest {
                 biometricLock = true,
                 maskAmountsInApp = false,
                 hideRecentTasks = false,
-                hideWidgetAmounts = false,
                 hideNotificationAmounts = false,
             ),
         )
@@ -26,11 +25,9 @@ class DevicePrivacyMigrationTest {
         val migrated = repository.query()
         assertFalse(migrated.maskAmountsInApp)
         assertTrue(migrated.hideRecentTasks)
-        assertTrue(migrated.hideWidgetAmounts)
         assertTrue(migrated.hideNotificationAmounts)
 
         repository.updateHideRecentTasks(false)
-        repository.updateHideWidgetAmounts(false)
         repository.updateHideNotificationAmounts(false)
         repository.migrateExternalPrivacyDefaultsIfNeeded()
 

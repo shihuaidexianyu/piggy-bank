@@ -4,18 +4,12 @@ import android.app.Application
 import com.shihuaidexianyu.money.notification.MoneyAppContainerProvider
 import com.shihuaidexianyu.money.notification.AndroidMoneyNotificationPublisher
 import com.shihuaidexianyu.money.notification.MoneyNotificationScheduler
-import com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider
-import com.shihuaidexianyu.money.widget.WidgetUpdateRequester
-import com.shihuaidexianyu.money.widget.WidgetPrivacyGeneration
-import androidx.room.InvalidationTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.shihuaidexianyu.money.data.migration.StartupMigrationState
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import com.shihuaidexianyu.money.ui.lock.AndroidBiometricAuthenticationGateway
 
 class MoneyApplication : Application(), MoneyAppContainerProvider {
@@ -51,8 +45,6 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
                 legacyAccountIds = legacyAccountIds,
                 requester = container.notificationSyncRequester,
             )
-            BalanceOverviewWidgetProvider.scheduleUpdate(this@MoneyApplication)
-            installWidgetRefreshTriggers()
             container.seedDebugSampleDataIfNeeded()
         }
     }
@@ -66,53 +58,12 @@ class MoneyApplication : Application(), MoneyAppContainerProvider {
     }
 
     fun prepareExternalPrivacyEnable() {
-        WidgetPrivacyGeneration.update(hidden = true) {
-            BalanceOverviewWidgetProvider.renderAllSafePlaceholders(this)
-        }
         container.syncMoneyNotificationsUseCase.preparePrivacyRefresh()
     }
 
     fun recoverExternalPrivacyEnableFailure() {
         appScope.launch {
-            val preferences = runCatching { container.devicePreferencesRepository.query() }
-                .getOrElse { com.shihuaidexianyu.money.domain.model.failClosedDevicePreferences() }
-            WidgetPrivacyGeneration.update(preferences.hideWidgetAmounts) {
-                if (preferences.hideWidgetAmounts) {
-                    BalanceOverviewWidgetProvider.renderAllSafePlaceholders(this@MoneyApplication)
-                }
-            }
-            WidgetUpdateRequester.requestDebounced(this@MoneyApplication)
             container.syncMoneyNotificationsUseCase.forceRefreshPrivacy()
-        }
-    }
-
-    private fun installWidgetRefreshTriggers() {
-        container.moneyDatabase.invalidationTracker.addObserver(
-            object : InvalidationTracker.Observer(
-                "accounts",
-                "cash_flow_records",
-                "transfer_records",
-                "balance_update_records",
-                "balance_adjustment_records",
-                "portable_settings",
-            ) {
-                override fun onInvalidated(tables: Set<String>) {
-                    WidgetUpdateRequester.requestDebounced(this@MoneyApplication)
-                }
-            },
-        )
-        appScope.launch {
-            container.devicePreferencesRepository.observe()
-                .map { it.hideWidgetAmounts }
-                .distinctUntilChanged()
-                .collect { hidden ->
-                    WidgetPrivacyGeneration.update(hidden) {
-                        if (hidden) {
-                            BalanceOverviewWidgetProvider.renderAllSafePlaceholders(this@MoneyApplication)
-                        }
-                    }
-                    WidgetUpdateRequester.requestDebounced(this@MoneyApplication)
-                }
         }
     }
 }

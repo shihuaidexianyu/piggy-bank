@@ -163,7 +163,7 @@ class ImportReceiptStoreTest {
         safetySnapshotFileName = "money-pre-import-100-safe.json",
         safetySnapshotSha256 = "c".repeat(64),
         schemaVersion = 4,
-        counts = ImportReceiptCounts(1, 2, 3, 4, 5, 6, 1),
+        counts = ImportReceiptCounts(1, 2, 3, 4, 5, 6),
         commitSequence = commitSequence,
     )
 

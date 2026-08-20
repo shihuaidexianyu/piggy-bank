@@ -12,11 +12,9 @@ data class AppLaunchRequest(
 ) : Serializable
 
 sealed interface AppLaunchDestination : Serializable {
-    data object Home : AppLaunchDestination
     data object BatchReconcile : AppLaunchDestination
     data object Transfer : AppLaunchDestination
     data class CashFlow(val direction: CashFlowDirection) : AppLaunchDestination
-    data class SharePreview(val originalText: String) : AppLaunchDestination
     data class RecurringNotification(
         val reminderId: Long,
         val expectedDueAt: Long,
@@ -26,15 +24,11 @@ sealed interface AppLaunchDestination : Serializable {
 
 sealed interface AppLaunchInput {
     data class Shortcut(val action: String) : AppLaunchInput
-    data class SharedText(val text: String) : AppLaunchInput
-    data object WidgetHome : AppLaunchInput
     data class RecurringNotification(val reminderId: Long, val expectedDueAt: Long) : AppLaunchInput
     data class BalanceNotification(val accountId: Long) : AppLaunchInput
 }
 
 object AppLaunchRequestFactory {
-    private const val MAX_SHARED_TEXT_LENGTH = 4_000
-
     fun create(token: String, input: AppLaunchInput): AppLaunchRequest? {
         if (token.isBlank()) return null
         val destination = when (input) {
@@ -45,11 +39,6 @@ object AppLaunchRequestFactory {
                 "record_transfer" -> AppLaunchDestination.Transfer
                 else -> return null
             }
-            is AppLaunchInput.SharedText -> AppLaunchDestination.SharePreview(
-                input.text.takeIf { it.isNotBlank() && it.length <= MAX_SHARED_TEXT_LENGTH }
-                    ?: return null,
-            )
-            AppLaunchInput.WidgetHome -> AppLaunchDestination.Home
             is AppLaunchInput.RecurringNotification -> AppLaunchDestination.RecurringNotification(
                 reminderId = input.reminderId.takeIf { it > 0L } ?: return null,
                 expectedDueAt = input.expectedDueAt.takeIf { it > 0L } ?: return null,

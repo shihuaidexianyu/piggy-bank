@@ -22,22 +22,4 @@ class AppLaunchRequestFactoryTest {
             )?.destination,
         )
     }
-
-    @Test
-    fun `share payload rejects blank and excessive text without parsing sensitive amount`() {
-        assertNull(AppLaunchRequestFactory.create("blank", AppLaunchInput.SharedText("  ")))
-        assertNull(
-            AppLaunchRequestFactory.create(
-                "large",
-                AppLaunchInput.SharedText("x".repeat(4_001)),
-            ),
-        )
-        assertEquals(
-            AppLaunchDestination.SharePreview("支出 ￥１，２３４．５６"),
-            AppLaunchRequestFactory.create(
-                "share",
-                AppLaunchInput.SharedText("支出 ￥１，２３４．５６"),
-            )?.destination,
-        )
-    }
 }

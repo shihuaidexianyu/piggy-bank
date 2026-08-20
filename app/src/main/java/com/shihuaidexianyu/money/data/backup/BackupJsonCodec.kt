@@ -47,7 +47,7 @@ object BackupJsonCodec : BackupJsonEncoder {
         }
         // The pre-v4 formats share one shape family ("settings" object, "savingsGoals" array) that
         // kotlinx decoding no longer sees after migration, so it is checked up front. v4+ files
-        // already have the modern shape ("portableSettings", "savingsGoal") and are fully
+        // already have the modern portable-settings shape and are fully
         // validated by decoding itself — running the legacy check against them would reject
         // valid backups.
         if (schemaVersion <= 3) root.requireLegacyShape(schemaVersion)
@@ -208,19 +208,6 @@ private fun migrateV3ToV4(root: JsonObject): JsonObject {
             configs += defaultReminderConfig(accountId, accountId !in closedIds)
         }
     }
-    val oldGoal = root.requiredArray("savingsGoals")
-        .map { it.jsonObject }
-        .minByOrNull { it.requiredLong("id") }
-    val goal = oldGoal?.let {
-        val createdAt = it.requiredLong("createdAt")
-        it.requiredLong("targetAmount")
-        JsonObject(
-            (it - "id") + mapOf(
-                "id" to JsonPrimitive(1L),
-                "updatedAt" to JsonPrimitive(createdAt),
-            ),
-        )
-    }
     val oldSettings = root.requiredObject("settings")
 
     return JsonObject(
@@ -242,7 +229,6 @@ private fun migrateV3ToV4(root: JsonObject): JsonObject {
             ),
             "recurringReminders" to JsonArray(reminders),
             "accountReminderConfigs" to JsonArray(configs),
-            "savingsGoal" to (goal ?: JsonNull),
         ),
     )
 }

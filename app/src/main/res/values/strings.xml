@@ -9,16 +9,6 @@
     <string name="shortcut_balance_check_short">核对余额</string>
     <string name="shortcut_balance_check_long">批量核对账户余额</string>
 
-    <!-- Widget -->
-    <string name="widget_balance_overview_title">总资产</string>
-    <string name="widget_balance_overview_description">显示总资产、本月收入和支出</string>
-    <string name="widget_this_month_income">本月收入</string>
-    <string name="widget_this_month_expense">本月支出</string>
-    <string name="widget_amount_semantics_format">%1$s %2$s</string>
-    <string name="widget_total_hidden_refreshing">总资产已隐藏，正在刷新</string>
-    <string name="widget_income_hidden_refreshing">本月收入已隐藏，正在刷新</string>
-    <string name="widget_expense_hidden_refreshing">本月支出已隐藏，正在刷新</string>
-
     <!-- Home -->
     <string name="home_title">首页</string>
     <string name="home_load_failed">首页加载失败，请重试</string>
@@ -113,8 +103,6 @@
     <string name="reminder_skip_failed">跳过失败，请刷新后重试</string>
     <string name="reminder_undo_stale">提醒已发生变化，无法撤销</string>
     <string name="reminder_undo_not_found">提醒已删除，无法撤销</string>
-    <string name="share_accounts_load_failed">无法读取开放账户</string>
-    <string name="goal_amount_invalid">请输入有效的目标金额</string>
     <string name="migration_preparing">正在准备账本…</string>
     <string name="migration_needed_title">账本迁移需要处理</string>
     <string name="migration_use_current">保留当前账本并忽略旧文件</string>
@@ -145,7 +133,6 @@
     <string name="accounts_management">管理</string>
     <string name="accounts_order">账户顺序</string>
     <string name="accounts_reorder_drag_hint">拖拽调整顺序</string>
-    <string name="settings_account_order_description">调整账户页和记账选择器中的账户顺序</string>
     <string name="accounts_no_open">还没有开放账户</string>
     <string name="accounts_none">还没有账户</string>
     <string name="accounts_closed_hint">关闭账户可以在下方查看。</string>
@@ -249,13 +236,6 @@
     <!-- Settings -->
     <string name="settings_title">设置</string>
     <string name="settings_section_display">显示</string>
-    <string name="settings_section_gestures">手势</string>
-    <string name="settings_swipe_delete">明细页左滑删除</string>
-    <string name="settings_swipe_delete_description">左滑直接删除记录，可从提示条撤销</string>
-    <string name="settings_swipe_edit">明细页右滑编辑</string>
-    <string name="settings_swipe_edit_description">右滑直接进入编辑页</string>
-    <string name="settings_swipe_reconcile">账户页左滑核对</string>
-    <string name="settings_swipe_reconcile_description">左滑直接进入余额核对</string>
     <string name="settings_section_privacy">隐私</string>
     <string name="settings_section_notifications">通知</string>
     <string name="settings_section_data">数据</string>
@@ -283,7 +263,6 @@
     <string name="settings_relock_time">重新锁定时间</string>
     <string name="settings_relock_description">使用单调计时，熄屏会立即锁定</string>
     <string name="settings_hide_recents">隐藏最近任务内容</string>
-    <string name="settings_hide_widget">隐藏桌面小组件金额</string>
     <string name="settings_hide_notifications">隐藏通知金额</string>
     <string name="settings_notification_permission_channels">通知权限与渠道</string>
     <string name="settings_request_permission">申请</string>
@@ -296,17 +275,12 @@
     <string name="settings_reminder_management_description">创建、暂停或处理周期提醒</string>
     <string name="settings_account_reminder_config">账户核对提醒配置</string>
     <string name="settings_account_reminder_description">进入账户管理，为每个开放账户设置核对周期</string>
-    <string name="settings_backup_format">备份格式</string>
     <string name="settings_export_data">导出数据</string>
     <string name="settings_exporting">导出中</string>
     <string name="settings_import_data">导入数据</string>
     <string name="settings_import_description">从 JSON 备份覆盖恢复当前数据</string>
     <string name="settings_importing">导入中</string>
     <string name="settings_import_history">导入记录</string>
-    <string name="settings_import_history_checking">正在校验当前账本与安全快照…</string>
-    <string name="settings_loading">加载中</string>
-    <string name="settings_import_history_error">导入记录加载失败</string>
-    <string name="settings_import_history_empty">暂无可撤销的导入或恢复记录</string>
     <string name="settings_restore_history">恢复记录</string>
     <string name="settings_rollback">撤销</string>
     <string name="settings_rollback_confirm_title">撤销这次导入？</string>
@@ -348,7 +322,6 @@
     <string name="account_detail_month_cash_flow">本月现金流</string>
     <string name="transfer_in">转入</string>
     <string name="transfer_out">转出</string>
-    <string name="account_swipe_reconcile">核对</string>
     <string name="account_detail_reconcile_description">按当前账面余额开始核对</string>
     <string name="account_detail_month_cash">本月收支</string>
     <string name="account_detail_month_investment_pnl">本月投资损益</string>
@@ -578,25 +551,6 @@
     <string name="accounts_save_order">保存顺序</string>
     <string name="accounts_restore_order">恢复默认顺序</string>
     <string name="accounts_hidden_short">已隐藏</string>
-    <string name="savings_goal_clear_title">清除净资产目标</string>
-    <string name="savings_goal_clear_message">仅清除目标设置，不会删除账户或账本记录。</string>
-    <string name="savings_goal_edit_title">修改净资产目标</string>
-    <string name="savings_goal_set_title">设置净资产目标</string>
-    <string name="savings_goal_amount">目标金额</string>
-    <string name="savings_goal_set_action">设置目标</string>
-    <string name="savings_goal_clear_action">清除目标</string>
-    <string name="share_choose_open_account">选择开放账户</string>
-    <string name="share_preview_title">分享内容预览</string>
-    <string name="share_uncertain">解析结果需要确认</string>
-    <string name="share_confirm_parsed">已解析分享内容，请确认后保存</string>
-    <string name="share_multiple_amounts">检测到多个可能金额，请点选或手动填写正确金额</string>
-    <string name="share_no_open_account">没有可记账的开放账户</string>
-    <string name="share_create_account">创建账户</string>
-    <string name="share_note_label">备注（可选，最多 200 字）</string>
-    <string name="share_time_description">可修改分享记录时间</string>
-    <string name="share_confirm_save">确认并保存</string>
-    <string name="share_original_text_title">分享原文</string>
-    <string name="share_save_failed_retry">保存失败，请重试</string>
     <string name="lock_checking">正在检查应用锁…</string>
     <string name="lock_locked">账本已锁定</string>
     <string name="lock_authenticate">验证身份</string>

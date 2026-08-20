@@ -24,7 +24,6 @@ data class MoneyBackupSnapshot(
     val balanceAdjustmentRecords: List<BackupBalanceAdjustmentRecord>,
     val recurringReminders: List<BackupRecurringReminder>,
     val accountReminderConfigs: List<BackupAccountReminderConfig>,
-    val savingsGoal: BackupSavingsGoal? = null,
 )
 
 @Serializable
@@ -151,12 +150,4 @@ data class BackupBalanceUpdateReminderConfig(
     val hour: Int,
     val minute: Int,
     val isEnabled: Boolean = true,
-)
-
-@Serializable
-data class BackupSavingsGoal(
-    val id: Long = 1L,
-    val targetAmount: Long,
-    val createdAt: Long,
-    val updatedAt: Long,
 )

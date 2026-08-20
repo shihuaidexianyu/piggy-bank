@@ -40,34 +40,7 @@ data class SettingsUiState(
     val isImporting: Boolean = false,
     val importHistory: List<ImportReceipt> = emptyList(),
     val rollbackEligibleReceiptId: String? = null,
-    val isLoadingImportHistory: Boolean = true,
-    val importHistoryErrorMessage: String? = null,
 )
-
-internal data class ImportHistoryLoadState(
-    val receipts: List<ImportReceipt> = emptyList(),
-    val rollbackEligibleReceiptId: String? = null,
-    val isLoading: Boolean = true,
-    val errorMessage: String? = null,
-)
-
-internal suspend fun loadImportHistoryState(
-    load: suspend () -> ImportHistoryWithRollbackEligibility,
-): ImportHistoryLoadState = try {
-    val result = load()
-    ImportHistoryLoadState(
-        receipts = result.receipts,
-        rollbackEligibleReceiptId = result.rollbackEligibleReceiptId,
-        isLoading = false,
-    )
-} catch (error: CancellationException) {
-    throw error
-} catch (error: Exception) {
-    ImportHistoryLoadState(
-        isLoading = false,
-        errorMessage = error.userMessage("导入记录加载失败，请重试"),
-    )
-}
 
 internal suspend fun commitPortableSettingsMutation(
     mutation: suspend () -> Unit,
@@ -134,12 +107,11 @@ class SettingsViewModel(
     private val backupImportCoordinator: BackupImportCoordinator,
     private val clockProvider: ClockProvider,
     private val forceRefreshNotificationPrivacy: suspend () -> Unit = {},
-    private val onWidgetPrivacyChanging: (Boolean) -> Unit = {},
     private val onNotificationPrivacyChanging: (Boolean) -> Unit = {},
 ) : ViewModel() {
     private val isExporting = MutableStateFlow(false)
     private val isImporting = MutableStateFlow(false)
-    private val importHistoryState = MutableStateFlow(ImportHistoryLoadState())
+    private val importHistoryState = MutableStateFlow(emptyImportHistory())
     private val effects = MutableSharedFlow<SettingsEffect>(extraBufferCapacity = 1)
     val effectFlow = effects.asSharedFlow()
     private var importHistoryLoadJob: Job? = null
@@ -159,8 +131,6 @@ class SettingsViewModel(
                 isImporting = importing,
                 importHistory = history.receipts,
                 rollbackEligibleReceiptId = history.rollbackEligibleReceiptId,
-                isLoadingImportHistory = history.isLoading,
-                importHistoryErrorMessage = history.errorMessage,
             )
         }
             .stateIn(
@@ -173,22 +143,18 @@ class SettingsViewModel(
         refreshImportHistory()
     }
 
-    fun retryImportHistory() {
-        refreshImportHistory()
-    }
-
-    private fun refreshImportHistory() {
+    fun refreshImportHistory() {
         importHistoryLoadJob?.cancel()
-        importHistoryState.value = importHistoryState.value.copy(
-            isLoading = true,
-            errorMessage = null,
-            rollbackEligibleReceiptId = null,
-        )
+        importHistoryState.value = emptyImportHistory()
         importHistoryLoadJob = viewModelScope.launch {
-            importHistoryState.value = withContext(Dispatchers.IO) {
-                loadImportHistoryState {
+            importHistoryState.value = try {
+                withContext(Dispatchers.IO) {
                     backupImportCoordinator.historyWithRollbackEligibility()
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                emptyImportHistory()
             }
         }
     }
@@ -207,18 +173,6 @@ class SettingsViewModel(
         viewModelScope.launch { devicePreferencesRepository.updateUseDynamicColor(enabled) }
     }
 
-    fun updateHistorySwipeDeleteEnabled(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateHistorySwipeDeleteEnabled(enabled) }
-    }
-
-    fun updateHistorySwipeEditEnabled(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateHistorySwipeEditEnabled(enabled) }
-    }
-
-    fun updateAccountSwipeReconcileEnabled(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateAccountSwipeReconcileEnabled(enabled) }
-    }
-
     fun updateAmountColorMode(amountColorMode: AmountColorMode) {
         commitPortableSettingsChange {
             portableSettingsRepository.updateAmountColorMode(amountColorMode)
@@ -231,13 +185,6 @@ class SettingsViewModel(
 
     fun updateMaskAmountsInApp(enabled: Boolean) {
         viewModelScope.launch { devicePreferencesRepository.updateMaskAmountsInApp(enabled) }
-    }
-
-    fun updateHideWidgetAmounts(enabled: Boolean) {
-        viewModelScope.launch {
-            onWidgetPrivacyChanging(enabled)
-            devicePreferencesRepository.updateHideWidgetAmounts(enabled)
-        }
     }
 
     fun updateHideNotificationAmounts(enabled: Boolean) {
@@ -353,3 +300,8 @@ class SettingsViewModel(
         }
     }
 }
+
+private fun emptyImportHistory() = ImportHistoryWithRollbackEligibility(
+    receipts = emptyList(),
+    rollbackEligibleReceiptId = null,
+)

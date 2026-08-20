@@ -16,7 +16,6 @@ import com.shihuaidexianyu.money.data.dao.LocalMigrationStateDao
 import com.shihuaidexianyu.money.data.dao.LedgerAggregateDao
 import com.shihuaidexianyu.money.data.dao.PortableSettingsDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
-import com.shihuaidexianyu.money.data.dao.SavingsGoalDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.AccountReminderConfigEntity
@@ -26,10 +25,9 @@ import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
 import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
-import com.shihuaidexianyu.money.data.entity.SavingsGoalEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 16
+const val MONEY_DATABASE_VERSION = 17
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -314,6 +312,12 @@ private val MIGRATION_15_16 = object : Migration(15, 16) {
     }
 }
 
+private val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS savings_goals")
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -330,6 +334,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_13_14,
     MIGRATION_14_15,
     MIGRATION_15_16,
+    MIGRATION_16_17,
 )
 
 @Database(
@@ -340,7 +345,6 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         BalanceUpdateRecordEntity::class,
         BalanceAdjustmentRecordEntity::class,
         RecurringReminderEntity::class,
-        SavingsGoalEntity::class,
         PortableSettingsEntity::class,
         AccountReminderConfigEntity::class,
         LocalMigrationStateEntity::class,
@@ -356,7 +360,6 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun balanceAdjustmentRecordDao(): BalanceAdjustmentRecordDao
     abstract fun historyRecordDao(): HistoryRecordDao
     abstract fun recurringReminderDao(): RecurringReminderDao
-    abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun portableSettingsDao(): PortableSettingsDao
     abstract fun accountReminderConfigDao(): AccountReminderConfigDao
     abstract fun localMigrationStateDao(): LocalMigrationStateDao

@@ -54,6 +54,7 @@ fun AccountDetailScreen(
     state: AccountDetailUiState,
     effectFlow: SharedFlow<AccountDetailEffect>,
     onManageAccount: () -> Unit,
+    onReconcileAccount: () -> Unit,
     onReopenAccount: () -> Unit,
     onBackToAccounts: () -> Unit,
     onViewAllHistory: () -> Unit = {},
@@ -159,6 +160,12 @@ fun AccountDetailScreen(
                         )
                     }
                 } else {
+                    Button(
+                        onClick = onReconcileAccount,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.balance_reconcile_title))
+                    }
                     // The reminder schedule line only makes sense while the reminder is enabled.
                     if (state.reminderConfig.isEnabled) {
                         Text(

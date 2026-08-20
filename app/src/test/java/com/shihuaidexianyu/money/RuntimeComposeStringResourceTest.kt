@@ -30,9 +30,8 @@ class RuntimeComposeStringResourceTest {
             File(sourceRoot, "ui/common/AsyncContent.kt"),
             File(sourceRoot, "ui/history/HistoryViewModel.kt"),
         )
-        val widgetFiles = File(sourceRoot, "widget").walkTopDown().filter(File::isFile)
         val chineseString = Regex("\"[^\"\\r\\n]*[\\p{IsHan}][^\"\\r\\n]*\"")
-        val violations = (uiFiles + navigationFiles + indirectRuntimeCopy + widgetFiles)
+        val violations = (uiFiles + navigationFiles + indirectRuntimeCopy)
             .flatMap { file ->
                 file.readLines().asSequence().mapIndexedNotNull { index, line ->
                     val code = line.substringBefore("//")

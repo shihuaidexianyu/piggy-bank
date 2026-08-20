@@ -28,7 +28,6 @@ class ValidateBackupSnapshotUseCaseTest {
         assertEquals(1, result.transferCount)
         assertEquals(1, result.balanceUpdateCount)
         assertEquals(1, result.balanceAdjustmentCount)
-        assertEquals(1, result.savingsGoalCount)
     }
 
     @Test

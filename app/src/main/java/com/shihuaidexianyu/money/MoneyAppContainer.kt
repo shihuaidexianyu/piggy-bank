@@ -32,8 +32,6 @@ class MoneyAppContainer(context: Context) {
 
     val recurringReminderRepository get() = dataGraph.recurringReminderRepository
 
-    val savingsGoalRepository get() = dataGraph.savingsGoalRepository
-
     val backupRepository get() = dataGraph.backupRepository
 
     val calculateCurrentBalanceUseCase get() = useCaseGraph.calculateCurrentBalanceUseCase
@@ -106,12 +104,6 @@ class MoneyAppContainer(context: Context) {
     val undoSkipReminderUseCase get() = useCaseGraph.undoSkipReminderUseCase
 
     val observeDueRemindersUseCase get() = useCaseGraph.observeDueRemindersUseCase
-
-    val observeSavingsGoalUseCase get() = useCaseGraph.observeSavingsGoalUseCase
-
-    val upsertSavingsGoalUseCase get() = useCaseGraph.upsertSavingsGoalUseCase
-
-    val clearSavingsGoalUseCase get() = useCaseGraph.clearSavingsGoalUseCase
 
     val buildExportSnapshotUseCase get() = useCaseGraph.buildExportSnapshotUseCase
 

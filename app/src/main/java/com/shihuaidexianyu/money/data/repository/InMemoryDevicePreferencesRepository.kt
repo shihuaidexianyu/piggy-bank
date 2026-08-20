@@ -28,7 +28,6 @@ class InMemoryDevicePreferencesRepository(
         if (externalPrivacyDefaultsMigrated) return
         if (state.value.biometricLock) {
             state.value = state.value.copy(
-                hideWidgetAmounts = true,
                 hideNotificationAmounts = true,
                 hideRecentTasks = true,
             )
@@ -39,19 +38,12 @@ class InMemoryDevicePreferencesRepository(
     override suspend fun updateThemeMode(mode: ThemeMode) = update { copy(themeMode = mode) }
     override suspend fun updateUseDynamicColor(enabled: Boolean) = update { copy(useDynamicColor = enabled) }
     override suspend fun updateContinueRecording(enabled: Boolean) = update { copy(continueRecording = enabled) }
-    override suspend fun updateHistorySwipeDeleteEnabled(enabled: Boolean) =
-        update { copy(historySwipeDeleteEnabled = enabled) }
-    override suspend fun updateHistorySwipeEditEnabled(enabled: Boolean) =
-        update { copy(historySwipeEditEnabled = enabled) }
-    override suspend fun updateAccountSwipeReconcileEnabled(enabled: Boolean) =
-        update { copy(accountSwipeReconcileEnabled = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = update { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() {
         beforeEnableBiometricLock()
         update {
         copy(
             biometricLock = true,
-            hideWidgetAmounts = true,
             hideNotificationAmounts = true,
             hideRecentTasks = true,
         )
@@ -59,7 +51,6 @@ class InMemoryDevicePreferencesRepository(
     }
     override suspend fun updateRelockDelay(delay: AppRelockDelay) = update { copy(relockDelay = delay) }
     override suspend fun updateMaskAmountsInApp(enabled: Boolean) = update { copy(maskAmountsInApp = enabled) }
-    override suspend fun updateHideWidgetAmounts(enabled: Boolean) = update { copy(hideWidgetAmounts = enabled) }
     override suspend fun updateHideNotificationAmounts(enabled: Boolean) = update { copy(hideNotificationAmounts = enabled) }
     override suspend fun updateHideRecentTasks(enabled: Boolean) = update { copy(hideRecentTasks = enabled) }
     override suspend fun updateNotificationPermissionRequested(requested: Boolean) =

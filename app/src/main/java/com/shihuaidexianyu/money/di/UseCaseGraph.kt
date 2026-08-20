@@ -13,19 +13,16 @@ import com.shihuaidexianyu.money.domain.usecase.CreateAccountUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.UpsertSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.CreateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceAdjustmentUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteBalanceUpdateRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteReminderUseCase
-import com.shihuaidexianyu.money.domain.usecase.ClearSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.DeleteTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountDetailUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveAccountClosureIssuesUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveDueRemindersUseCase
 import com.shihuaidexianyu.money.domain.usecase.ObserveHomeDashboardUseCase
-import com.shihuaidexianyu.money.domain.usecase.ObserveSavingsGoalUseCase
 import com.shihuaidexianyu.money.domain.usecase.ProcessDueReminderUseCase
 import com.shihuaidexianyu.money.domain.usecase.RefreshAccountActivityStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.ReopenAccountUseCase
@@ -311,27 +308,10 @@ internal class UseCaseGraph(
         reminderRepository = data.recurringReminderRepository,
     )
 
-    val observeSavingsGoalUseCase = ObserveSavingsGoalUseCase(
-        accountRepository = data.accountRepository,
-        savingsGoalRepository = data.savingsGoalRepository,
-        transactionRepository = data.transactionRepository,
-        calculateAccountBalancesUseCase = calculateAccountBalancesUseCase,
-    )
-
-    val upsertSavingsGoalUseCase = UpsertSavingsGoalUseCase(
-        savingsGoalRepository = data.savingsGoalRepository,
-        clockProvider = SystemClockProvider,
-    )
-
-    val clearSavingsGoalUseCase = ClearSavingsGoalUseCase(
-        savingsGoalRepository = data.savingsGoalRepository,
-    )
-
     val buildExportSnapshotUseCase = BuildExportSnapshotUseCase(
         accountReminderSettingsRepository = data.accountReminderSettingsRepository,
         accountRepository = data.accountRepository,
         recurringReminderRepository = data.recurringReminderRepository,
-        savingsGoalRepository = data.savingsGoalRepository,
         portableSettingsRepository = data.portableSettingsRepository,
         transactionRepository = data.transactionRepository,
         databaseVersion = MONEY_DATABASE_VERSION,

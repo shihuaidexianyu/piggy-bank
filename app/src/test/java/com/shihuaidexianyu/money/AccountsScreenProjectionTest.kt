@@ -5,7 +5,6 @@ import com.shihuaidexianyu.money.ui.accounts.accountGroups
 import com.shihuaidexianyu.money.ui.accounts.accountClosurePresentation
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailUiState
 import com.shihuaidexianyu.money.ui.accounts.canMutateLedger
-import com.shihuaidexianyu.money.ui.home.netWorthGoalProgressPresentation
 import com.shihuaidexianyu.money.R
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -13,24 +12,6 @@ import kotlin.test.assertTrue
 import org.junit.Test
 
 class AccountsScreenProjectionTest {
-    @Test
-    fun `net worth goal percentage is exact and geometry clamps without long overflow`() {
-        val negative = netWorthGoalProgressPresentation(Long.MIN_VALUE, targetAmount = 1L)
-        assertEquals(0, negative.geometryPercent)
-        assertEquals("-922337203685477580800%", negative.percentageText)
-        assertEquals(Long.MAX_VALUE, negative.remainingAmount)
-
-        val huge = netWorthGoalProgressPresentation(Long.MAX_VALUE, targetAmount = 1L)
-        assertEquals(100, huge.geometryPercent)
-        assertEquals("922337203685477580700%", huge.percentageText)
-        assertEquals(0L, huge.remainingAmount)
-
-        val partial = netWorthGoalProgressPresentation(currentAmount = 1L, targetAmount = 3L)
-        assertEquals(33, partial.geometryPercent)
-        assertEquals("33%", partial.percentageText)
-        assertEquals(2L, partial.remainingAmount)
-    }
-
     @Test
     fun `account groups distinguish normal hidden and closed without dropping balances`() {
         val normal = item(id = 1L, balance = 100L)

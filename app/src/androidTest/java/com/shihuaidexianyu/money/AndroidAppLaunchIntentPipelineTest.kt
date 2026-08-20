@@ -1,6 +1,5 @@
 package com.shihuaidexianyu.money
 
-import android.content.ClipData
 import android.content.Intent
 import androidx.core.net.toUri
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,7 +8,6 @@ import com.shihuaidexianyu.money.domain.launch.AppLaunchRequestQueue
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.notification.MoneyNotificationIntentIdentity
 import com.shihuaidexianyu.money.ui.launch.AndroidAppLaunchIntentParser
-import com.shihuaidexianyu.money.widget.BalanceOverviewWidgetProvider
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.assertEquals
@@ -21,10 +19,8 @@ class AndroidAppLaunchIntentPipelineTest {
     @Test
     fun initialAndMultipleNewIntentsAreFifoOnceAndSourcesAreCleared() {
         val initial = shortcutIntent("record_outflow")
-        val firstNew = shareIntent("支付 ￥１，２３４．５６")
-        val secondNew = Intent(BalanceOverviewWidgetProvider.ACTION_OPEN_WIDGET_HOME).apply {
-            data = "money://widget/home".toUri()
-        }
+        val firstNew = shortcutIntent("record_transfer")
+        val secondNew = shortcutIntent("balance_check")
         val queue = AppLaunchRequestQueue()
         listOf(initial, firstNew, secondNew).mapIndexed { index, source ->
             requireNotNull(AndroidAppLaunchIntentParser.parse(source, "token-$index"))
@@ -39,21 +35,10 @@ class AndroidAppLaunchIntentPipelineTest {
     }
 
     @Test
-    fun shortcutShareWidgetAndNotificationMapOnlyToTypedPayloads() {
+    fun shortcutAndNotificationMapOnlyToTypedPayloads() {
         assertEquals(
             AppLaunchDestination.Transfer,
             AndroidAppLaunchIntentParser.parse(shortcutIntent("record_transfer"), "shortcut")?.destination,
-        )
-        assertEquals(
-            AppLaunchDestination.SharePreview("收入 ¥88.00"),
-            AndroidAppLaunchIntentParser.parse(shareIntent("收入 ¥88.00"), "share")?.destination,
-        )
-        assertEquals(
-            AppLaunchDestination.Home,
-            AndroidAppLaunchIntentParser.parse(
-                Intent(BalanceOverviewWidgetProvider.ACTION_OPEN_WIDGET_HOME),
-                "widget",
-            )?.destination,
         )
         val notification = Intent(MoneyNotificationIntentIdentity.ACTION_RECURRING).apply {
             data = "money://notification/recurring/9".toUri()
@@ -70,13 +55,6 @@ class AndroidAppLaunchIntentPipelineTest {
 
     private fun shortcutIntent(value: String) = Intent(Intent.ACTION_VIEW).apply {
         putExtra(AndroidAppLaunchIntentParser.SHORTCUT_ACTION_EXTRA, value)
-    }
-
-    private fun shareIntent(text: String) = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        data = "content://private/share".toUri()
-        clipData = ClipData.newPlainText("shared", text)
-        putExtra(Intent.EXTRA_TEXT, text)
     }
 
     private fun assertCleared(intent: Intent) {

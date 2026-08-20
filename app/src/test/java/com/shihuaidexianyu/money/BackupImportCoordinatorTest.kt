@@ -311,7 +311,7 @@ class BackupImportCoordinatorTest {
         safetySnapshotFileName = safetyFileName,
         safetySnapshotSha256 = safetySha256,
         schemaVersion = 4,
-        counts = ImportReceiptCounts(1, 1, 0, 1, 1, 1, 1),
+        counts = ImportReceiptCounts(1, 1, 0, 1, 1, 1),
         commitSequence = 0L,
     )
 

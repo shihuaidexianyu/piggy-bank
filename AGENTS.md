@@ -5,10 +5,10 @@ This file contains essential context for AI coding agents working on the **Money
 ## Project Overview
 
 **Money** is a fully offline personal finance tracking app for Android, built with Kotlin and Jetpack Compose.
-It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, a net-worth savings goal, a home-screen widget, app shortcuts, share-to-record, biometric app lock, amount privacy masking, and dark mode.
+It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, spending budgets, app shortcuts, biometric app lock, amount privacy masking, and dark mode.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.5.22` (versionCode `131`)
+- **Version**: `2.5.28` (versionCode `137`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -21,11 +21,11 @@ It supports multi-account management (ordering, hiding, closing, reopening), cas
 | ------- | ------------ |
 | UI | Jetpack Compose (BOM 2025.10.01) + Material 3 |
 | Architecture | Clean Architecture (Domain / Data / UI) + MVVM |
-| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 16 |
+| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 17 |
 | Settings | Room (`portable_settings`, backupable) + DataStore Preferences 1.1.7 (device-local) |
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON backup export/import) |
-| Background work | WorkManager 2.10.1 (notification sync, widget refresh) |
+| Background work | WorkManager 2.10.1 (notification sync) |
 | App entry | AndroidX Splashscreen 1.0.1, edge-to-edge |
 | Biometrics | AndroidX Biometric 1.2.0-alpha05 |
 | DI | Manual (no Hilt/Dagger/Koin) via `MoneyAppContainer` → `DataGraph` + `UseCaseGraph` |
@@ -102,7 +102,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 ├── MainActivity.kt              # Entry point: FragmentActivity (BiometricPrompt host), splash screen,
 │                                #   edge-to-edge, app-lock gate, startup-migration gate, launch queue
 ├── MoneyApplication.kt          # Application class (creates container, notification channels, startup
-│                                #   migration, schedules workers/widget, installs widget refresh triggers)
+│                                #   migration, schedules notification workers)
 ├── MoneyApp.kt                  # Root Compose app
 ├── MoneyAppContainer.kt         # Top-level DI container (delegates to DataGraph + UseCaseGraph)
 ├── di/                          # Manual DI wiring
@@ -115,9 +115,9 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── migration/               # StartupMigrationCoordinator, RoomStartupMigrationBackend,
 │   │                            #   LegacySourceRecoveryExporter (legacy-store upgrade + recovery)
 │   ├── debug/                   # DebugSampleDataSeeder (debug builds only)
-│   ├── entity/                  # Room entities (10 tables)
+│   ├── entity/                  # Room entities (9 tables)
 │   ├── export/                  # ExportJsonFileWriter (plaintext JSON only)
-│   ├── backup/                  # BackupJsonCodec (v4, v1→v4 migrations), staged import, safety
+│   ├── backup/                  # BackupJsonCodec (v5, v1→v5 migrations), staged import, safety
 │   │                            #   snapshots, import receipts, BackupRepositoryImpl
 │   └── repository/              # Repository implementations + InMemory* test variants
 ├── domain/
@@ -138,10 +138,6 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── BalanceCheckWorker.kt              # Stale-account "balance needs check" notifications
 │   ├── AndroidMoneyNotificationPublisher.kt  # Channels + posting
 │   └── NotificationLaunchIntentConsumer.kt   # Notification deep links
-├── widget/
-│   ├── BalanceOverviewWidgetProvider.kt   # Home-screen widget (total assets + month flow)
-│   ├── WidgetRefreshCoordinator.kt        # Debounced refresh requests, privacy generation
-│   └── WidgetUpdateWorker.kt              # Periodic widget refresh
 ├── ui/
 │   ├── accounts/                # Accounts list, detail, create, edit, reorder
 │   ├── balance/                 # Balance update, batch reconcile, update/adjustment detail & edit
@@ -149,14 +145,13 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   │                            #   async content scaffolding, form policies, snackbar queue, UiEffect
 │   ├── history/                 # History & search screen
 │   ├── home/                    # Home dashboard
-│   ├── launch/                  # Launch-intent parsing + routing queue (shortcuts/share/notifications)
+│   ├── launch/                  # Launch-intent parsing + routing queue (shortcuts/notifications)
 │   ├── lock/                    # Biometric app lock (AppLockScreen, AppLockViewModel, gateway)
 │   ├── record/                  # Record/edit cash flow & transfer
 │   ├── reminder/                # Recurring reminders + notification permission gateway
 │   ├── settings/                # App settings (incl. export/import)
-│   ├── share/                   # Share-to-record preview (ACTION_SEND text/plain)
 │   └── theme/                   # Material 3 theming (light + dark + dynamic color)
-└── util/                        # Formatters, parsers, time utilities, validators, share-text extractor
+└── util/                        # Formatters, parsers, time utilities, validators
 ```
 
 ## Architecture Rules
@@ -165,17 +160,17 @@ app/src/main/java/com/shihuaidexianyu/money/
 
 1. **Domain** (`domain/`): Pure Kotlin. No Android framework dependencies.
    - `model/`: Enums and value objects plus `@Serializable` backup DTOs (`MoneyBackupSnapshot`, `MONEY_BACKUP_SCHEMA_VERSION = 5`).
-   - `repository/`: Interfaces only — `AccountRepository`, `TransactionRepository`, `LedgerAggregateRepository`, `PortableSettingsRepository`, `DevicePreferencesRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `SavingsGoalRepository`, `BackupRepository`, `BackupJsonEncoder`, `DatabaseTransactionRunner`. (The former monolithic `SettingsRepository` was split: portable settings live in Room and travel with backups; device preferences live in DataStore and never leave the device.)
+   - `repository/`: Interfaces only — `AccountRepository`, `TransactionRepository`, `LedgerAggregateRepository`, `PortableSettingsRepository`, `DevicePreferencesRepository`, `AccountReminderSettingsRepository`, `RecurringReminderRepository`, `BackupRepository`, `BackupJsonEncoder`, `DatabaseTransactionRunner`. (The former monolithic `SettingsRepository` was split: portable settings live in Room and travel with backups; device preferences live in DataStore and never leave the device.)
    - `usecase/`: Single-responsibility business logic plus shared helpers (`LedgerBalanceCalculator`, `HomeProjector`, `BudgetPolicy`, `ReminderNextDueCalculator`, validators). Use cases accept repository interfaces via constructor.
 
 2. **Data** (`data/`):
    - `entity/`: Room entities. Amounts are always stored as `Long` (cents/fen).
    - `dao/`: Room DAOs. All four ledger record types use `deletedAt` soft deletion and unique `operationId` values. `HistoryRecordDao` unions 4 tables with keyset pagination; `LedgerAggregateDao` serves aggregate queries.
-   - `repository/`: Concrete implementations plus `InMemory*` variants (`InMemoryAccountRepository`, `InMemoryTransactionRepository`, `InMemoryAccountReminderSettingsRepository`, `InMemoryRecurringReminderRepository`, `InMemorySavingsGoalRepository`, `InMemoryPortableSettingsRepository`, `InMemoryDevicePreferencesRepository`) for unit tests.
-   - `db/MoneyDatabase.kt`: Room database (current version = 16, `exportSchema = true` to `app/schemas/`).
+   - `repository/`: Concrete implementations plus `InMemory*` variants (`InMemoryAccountRepository`, `InMemoryTransactionRepository`, `InMemoryAccountReminderSettingsRepository`, `InMemoryRecurringReminderRepository`, `InMemoryPortableSettingsRepository`, `InMemoryDevicePreferencesRepository`) for unit tests.
+   - `db/MoneyDatabase.kt`: Room database (current version = 17, `exportSchema = true` to `app/schemas/`).
    - `migration/`: `StartupMigrationCoordinator` runs the legacy-store/settings upgrade before the ledger is exposed, surfacing recoverable-error states (retry, use current database, reset settings, export legacy source).
    - `export/`: `ExportJsonFileWriter` writes plaintext `.json` files with collision-resistant names.
-   - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v4 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
+   - `backup/`: `BackupJsonCodec` (kotlinx.serialization + v1→v5 migrations), staged URI copies, validated safety snapshots, durable import receipts, and `BackupRepositoryImpl`.
 
 3. **UI** (`ui/`):
    - One package per feature.
@@ -187,13 +182,13 @@ app/src/main/java/com/shihuaidexianyu/money/
 All dependencies are wired manually. `MoneyAppContainer` delegates to two graph objects:
 
 - `di/DataGraph.kt` — creates the Room database, repositories, the plaintext export writer, staged backup reader, safety snapshot/receipt stores, the notification publisher/sync requester, and the startup migration backend. `AccountReminderSettingsRepositoryImpl` is wrapped in `NotificationSyncingAccountReminderSettingsRepository` so config changes trigger a notification sync.
-- `di/UseCaseGraph.kt` — constructs 40+ use cases, wiring repository interfaces and shared helper use cases (e.g. `RefreshAccountActivityStateUseCase`, `CalculateCurrentBalanceUseCase`, `ObserveSavingsGoalUseCase`).
+- `di/UseCaseGraph.kt` — constructs the use cases, wiring repository interfaces and shared helpers such as `RefreshAccountActivityStateUseCase` and `CalculateCurrentBalanceUseCase`.
 
 ViewModels are created via `moneyViewModelFactory` in `navigation/NavigationViewModels.kt`. Do **not** introduce Hilt, Dagger, or Koin without explicit approval.
 
 ### Startup Sequence
 
-`MoneyApplication.onCreate` creates notification channels synchronously, builds the container, then on a background scope: runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready`, applies notification privacy, schedules `MoneyNotificationScheduler.scheduleAfterReady(...)`, schedules the widget update, installs widget refresh triggers (Room `InvalidationTracker` + `hideWidgetAmounts` observer), and seeds debug sample data (debuggable builds only). Ledger access before `Ready` is gated by the coordinator.
+`MoneyApplication.onCreate` creates notification channels synchronously, builds the container, then on a background scope: runs `StartupMigrationCoordinator.runMigration()` and waits for `StartupMigrationState.Ready`, applies notification privacy, schedules `MoneyNotificationScheduler.scheduleAfterReady(...)`, and seeds debug sample data (debuggable builds only). Ledger access before `Ready` is gated by the coordinator.
 
 ### Mutation Side-Effect Pattern
 
@@ -266,6 +261,7 @@ Existing migrations:
 - `13 → 14`: Rebuilt accounts and ledger tables for hidden/closed lifecycle state, tombstones, operation IDs, reminder anchors, portable settings, reminder configs, and migration state.
 - `14 → 15`: Added `accounts.kind` (`funding`/`investment`, default `funding`). Reconciliation deltas on investment accounts are presented as investment P&L at read time.
 - `15 → 16`: Added `portable_settings.budgetPeriod` (`weekly`/`monthly`/`yearly`, default `monthly`) — the spending budget can be measured against the calendar week, month, or year. The DB column and backup JSON key for the amount keep the legacy `monthlyBudgetAmount` name for compatibility.
+- `16 → 17`: Removed the `savings_goals` table. Legacy backup goal fields are accepted for compatibility but ignored.
 
 When modifying entities:
 
@@ -287,10 +283,9 @@ When modifying entities:
   - `BalanceAdjustment`: Manual correction ledger event.
 - **Balance calculation**: Uses `LedgerBalanceCalculator` semantics: before account opening the balance is `0`; from opening onward balance is `initialBalance + inflow - outflow + transferIn - transferOut + manualAdjustment + reconciliationDelta`.
 - **Reminders**: Recurring reminders use `MONTHLY`, `YEARLY`, or `CUSTOM_DAYS` periods anchored to the first due time. WorkManager performs a 15-minute periodic check plus debounced one-time synchronization. No exact-alarm permission is used.
-- **Export/import**: Backup schema v5 contains portable settings, accounts (including account kind since v5), all four ledger record types (including tombstones and operation IDs), reminders, account reminder configs, and the optional singleton savings goal. v1–v4 files import with defaults (v4 accounts default to the funding kind). Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
-- **Savings goal**: A nullable singleton (`id = 1`) represents one net-worth target. Progress uses total current net assets and has no deadline.
-- **Settings split**: `PortableSettings` (Room `portable_settings` table) travel with backups; `DevicePreferences` (DataStore: biometric lock, amount masks, recents hiding, widget/notification privacy) are device-local and never exported.
-- **External entry points**: App shortcuts, share-to-record (`ACTION_SEND` `text/plain`), widget, and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
+- **Export/import**: Backup schema v5 contains portable settings, accounts (including account kind since v5), all four ledger record types (including tombstones and operation IDs), reminders, and account reminder configs. v1–v4 files import with defaults (v4 accounts default to the funding kind); legacy savings-goal fields are ignored. Export is plaintext JSON only. Import first copies the selected URI into private cache, validates and previews the same bytes, writes a verified safety snapshot, and replaces portable data in one Room transaction. Durable receipts provide conditional rollback.
+- **Settings split**: `PortableSettings` (Room `portable_settings` table) travel with backups; `DevicePreferences` (DataStore: biometric lock, in-app/notification amount masks, recents hiding) are device-local and never exported.
+- **External entry points**: App shortcuts and notification deep links are normalized into `AppLaunchRequest`s and routed through the launch queue in `ui/launch/`.
 
 ## Security Considerations
 
@@ -298,7 +293,7 @@ When modifying entities:
 - **Data export**: Manual export writes unencrypted JSON to app-private cache and shares it only through a `FileProvider` URI under `cache/exports/`. The UI must warn users to save it only to a trusted location.
 - **Pre-import backup**: Before any replacement, `SafetySnapshotStore` atomically writes and verifies a snapshot under `filesDir/pre_import_backups/`; `ImportReceiptStore` records its hash and supports rollback without importing device-local privacy preferences.
 - **Biometric lock**: Optional app-wide biometric lock (`ui/lock/`: `AppLockScreen` + `AppLockViewModel` + `AndroidBiometricAuthenticationGateway`, hosted by `MainActivity` as a `FragmentActivity`), gated by a device preference.
-- **Privacy masking**: Amounts can be masked in-app, in the widget (`hideWidgetAmounts`, with safe placeholder rendering), and in notifications (`hideNotificationAmounts`) independently.
+- **Privacy masking**: Amounts can be masked in-app and in notifications independently.
 - **Backup**: `AndroidManifest.xml` sets `allowBackup="false"` and provides `dataExtractionRules`. The app does not rely on Android automatic cloud/device-transfer backup; use manual export for user-controlled data transfer.
 - **Signing**: Release builds require `signing/keystore.properties` (gitignored; the whole `signing/` directory is excluded), with `../timeline/keystore.properties` as a legacy fallback. The build throws if neither exists. Never commit keystore files or `keystore.properties`.
 - **Debug data**: `DebugSampleDataSeeder` seeds sample data only when `ApplicationInfo.FLAG_DEBUGGABLE` is true.

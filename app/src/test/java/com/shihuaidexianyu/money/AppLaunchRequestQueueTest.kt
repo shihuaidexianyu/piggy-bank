@@ -15,9 +15,9 @@ class AppLaunchRequestQueueTest {
     fun `initial and multiple new intents route once in fifo token order`() {
         val queue = AppLaunchRequestQueue()
         val requests = listOf(
-            AppLaunchRequest("initial", AppLaunchDestination.Home),
+            AppLaunchRequest("initial", AppLaunchDestination.Transfer),
             AppLaunchRequest("new-1", AppLaunchDestination.BatchReconcile),
-            AppLaunchRequest("new-2", AppLaunchDestination.SharePreview("支出 ¥1,234.56")),
+            AppLaunchRequest("new-2", AppLaunchDestination.BalanceNotification(2L)),
         )
         requests.forEach(queue::offer)
         queue.offer(requests.first())
@@ -37,7 +37,7 @@ class AppLaunchRequestQueueTest {
 
     @Test
     fun `request is not routable before startup ready and app unlocked`() {
-        val request = AppLaunchRequest("locked", AppLaunchDestination.Home)
+        val request = AppLaunchRequest("locked", AppLaunchDestination.Transfer)
 
         assertNull(
             pendingRequestForRouting(

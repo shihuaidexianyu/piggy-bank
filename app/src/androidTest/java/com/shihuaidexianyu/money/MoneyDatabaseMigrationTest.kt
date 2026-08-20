@@ -712,6 +712,32 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion16To17DropsSavingsGoalTable() {
+        val dbName = "$TEST_DB-v16-remove-savings-goal"
+        helper.createDatabase(dbName, 16).apply {
+            execSQL(
+                "INSERT INTO savings_goals (id, targetAmount, createdAt, updatedAt) VALUES (1, 100000, 1000, 1000)",
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 17,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'savings_goals'",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

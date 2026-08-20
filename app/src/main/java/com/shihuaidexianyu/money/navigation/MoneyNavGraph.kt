@@ -214,7 +214,7 @@ fun MoneyNavGraph(
     )
     var fabExpanded by remember { mutableStateOf(false) }
     val createFirstAccountMessage = stringResource(R.string.ledger_fab_create_first_message)
-    val createAccountLabel = stringResource(R.string.share_create_account)
+    val createAccountLabel = stringResource(R.string.accounts_create)
     val needSecondAccountMessage = stringResource(R.string.ledger_fab_need_second_message)
     val manageAccountsLabel = stringResource(R.string.ledger_fab_manage_accounts)
     val notificationStateChangedMessage = stringResource(R.string.notification_state_changed)
@@ -268,7 +268,6 @@ fun MoneyNavGraph(
         val request = appLaunchRequest ?: return@LaunchedEffect
         var showNotificationStateChanged = false
         when (val requested = request.destination) {
-            AppLaunchDestination.Home -> navController.navigateToTopLevelTab(MoneyDestination.Home)
             AppLaunchDestination.BatchReconcile ->
                 navController.navigate(MoneyDestination.BatchReconcileRoute)
             AppLaunchDestination.Transfer ->
@@ -276,13 +275,6 @@ fun MoneyNavGraph(
             is AppLaunchDestination.CashFlow -> navController.navigate(
                 MoneyDestination.recordCashFlowRoute(requested.direction, accountId = 0L),
             )
-            is AppLaunchDestination.SharePreview -> {
-                navController.currentBackStackEntry?.savedStateHandle?.set(
-                    "shared_text_preview",
-                    requested.originalText,
-                )
-                navController.navigate(MoneyDestination.SharePreviewRoute)
-            }
             is AppLaunchDestination.RecurringNotification -> showNotificationStateChanged =
                 routeNotificationDestination(
                 destination = resolveNotificationDestination(

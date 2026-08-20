@@ -66,28 +66,20 @@ fun SettingsScreen(
     onUseDynamicColorChange: (Boolean) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
-    onHistorySwipeDeleteChange: (Boolean) -> Unit,
-    onHistorySwipeEditChange: (Boolean) -> Unit,
-    onAccountSwipeReconcileChange: (Boolean) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
     onRelockDelayChange: (AppRelockDelay) -> Unit,
     onMaskAmountsInAppChange: (Boolean) -> Unit,
-    onHideWidgetAmountsChange: (Boolean) -> Unit,
     onHideNotificationAmountsChange: (Boolean) -> Unit,
     onHideRecentTasksChange: (Boolean) -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
-    recurringNotificationChannelEnabled: Boolean,
-    balanceNotificationChannelEnabled: Boolean,
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
     onManageReminders: () -> Unit,
     onManageAccountReminderConfigs: () -> Unit,
-    onManageAccountOrder: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
     onConfirmImport: (String) -> Unit,
     onRollbackImport: (String) -> Unit,
-    onRetryImportHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val settings = state.portableSettings
@@ -309,12 +301,6 @@ fun SettingsScreen(
                     },
                 )
                 MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.accounts_order),
-                    subtitle = stringResource(R.string.settings_account_order_description),
-                    onClick = onManageAccountOrder,
-                )
-                MoneySectionDivider()
                 PrivacySwitchRow(
                     title = stringResource(R.string.settings_mask_in_app),
                     checked = devicePreferences.maskAmountsInApp,
@@ -325,55 +311,6 @@ fun SettingsScreen(
 
         item {
             MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[1].titleRes))
-        }
-        item {
-            MoneyListSection {
-                MoneyListRow(
-                    title = stringResource(R.string.settings_swipe_delete),
-                    subtitle = stringResource(R.string.settings_swipe_delete_description),
-                    showChevron = false,
-                    switchChecked = devicePreferences.historySwipeDeleteEnabled,
-                    onClick = { onHistorySwipeDeleteChange(!devicePreferences.historySwipeDeleteEnabled) },
-                    accessory = {
-                        Switch(
-                            checked = devicePreferences.historySwipeDeleteEnabled,
-                            onCheckedChange = onHistorySwipeDeleteChange,
-                        )
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_swipe_edit),
-                    subtitle = stringResource(R.string.settings_swipe_edit_description),
-                    showChevron = false,
-                    switchChecked = devicePreferences.historySwipeEditEnabled,
-                    onClick = { onHistorySwipeEditChange(!devicePreferences.historySwipeEditEnabled) },
-                    accessory = {
-                        Switch(
-                            checked = devicePreferences.historySwipeEditEnabled,
-                            onCheckedChange = onHistorySwipeEditChange,
-                        )
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_swipe_reconcile),
-                    subtitle = stringResource(R.string.settings_swipe_reconcile_description),
-                    showChevron = false,
-                    switchChecked = devicePreferences.accountSwipeReconcileEnabled,
-                    onClick = { onAccountSwipeReconcileChange(!devicePreferences.accountSwipeReconcileEnabled) },
-                    accessory = {
-                        Switch(
-                            checked = devicePreferences.accountSwipeReconcileEnabled,
-                            onCheckedChange = onAccountSwipeReconcileChange,
-                        )
-                    },
-                )
-            }
-        }
-
-        item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[2].titleRes))
         }
         item {
             MoneyListSection {
@@ -405,12 +342,6 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 PrivacySwitchRow(
-                    title = stringResource(R.string.settings_hide_widget),
-                    checked = devicePreferences.hideWidgetAmounts,
-                    onCheckedChange = onHideWidgetAmountsChange,
-                )
-                MoneySectionDivider()
-                PrivacySwitchRow(
                     title = stringResource(R.string.settings_hide_notifications),
                     checked = devicePreferences.hideNotificationAmounts,
                     onCheckedChange = onHideNotificationAmountsChange,
@@ -419,7 +350,7 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[2].titleRes))
         }
         item {
             MoneyListSection {
@@ -442,24 +373,6 @@ fun SettingsScreen(
                 )
                 MoneySectionDivider()
                 MoneyListRow(
-                    title = stringResource(R.string.settings_recurring_channel),
-                    subtitle = stringResource(R.string.settings_recurring_channel_description),
-                    trailing = stringResource(notificationChannelStatusRes(recurringNotificationChannelEnabled)),
-                    onClick = {
-                        onOpenNotificationSettings(NotificationSettingsTarget.RECURRING_CHANNEL)
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
-                    title = stringResource(R.string.settings_balance_channel),
-                    subtitle = stringResource(R.string.settings_balance_channel_description),
-                    trailing = stringResource(notificationChannelStatusRes(balanceNotificationChannelEnabled)),
-                    onClick = {
-                        onOpenNotificationSettings(NotificationSettingsTarget.BALANCE_CHANNEL)
-                    },
-                )
-                MoneySectionDivider()
-                MoneyListRow(
                     title = stringResource(R.string.settings_reminder_management),
                     subtitle = stringResource(R.string.settings_reminder_management_description),
                     onClick = onManageReminders,
@@ -474,16 +387,10 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[3].titleRes))
         }
         item {
             MoneyListSection {
-                MoneyListRow(
-                    title = stringResource(R.string.settings_backup_format),
-                    trailing = "JSON",
-                    showChevron = false,
-                )
-                MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_export_data),
                     subtitle = stringResource(R.string.settings_plaintext_warning),
@@ -501,28 +408,8 @@ fun SettingsScreen(
                     },
                     enabled = !state.isImporting && !state.isExporting,
                 )
-                MoneySectionDivider()
-                if (state.isLoadingImportHistory) {
-                    MoneyListRow(
-                        title = stringResource(R.string.settings_import_history),
-                        subtitle = stringResource(R.string.settings_import_history_checking),
-                        trailing = stringResource(R.string.settings_loading),
-                        showChevron = false,
-                    )
-                } else if (state.importHistoryErrorMessage != null) {
-                    MoneyListRow(
-                        title = stringResource(R.string.settings_import_history_error),
-                        subtitle = state.importHistoryErrorMessage,
-                        trailing = stringResource(R.string.action_retry),
-                        onClick = onRetryImportHistory,
-                    )
-                } else if (importReceiptRows.isEmpty()) {
-                    MoneyListRow(
-                        title = stringResource(R.string.settings_import_history),
-                        subtitle = stringResource(R.string.settings_import_history_empty),
-                        showChevron = false,
-                    )
-                } else {
+                if (importReceiptRows.isNotEmpty()) {
+                    MoneySectionDivider()
                     importReceiptRows.forEachIndexed { index, row ->
                         val receipt = row.receipt
                         MoneyListRow(
@@ -555,7 +442,7 @@ fun SettingsScreen(
         }
 
         item {
-            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[5].titleRes))
+            MoneySectionHeader(title = stringResource(SETTINGS_SECTION_CONTRACTS[4].titleRes))
         }
         item {
             MoneyListSection {
