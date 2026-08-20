@@ -41,9 +41,6 @@ data class DevicePreferences(
     // Default off: the app ships a designed neutral palette; Material You wallpaper theming
     // is opt-in from settings.
     val useDynamicColor: Boolean = false,
-    // Default off: record pages navigate away after a successful save. When enabled, the page
-    // stays open and clears amount/note so consecutive entries can be recorded quickly.
-    val continueRecording: Boolean = false,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
     val maskAmountsInApp: Boolean = false,

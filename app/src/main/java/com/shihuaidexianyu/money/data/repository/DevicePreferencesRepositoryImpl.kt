@@ -52,7 +52,6 @@ class DevicePreferencesRepositoryImpl(
 
     override suspend fun updateThemeMode(mode: ThemeMode) = edit { copy(themeMode = mode) }
     override suspend fun updateUseDynamicColor(enabled: Boolean) = edit { copy(useDynamicColor = enabled) }
-    override suspend fun updateContinueRecording(enabled: Boolean) = edit { copy(continueRecording = enabled) }
     override suspend fun updateBiometricLock(enabled: Boolean) = edit { copy(biometricLock = enabled) }
     override suspend fun enableBiometricLockWithPrivacyDefaults() = edit {
         copy(
@@ -100,7 +99,6 @@ object DevicePreferencesMapper {
         return DevicePreferences(
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
             useDynamicColor = preferences[Keys.UseDynamicColor] ?: false,
-            continueRecording = preferences[Keys.ContinueRecording] ?: false,
             biometricLock = preferences[Keys.BiometricLock] ?: false,
             relockDelay = AppRelockDelay.fromValue(preferences[Keys.RelockDelay]),
             maskAmountsInApp = preferences[Keys.MaskAmountsInApp] ?: false,
@@ -121,7 +119,6 @@ object DevicePreferencesMapper {
         val normalizedRecent = normalizeRecentAccountIds(value.recentAccountIds)
         preferences[Keys.ThemeMode] = value.themeMode.value
         preferences[Keys.UseDynamicColor] = value.useDynamicColor
-        preferences[Keys.ContinueRecording] = value.continueRecording
         preferences[Keys.BiometricLock] = value.biometricLock
         preferences[Keys.RelockDelay] = value.relockDelay.value
         preferences[Keys.MaskAmountsInApp] = value.maskAmountsInApp
@@ -147,7 +144,6 @@ object DevicePreferencesMapper {
     object Keys {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val UseDynamicColor = booleanPreferencesKey("use_dynamic_color")
-        val ContinueRecording = booleanPreferencesKey("continue_recording")
         val BiometricLock = booleanPreferencesKey("biometric_lock")
         val RelockDelay = stringPreferencesKey("relock_delay")
         val MaskAmountsInApp = booleanPreferencesKey("mask_amounts_in_app")

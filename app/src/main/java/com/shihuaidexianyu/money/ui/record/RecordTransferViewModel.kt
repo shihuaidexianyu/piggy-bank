@@ -32,8 +32,6 @@ import kotlinx.coroutines.launch
 data class RecordTransferUiState(
     val isLoading: Boolean = true,
     val loadErrorMessageRes: Int? = null,
-    val allowContinueRecording: Boolean = true,
-    val continueRecording: Boolean = false,
     val accounts: List<AccountOptionUiModel> = emptyList(),
     val fromAccountId: Long? = null,
     val toAccountId: Long? = null,
@@ -61,7 +59,6 @@ sealed interface RecordTransferEffect {
 
 class RecordTransferViewModel(
     initialFromAccountId: Long?,
-    private val allowContinueRecording: Boolean = true,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
@@ -79,7 +76,6 @@ class RecordTransferViewModel(
     private val _uiState = MutableStateFlow(
         restoredDraft?.let { draft ->
             RecordTransferUiState(
-                allowContinueRecording = allowContinueRecording,
                 fromAccountId = draft.fromAccountId,
                 toAccountId = draft.toAccountId,
                 amountText = draft.amountText,
@@ -95,7 +91,6 @@ class RecordTransferViewModel(
                 pendingTerminal = savedStateHandle[PENDING_FORM_TERMINAL_KEY],
             )
         } ?: RecordTransferUiState(
-            allowContinueRecording = allowContinueRecording,
             fromAccountId = initialFromAccountId,
             pendingTerminal = savedStateHandle[PENDING_FORM_TERMINAL_KEY],
         ),
@@ -132,7 +127,6 @@ class RecordTransferViewModel(
                     ?: accounts.firstOrNull { it.id != normalizedFromAccountId }?.id
                 val balances = calculateAccountBalancesUseCase(accounts)
                 _uiState.value = _uiState.value.copy(
-                    continueRecording = devicePreferences?.continueRecording ?: false,
                     accounts = accounts.map { account ->
                         account.toAccountOptionUiModel(
                             balance = balances.getValue(account.id),
@@ -161,13 +155,6 @@ class RecordTransferViewModel(
     fun updateFromAccount(accountId: Long) {
         updateDraft { copy(fromAccountId = accountId, fromAccountError = null, isDirty = true) }
         refreshNoteSuggestions()
-    }
-
-    fun updateContinueRecording(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(continueRecording = enabled)
-        viewModelScope.launch {
-            runCatching { devicePreferencesRepository?.updateContinueRecording(enabled) }
-        }
     }
 
     fun updateToAccount(accountId: Long) {
@@ -309,12 +296,7 @@ class RecordTransferViewModel(
                 )
             }.onSuccess {
                 rememberRecentAccounts(fromId, toId)
-                if (allowContinueRecording && _uiState.value.continueRecording) {
-                    resetAfterSave()
-                    effects.emit(RecordTransferEffect.ShowMessage("", messageRes = R.string.record_saved_continue_hint))
-                } else {
-                    setPendingTerminal(pendingFormTerminal(FormTerminalKind.SAVED))
-                }
+                setPendingTerminal(pendingFormTerminal(FormTerminalKind.SAVED))
             }.onFailure { throwable ->
                 saveInFlight = false
                 _uiState.value = _uiState.value.copy(isSaving = false)
@@ -349,26 +331,6 @@ class RecordTransferViewModel(
     private fun setPendingTerminal(terminal: PendingFormTerminal) {
         savedStateHandle[PENDING_FORM_TERMINAL_KEY] = terminal
         _uiState.value = _uiState.value.copy(isSaving = false, pendingTerminal = terminal)
-    }
-
-    private fun resetAfterSave() {
-        // A new operation ID is mandatory: ledger tables enforce unique operationId values, and
-        // the previous one was consumed by the successful save.
-        operationId = operationIdFactory.create().also { savedStateHandle[OPERATION_ID_KEY] = it }
-        saveInFlight = false
-        updateDraft {
-            copy(
-                amountText = "",
-                note = "",
-                noteError = null,
-                fromAccountError = null,
-                toAccountError = null,
-                amountError = null,
-                occurredAtError = null,
-                isDirty = false,
-                isSaving = false,
-            )
-        }
     }
 
     private fun updateDraft(transform: RecordTransferUiState.() -> RecordTransferUiState) {

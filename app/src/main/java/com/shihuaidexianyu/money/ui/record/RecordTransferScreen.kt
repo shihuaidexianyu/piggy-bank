@@ -207,13 +207,6 @@ fun RecordTransferScreen(
                     isSaving = state.isSaving,
                     enabled = state.pendingTerminal == null,
                 )
-                if (state.allowContinueRecording) {
-                    ContinueRecordingToggle(
-                        checked = state.continueRecording,
-                        onCheckedChange = viewModel::updateContinueRecording,
-                        enabled = !state.isSaving,
-                    )
-                }
             }
         }
     }

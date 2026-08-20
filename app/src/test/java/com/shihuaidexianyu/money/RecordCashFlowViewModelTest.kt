@@ -108,67 +108,8 @@ class RecordCashFlowViewModelTest {
     }
 
     @Test
-    fun `continue recording keeps the page open and resets the form`() = runTest(dispatcher) {
-        val preferences = InMemoryDevicePreferencesRepository()
-        val repository = InMemoryTransactionRepository()
-        val vm = buildViewModel(
-            txnRepo = repository,
-            preferences = preferences,
-        )
-        advanceUntilIdle()
-        vm.updateAccount(1L)
-        vm.updateAmount("100")
-        vm.updateNote("第一笔")
-        vm.updateContinueRecording(true)
-        vm.save()
-        advanceUntilIdle()
-
-        assertEquals(null, vm.uiState.value.pendingTerminal)
-        assertEquals("", vm.uiState.value.amountText)
-        assertEquals("", vm.uiState.value.note)
-        assertEquals(1L, vm.uiState.value.selectedAccountId)
-        assertEquals(false, vm.uiState.value.isDirty)
-        assertEquals(false, vm.uiState.value.isSaving)
-        assertEquals(true, vm.uiState.value.continueRecording)
-
-        // The second save must create a distinct record with a fresh operation ID.
-        vm.updateAmount("200")
-        vm.save()
-        advanceUntilIdle()
-
-        val records = repository.queryAllActiveCashFlowRecords()
-        assertEquals(2, records.size)
-        assertNotEquals(records[0].operationId, records[1].operationId)
-    }
-
-    @Test
-    fun `continue recording shows the saved hint message`() = runTest(dispatcher) {
+    fun `save sets the saved terminal`() = runTest(dispatcher) {
         val vm = buildViewModel(preferences = InMemoryDevicePreferencesRepository())
-        advanceUntilIdle()
-        vm.updateAccount(1L)
-        vm.updateAmount("50")
-        vm.updateContinueRecording(true)
-        vm.effectFlow.test {
-            vm.save()
-            advanceUntilIdle()
-            val message = awaitItem()
-            assertTrue(message is RecordCashFlowEffect.ShowMessage)
-            assertEquals(
-                R.string.record_saved_continue_hint,
-                (message as RecordCashFlowEffect.ShowMessage).messageRes,
-            )
-        }
-    }
-
-    @Test
-    fun `stateful entries ignore continue mode and navigate after save`() = runTest(dispatcher) {
-        val preferences = InMemoryDevicePreferencesRepository(
-            initial = DevicePreferences(continueRecording = true),
-        )
-        val vm = buildViewModel(
-            preferences = preferences,
-            allowContinueRecording = false,
-        )
         advanceUntilIdle()
         vm.updateAccount(1L)
         vm.updateAmount("50")
@@ -318,7 +259,6 @@ class RecordCashFlowViewModelTest {
         },
         txnRepo: InMemoryTransactionRepository = InMemoryTransactionRepository(),
         preferences: InMemoryDevicePreferencesRepository? = null,
-        allowContinueRecording: Boolean = true,
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ): RecordCashFlowViewModel {
         val refreshUseCase = RefreshAccountActivityStateUseCase(accountRepo, txnRepo)
@@ -335,7 +275,6 @@ class RecordCashFlowViewModelTest {
             prefillAmount = null,
             prefillNote = null,
             reminderId = null,
-            allowContinueRecording = allowContinueRecording,
             accountRepository = accountRepo,
             transactionRepository = txnRepo,
             calculateAccountBalancesUseCase = calculateUseCase,
