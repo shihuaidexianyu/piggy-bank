@@ -102,22 +102,43 @@ fun AccountsScreen(
         TopAppBar(
             title = { Text(stringResource(R.string.accounts_title)) },
             actions = {
-                IconButton(
-                    onClick = onCreateAccount,
-                    modifier = Modifier
-                        .padding(end = 12.dp)
-                        .size(48.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
+                // Same tonal-circle language as the home header actions.
+                Row(
+                    modifier = Modifier.padding(end = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.accounts_create),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    if (state.openAccounts.isNotEmpty()) {
+                        IconButton(
+                            onClick = onReorderAccounts,
+                            modifier = Modifier.size(44.dp),
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Reorder,
+                                contentDescription = stringResource(R.string.accounts_order),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = onCreateAccount,
+                        modifier = Modifier.size(44.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.accounts_create),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -143,14 +164,6 @@ fun AccountsScreen(
                 }
                 return@LazyColumn
             }
-            if (state.openAccounts.isNotEmpty() || hasClosedAccounts) {
-                item {
-                    AccountsOverviewCard(
-                        openCount = state.openAccounts.size,
-                        staleCount = state.openAccounts.count { it.isStale },
-                    )
-                }
-            }
             if (state.openAccounts.isEmpty()) {
                 item {
                     MoneyEmptyStateCard(
@@ -168,7 +181,7 @@ fun AccountsScreen(
                     }
                 }
             } else {
-                normalKindGroups.forEachIndexed { groupIndex, (kind, accounts) ->
+                normalKindGroups.forEach { (kind, accounts) ->
                     if (accounts.isNotEmpty()) {
                         val staleCount = accounts.count { it.isStale }
                         item {
@@ -184,41 +197,17 @@ fun AccountsScreen(
                                         }
                                     },
                                 ),
-                                trailingContent = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        if (groupIndex == 0) {
-                                            IconButton(
-                                                onClick = onReorderAccounts,
-                                                modifier = Modifier.size(48.dp),
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Reorder,
-                                                    contentDescription = stringResource(R.string.accounts_order),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.size(20.dp),
-                                                )
-                                            }
-                                        }
-                                        Text(
-                                            text = if (staleCount > 0) {
-                                                stringResource(
-                                                    R.string.accounts_group_total_stale_format,
-                                                    accounts.size,
-                                                    staleCount,
-                                                )
-                                            } else {
-                                                stringResource(
-                                                    R.string.accounts_group_total_format,
-                                                    accounts.size,
-                                                )
-                                            },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+                                trailing = if (staleCount > 0) {
+                                    stringResource(
+                                        R.string.accounts_group_total_stale_format,
+                                        accounts.size,
+                                        staleCount,
+                                    )
+                                } else {
+                                    stringResource(
+                                        R.string.accounts_group_total_format,
+                                        accounts.size,
+                                    )
                                 },
                             )
                         }
@@ -348,9 +337,7 @@ private fun AccountRow(
         else -> null
     }
     // Second line for healthy rows: the account's signed net change this calendar month,
-    // colored by direction. The "本月" window is stated once in the overview caption above the
-    // list rather than repeated on every row; TalkBack still hears the full sentence.
-    // Zero (a quiet month, or perfectly offsetting moves) stays silent.
+    // colored by direction. Zero (a quiet month, or perfectly offsetting moves) stays silent.
     val monthChangeText = if (account.monthNetChange != 0L) {
         signedFormatInAppAmount(account.monthNetChange, currencySettings)
     } else {
@@ -454,42 +441,6 @@ private fun AccountRow(
                     maxLines = 1,
                 )
             }
-        }
-    }
-}
-
-/**
- * Page-level summary limited to what the home dashboard does not already show: open and stale
- * account counts. The total-assets amount and the funding/investment split live on home only,
- * so each piece of information keeps a single source. This is also where the per-row change
- * stat's calendar-month window is stated — once, instead of on every row.
- */
-@Composable
-private fun AccountsOverviewCard(
-    openCount: Int,
-    staleCount: Int,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.accounts_open_count_format, openCount),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = stringResource(R.string.accounts_month_change_note),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (staleCount > 0) {
-            Text(
-                text = pluralStringResource(R.plurals.stale_account_count, staleCount, staleCount),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

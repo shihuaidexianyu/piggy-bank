@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
@@ -68,6 +69,8 @@ fun MoneyCard(
     if (onClick == null) {
         Card(
             modifier = modifier.fillMaxWidth(),
+            // Info cards sit at 20dp; list sections below stay at 16dp rows language.
+            shape = MaterialTheme.shapes.large,
             colors = moneyGroupCardColors(),
             content = cardContent,
         )
@@ -76,6 +79,7 @@ fun MoneyCard(
             onClick = onClick,
             modifier = modifier.fillMaxWidth(),
             enabled = enabled,
+            shape = MaterialTheme.shapes.large,
             colors = moneyGroupCardColors(),
             content = cardContent,
         )
@@ -135,7 +139,8 @@ fun MoneySectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge,
+            // 14sp Medium + wide tracking: the quiet "eyebrow" register used above every section.
+            style = MaterialTheme.typography.titleSmall.copy(letterSpacing = 0.84.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (trailingContent != null) {
@@ -160,8 +165,8 @@ fun MoneyStatusPill(
 ) {
     Surface(
         modifier = modifier,
-        color = accent.copy(alpha = 0.08f),
-        shape = MaterialTheme.shapes.small,
+        color = accent.copy(alpha = 0.10f),
+        shape = CircleShape,
     ) {
         Text(
             text = text,
@@ -273,6 +278,7 @@ fun MoneyListSection(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
         colors = moneyGroupCardColors(),
     ) {
         Column(content = content)

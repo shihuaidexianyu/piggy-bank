@@ -25,26 +25,28 @@ fun AdaptiveTopLevelNavigation(
     onDestinationClick: (MoneyDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Shared item colors so the bottom bar and the rail render selection identically.
-    val selectedItemColor = MaterialTheme.colorScheme.primary
+    // Shared item colors so the bottom bar and the rail render selection identically: a jade
+    // indicator capsule with onPrimaryContainer glyphs, sitting on the surfaceContainer strip.
+    val selectedItemColor = MaterialTheme.colorScheme.onPrimaryContainer
     val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+    val indicatorColor = MaterialTheme.colorScheme.primaryContainer
 
     when (type) {
         AdaptiveNavigationType.BOTTOM_BAR -> Surface(
             modifier = modifier.testTag("top_level_bottom_bar"),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainer,
         ) {
             Column {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 0.dp,
                 ) {
                     MoneyDestination.topLevel.forEach { destination ->
                         val label = stringResource(destination.labelRes)
+                        val selected = currentRoute == destination.route
                         NavigationBarItem(
-                            selected = currentRoute == destination.route,
+                            selected = selected,
                             onClick = { onDestinationClick(destination) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = selectedItemColor,
@@ -53,7 +55,12 @@ fun AdaptiveTopLevelNavigation(
                                 unselectedIconColor = unselectedItemColor,
                                 unselectedTextColor = unselectedItemColor,
                             ),
-                            icon = { Icon(destination.icon, contentDescription = label) },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) destination.selectedIcon else destination.icon,
+                                    contentDescription = label,
+                                )
+                            },
                             label = { Text(label) },
                         )
                     }
@@ -63,12 +70,13 @@ fun AdaptiveTopLevelNavigation(
 
         AdaptiveNavigationType.NAVIGATION_RAIL -> NavigationRail(
             modifier = modifier.testTag("top_level_navigation_rail"),
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ) {
             MoneyDestination.topLevel.forEach { destination ->
                 val label = stringResource(destination.labelRes)
+                val selected = currentRoute == destination.route
                 NavigationRailItem(
-                    selected = currentRoute == destination.route,
+                    selected = selected,
                     onClick = { onDestinationClick(destination) },
                     colors = NavigationRailItemDefaults.colors(
                         selectedIconColor = selectedItemColor,
@@ -77,7 +85,12 @@ fun AdaptiveTopLevelNavigation(
                         unselectedIconColor = unselectedItemColor,
                         unselectedTextColor = unselectedItemColor,
                     ),
-                    icon = { Icon(destination.icon, contentDescription = label) },
+                    icon = {
+                        Icon(
+                            imageVector = if (selected) destination.selectedIcon else destination.icon,
+                            contentDescription = label,
+                        )
+                    },
                     label = { Text(label) },
                 )
             }

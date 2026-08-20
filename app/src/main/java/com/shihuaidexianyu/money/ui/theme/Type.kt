@@ -11,14 +11,14 @@ private const val TabularNums: String = "tnum"
 val MoneyTypography = Typography(
     displayLarge = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 42.sp,
+        fontSize = 40.sp,
+        lineHeight = 46.sp,
         fontFeatureSettings = TabularNums,
     ),
     displayMedium = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
         fontFeatureSettings = TabularNums,
     ),
     displaySmall = TextStyle(

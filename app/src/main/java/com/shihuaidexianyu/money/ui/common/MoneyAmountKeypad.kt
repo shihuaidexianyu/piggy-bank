@@ -1,6 +1,10 @@
 package com.shihuaidexianyu.money.ui.common
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -216,21 +222,31 @@ private fun AmountKeypadButton(
 ) {
     val resolvedLabel = spec.labelRes?.let { stringResource(it) } ?: requireNotNull(spec.label)
     val isDelete = spec.key == AmountKey.Delete
+    // Three key weights: digits on a quiet surface, the operator column (delete included) on the
+    // secondary container, and clear on the error container.
     val containerColor = when {
         spec.isClear -> MaterialTheme.colorScheme.errorContainer
-        spec.isOperator -> MaterialTheme.colorScheme.secondaryContainer
+        spec.isOperator || isDelete -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
     val contentColor = when {
         spec.isClear -> MaterialTheme.colorScheme.error
-        spec.isOperator -> MaterialTheme.colorScheme.onSecondaryContainer
-        isDelete -> MaterialTheme.colorScheme.onSurfaceVariant
+        spec.isOperator || isDelete -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
     val keyHeight = 58.dp
+    // Physical press feedback: keys dip to 94% on a quick spring instead of relying on elevation.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
+        label = "amountKeyPressScale",
+    )
 
     val buttonModifier = modifier
         .height(keyHeight)
+        .scale(pressScale)
         .semantics { contentDescription = resolvedLabel }
     val content: @Composable () -> Unit = {
         Box(contentAlignment = Alignment.Center) {
@@ -259,6 +275,7 @@ private fun AmountKeypadButton(
             modifier = buttonModifier,
             contentPadding = PaddingValues(0.dp),
             shape = MaterialTheme.shapes.large,
+            interactionSource = interactionSource,
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 2.dp,
                 pressedElevation = 0.dp,
@@ -276,6 +293,7 @@ private fun AmountKeypadButton(
             ),
             contentPadding = PaddingValues(0.dp),
             shape = MaterialTheme.shapes.large,
+            interactionSource = interactionSource,
             elevation = ButtonDefaults.filledTonalButtonElevation(
                 defaultElevation = 1.dp,
                 pressedElevation = 0.dp,

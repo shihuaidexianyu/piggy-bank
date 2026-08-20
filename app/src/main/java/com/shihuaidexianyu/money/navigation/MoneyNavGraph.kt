@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -362,8 +363,9 @@ fun MoneyNavGraph(
                     onClick = { fabExpanded = true },
                     icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.ledger_fab_title)) },
-                    // Standard M3 roles: deep teal + white in light; light mint + dark ink in
-                    // dark — matching the filled primary button used inside dark dialogs.
+                    // Full-round capsule in primary roles, matching the filled primary button used
+                    // inside dialogs.
+                    shape = CircleShape,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 )

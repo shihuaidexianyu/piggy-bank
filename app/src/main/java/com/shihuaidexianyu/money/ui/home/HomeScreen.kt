@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -357,8 +358,10 @@ private fun NetWorthHeroCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = MaterialTheme.shapes.medium,
+        // 青玉 hero: tonal primary container instead of a white card, so the net-worth figure
+        // owns the top of home; text on it uses the onPrimaryContainer ladder throughout.
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -372,7 +375,7 @@ private fun NetWorthHeroCard(
                 Text(
                     text = stringResource(R.string.home_current_net_assets),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
                 )
                 PeriodSwitcher(selected = selectedPeriod, onSelect = onSelectPeriod)
             }
@@ -385,10 +388,9 @@ private fun NetWorthHeroCard(
             RollingAmountText(
                 target = recordText,
                 style = recordStyle,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             if (hasInvestmentAccounts) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
                 val fundingAssets = totalAssets - investmentAssets
                 val fundingShare = formatSharePercent(fundingAssets, totalAssets)
                 val investmentShare = if (totalAssets > 0L && investmentAssets > 0L) {
@@ -469,10 +471,12 @@ private fun RollingAmountText(
                     transitionSpec = {
                         val rising = charValue(targetState) >= charValue(initialState)
                         val direction = if (rising) 1 else -1
-                        (slideInVertically(animationSpec = tween(220)) { direction * it } +
-                            fadeIn(animationSpec = tween(220))) togetherWith
-                            (slideOutVertically(animationSpec = tween(220)) { -direction * it } +
-                                fadeOut(animationSpec = tween(160)))
+                        // Snappy spring roll: digits settle with a soft overshoot instead of a
+                        // fixed-duration tween.
+                        (slideInVertically(animationSpec = spring(dampingRatio = 0.86f, stiffness = 700f)) { direction * it } +
+                            fadeIn(animationSpec = tween(120))) togetherWith
+                            (slideOutVertically(animationSpec = spring(dampingRatio = 0.86f, stiffness = 700f)) { -direction * it } +
+                                fadeOut(animationSpec = tween(100)))
                     },
                     label = "rollingAmountChar",
                 ) { animatedChar ->
@@ -489,8 +493,8 @@ private fun charValue(char: Char): Int = when (char) {
 }
 
 /**
- * Secondary asset split line in the hero card. Kept deliberately quiet: neutral text, no semantic
- * colors, so the card never competes with the headline amount.
+ * Secondary asset split line in the hero card. Kept deliberately quiet: the onPrimaryContainer
+ * ladder at reduced alpha, no semantic colors, so the cells never compete with the headline amount.
  */
 @Composable
 private fun AssetSplitCell(
@@ -518,20 +522,20 @@ private fun AssetSplitCell(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
             )
         }
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
             maxLines = 1,
         )
         share?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                 maxLines = 1,
             )
         }
@@ -562,7 +566,7 @@ private fun PeriodFlowsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.large,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -627,9 +631,9 @@ private fun PeriodFlowsCard(
 }
 
 /**
- * Compact pill selector restored to the previous visual language: a quiet tonal container with
- * an elevated selected segment. The height is raised from the original 30dp to a 40dp touch
- * target while keeping the Material interaction and selection semantics.
+ * Capsule period selector sitting inside the tonal hero: a translucent track mixed from the page
+ * canvas keeps it quiet on the jade container, and the selected segment pops as a solid chip.
+ * 40dp segment height preserves the Material touch target and selection semantics.
  */
 @Composable
 private fun PeriodSwitcher(
@@ -642,8 +646,8 @@ private fun PeriodSwitcher(
         modifier = Modifier
             .width(146.dp)
             .semantics { contentDescription = selectorDescription },
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        shape = CircleShape,
     ) {
         Row(
             modifier = Modifier.padding(3.dp),
@@ -666,11 +670,11 @@ private fun PeriodSwitcher(
                         Color.Transparent
                     },
                     contentColor = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
                     },
-                    shape = MaterialTheme.shapes.small,
+                    shape = CircleShape,
                     shadowElevation = if (isSelected) 1.dp else 0.dp,
                 ) {
                     Box(
