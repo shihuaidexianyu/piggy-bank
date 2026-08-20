@@ -38,9 +38,6 @@ data class HistoryFilters(
 
 data class DevicePreferences(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    // Default off: the app ships a designed neutral palette; Material You wallpaper theming
-    // is opt-in from settings.
-    val useDynamicColor: Boolean = false,
     val biometricLock: Boolean = false,
     val relockDelay: AppRelockDelay = AppRelockDelay.THIRTY_SECONDS,
     val maskAmountsInApp: Boolean = false,

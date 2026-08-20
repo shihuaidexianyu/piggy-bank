@@ -63,7 +63,6 @@ fun SettingsScreen(
     effectFlow: SharedFlow<SettingsEffect>,
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onUseDynamicColorChange: (Boolean) -> Unit,
     onAmountColorModeChange: (AmountColorMode) -> Unit,
     onCurrencySymbolChange: (String) -> Unit,
     onBiometricLockChange: (Boolean) -> Unit,
@@ -276,12 +275,6 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_theme_description),
                     trailing = devicePreferences.themeMode.displayName,
                     onClick = { dialog = SettingsDialog.ThemeMode },
-                )
-                MoneySectionDivider()
-                PrivacySwitchRow(
-                    title = stringResource(R.string.settings_dynamic_color),
-                    checked = devicePreferences.useDynamicColor,
-                    onCheckedChange = onUseDynamicColorChange,
                 )
                 MoneySectionDivider()
                 MoneyListRow(

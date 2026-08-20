@@ -150,7 +150,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── record/                  # Record/edit cash flow & transfer
 │   ├── reminder/                # Recurring reminders + notification permission gateway
 │   ├── settings/                # App settings (incl. export/import)
-│   └── theme/                   # Material 3 theming (light + dark + dynamic color)
+│   └── theme/                   # Material 3 theming (light + dark brand schemes)
 └── util/                        # Formatters, parsers, time utilities, validators
 ```
 

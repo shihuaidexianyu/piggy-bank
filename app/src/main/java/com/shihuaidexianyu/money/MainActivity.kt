@@ -131,7 +131,6 @@ class MainActivity : FragmentActivity() {
             MoneyTheme(
                 themeMode = devicePreferences.themeMode,
                 amountColorMode = portableSettings.amountColorMode,
-                useDynamicColor = devicePreferences.useDynamicColor,
                 currencySymbol = portableSettings.currencySymbol,
             ) {
                 val effectiveLockState = if (loadedDevicePreferences == null) {

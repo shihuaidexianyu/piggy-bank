@@ -12,7 +12,6 @@ interface DevicePreferencesRepository {
     suspend fun replace(preferences: DevicePreferences)
     suspend fun migrateExternalPrivacyDefaultsIfNeeded()
     suspend fun updateThemeMode(mode: ThemeMode)
-    suspend fun updateUseDynamicColor(enabled: Boolean)
     suspend fun updateBiometricLock(enabled: Boolean)
     suspend fun enableBiometricLockWithPrivacyDefaults()
     suspend fun updateRelockDelay(delay: AppRelockDelay)

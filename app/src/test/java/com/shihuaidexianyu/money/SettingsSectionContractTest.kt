@@ -36,7 +36,6 @@ class SettingsSectionContractTest {
             listOf(
                 R.string.settings_section_display to listOf(
                     "theme",
-                    "dynamic_color",
                     "amount_color",
                     "currency_symbol",
                     "mask_in_app",

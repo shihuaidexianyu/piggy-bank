@@ -169,10 +169,6 @@ class SettingsViewModel(
         viewModelScope.launch { devicePreferencesRepository.updateThemeMode(themeMode) }
     }
 
-    fun updateUseDynamicColor(enabled: Boolean) {
-        viewModelScope.launch { devicePreferencesRepository.updateUseDynamicColor(enabled) }
-    }
-
     fun updateAmountColorMode(amountColorMode: AmountColorMode) {
         commitPortableSettingsChange {
             portableSettingsRepository.updateAmountColorMode(amountColorMode)

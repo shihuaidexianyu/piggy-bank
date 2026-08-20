@@ -149,7 +149,6 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             effectFlow = viewModel.effectFlow,
             onBack = { navController.popBackStack() },
             onThemeModeChange = viewModel::updateThemeMode,
-            onUseDynamicColorChange = viewModel::updateUseDynamicColor,
             onAmountColorModeChange = viewModel::updateAmountColorMode,
             onCurrencySymbolChange = viewModel::updateCurrencySymbol,
             onBiometricLockChange = onBiometricLockChange,

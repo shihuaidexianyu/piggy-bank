@@ -3,14 +3,11 @@ package com.shihuaidexianyu.money.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import com.shihuaidexianyu.money.domain.model.AmountColorMode
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
@@ -103,7 +100,6 @@ private val BrandDarkColorScheme = darkColorScheme(
 fun MoneyTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     amountColorMode: AmountColorMode = AmountColorMode.RED_INCOME_GREEN_EXPENSE,
-    useDynamicColor: Boolean = true,
     currencySymbol: String = "¥",
     content: @Composable () -> Unit,
 ) {
@@ -112,13 +108,7 @@ fun MoneyTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val context = LocalContext.current
-    val colorScheme = when {
-        useDynamicColor && darkTheme -> dynamicDarkColorScheme(context)
-        useDynamicColor -> dynamicLightColorScheme(context)
-        darkTheme -> BrandDarkColorScheme
-        else -> BrandLightColorScheme
-    }
+    val colorScheme = if (darkTheme) BrandDarkColorScheme else BrandLightColorScheme
     val moneyColors = moneyColorsFor(
         darkTheme = darkTheme,
         amountColorMode = amountColorMode,
