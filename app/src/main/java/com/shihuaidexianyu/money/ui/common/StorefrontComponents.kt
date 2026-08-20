@@ -108,6 +108,13 @@ fun MoneyTonalButton(
         modifier = modifier.heightIn(min = 48.dp),
         enabled = enabled,
         contentPadding = contentPadding,
+        // A resting whisper of shadow separates the tonal block from the card it sits on;
+        // without it the secondary action reads as flat decoration rather than a button.
+        elevation = ButtonDefaults.filledTonalButtonElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp,
+        ),
         content = content,
     )
 }

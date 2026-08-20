@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -462,9 +464,17 @@ fun MoneySaveButton(
         },
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 54.dp),
+            .heightIn(min = 56.dp),
         enabled = enabled && !isSaving,
-        shape = MaterialTheme.shapes.large,
+        // Pill capsule: the one fully-rounded filled shape on every form, matching the home FAB.
+        shape = CircleShape,
+        // Filled buttons are the highest-emphasis surface on the page; a whisper of shadow
+        // (resting only, no press grow) is what reads as "quality" against the flat cards.
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 1.dp,
+            disabledElevation = 0.dp,
+        ),
     ) {
         if (isSaving) {
             androidx.compose.material3.CircularProgressIndicator(

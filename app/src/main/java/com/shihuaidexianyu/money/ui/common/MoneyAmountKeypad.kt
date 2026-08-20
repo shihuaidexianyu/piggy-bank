@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material3.Button
@@ -235,6 +236,9 @@ private fun AmountKeypadButton(
         else -> MaterialTheme.colorScheme.onSurface
     }
     val keyHeight = 58.dp
+    // Keys are shorter than the 56dp save pill, so a full capsule would pinch into a lozenge;
+    // 20dp is the roundest corner the 58dp height still holds as a slab.
+    val keyShape = MaterialTheme.shapes.large
     // Physical press feedback: keys dip to 94% on a quick spring instead of relying on elevation.
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -274,7 +278,8 @@ private fun AmountKeypadButton(
             onClick = onClick,
             modifier = buttonModifier,
             contentPadding = PaddingValues(0.dp),
-            shape = MaterialTheme.shapes.large,
+            // The keypad's commit key is a capsule, echoing the form's save pill one step below.
+            shape = CircleShape,
             interactionSource = interactionSource,
             elevation = ButtonDefaults.buttonElevation(
                 defaultElevation = 2.dp,
@@ -292,7 +297,7 @@ private fun AmountKeypadButton(
                 contentColor = contentColor,
             ),
             contentPadding = PaddingValues(0.dp),
-            shape = MaterialTheme.shapes.large,
+            shape = keyShape,
             interactionSource = interactionSource,
             elevation = ButtonDefaults.filledTonalButtonElevation(
                 defaultElevation = 1.dp,

@@ -542,6 +542,11 @@ private fun LedgerActionButton(
             containerColor = containerColor,
             contentColor = accent,
         ),
+        elevation = ButtonDefaults.filledTonalButtonElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp,
+        ),
     ) {
         Column(
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
