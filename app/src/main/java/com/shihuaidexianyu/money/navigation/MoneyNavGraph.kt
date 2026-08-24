@@ -530,6 +530,8 @@ private fun LedgerActionButton(
     // Tinted chip: a low-alpha accent wash replaces the muddy solid tonal block, keeping the
     // full-strength accent icon/label clean on top (a stronger wash in dark mode). The accent
     // palette already ships brighter dark variants, so the accent itself stays legible.
+    // Never add elevation here: the shadow would show through the translucent wash and render
+    // as a box-in-a-box ghost inside the chip.
     val containerColor = accent.copy(
         alpha = if (LocalDarkTheme.current) 0.16f else 0.10f,
     )
@@ -541,11 +543,6 @@ private fun LedgerActionButton(
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = containerColor,
             contentColor = accent,
-        ),
-        elevation = ButtonDefaults.filledTonalButtonElevation(
-            defaultElevation = 1.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp,
         ),
     ) {
         Column(
