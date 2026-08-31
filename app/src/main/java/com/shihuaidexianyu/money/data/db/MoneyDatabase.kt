@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.shihuaidexianyu.money.data.dao.AccountDao
 import com.shihuaidexianyu.money.data.dao.AccountReminderConfigDao
+import com.shihuaidexianyu.money.data.dao.AiMutationJournalDao
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
@@ -19,6 +20,7 @@ import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.AccountReminderConfigEntity
+import com.shihuaidexianyu.money.data.entity.AiMutationJournalEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
@@ -27,7 +29,7 @@ import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 
-const val MONEY_DATABASE_VERSION = 18
+const val MONEY_DATABASE_VERSION = 19
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -341,6 +343,48 @@ private val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
+private val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `ai_mutation_journal` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `requestId` TEXT NOT NULL,
+                `sessionId` TEXT NOT NULL,
+                `clientName` TEXT NOT NULL,
+                `action` TEXT NOT NULL,
+                `recordKind` TEXT NOT NULL,
+                `recordId` INTEGER NOT NULL,
+                `summary` TEXT NOT NULL,
+                `beforeSnapshotJson` TEXT,
+                `afterSnapshotJson` TEXT NOT NULL,
+                `undoTokenJson` TEXT,
+                `status` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `resolvedAt` INTEGER,
+                `undoRequestId` TEXT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_mutation_journal_requestId` " +
+                "ON `ai_mutation_journal` (`requestId`)",
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_mutation_journal_undoRequestId` " +
+                "ON `ai_mutation_journal` (`undoRequestId`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_mutation_journal_status_id` " +
+                "ON `ai_mutation_journal` (`status`, `id`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_mutation_journal_recordKind_recordId_id` " +
+                "ON `ai_mutation_journal` (`recordKind`, `recordId`, `id`)",
+        )
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -359,6 +403,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
     MIGRATION_17_18,
+    MIGRATION_18_19,
 )
 
 @Database(
@@ -372,6 +417,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         PortableSettingsEntity::class,
         AccountReminderConfigEntity::class,
         LocalMigrationStateEntity::class,
+        AiMutationJournalEntity::class,
     ],
     version = MONEY_DATABASE_VERSION,
     exportSchema = true,
@@ -388,6 +434,7 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun accountReminderConfigDao(): AccountReminderConfigDao
     abstract fun localMigrationStateDao(): LocalMigrationStateDao
     abstract fun ledgerAggregateDao(): LedgerAggregateDao
+    abstract fun aiMutationJournalDao(): AiMutationJournalDao
 
     companion object {
         @Volatile

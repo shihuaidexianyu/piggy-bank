@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +29,8 @@ import com.shihuaidexianyu.money.ui.history.HistoryViewModel
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeViewModel
 import com.shihuaidexianyu.money.ui.settings.SettingsScreen
+import com.shihuaidexianyu.money.ui.lan.LanMcpScreen
+import com.shihuaidexianyu.money.ui.lan.LanMcpViewModel
 import com.shihuaidexianyu.money.ui.reminder.rememberNotificationPermissionGateway
 
 internal fun NavGraphBuilder.addTopLevelGraph(
@@ -161,10 +164,35 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onManageAccountReminderConfigs = {
                 navController.navigateToTopLevelTab(MoneyDestination.Accounts)
             },
+            onOpenLanAi = { navController.navigate(MoneyDestination.LanMcpRoute) },
             onExportData = viewModel::exportData,
             onImportData = viewModel::previewImport,
             onConfirmImport = viewModel::confirmImport,
             onRollbackImport = viewModel::rollbackImport,
+        )
+    }
+
+    composable(MoneyDestination.LanMcpRoute) {
+        val context = LocalContext.current
+        val viewModel = viewModel<LanMcpViewModel>(
+            factory = moneyViewModelFactory {
+                LanMcpViewModel(
+                    context = context,
+                    journalRepository = container.aiMutationJournalRepository,
+                    aiJournaledLedgerUseCase = container.aiJournaledLedgerUseCase,
+                )
+            },
+        )
+        val state by viewModel.uiState.collectAsStateWithLifecycle()
+        LanMcpScreen(
+            state = state,
+            effectFlow = viewModel.effectFlow,
+            onBack = { navController.popBackStack() },
+            onAllowWriteChange = viewModel::setAllowWrite,
+            onStart = viewModel::startServer,
+            onStop = viewModel::stopServer,
+            onUndoLatest = viewModel::undoLatest,
+            onDiscardLatest = viewModel::discardLatest,
         )
     }
 }
@@ -202,6 +230,7 @@ private fun HistoryScreenHost(
         onKeywordChange = viewModel::updateKeyword,
         onExcludeKeywordChange = viewModel::updateExcludeKeyword,
         onRecordTypesChange = viewModel::updateRecordTypes,
+        onBusinessSemanticChange = viewModel::updateBusinessSemantic,
         onAccountChange = viewModel::updateAccount,
         onDateRangeChange = viewModel::updateDateRange,
         onMinAmountChange = viewModel::updateMinAmount,

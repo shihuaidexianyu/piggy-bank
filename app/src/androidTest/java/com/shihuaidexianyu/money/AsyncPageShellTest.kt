@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.shihuaidexianyu.money.ui.history.HistoryScreen
 import com.shihuaidexianyu.money.ui.history.HistoryUiState
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.ui.home.HomeScreen
 import com.shihuaidexianyu.money.ui.home.HomeUiState
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
@@ -14,6 +15,38 @@ import org.junit.Rule
 import org.junit.Test
 
 class AsyncPageShellTest {
+    @Test
+    fun historyBusinessSemanticAppearsAsAnActiveFilterAndOpensItsChoices() {
+        composeRule.setContent {
+            MoneyTheme {
+                HistoryScreen(
+                    state = HistoryUiState(
+                        isLoading = false,
+                        hasCommittedContent = true,
+                        businessSemantic = HistoryBusinessSemantic.INVESTMENT_PNL,
+                    ),
+                    onKeywordChange = {},
+                    onExcludeKeywordChange = {},
+                    onRecordTypesChange = {},
+                    onAccountChange = {},
+                    onDateRangeChange = { _, _ -> },
+                    onMinAmountChange = {},
+                    onMaxAmountChange = {},
+                    onAmountDirectionChange = {},
+                    onClearAllFilters = {},
+                    onLoadMore = {},
+                    onRecordClick = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("筛选 1").assertIsDisplayed()
+        composeRule.onNodeWithText("投资盈亏").performClick()
+        composeRule.onNodeWithText("日常消费").assertIsDisplayed()
+        composeRule.onNodeWithText("投资收益").assertIsDisplayed()
+        composeRule.onNodeWithText("投资亏损").assertIsDisplayed()
+    }
+
     @get:Rule
     val composeRule = createComposeRule()
 

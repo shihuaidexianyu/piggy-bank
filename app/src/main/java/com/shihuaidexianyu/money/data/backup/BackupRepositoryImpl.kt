@@ -61,6 +61,10 @@ class BackupRepositoryImpl(
                     "生成安全快照后账本已发生变化，请重试导入"
                 }
             }
+            // Journal snapshots describe the pre-import ledger and must never be replayed against
+            // replacement data. Keeping this inside the replacement transaction makes either the
+            // imported ledger and an empty journal visible together, or neither change visible.
+            database.aiMutationJournalDao().deleteAll()
             database.recurringReminderDao().deleteAll()
             database.balanceAdjustmentRecordDao().deleteAll()
             database.balanceUpdateRecordDao().deleteAll()

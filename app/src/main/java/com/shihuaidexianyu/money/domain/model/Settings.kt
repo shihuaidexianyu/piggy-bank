@@ -34,6 +34,7 @@ data class HistoryFilters(
     val minAmountText: String = "",
     val maxAmountText: String = "",
     val amountDirection: String = "",
+    val businessSemantic: String = HistoryBusinessSemantic.ALL.value,
 )
 
 data class DevicePreferences(

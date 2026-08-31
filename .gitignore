@@ -38,3 +38,6 @@ signing/
 qa_*.png
 launcher_preview*.png
 icon_preview.png
+__pycache__/
+*.py[cod]
+.venv/

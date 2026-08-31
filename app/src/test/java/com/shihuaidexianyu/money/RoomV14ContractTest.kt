@@ -29,10 +29,10 @@ import org.junit.Test
 class RoomV14ContractTest {
     @Test
     fun `database version has a complete migration chain`() {
-        assertEquals(18, MONEY_DATABASE_VERSION)
+        assertEquals(19, MONEY_DATABASE_VERSION)
         val migration = MONEY_DATABASE_MIGRATIONS.last()
-        assertEquals(17, migration.startVersion)
-        assertEquals(18, migration.endVersion)
+        assertEquals(18, migration.startVersion)
+        assertEquals(19, migration.endVersion)
         // Every step from 1 to the current version must be covered — a gap would strand
         // upgrading installations on Room's fallback (which this app does not allow).
         val covered = MONEY_DATABASE_MIGRATIONS.map { it.startVersion to it.endVersion }

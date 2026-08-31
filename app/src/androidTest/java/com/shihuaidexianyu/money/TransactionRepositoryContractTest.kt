@@ -9,9 +9,11 @@ import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.toEntity
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.LedgerOperationConflictException
@@ -73,6 +75,9 @@ class TransactionRepositoryContractTest {
                     3L -> "第三账户"
                     else -> null
                 }
+            },
+            accountKindLookup = { accountId ->
+                if (accountId == 2L) AccountKind.INVESTMENT else AccountKind.FUNDING
             },
         )
     }
@@ -596,6 +601,104 @@ class TransactionRepositoryContractTest {
                 roomRepo.queryHistoryRecords(filters, null, 50),
             )
         }
+    }
+
+    @Test
+    fun historyBusinessSemanticsMatchBetweenRoomAndMemory() = runBlocking {
+        seedAccount()
+        db.accountDao().insert(
+            com.shihuaidexianyu.money.data.entity.AccountEntity(
+                id = 2L,
+                name = "第二账户",
+                initialBalance = 0L,
+                createdAt = 1_000L,
+                displayOrder = 2,
+                kind = AccountKind.INVESTMENT.value,
+            ),
+        )
+        listOf(roomRepo, memoryRepo).forEach { repository ->
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 1L,
+                    direction = CashFlowDirection.OUTFLOW.value,
+                    amount = 100L,
+                    note = "日常账户支出",
+                    occurredAt = 2_000L,
+                    createdAt = 2_000L,
+                    updatedAt = 2_000L,
+                    operationId = "semantic-daily",
+                ),
+            )
+            repository.insertCashFlowRecord(
+                CashFlowRecord(
+                    accountId = 2L,
+                    direction = CashFlowDirection.OUTFLOW.value,
+                    amount = 200L,
+                    note = "投资账户现金流",
+                    occurredAt = 2_100L,
+                    createdAt = 2_100L,
+                    updatedAt = 2_100L,
+                    operationId = "semantic-investment-cash",
+                ),
+            )
+            repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 1L,
+                    actualBalance = 300L,
+                    systemBalanceBeforeUpdate = 0L,
+                    delta = 300L,
+                    occurredAt = 2_200L,
+                    createdAt = 2_200L,
+                    updatedAt = 2_200L,
+                    operationId = "semantic-funding-update",
+                ),
+            )
+            repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 2L,
+                    actualBalance = 400L,
+                    systemBalanceBeforeUpdate = 0L,
+                    delta = 400L,
+                    occurredAt = 2_300L,
+                    createdAt = 2_300L,
+                    updatedAt = 2_300L,
+                    operationId = "semantic-gain",
+                ),
+            )
+            repository.insertBalanceUpdateRecord(
+                BalanceUpdateRecord(
+                    accountId = 2L,
+                    actualBalance = -250L,
+                    systemBalanceBeforeUpdate = 0L,
+                    delta = -250L,
+                    occurredAt = 2_400L,
+                    createdAt = 2_400L,
+                    updatedAt = 2_400L,
+                    operationId = "semantic-loss",
+                ),
+            )
+        }
+
+        HistoryBusinessSemantic.entries.forEach { semantic ->
+            val filters = HistoryRecordFilters(businessSemantic = semantic)
+            assertEquals(
+                memoryRepo.queryHistoryRecords(filters, null, 50),
+                roomRepo.queryHistoryRecords(filters, null, 50),
+            )
+            assertEquals(memoryRepo.countHistoryRecords(filters), roomRepo.countHistoryRecords(filters))
+            assertEquals(
+                memoryRepo.queryHistoryFilterSummary(filters),
+                roomRepo.queryHistoryFilterSummary(filters),
+            )
+        }
+        assertEquals(
+            listOf(-250L, 400L),
+            roomRepo.queryHistoryRecords(
+                HistoryRecordFilters(businessSemantic = HistoryBusinessSemantic.INVESTMENT_PNL),
+                null,
+                50,
+            ).map { it.amount },
+        )
     }
 
     @Test

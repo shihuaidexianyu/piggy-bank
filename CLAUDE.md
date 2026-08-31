@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Money** — a fully offline personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). No `INTERNET` permission, no networking, no remote endpoints. minSdk 31, target/compile SDK 36, Java 17.
+**Money** — an offline-first personal finance app for Android (Kotlin + Jetpack Compose, package `com.shihuaidexianyu.money`). It has no cloud backend; `INTERNET` is used only by a user-started temporary LAN service for a paired local Python MCP bridge. minSdk 31, target/compile SDK 36, Java 17.
 
 **All user-facing strings are Chinese (Simplified); code, comments, and docs are English.**
 
@@ -49,6 +49,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
+- **`lan/`** — temporary foreground LAN server, one-time pairing/session token, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
 
 ### Dependency injection is manual — do not add Hilt/Dagger/Koin
 
@@ -89,7 +90,7 @@ Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic u
 
 ## Database migrations
 
-Room schema version **18**, exported to `app/schemas/` (bundled as androidTest assets). Version 18 removes the former spending-budget columns from portable settings. When changing entities:
+Room schema version **19**, exported to `app/schemas/` (bundled as androidTest assets). Version 19 adds the device-local `ai_mutation_journal` table. When changing entities:
 
 1. Bump `MONEY_DATABASE_VERSION` in `MoneyDatabase.kt`.
 2. Add the `Migration` object there and register it in `MONEY_DATABASE_MIGRATIONS`.
@@ -108,3 +109,4 @@ Room schema version **18**, exported to `app/schemas/` (bundled as androidTest a
 - Release signing reads `signing/keystore.properties` (gitignored, as is all of `signing/`), falling back to `../timeline/keystore.properties`. Never commit keystores.
 - `allowBackup="false"` — the app deliberately does not use Android cloud/device-transfer backup.
 - Biometric app lock and amount privacy masking (in-app and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.
+- The LAN service lasts at most four hours and uses one-time pairing plus an ephemeral token. Its protocol is plaintext trusted-LAN-only. There is no per-write approval; safety comes from session-level write permission, idempotent request IDs, atomic Journal insertion, semantic conflict detection, and strict LIFO undo through existing use cases.

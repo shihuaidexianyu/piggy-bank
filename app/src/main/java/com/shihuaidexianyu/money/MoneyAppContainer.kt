@@ -18,6 +18,8 @@ class MoneyAppContainer(context: Context) {
 
     val transactionRepository get() = dataGraph.transactionRepository
 
+    val aiMutationJournalRepository get() = dataGraph.aiMutationJournalRepository
+
     val portableSettingsRepository get() = dataGraph.portableSettingsRepository
 
     val devicePreferencesRepository get() = dataGraph.devicePreferencesRepository
@@ -78,6 +80,8 @@ class MoneyAppContainer(context: Context) {
     val deleteBalanceAdjustmentUseCase get() = useCaseGraph.deleteBalanceAdjustmentUseCase
 
     val restoreLedgerRecordUseCase get() = useCaseGraph.restoreLedgerRecordUseCase
+
+    val aiJournaledLedgerUseCase get() = useCaseGraph.aiJournaledLedgerUseCase
 
     val updateAccountUseCase get() = useCaseGraph.updateAccountUseCase
 

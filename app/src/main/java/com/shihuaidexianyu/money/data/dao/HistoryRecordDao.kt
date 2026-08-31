@@ -233,6 +233,44 @@ internal const val HISTORY_FILTER_FRAGMENT = """
             OR (:amountDirection = 'INCREASE' AND amount > 0 AND type != 'TRANSFER')
             OR (:amountDirection = 'DECREASE' AND amount < 0 AND type != 'TRANSFER')
         )
+        AND (
+            :businessSemantic = 'ALL'
+            OR (
+                :businessSemantic = 'DAILY_EXPENSE'
+                AND type = 'CASH_FLOW'
+                AND amount < 0
+                AND EXISTS (
+                    SELECT 1 FROM accounts semanticAccount
+                    WHERE semanticAccount.id = accountId AND semanticAccount.kind = 'funding'
+                )
+            )
+            OR (
+                :businessSemantic = 'INVESTMENT_PNL'
+                AND type = 'BALANCE_UPDATE'
+                AND EXISTS (
+                    SELECT 1 FROM accounts semanticAccount
+                    WHERE semanticAccount.id = accountId AND semanticAccount.kind = 'investment'
+                )
+            )
+            OR (
+                :businessSemantic = 'INVESTMENT_GAIN'
+                AND type = 'BALANCE_UPDATE'
+                AND amount > 0
+                AND EXISTS (
+                    SELECT 1 FROM accounts semanticAccount
+                    WHERE semanticAccount.id = accountId AND semanticAccount.kind = 'investment'
+                )
+            )
+            OR (
+                :businessSemantic = 'INVESTMENT_LOSS'
+                AND type = 'BALANCE_UPDATE'
+                AND amount < 0
+                AND EXISTS (
+                    SELECT 1 FROM accounts semanticAccount
+                    WHERE semanticAccount.id = accountId AND semanticAccount.kind = 'investment'
+                )
+            )
+        )
 """
 
 @Dao
@@ -268,6 +306,7 @@ interface HistoryRecordDao {
         minAmount: Long?,
         maxAmount: Long?,
         amountDirection: String,
+        businessSemantic: String,
         cursorOccurredAt: Long?,
         cursorSourceOrder: Int,
         cursorRecordId: Long,
@@ -294,6 +333,7 @@ interface HistoryRecordDao {
         minAmount: Long?,
         maxAmount: Long?,
         amountDirection: String,
+        businessSemantic: String,
     ): Int
 
     @Query(
@@ -330,6 +370,7 @@ interface HistoryRecordDao {
         minAmount: Long?,
         maxAmount: Long?,
         amountDirection: String,
+        businessSemantic: String,
     ): HistoryFilterSummaryProjection
 }
 

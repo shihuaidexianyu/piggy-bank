@@ -776,6 +776,33 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion18To19AddsEmptyAiMutationJournal() {
+        val dbName = "$TEST_DB-v18-ai-journal"
+        helper.createDatabase(dbName, 18).close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 19,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        migrated.query("SELECT COUNT(*) FROM ai_mutation_journal").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        val indexNames = buildSet {
+            migrated.query("PRAGMA index_list(ai_mutation_journal)").use { cursor ->
+                while (cursor.moveToNext()) add(cursor.getString(1))
+            }
+        }
+        assertTrue("index_ai_mutation_journal_requestId" in indexNames)
+        assertTrue("index_ai_mutation_journal_undoRequestId" in indexNames)
+        assertTrue("index_ai_mutation_journal_status_id" in indexNames)
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

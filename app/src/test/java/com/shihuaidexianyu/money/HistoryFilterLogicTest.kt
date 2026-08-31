@@ -5,10 +5,61 @@ import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.history.HistoryRecordUiModel
 import com.shihuaidexianyu.money.ui.history.filterHistoryRecords
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import kotlin.test.assertEquals
 import org.junit.Test
 
 class HistoryFilterLogicTest {
+    @Test
+    fun `business semantic filters use record meaning and account kind together`() {
+        val records = listOf(
+            record(id = "daily", amount = -100L, isFunding = true),
+            record(id = "investment_cash", amount = -200L, isInvestment = true),
+            record(
+                id = "gain",
+                kind = HistoryRecordKind.BALANCE_UPDATE,
+                amount = 300L,
+                isInvestment = true,
+            ),
+            record(
+                id = "loss",
+                kind = HistoryRecordKind.BALANCE_UPDATE,
+                amount = -150L,
+                isInvestment = true,
+            ),
+            record(id = "funding_reconcile", kind = HistoryRecordKind.BALANCE_UPDATE, amount = 20L, isFunding = true),
+        )
+
+        assertEquals(
+            listOf("daily"),
+            filterHistoryRecords(
+                records,
+                HistoryFilterState(businessSemantic = HistoryBusinessSemantic.DAILY_EXPENSE),
+            ).map { it.id },
+        )
+        assertEquals(
+            listOf("gain", "loss"),
+            filterHistoryRecords(
+                records,
+                HistoryFilterState(businessSemantic = HistoryBusinessSemantic.INVESTMENT_PNL),
+            ).map { it.id },
+        )
+        assertEquals(
+            listOf("gain"),
+            filterHistoryRecords(
+                records,
+                HistoryFilterState(businessSemantic = HistoryBusinessSemantic.INVESTMENT_GAIN),
+            ).map { it.id },
+        )
+        assertEquals(
+            listOf("loss"),
+            filterHistoryRecords(
+                records,
+                HistoryFilterState(businessSemantic = HistoryBusinessSemantic.INVESTMENT_LOSS),
+            ).map { it.id },
+        )
+    }
+
     @Test
     fun `exclude keyword works without include keyword`() {
         val records = listOf(
@@ -69,7 +120,10 @@ class HistoryFilterLogicTest {
         kind: HistoryRecordKind = HistoryRecordKind.CASH_FLOW,
         title: String = id,
         subtitle: String = "",
-        source: String,
+        source: String = "",
+        amount: Long = 100L,
+        isInvestment: Boolean = false,
+        isFunding: Boolean = false,
     ): HistoryRecordUiModel {
         return HistoryRecordUiModel(
             id = id,
@@ -77,10 +131,12 @@ class HistoryFilterLogicTest {
             kind = kind,
             title = title,
             subtitle = subtitle,
-            amount = 100L,
+            amount = amount,
             occurredAt = 1_000L,
             accountIds = setOf(1L),
             keywordSource = source,
+            isInvestmentAccount = isInvestment,
+            isFundingAccount = isFunding,
         )
     }
 }

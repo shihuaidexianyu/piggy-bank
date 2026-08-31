@@ -1,0 +1,12 @@
+[project]
+name = "money-mcp-bridge"
+version = "0.1.0"
+description = "MCP stdio bridge for the Money Android app LAN protocol"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2,<3",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"

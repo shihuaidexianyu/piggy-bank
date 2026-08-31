@@ -13,6 +13,20 @@ enum class HistoryAmountDirection {
     DECREASE,
 }
 
+enum class HistoryBusinessSemantic(val value: String) {
+    ALL("all"),
+    DAILY_EXPENSE("daily_expense"),
+    INVESTMENT_PNL("investment_pnl"),
+    INVESTMENT_GAIN("investment_gain"),
+    INVESTMENT_LOSS("investment_loss"),
+    ;
+
+    companion object {
+        fun fromValue(value: String?): HistoryBusinessSemantic =
+            entries.firstOrNull { it.value == value } ?: ALL
+    }
+}
+
 data class HistoryRecordFilters(
     val keyword: String = "",
     val excludeKeyword: String = "",
@@ -23,6 +37,7 @@ data class HistoryRecordFilters(
     val minAmount: Long? = null,
     val maxAmount: Long? = null,
     val amountDirection: HistoryAmountDirection = HistoryAmountDirection.ALL,
+    val businessSemantic: HistoryBusinessSemantic = HistoryBusinessSemantic.ALL,
 )
 
 /**

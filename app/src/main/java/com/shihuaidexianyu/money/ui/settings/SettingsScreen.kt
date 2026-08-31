@@ -74,6 +74,7 @@ fun SettingsScreen(
     onOpenNotificationSettings: (NotificationSettingsTarget) -> Unit,
     onManageReminders: () -> Unit,
     onManageAccountReminderConfigs: () -> Unit,
+    onOpenLanAi: () -> Unit,
     onExportData: () -> Unit,
     onImportData: (Uri) -> Unit,
     onConfirmImport: (String) -> Unit,
@@ -269,6 +270,12 @@ fun SettingsScreen(
         }
         item {
             MoneyListSection {
+                MoneyListRow(
+                    title = stringResource(R.string.settings_lan_ai),
+                    subtitle = stringResource(R.string.settings_lan_ai_description),
+                    onClick = onOpenLanAi,
+                )
+                MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_theme_mode),
                     subtitle = stringResource(R.string.settings_theme_description),

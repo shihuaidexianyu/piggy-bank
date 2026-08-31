@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.data.backup.BackupJsonCodec
 import com.shihuaidexianyu.money.data.backup.BackupImportCoordinator
 import com.shihuaidexianyu.money.data.db.MONEY_DATABASE_VERSION
 import com.shihuaidexianyu.money.domain.usecase.CloseAccountUseCase
+import com.shihuaidexianyu.money.domain.usecase.AiJournaledLedgerUseCase
 import com.shihuaidexianyu.money.domain.usecase.AccountLifecycleCoordinator
 import com.shihuaidexianyu.money.domain.usecase.BuildExportJsonUseCase
 import com.shihuaidexianyu.money.domain.usecase.BuildExportSnapshotUseCase
@@ -217,6 +218,19 @@ internal class UseCaseGraph(
         refreshAccountActivityStateUseCase = refreshAccountActivityStateUseCase,
         clockProvider = SystemClockProvider,
         notificationSyncRequester = data.notificationSyncRequester,
+    )
+
+    val aiJournaledLedgerUseCase = AiJournaledLedgerUseCase(
+        journalRepository = data.aiMutationJournalRepository,
+        transactionRepository = data.transactionRepository,
+        createCashFlowRecordUseCase = createCashFlowRecordUseCase,
+        updateCashFlowRecordUseCase = updateCashFlowRecordUseCase,
+        deleteCashFlowRecordUseCase = deleteCashFlowRecordUseCase,
+        createTransferRecordUseCase = createTransferRecordUseCase,
+        updateTransferRecordUseCase = updateTransferRecordUseCase,
+        deleteTransferRecordUseCase = deleteTransferRecordUseCase,
+        restoreLedgerRecordUseCase = restoreLedgerRecordUseCase,
+        clockProvider = SystemClockProvider,
     )
 
     val updateAccountUseCase = UpdateAccountUseCase(

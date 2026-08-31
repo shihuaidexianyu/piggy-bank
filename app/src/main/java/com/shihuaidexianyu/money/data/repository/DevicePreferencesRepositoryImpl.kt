@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.data.db.appSettingsDataStore
 import com.shihuaidexianyu.money.domain.model.AppRelockDelay
 import com.shihuaidexianyu.money.domain.model.DevicePreferences
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.ThemeMode
 import com.shihuaidexianyu.money.domain.model.normalizeRecentAccountIds
@@ -93,6 +94,9 @@ object DevicePreferencesMapper {
             minAmountText = preferences[Keys.HistoryMinAmountText] ?: "",
             maxAmountText = preferences[Keys.HistoryMaxAmountText] ?: "",
             amountDirection = preferences[Keys.HistoryAmountDirection] ?: "",
+            businessSemantic = HistoryBusinessSemantic
+                .fromValue(preferences[Keys.HistoryBusinessSemantic])
+                .value,
         )
         return DevicePreferences(
             themeMode = ThemeMode.fromValue(preferences[Keys.ThemeMode]),
@@ -128,6 +132,9 @@ object DevicePreferencesMapper {
         preferences[Keys.HistoryMinAmountText] = value.historyFilters.minAmountText
         preferences[Keys.HistoryMaxAmountText] = value.historyFilters.maxAmountText
         preferences[Keys.HistoryAmountDirection] = value.historyFilters.amountDirection
+        preferences[Keys.HistoryBusinessSemantic] = HistoryBusinessSemantic
+            .fromValue(value.historyFilters.businessSemantic)
+            .value
         preferences[Keys.RecentAccountIds] = normalizedRecent.joinToString(",")
     }
 
@@ -152,6 +159,7 @@ object DevicePreferencesMapper {
         val HistoryMinAmountText = stringPreferencesKey("last_history_min_amount_text")
         val HistoryMaxAmountText = stringPreferencesKey("last_history_max_amount_text")
         val HistoryAmountDirection = stringPreferencesKey("last_history_amount_direction")
+        val HistoryBusinessSemantic = stringPreferencesKey("last_history_business_semantic")
         val RecentAccountIds = stringPreferencesKey("recent_account_ids")
     }
 }

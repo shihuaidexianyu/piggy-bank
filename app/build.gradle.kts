@@ -25,8 +25,8 @@ android {
         applicationId = "com.shihuaidexianyu.money"
         minSdk = 31
         targetSdk = 36
-        versionCode = 141
-        versionName = "2.5.32"
+        versionCode = 142
+        versionName = "2.5.33"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -77,6 +77,7 @@ import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.ledgerSumExact
@@ -88,6 +89,7 @@ import java.time.ZoneId
 private enum class HistoryFilterSheet {
     OVERVIEW,
     TYPE,
+    BUSINESS,
     ACCOUNT,
     DATE,
     AMOUNT,
@@ -108,6 +110,7 @@ fun HistoryScreen(
     onKeywordChange: (String) -> Unit,
     onExcludeKeywordChange: (String) -> Unit,
     onRecordTypesChange: (Set<HistoryRecordType>) -> Unit,
+    onBusinessSemanticChange: (HistoryBusinessSemantic) -> Unit = {},
     onAccountChange: (Long?) -> Unit,
     onDateRangeChange: (Long?, Long?) -> Unit,
     onMinAmountChange: (String) -> Unit,
@@ -234,6 +237,7 @@ fun HistoryScreen(
             title = when (current) {
                 HistoryFilterSheet.OVERVIEW -> stringResource(R.string.history_filter)
                 HistoryFilterSheet.TYPE -> stringResource(R.string.history_type)
+                HistoryFilterSheet.BUSINESS -> stringResource(R.string.history_business_semantic)
                 HistoryFilterSheet.DATE -> stringResource(R.string.field_date)
                 HistoryFilterSheet.AMOUNT -> stringResource(R.string.field_amount)
                 HistoryFilterSheet.DIRECTION -> stringResource(R.string.history_direction)
@@ -253,6 +257,12 @@ fun HistoryScreen(
                             title = stringResource(R.string.history_type),
                             trailing = typeSheetSummary(state),
                             onClick = { sheet = HistoryFilterSheet.TYPE },
+                        )
+                        MoneySectionDivider()
+                        MoneyListRow(
+                            title = stringResource(R.string.history_business_semantic),
+                            trailing = businessSemanticLabel(state.businessSemantic),
+                            onClick = { sheet = HistoryFilterSheet.BUSINESS },
                         )
                         MoneySectionDivider()
                         if (lockedAccountId == null) {
@@ -306,6 +316,20 @@ fun HistoryScreen(
                     if (state.selectedRecordTypes.isNotEmpty()) {
                         MoneyTonalButton(onClick = { onRecordTypesChange(emptySet()) }) {
                             Text(stringResource(R.string.history_show_all_types))
+                        }
+                    }
+                }
+                HistoryFilterSheet.BUSINESS -> {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        HistoryBusinessSemantic.entries.forEach { option ->
+                            FilterChip(
+                                selected = state.businessSemantic == option,
+                                onClick = { onBusinessSemanticChange(option) },
+                                label = { Text(businessSemanticLabel(option)) },
+                            )
                         }
                     }
                 }
@@ -837,6 +861,13 @@ private fun ActiveFilterChips(
                 label = { Text(typeSheetSummary(state)) },
             )
         }
+        if (state.businessSemantic != HistoryBusinessSemantic.ALL) {
+            FilterChip(
+                selected = true,
+                onClick = { onOpenSheet(HistoryFilterSheet.BUSINESS) },
+                label = { Text(businessSemanticLabel(state.businessSemantic)) },
+            )
+        }
         if (!accountLocked && state.selectedAccountId != null) {
             FilterChip(
                 selected = true,
@@ -1137,6 +1168,17 @@ private fun directionChipLabel(state: HistoryUiState): String {
 }
 
 @Composable
+private fun businessSemanticLabel(semantic: HistoryBusinessSemantic): String = stringResource(
+    when (semantic) {
+        HistoryBusinessSemantic.ALL -> R.string.history_business_all
+        HistoryBusinessSemantic.DAILY_EXPENSE -> R.string.history_daily_expense
+        HistoryBusinessSemantic.INVESTMENT_PNL -> R.string.history_investment_pnl
+        HistoryBusinessSemantic.INVESTMENT_GAIN -> R.string.history_investment_gain
+        HistoryBusinessSemantic.INVESTMENT_LOSS -> R.string.history_investment_loss
+    },
+)
+
+@Composable
 private fun typeSheetSummary(state: HistoryUiState): String = when (state.selectedRecordTypes.size) {
     0 -> stringResource(R.string.history_all_types)
     1 -> historyTypeLabel(state.selectedRecordTypes.single())
@@ -1176,6 +1218,7 @@ private fun activeFilterCount(state: HistoryUiState, accountLocked: Boolean): In
         state.keyword.isNotBlank(),
         state.excludeKeyword.isNotBlank(),
         state.selectedRecordTypes.isNotEmpty(),
+        state.businessSemantic != HistoryBusinessSemantic.ALL,
         !accountLocked && state.selectedAccountId != null,
         state.dateStartAt != null || state.dateEndAt != null,
         state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank(),

@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money.data.repository
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.AccountActivityMaxima
 import com.shihuaidexianyu.money.domain.model.AccountLedgerAggregate
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
@@ -11,6 +12,7 @@ import com.shihuaidexianyu.money.domain.model.normalizeHistorySearchText
 import com.shihuaidexianyu.money.domain.model.requireValidAmountBounds
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecord
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
@@ -64,6 +66,7 @@ private data class HistoryBalanceLeg(
 class InMemoryTransactionRepository(
     private val accountNameLookup: (Long) -> String? = { null },
     private val accountInitialBalanceLookup: (Long) -> Long = { 0L },
+    private val accountKindLookup: (Long) -> AccountKind? = { null },
 ) : TransactionRepository, LedgerAggregateRepository {
     var transactionInvocationCount: Int = 0
         private set
@@ -1033,9 +1036,24 @@ class InMemoryTransactionRepository(
             HistoryAmountDirection.INCREASE -> amount > 0 && type != HistoryRecordType.TRANSFER
             HistoryAmountDirection.DECREASE -> amount < 0 && type != HistoryRecordType.TRANSFER
         }
+        val businessSemanticOk = when (filters.businessSemantic) {
+            HistoryBusinessSemantic.ALL -> true
+            HistoryBusinessSemantic.DAILY_EXPENSE ->
+                type == HistoryRecordType.CASH_FLOW && amount < 0L &&
+                    accountKindLookup(accountId) == AccountKind.FUNDING
+            HistoryBusinessSemantic.INVESTMENT_PNL ->
+                type == HistoryRecordType.BALANCE_UPDATE &&
+                    accountKindLookup(accountId) == AccountKind.INVESTMENT
+            HistoryBusinessSemantic.INVESTMENT_GAIN ->
+                type == HistoryRecordType.BALANCE_UPDATE && amount > 0L &&
+                    accountKindLookup(accountId) == AccountKind.INVESTMENT
+            HistoryBusinessSemantic.INVESTMENT_LOSS ->
+                type == HistoryRecordType.BALANCE_UPDATE && amount < 0L &&
+                    accountKindLookup(accountId) == AccountKind.INVESTMENT
+        }
         val typeOk = filters.recordTypes.isEmpty() || type in filters.recordTypes
         return keywordOk && excludeOk && typeOk && accountOk &&
-            startOk && endOk && minOk && maxOk && directionOk
+            startOk && endOk && minOk && maxOk && directionOk && businessSemanticOk
     }
 
     private fun HistoryRecord.isAfterCursor(cursor: HistoryPageCursor?): Boolean {

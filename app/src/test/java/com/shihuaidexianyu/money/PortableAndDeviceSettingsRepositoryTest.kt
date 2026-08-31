@@ -57,6 +57,7 @@ class PortableAndDeviceSettingsRepositoryTest {
                 minAmountText = "1.00",
                 maxAmountText = "20.00",
                 amountDirection = "decrease",
+                businessSemantic = "daily_expense",
             ),
             recentAccountIds = listOf(3L, 2L, 3L, -1L, 1L, 4L, 5L, 6L),
         )
@@ -76,6 +77,7 @@ class PortableAndDeviceSettingsRepositoryTest {
             stringPreferencesKey("theme_mode") to "unknown",
             stringPreferencesKey("relock_delay") to "corrupt",
             stringPreferencesKey("last_history_record_types") to "CASH_FLOW,INVALID,TRANSFER",
+            stringPreferencesKey("last_history_business_semantic") to "corrupt",
             longPreferencesKey("last_history_account_id") to -9L,
             longPreferencesKey("last_history_date_start_at") to -1L,
             longPreferencesKey("last_history_date_end_at") to 20L,
@@ -92,6 +94,7 @@ class PortableAndDeviceSettingsRepositoryTest {
         assertEquals(null, result.historyFilters.dateStartAt)
         assertEquals(20L, result.historyFilters.dateEndAt)
         assertEquals(setOf("CASH_FLOW", "TRANSFER"), result.historyFilters.recordTypes)
+        assertEquals("all", result.historyFilters.businessSemantic)
         assertEquals(listOf(3L, 2L, 1L, 4L, 5L), result.recentAccountIds)
     }
 
@@ -109,6 +112,7 @@ class PortableAndDeviceSettingsRepositoryTest {
                 minAmountText = "1.00",
                 maxAmountText = "9.00",
                 amountDirection = "increase",
+                businessSemantic = "investment_pnl",
             ),
         )
 

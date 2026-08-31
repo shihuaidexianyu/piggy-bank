@@ -485,6 +485,7 @@ class TransactionRepositoryImpl(
             minAmount = filters.minAmount,
             maxAmount = filters.maxAmount,
             amountDirection = filters.amountDirection.name,
+            businessSemantic = filters.businessSemantic.name,
             cursorOccurredAt = cursor?.occurredAt,
             cursorSourceOrder = cursor?.sourceOrder ?: 0,
             cursorRecordId = cursor?.recordId ?: 0L,
@@ -508,6 +509,7 @@ class TransactionRepositoryImpl(
             minAmount = filters.minAmount,
             maxAmount = filters.maxAmount,
             amountDirection = filters.amountDirection.name,
+            businessSemantic = filters.businessSemantic.name,
         )
     }
 
@@ -528,6 +530,7 @@ class TransactionRepositoryImpl(
                 minAmount = filters.minAmount,
                 maxAmount = filters.maxAmount,
                 amountDirection = filters.amountDirection.name,
+                businessSemantic = filters.businessSemantic.name,
             )
             HistoryFilterSummary(
                 cashInflow = row.cashInflow,

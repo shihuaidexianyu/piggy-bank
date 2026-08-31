@@ -4,9 +4,11 @@ import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.data.repository.escapeHistoryLikeLiteral
 import com.shihuaidexianyu.money.domain.model.BalanceAdjustmentRecord
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
 import com.shihuaidexianyu.money.domain.model.HistoryRecordType
@@ -16,6 +18,48 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class HistoryPreciseFilterTest {
+    @Test
+    fun `business semantics distinguish daily expense from investment profit and loss`() = runBlocking {
+        val repository = InMemoryTransactionRepository(
+            accountKindLookup = { accountId ->
+                if (accountId == 2L) AccountKind.INVESTMENT else AccountKind.FUNDING
+            },
+        )
+        insertCash(repository, 1L, CashFlowDirection.OUTFLOW, 100L, "日常账户支出", 1_000L)
+        insertCash(repository, 2L, CashFlowDirection.OUTFLOW, 200L, "投资账户现金流", 1_100L)
+        insertBalanceUpdate(repository, accountId = 1L, delta = 300L, occurredAt = 1_200L)
+        insertBalanceUpdate(repository, accountId = 2L, delta = 400L, occurredAt = 1_300L)
+        insertBalanceUpdate(repository, accountId = 2L, delta = -250L, occurredAt = 1_400L)
+
+        val daily = HistoryRecordFilters(businessSemantic = HistoryBusinessSemantic.DAILY_EXPENSE)
+        assertEquals(listOf("日常账户支出"), repository.queryHistoryRecords(daily, null, 20).map { it.title })
+
+        val pnl = HistoryRecordFilters(businessSemantic = HistoryBusinessSemantic.INVESTMENT_PNL)
+        assertEquals(listOf(-250L, 400L), repository.queryHistoryRecords(pnl, null, 20).map { it.amount })
+        assertEquals(2, repository.countHistoryRecords(pnl))
+        assertEquals(
+            HistoryFilterSummary(cashInflow = 0L, cashOutflow = 0L, netChange = 150L),
+            repository.queryHistoryFilterSummary(pnl),
+        )
+
+        assertEquals(
+            listOf(400L),
+            repository.queryHistoryRecords(
+                HistoryRecordFilters(businessSemantic = HistoryBusinessSemantic.INVESTMENT_GAIN),
+                null,
+                20,
+            ).map { it.amount },
+        )
+        assertEquals(
+            listOf(-250L),
+            repository.queryHistoryRecords(
+                HistoryRecordFilters(businessSemantic = HistoryBusinessSemantic.INVESTMENT_LOSS),
+                null,
+                20,
+            ).map { it.amount },
+        )
+    }
+
     @Test
     fun `primary search covers notes account names and localized system titles literally`() = runBlocking {
         val names = mapOf(1L to "现金钱包", 2L to "工资卡")
@@ -182,6 +226,26 @@ class HistoryPreciseFilterTest {
                 direction = direction.value,
                 amount = amount,
                 note = note,
+                occurredAt = occurredAt,
+                createdAt = occurredAt,
+                updatedAt = occurredAt,
+                operationId = testOperationId(),
+            ),
+        )
+    }
+
+    private suspend fun insertBalanceUpdate(
+        repository: InMemoryTransactionRepository,
+        accountId: Long,
+        delta: Long,
+        occurredAt: Long,
+    ) {
+        repository.insertBalanceUpdateRecord(
+            BalanceUpdateRecord(
+                accountId = accountId,
+                actualBalance = delta,
+                systemBalanceBeforeUpdate = 0L,
+                delta = delta,
                 occurredAt = occurredAt,
                 createdAt = occurredAt,
                 updatedAt = occurredAt,

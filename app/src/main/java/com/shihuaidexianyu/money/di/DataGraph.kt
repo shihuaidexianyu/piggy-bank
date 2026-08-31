@@ -12,6 +12,7 @@ import com.shihuaidexianyu.money.data.debug.DebugSampleDataSeeder
 import com.shihuaidexianyu.money.data.db.MoneyDatabase
 import com.shihuaidexianyu.money.data.export.ExportJsonFileWriter
 import com.shihuaidexianyu.money.data.repository.AccountReminderSettingsRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.AiMutationJournalRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.AccountRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
@@ -51,6 +52,10 @@ internal class DataGraph(context: Context) {
     )
 
     val transactionRepository: TransactionRepository = transactionRepositoryImpl
+
+    val aiMutationJournalRepository = AiMutationJournalRepositoryImpl(
+        moneyDatabase.aiMutationJournalDao(),
+    )
 
     val ledgerAggregateRepository: LedgerAggregateRepository = transactionRepositoryImpl
 

@@ -41,7 +41,7 @@ class SettingsSectionContractTest {
                 ),
                 R.string.settings_section_privacy to listOf("biometric", "relock", "hide_recents", "hide_notification"),
                 R.string.settings_section_notifications to listOf("permission_channels", "reminder_management", "account_reminder_config"),
-                R.string.settings_section_data to listOf("export_json", "import_preview", "receipt_rollback"),
+                R.string.settings_section_data to listOf("lan_ai", "export_json", "import_preview", "receipt_rollback"),
                 R.string.settings_section_about to listOf("version", "offline_data_safety"),
             ),
             SETTINGS_SECTION_CONTRACTS.map { it.titleRes to it.itemKeys },

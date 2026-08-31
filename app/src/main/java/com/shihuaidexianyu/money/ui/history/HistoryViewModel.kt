@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.Account
+import com.shihuaidexianyu.money.domain.model.AccountKind
 import com.shihuaidexianyu.money.domain.model.HistoryFilters
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.HistoryAmountDirection
+import com.shihuaidexianyu.money.domain.model.HistoryBusinessSemantic
 import com.shihuaidexianyu.money.domain.model.HistoryFilterSummary
 import com.shihuaidexianyu.money.domain.model.HistoryPageCursor
 import com.shihuaidexianyu.money.domain.model.HistoryRecordFilters
@@ -81,6 +83,8 @@ data class HistoryRecordUiModel(
     val keywordSource: String,
     /** Reconciliation deltas on investment accounts read as investment P&L, not error correction. */
     val isInvestmentAccount: Boolean = false,
+    /** Funding accounts define ordinary day-to-day cash expenses. */
+    val isFundingAccount: Boolean = false,
     /** Closed or missing related accounts make the ledger record read-only. */
     val canMutate: Boolean = true,
     /**
@@ -116,6 +120,7 @@ data class HistoryUiState(
     @param:StringRes val minAmountErrorRes: Int? = null,
     @param:StringRes val maxAmountErrorRes: Int? = null,
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
+    val businessSemantic: HistoryBusinessSemantic = HistoryBusinessSemantic.ALL,
     val records: List<HistoryRecordUiModel> = emptyList(),
     /** Totals over the WHOLE filtered set (not just loaded pages); null when no filter is active. */
     val filterSummary: HistoryFilterSummary? = null,
@@ -142,6 +147,7 @@ internal data class HistoryFilterState(
     val minAmountText: String = "",
     val maxAmountText: String = "",
     val amountDirectionFilter: AmountDirectionFilter = AmountDirectionFilter.ALL,
+    val businessSemantic: HistoryBusinessSemantic = HistoryBusinessSemantic.ALL,
 ) {
     fun hasAnyFilter(): Boolean = this != HistoryFilterState()
 }
@@ -234,6 +240,8 @@ class HistoryViewModel(
     fun updateMaxAmount(value: String) = applyLocalFilter(debounceReload = true) { copy(maxAmountText = value) }
     fun updateAmountDirectionFilter(filter: AmountDirectionFilter) =
         applyLocalFilter { copy(amountDirectionFilter = filter) }
+    fun updateBusinessSemantic(semantic: HistoryBusinessSemantic) =
+        applyLocalFilter { copy(businessSemantic = semantic) }
 
     fun clearFilters() {
         // Clearing never drops the locked account scope — it is the page, not a filter.
@@ -381,6 +389,7 @@ class HistoryViewModel(
                 minAmountErrorRes = amountValidation.minErrorRes,
                 maxAmountErrorRes = amountValidation.maxErrorRes,
                 amountDirectionFilter = filters.amountDirectionFilter,
+                businessSemantic = filters.businessSemantic,
             )
         }
     }
@@ -531,6 +540,7 @@ class HistoryViewModel(
                 accountIds = accountIds,
                 keywordSource = record.keywordSource,
                 isInvestmentAccount = accountMap[record.accountId]?.isInvestment == true,
+                isFundingAccount = accountMap[record.accountId]?.kind == AccountKind.FUNDING,
                 canMutate = accountIds.all { accountId -> accountMap[accountId]?.isClosed == false },
                 balanceBefore = record.balanceBefore,
                 balanceAfter = record.balanceAfter,
@@ -564,6 +574,7 @@ private fun HistoryFilters.toHistoryFilterState(): HistoryFilterState {
         minAmountText = minAmountText,
         maxAmountText = maxAmountText,
         amountDirectionFilter = AmountDirectionFilter.fromValue(amountDirection.takeIf { it.isNotBlank() }),
+        businessSemantic = HistoryBusinessSemantic.fromValue(businessSemantic),
     )
 }
 
@@ -577,6 +588,7 @@ private fun HistoryFilterState.toDeviceHistoryFilters(): HistoryFilters = Histor
     minAmountText = minAmountText,
     maxAmountText = maxAmountText,
     amountDirection = amountDirectionFilter.value,
+    businessSemantic = businessSemantic.value,
 )
 
 internal fun HistoryUiState.toAsyncContent(errorMessage: String = ""): AsyncContent<HistoryUiState> {
@@ -601,7 +613,8 @@ private fun HistoryUiState.hasActiveFilters(): Boolean =
         dateEndAt != null ||
         minAmountText.isNotBlank() ||
         maxAmountText.isNotBlank() ||
-        amountDirectionFilter != AmountDirectionFilter.ALL
+        amountDirectionFilter != AmountDirectionFilter.ALL ||
+        businessSemantic != HistoryBusinessSemantic.ALL
 
 private data class HistoryAmountValidation(
     val minAmount: Long?,
@@ -640,6 +653,7 @@ private fun HistoryFilterState.toHistoryRecordFiltersOrNull(): HistoryRecordFilt
             AmountDirectionFilter.INCREASE -> HistoryAmountDirection.INCREASE
             AmountDirectionFilter.DECREASE -> HistoryAmountDirection.DECREASE
         },
+        businessSemantic = businessSemantic,
     )
 }
 
@@ -682,8 +696,19 @@ internal fun filterHistoryRecords(
             AmountDirectionFilter.INCREASE -> record.amount > 0 && record.kind != HistoryRecordKind.TRANSFER
             AmountDirectionFilter.DECREASE -> record.amount < 0 && record.kind != HistoryRecordKind.TRANSFER
         }
+        val businessSemanticOk = when (filters.businessSemantic) {
+            HistoryBusinessSemantic.ALL -> true
+            HistoryBusinessSemantic.DAILY_EXPENSE ->
+                record.kind == HistoryRecordKind.CASH_FLOW && record.amount < 0L && record.isFundingAccount
+            HistoryBusinessSemantic.INVESTMENT_PNL ->
+                record.kind == HistoryRecordKind.BALANCE_UPDATE && record.isInvestmentAccount
+            HistoryBusinessSemantic.INVESTMENT_GAIN ->
+                record.kind == HistoryRecordKind.BALANCE_UPDATE && record.amount > 0L && record.isInvestmentAccount
+            HistoryBusinessSemantic.INVESTMENT_LOSS ->
+                record.kind == HistoryRecordKind.BALANCE_UPDATE && record.amount < 0L && record.isInvestmentAccount
+        }
         keywordOk && excludeOk && typeOk && accountOk &&
-            startOk && endOk && minOk && maxOk && directionOk
+            startOk && endOk && minOk && maxOk && directionOk && businessSemanticOk
     }
 }
 

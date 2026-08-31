@@ -46,6 +46,7 @@ sealed class MoneyDestination(
         const val BalanceUpdateResultRoute = "balance/update/{accountId}/result"
         const val BatchReconcileRoute = "balance/reconcile"
         const val ReminderListRoute = "reminders"
+        const val LanMcpRoute = "settings/lan-ai"
         const val CreateReminderRoute = "reminders/create"
         const val EditReminderRoute = "reminders/{reminderId}/edit"
         fun accountDetailRoute(accountId: Long): String = "accounts/$accountId"
