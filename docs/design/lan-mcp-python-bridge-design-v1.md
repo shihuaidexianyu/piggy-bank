@@ -38,8 +38,8 @@ uv run money_mcp.py pair --host 192.168.1.20 --port 43127 --code 12345678
       "args": [
         "run",
         "--project",
-        "C:/path/to/money/tools/money-mcp-bridge",
-        "C:/path/to/money/tools/money-mcp-bridge/money_mcp.py",
+        "C:/path/to/money-client-skill/scripts",
+        "C:/path/to/money-client-skill/scripts/money_mcp.py",
         "serve"
       ]
     }
@@ -627,29 +627,25 @@ App 历史页、`money_query_records` 与 `money_financial_summary` 共用同一
 
 ### 9.1 目录结构
 
+Python bridge 已迁移到独立的 [money-client-skill](https://github.com/shihuaidexianyu/money-client-skill) 仓库：
+
 ~~~text
-tools/money-mcp-bridge/
-├── pyproject.toml
-├── uv.lock
+money-client-skill/
+├── SKILL.md
 ├── README.md
-├── src/money_mcp_bridge/
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── server.py
-│   ├── phone_client.py
-│   ├── protocol.py
-│   ├── config.py
-│   ├── money.py
-│   ├── models.py
-│   └── errors.py
-└── tests/
-    ├── test_protocol.py
-    ├── test_phone_client.py
-    ├── test_money.py
-    └── test_tools.py
+├── agents/
+├── assets/
+├── references/
+└── scripts/
+    ├── pyproject.toml
+    ├── uv.lock
+    ├── money_bridge_core.py
+    ├── money_client_cli.py
+    ├── money_mcp.py
+    └── test_*.py
 ~~~
 
-虽然用户侧把它称为“一个 Python 脚本”，实现上仍应拆成小型 Python 包，最终只暴露一个 money-mcp 命令。这能避免所有协议、配置和工具代码堆进单个文件。
+桥接实现随自包含 skill 独立发布，`scripts/` 将协议核心、确定性 CLI 与 MCP stdio 入口分开维护，避免把配置、协议和工具代码堆进单个文件。
 
 ### 9.2 依赖策略
 
@@ -1025,7 +1021,7 @@ Python 后续补强项包括账户名称歧义、只读环境变量、游标透�
 
 ~~~powershell
 .\gradlew.bat test
-python -m unittest tools/money-mcp-bridge/test_money_bridge_core.py
+uv --directory C:\path\to\money-client-skill\scripts run python -m unittest discover
 ~~~
 
 仪器测试需要设备或模拟器。
@@ -1161,10 +1157,10 @@ v1 是带明确警告的可信局域网明文协议。
 
 1. 更新 AGENTS.md 和 CLAUDE.md。
 2. 把“Manifest 没有 INTERNET 权限”改为“没有互联网后端，只有用户主动开启的局域网服务”。
-3. 记录新的 lan/ 和 tools/money-mcp-bridge/ 结构。
-4. 增加 Python 测试命令。
+3. 记录新的 `lan/` 结构和独立 `money-client-skill` 仓库。
+4. 在独立仓库增加 Python 测试命令。
 5. 更新 App 隐私说明，明确局域网会话会向配对电脑提供精确账本数据。
-6. 新增 tools/money-mcp-bridge/README.md，说明 uv 安装、配对、AI 客户端配置和排错。
+6. 在 `money-client-skill/README.md` 说明 uv 安装、配对、AI 客户端配置和排错。
 7. 明确 Python 不连接任何云端，只访问配置中的手机地址。
 8. 如果后续增加 Room 表，必须执行数据库版本、Migration、Schema 和仪器迁移测试流程。
 

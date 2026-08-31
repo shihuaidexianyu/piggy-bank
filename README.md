@@ -25,40 +25,6 @@
 - 外部入口：桌面快捷方式和通知深链统一进入应用启动队列。
 - 局域网 AI：用户主动启动临时 LAN 服务，通过一次性配对码、会话 token 和 AI Journal 提供可撤销的 MCP 账本访问。
 
-## 📱 界面截图
-
-以下截图使用调试构建自动生成的随机演示数据。
-
-<!-- markdownlint-disable MD033 -->
-
-<table>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/home.png" width="240" alt="首页" /><br />首页</td>
-    <td align="center"><img src="_screenshots/readme/history.png" width="240" alt="历史" /><br />历史</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/accounts.png" width="240" alt="账户" /><br />账户</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/settings.png" width="240" alt="设置" /><br />设置</td>
-    <td align="center"><img src="_screenshots/readme/reminders.png" width="240" alt="提醒中心" /><br />提醒中心</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/account-detail.png" width="240" alt="账户详情" /><br />账户详情</td>
-    <td align="center"><img src="_screenshots/readme/create-account.png" width="240" alt="新建账户" /><br />新建账户</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/record-cash-flow.png" width="240" alt="记录出账" /><br />记录出账</td>
-    <td align="center"><img src="_screenshots/readme/record-transfer.png" width="240" alt="记录转账" /><br />记录转账</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="_screenshots/readme/update-balance.png" width="240" alt="核对余额" /><br />核对余额</td>
-    <td align="center"><img src="_screenshots/readme/create-reminder.png" width="240" alt="新建提醒" /><br />新建提醒</td>
-  </tr>
-</table>
-
-<!-- markdownlint-enable MD033 -->
-
 ## 🤖 Money Client Skill
 
 [Money Client Skill](https://github.com/shihuaidexianyu/money-client-skill) 是本项目的独立 Codex skill 与 Python MCP bridge。它支持配对、账户与流水查询、带真实备注的统计、现金收支/转账写入、AI Journal 和冲突感知撤销。
