@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0004",
+  "ok": false,
+  "error": {
+    "code": "UNSUPPORTED_CAPABILITY",
+    "message": "手机端不支持请求的同步能力，请升级手机应用"
+  }
+}

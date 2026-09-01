@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 import java.io.Serializable
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
@@ -31,6 +32,7 @@ class UpdateBalanceUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -81,6 +83,7 @@ class UpdateBalanceUseCase(
                 requireNotNull(transactionRepository.queryBalanceUpdateRecordByOperationId(operationId))
             }
             if (insertResult.inserted) {
+                appendSyncChangesUseCase?.upsertBalanceUpdate(stored)
                 refreshAccountActivityStateUseCase(accountId)
             }
             stored.toResult(insertResult, account)

@@ -2,10 +2,12 @@ package com.shihuaidexianyu.money.domain.usecase
 
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class UpdateAccountDisplayOrderUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRunner: DatabaseTransactionRunner,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(orderedAccountIds: List<Long>) {
         transactionRunner.runInTransaction {
@@ -20,7 +22,9 @@ class UpdateAccountDisplayOrderUseCase(
                 val account = requireNotNull(accountById[accountId]) { "账户${ValidationErrorText.NOT_FOUND_SUFFIX}" }
                 account.requireOpenForMutation("调整顺序")
                 if (account.displayOrder != index) {
-                    accountRepository.updateAccount(account.copy(displayOrder = index))
+                    val updated = account.copy(displayOrder = index)
+                    accountRepository.updateAccount(updated)
+                    appendSyncChangesUseCase?.upsertAccount(updated)
                 }
             }
         }

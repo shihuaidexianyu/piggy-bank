@@ -9,6 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.shihuaidexianyu.money.data.dao.AccountDao
 import com.shihuaidexianyu.money.data.dao.AccountReminderConfigDao
 import com.shihuaidexianyu.money.data.dao.AiMutationJournalDao
+import com.shihuaidexianyu.money.data.dao.AiMutationJournalItemDao
 import com.shihuaidexianyu.money.data.dao.BalanceAdjustmentRecordDao
 import com.shihuaidexianyu.money.data.dao.BalanceUpdateRecordDao
 import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
@@ -17,19 +18,24 @@ import com.shihuaidexianyu.money.data.dao.LocalMigrationStateDao
 import com.shihuaidexianyu.money.data.dao.LedgerAggregateDao
 import com.shihuaidexianyu.money.data.dao.PortableSettingsDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
+import com.shihuaidexianyu.money.data.dao.SyncDao
 import com.shihuaidexianyu.money.data.dao.TransferRecordDao
 import com.shihuaidexianyu.money.data.entity.AccountEntity
 import com.shihuaidexianyu.money.data.entity.AccountReminderConfigEntity
 import com.shihuaidexianyu.money.data.entity.AiMutationJournalEntity
+import com.shihuaidexianyu.money.data.entity.AiMutationJournalItemEntity
 import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
 import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
+import com.shihuaidexianyu.money.data.entity.SyncChangeLogEntity
+import com.shihuaidexianyu.money.data.entity.SyncDatasetEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
+import java.util.UUID
 
-const val MONEY_DATABASE_VERSION = 19
+const val MONEY_DATABASE_VERSION = 20
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -385,6 +391,135 @@ private val MIGRATION_18_19 = object : Migration(18, 19) {
     }
 }
 
+private val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Sync v1 dataset state: one singleton row with a fresh dataset id; existing ledgers
+        // start with an empty change-log (revision 1 is the first one ever allocated).
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `sync_dataset` (
+                `singletonId` INTEGER NOT NULL PRIMARY KEY,
+                `datasetId` TEXT NOT NULL,
+                `nextRevision` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "INSERT INTO `sync_dataset` (`singletonId`, `datasetId`, `nextRevision`, `createdAt`) " +
+                "VALUES (1, ?, 1, ?)",
+            arrayOf(UUID.randomUUID().toString(), System.currentTimeMillis()),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `sync_change_log` (
+                `revision` INTEGER NOT NULL PRIMARY KEY,
+                `entityKind` TEXT NOT NULL,
+                `recordId` INTEGER NOT NULL,
+                `operation` TEXT NOT NULL,
+                `payloadJson` TEXT,
+                `updatedAt` INTEGER NOT NULL,
+                `deletedAt` INTEGER,
+                `requestId` TEXT,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_sync_change_log_entityKind_recordId` " +
+                "ON `sync_change_log` (`entityKind`, `recordId`)",
+        )
+        // Batch journal items (sync.push), one row per patch.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `ai_mutation_journal_items` (
+                `journalId` INTEGER NOT NULL,
+                `itemIndex` INTEGER NOT NULL,
+                `patchId` TEXT NOT NULL,
+                `entityKind` TEXT NOT NULL,
+                `recordId` INTEGER NOT NULL,
+                `status` TEXT NOT NULL,
+                `beforeSnapshotJson` TEXT,
+                `afterSnapshotJson` TEXT,
+                `expectedUpdatedAt` INTEGER NOT NULL,
+                `revision` INTEGER,
+                `serverUpdatedAt` INTEGER,
+                `serverPayloadJson` TEXT,
+                `errorCode` TEXT,
+                `errorMessage` TEXT,
+                `undoneAt` INTEGER,
+                PRIMARY KEY(`journalId`, `itemIndex`),
+                FOREIGN KEY(`journalId`) REFERENCES `ai_mutation_journal`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_mutation_journal_items_journalId` " +
+                "ON `ai_mutation_journal_items` (`journalId`)",
+        )
+        // The journal table gains batch metadata, and batch entries carry no single-record
+        // columns — recordKind/recordId/afterSnapshotJson become nullable, so rebuild the table.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `ai_mutation_journal_v20` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `requestId` TEXT NOT NULL,
+                `sessionId` TEXT NOT NULL,
+                `clientName` TEXT NOT NULL,
+                `action` TEXT NOT NULL,
+                `recordKind` TEXT,
+                `recordId` INTEGER,
+                `summary` TEXT NOT NULL,
+                `beforeSnapshotJson` TEXT,
+                `afterSnapshotJson` TEXT,
+                `undoTokenJson` TEXT,
+                `status` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `resolvedAt` INTEGER,
+                `undoRequestId` TEXT,
+                `entryType` TEXT NOT NULL DEFAULT 'single',
+                `itemCount` INTEGER,
+                `appliedCount` INTEGER,
+                `conflictCount` INTEGER
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO `ai_mutation_journal_v20` (
+                `id`, `requestId`, `sessionId`, `clientName`, `action`, `recordKind`, `recordId`,
+                `summary`, `beforeSnapshotJson`, `afterSnapshotJson`, `undoTokenJson`, `status`,
+                `createdAt`, `resolvedAt`, `undoRequestId`
+            )
+            SELECT
+                `id`, `requestId`, `sessionId`, `clientName`, `action`, `recordKind`, `recordId`,
+                `summary`, `beforeSnapshotJson`, `afterSnapshotJson`, `undoTokenJson`, `status`,
+                `createdAt`, `resolvedAt`, `undoRequestId`
+            FROM `ai_mutation_journal`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `ai_mutation_journal`")
+        db.execSQL("ALTER TABLE `ai_mutation_journal_v20` RENAME TO `ai_mutation_journal`")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_mutation_journal_requestId` " +
+                "ON `ai_mutation_journal` (`requestId`)",
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_ai_mutation_journal_undoRequestId` " +
+                "ON `ai_mutation_journal` (`undoRequestId`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_mutation_journal_status_id` " +
+                "ON `ai_mutation_journal` (`status`, `id`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_mutation_journal_recordKind_recordId_id` " +
+                "ON `ai_mutation_journal` (`recordKind`, `recordId`, `id`)",
+        )
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -404,6 +539,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_16_17,
     MIGRATION_17_18,
     MIGRATION_18_19,
+    MIGRATION_19_20,
 )
 
 @Database(
@@ -418,6 +554,9 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         AccountReminderConfigEntity::class,
         LocalMigrationStateEntity::class,
         AiMutationJournalEntity::class,
+        AiMutationJournalItemEntity::class,
+        SyncDatasetEntity::class,
+        SyncChangeLogEntity::class,
     ],
     version = MONEY_DATABASE_VERSION,
     exportSchema = true,
@@ -435,6 +574,8 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun localMigrationStateDao(): LocalMigrationStateDao
     abstract fun ledgerAggregateDao(): LedgerAggregateDao
     abstract fun aiMutationJournalDao(): AiMutationJournalDao
+    abstract fun aiMutationJournalItemDao(): AiMutationJournalItemDao
+    abstract fun syncDao(): SyncDao
 
     companion object {
         @Volatile

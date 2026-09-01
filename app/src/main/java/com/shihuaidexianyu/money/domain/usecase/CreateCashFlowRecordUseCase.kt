@@ -6,12 +6,14 @@ import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class CreateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -45,10 +47,10 @@ class CreateCashFlowRecordUseCase(
             account.requireOpenForMutation("记录收支")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
-            transactionRepository.insertCashFlowRecord(
-                requested.copy(createdAt = now, updatedAt = now),
-            ).also { result ->
+            val stored = requested.copy(createdAt = now, updatedAt = now)
+            transactionRepository.insertCashFlowRecord(stored).also { result ->
                 if (result.inserted) {
+                    appendSyncChangesUseCase?.upsertCashFlow(stored.copy(id = result.recordId))
                     refreshAccountActivityStateUseCase(accountId)
                 }
             }

@@ -5,12 +5,14 @@ import com.shihuaidexianyu.money.domain.model.LedgerInsertResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class CreateBalanceAdjustmentUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -40,10 +42,10 @@ class CreateBalanceAdjustmentUseCase(
             account.requireOpenForMutation("新建余额调整")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
-            transactionRepository.insertBalanceAdjustmentRecord(
-                requested.copy(createdAt = now, updatedAt = now),
-            ).also { result ->
+            val stored = requested.copy(createdAt = now, updatedAt = now)
+            transactionRepository.insertBalanceAdjustmentRecord(stored).also { result ->
                 if (result.inserted) {
+                    appendSyncChangesUseCase?.upsertBalanceAdjustment(stored.copy(id = result.recordId))
                     refreshAccountActivityStateUseCase(accountId)
                 }
             }

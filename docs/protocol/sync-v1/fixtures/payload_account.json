@@ -1,0 +1,17 @@
+{
+  "entityKind": "account",
+  "sourceRevision": 12,
+  "payload": {
+    "accountId": 3,
+    "name": "招商银行储蓄卡",
+    "initialBalance": "100000",
+    "kind": "funding",
+    "isHidden": false,
+    "displayOrder": 0,
+    "colorName": "blue",
+    "iconName": "bank",
+    "createdAt": 1754000000000,
+    "lastUsedAt": 1788260000000,
+    "lastBalanceUpdateAt": 1785000000000
+  }
+}

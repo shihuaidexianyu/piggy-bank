@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "requestId": "req-pull-0001",
+  "ok": true,
+  "data": {
+    "datasetId": "3f6b8c2a-9c1e-4f7a-9b3d-2f6a1c8e5d47",
+    "fromRevision": 1842,
+    "toRevision": 1844,
+    "changes": [
+      {
+        "revision": 1843,
+        "entityKind": "cash_flow",
+        "recordId": 45,
+        "operation": "upsert",
+        "updatedAt": 1788263880000,
+        "payload": {
+          "recordId": 45,
+          "accountId": 3,
+          "direction": "outflow",
+          "amount": "3200",
+          "note": "地铁充值",
+          "occurredAt": 1788263800000,
+          "createdAt": 1788263880000,
+          "updatedAt": 1788263880000,
+          "operationId": "op-5c3d9e27-8f1a-4b6d-a2e4-7c9f1d3b5a8e"
+        }
+      },
+      {
+        "revision": 1844,
+        "entityKind": "cash_flow",
+        "recordId": 44,
+        "operation": "delete",
+        "updatedAt": 1788261000000,
+        "deletedAt": 1788261000000
+      }
+    ],
+    "hasMore": false
+  }
+}

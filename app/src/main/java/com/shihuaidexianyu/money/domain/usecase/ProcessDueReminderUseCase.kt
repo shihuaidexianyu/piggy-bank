@@ -11,6 +11,7 @@ import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequest
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
 import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class ProcessDueReminderUseCase(
     private val accountRepository: AccountRepository,
@@ -20,6 +21,7 @@ class ProcessDueReminderUseCase(
     private val clockProvider: ClockProvider,
     private val zoneIdProvider: ZoneIdProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         reminderId: Long,
@@ -56,10 +58,10 @@ class ProcessDueReminderUseCase(
             account.requireOpenForMutation("处理提醒")
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(account, occurredAt)
 
-            val insertResult = transactionRepository.insertCashFlowRecord(
-                requested.copy(createdAt = now, updatedAt = now),
-            )
+            val stored = requested.copy(createdAt = now, updatedAt = now)
+            val insertResult = transactionRepository.insertCashFlowRecord(stored)
             if (insertResult.inserted) {
+                appendSyncChangesUseCase?.upsertCashFlow(stored.copy(id = insertResult.recordId))
                 check(
                     reminderRepository.advanceOccurrence(
                         reminderId = reminderId,

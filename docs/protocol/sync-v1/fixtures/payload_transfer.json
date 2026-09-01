@@ -1,0 +1,15 @@
+{
+  "entityKind": "transfer",
+  "sourceRevision": 1831,
+  "payload": {
+    "recordId": 31,
+    "fromAccountId": 3,
+    "toAccountId": 5,
+    "amount": "200000",
+    "note": "还信用卡",
+    "occurredAt": 1787000000000,
+    "createdAt": 1787000010000,
+    "updatedAt": 1787000010000,
+    "operationId": "op-9f2e7b31-4c2d-4e8a-9d1f-3a5b7c9e2d4f"
+  }
+}

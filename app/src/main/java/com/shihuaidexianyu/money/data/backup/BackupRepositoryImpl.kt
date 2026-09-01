@@ -29,11 +29,17 @@ import com.shihuaidexianyu.money.domain.model.normalizeCurrencySymbol
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
+import com.shihuaidexianyu.money.domain.repository.SyncRepository
+import com.shihuaidexianyu.money.domain.time.ClockProvider
+import java.util.UUID
 
 class BackupRepositoryImpl(
     private val database: MoneyDatabase,
     private val portableSettingsRepository: PortableSettingsRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
+    private val syncRepository: SyncRepository,
+    private val clockProvider: ClockProvider,
+    private val datasetIdGenerator: () -> String = { UUID.randomUUID().toString() },
 ) : BackupRepository {
     private val currentSnapshotReader = RoomBackupSnapshotReader(database)
 
@@ -64,6 +70,8 @@ class BackupRepositoryImpl(
             // Journal snapshots describe the pre-import ledger and must never be replayed against
             // replacement data. Keeping this inside the replacement transaction makes either the
             // imported ledger and an empty journal visible together, or neither change visible.
+            // Batch items are deleted explicitly (not via FK cascade) so the ordering is visible.
+            database.aiMutationJournalItemDao().deleteAll()
             database.aiMutationJournalDao().deleteAll()
             database.recurringReminderDao().deleteAll()
             database.balanceAdjustmentRecordDao().deleteAll()
@@ -71,6 +79,10 @@ class BackupRepositoryImpl(
             database.transferRecordDao().deleteAll()
             database.cashFlowRecordDao().deleteAll()
             database.accountDao().deleteAll()
+
+            // The imported bytes are a different dataset: reset the sync dataset (new datasetId,
+            // cleared change-log, nextRevision = 1) so a paired mirror is forced to re-snapshot.
+            syncRepository.resetDataset(datasetIdGenerator(), clockProvider.nowMillis())
 
             database.accountDao().insertAll(
                 normalized.accounts.map { account -> account.toDomain().toEntity() },

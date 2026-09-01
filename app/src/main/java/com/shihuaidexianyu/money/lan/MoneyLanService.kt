@@ -94,12 +94,14 @@ class MoneyLanService : Service() {
         val expiresAt = now + SESSION_DURATION_MILLIS
         val container = (application as MoneyApplication).container
         runCatching {
+            val writeRateLimiter = MoneyLanWriteRateLimiter()
             MoneyLanServer(
                 scope = scope,
-                router = MoneyLanRequestRouter(container),
+                router = MoneyLanRequestRouter(container, writeRateLimiter),
                 allowWrite = allowWrite,
                 startedAt = now,
                 expiresAt = expiresAt,
+                writeRateLimiter = writeRateLimiter,
             ).also {
                 server = it
                 it.start()

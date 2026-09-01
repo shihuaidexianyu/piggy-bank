@@ -18,12 +18,14 @@ import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.NotificationSyncingAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.SyncRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.BackupRepository
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.repository.RecurringReminderRepository
+import com.shihuaidexianyu.money.domain.repository.SyncRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.data.migration.RoomStartupMigrationBackend
 import com.shihuaidexianyu.money.data.migration.StartupMigrationCoordinator
@@ -54,7 +56,14 @@ internal class DataGraph(context: Context) {
     val transactionRepository: TransactionRepository = transactionRepositoryImpl
 
     val aiMutationJournalRepository = AiMutationJournalRepositoryImpl(
-        moneyDatabase.aiMutationJournalDao(),
+        dao = moneyDatabase.aiMutationJournalDao(),
+        itemDao = moneyDatabase.aiMutationJournalItemDao(),
+        clockProvider = SystemClockProvider,
+    )
+
+    val syncRepository: SyncRepository = SyncRepositoryImpl(
+        syncDao = moneyDatabase.syncDao(),
+        clockProvider = SystemClockProvider,
     )
 
     val ledgerAggregateRepository: LedgerAggregateRepository = transactionRepositoryImpl
@@ -100,6 +109,8 @@ internal class DataGraph(context: Context) {
             database = moneyDatabase,
             portableSettingsRepository = portableSettingsRepository,
             accountReminderSettingsRepository = accountReminderSettingsRepository,
+            syncRepository = syncRepository,
+            clockProvider = SystemClockProvider,
         )
 
     val exportJsonFileWriter = ExportJsonFileWriter(

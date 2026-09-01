@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money
 
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
+import com.shihuaidexianyu.money.domain.repository.DatabaseTransactionRunner
 import com.shihuaidexianyu.money.domain.repository.LedgerAggregateRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
@@ -15,6 +16,11 @@ internal fun testClockProvider(nowMillis: Long = 4_102_444_800_000L): ClockProvi
 
 internal fun testZoneIdProvider(zoneId: ZoneId = ZoneId.systemDefault()): ZoneIdProvider =
     ZoneIdProvider { zoneId }
+
+/** Flattens transactions for hermetic unit tests (the production Room runner is re-entrant). */
+internal val directTransactionRunner = object : DatabaseTransactionRunner {
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()
+}
 
 @Suppress("FunctionName")
 internal fun CalculateCurrentBalanceUseCase(

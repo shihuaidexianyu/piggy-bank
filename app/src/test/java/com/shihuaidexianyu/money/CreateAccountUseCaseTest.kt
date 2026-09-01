@@ -21,6 +21,7 @@ class CreateAccountUseCaseTest {
             accountRepository = repository,
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
             clockProvider = testClockProvider(123_456),
+            transactionRunner = directTransactionRunner,
         )
 
         val accountId = useCase(name = "现金", initialBalance = 0)
@@ -34,6 +35,7 @@ class CreateAccountUseCaseTest {
             accountRepository = InMemoryAccountRepository(),
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
             clockProvider = testClockProvider,
+            transactionRunner = directTransactionRunner,
         )
 
         val error = assertFailsWith<IllegalArgumentException> {
@@ -51,6 +53,7 @@ class CreateAccountUseCaseTest {
             accountRepository = repository,
             accountReminderSettingsRepository = reminderRepository,
             clockProvider = testClockProvider,
+            transactionRunner = directTransactionRunner,
         )
         useCase(
             name = "现金",
@@ -77,6 +80,7 @@ class CreateAccountUseCaseTest {
             accountRepository = repository,
             accountReminderSettingsRepository = reminderRepository,
             clockProvider = testClockProvider,
+            transactionRunner = directTransactionRunner,
         )
 
         val accountId = useCase(
@@ -110,6 +114,7 @@ class CreateAccountUseCaseTest {
             accountRepository = repository,
             accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
             clockProvider = testClockProvider,
+            transactionRunner = directTransactionRunner,
         )
 
         val accountId = useCase(

@@ -1,0 +1,15 @@
+{
+  "entityKind": "cash_flow",
+  "sourceRevision": 1830,
+  "payload": {
+    "recordId": 27,
+    "accountId": 3,
+    "direction": "outflow",
+    "amount": "8650",
+    "note": "聚餐 翅客 王慨然和他小弟",
+    "occurredAt": 1786747800000,
+    "createdAt": 1786747810000,
+    "updatedAt": 1786747810000,
+    "operationId": "ai:req-dinner-0001"
+  }
+}

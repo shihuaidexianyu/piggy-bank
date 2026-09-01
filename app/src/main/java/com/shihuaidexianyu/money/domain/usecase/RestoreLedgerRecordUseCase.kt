@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.RestoreLedgerResult
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
@@ -17,6 +18,7 @@ class RestoreLedgerRecordUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(token: LedgerUndoToken): RestoreLedgerResult {
         if (token.version != TOKEN_VERSION || token.operationId.isBlank()) return RestoreLedgerResult.STALE
@@ -50,6 +52,7 @@ class RestoreLedgerRecordUseCase(
                 restoredAt,
             )
         ) return RestoreLedgerResult.STALE
+        appendSyncChangesUseCase?.upsertCashFlow(existing.copy(deletedAt = null, updatedAt = restoredAt))
         refreshAccountActivityStateUseCase(existing.accountId)
         return RestoreLedgerResult.RESTORED
     }
@@ -70,6 +73,7 @@ class RestoreLedgerRecordUseCase(
                 restoredAt,
             )
         ) return RestoreLedgerResult.STALE
+        appendSyncChangesUseCase?.upsertTransfer(existing.copy(deletedAt = null, updatedAt = restoredAt))
         setOf(existing.fromAccountId, existing.toAccountId).forEach { accountId ->
             refreshAccountActivityStateUseCase(accountId)
         }
@@ -90,6 +94,7 @@ class RestoreLedgerRecordUseCase(
                 restoredAt,
             )
         ) return RestoreLedgerResult.STALE
+        appendSyncChangesUseCase?.upsertBalanceUpdate(existing.copy(deletedAt = null, updatedAt = restoredAt))
         refreshAccountActivityStateUseCase(existing.accountId)
         return RestoreLedgerResult.RESTORED
     }
@@ -108,6 +113,9 @@ class RestoreLedgerRecordUseCase(
                 restoredAt,
             )
         ) return RestoreLedgerResult.STALE
+        appendSyncChangesUseCase?.upsertBalanceAdjustment(
+            existing.copy(deletedAt = null, updatedAt = restoredAt),
+        )
         refreshAccountActivityStateUseCase(existing.accountId)
         return RestoreLedgerResult.RESTORED
     }

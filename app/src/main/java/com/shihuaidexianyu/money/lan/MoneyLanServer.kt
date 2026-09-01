@@ -2,6 +2,9 @@ package com.shihuaidexianyu.money.lan
 
 import android.util.Log
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
+import com.shihuaidexianyu.money.domain.model.sync.SyncCapabilities
+import com.shihuaidexianyu.money.domain.model.sync.SyncDatasetMismatchException
+import com.shihuaidexianyu.money.domain.model.sync.SyncResyncRequiredException
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Inet4Address
@@ -38,10 +41,10 @@ class MoneyLanServer(
     private val allowWrite: Boolean,
     private val startedAt: Long,
     private val expiresAt: Long,
+    private val writeRateLimiter: MoneyLanWriteRateLimiter = MoneyLanWriteRateLimiter(),
 ) {
     private val session = AtomicReference<PairedSession?>(null)
     private val failedPairAttempts = AtomicInteger(0)
-    private val writeTimestamps = ArrayDeque<Long>()
     private val connectionSlots = Semaphore(MAX_CONCURRENT_CONNECTIONS)
     private val serverSocket = ServerSocket(0, SERVER_BACKLOG, InetAddress.getByName("0.0.0.0"))
     private val pairingCode = securePairingCode()
@@ -102,14 +105,14 @@ class MoneyLanServer(
                 val input = DataInputStream(clientSocket.getInputStream())
                 val size = input.readInt()
                 if (size !in 1..MONEY_LAN_MAX_FRAME_BYTES) {
-                    throw MoneyLanProtocolException("FRAME_TOO_LARGE", "请求帧大小无效")
+                    throw MoneyLanProtocolException(MoneyLanErrorCodes.FRAME_TOO_LARGE, "请求帧大小无效")
                 }
                 val payload = ByteArray(size)
                 input.readFully(payload)
                 val request = try {
                     protocolJson.decodeFromString<MoneyLanRequest>(payload.decodeToString())
                 } catch (error: SerializationException) {
-                    throw MoneyLanProtocolException("INVALID_REQUEST", "请求 JSON 或字段无效")
+                    throw MoneyLanProtocolException(MoneyLanErrorCodes.INVALID_REQUEST, "请求 JSON 或字段无效")
                 }
                 requestId = request.requestId
                 requireRequest(request)
@@ -135,21 +138,29 @@ class MoneyLanServer(
             } catch (error: MoneyLanProtocolException) {
                 errorResponse(requestId, error.code, error.message)
             } catch (error: LedgerRecordChangedException) {
-                errorResponse(requestId, "CONFLICT", error.message ?: "记录已变化")
+                errorResponse(requestId, MoneyLanErrorCodes.CONFLICT, error.message ?: "记录已变化")
+            } catch (error: SyncDatasetMismatchException) {
+                errorResponse(requestId, MoneyLanErrorCodes.DATASET_MISMATCH, error.message ?: "数据集不匹配")
+            } catch (error: SyncResyncRequiredException) {
+                errorResponse(requestId, MoneyLanErrorCodes.RESYNC_REQUIRED, error.message ?: "需要重新快照")
             } catch (error: IllegalArgumentException) {
-                errorResponse(requestId, "VALIDATION_FAILED", error.message ?: "请求参数无效")
+                errorResponse(requestId, MoneyLanErrorCodes.VALIDATION_FAILED, error.message ?: "请求参数无效")
             } catch (error: ArithmeticException) {
-                errorResponse(requestId, "AMOUNT_OVERFLOW", "金额计算超出可表示范围")
+                errorResponse(requestId, MoneyLanErrorCodes.AMOUNT_OVERFLOW, "金额计算超出可表示范围")
             } catch (error: Exception) {
                 Log.e(TAG, "LAN request failed", error)
-                errorResponse(requestId, "INTERNAL_ERROR", "手机端处理请求失败")
+                errorResponse(requestId, MoneyLanErrorCodes.INTERNAL_ERROR, "手机端处理请求失败")
             }
 
             runCatching {
                 var bytes = protocolJson.encodeToString(response).encodeToByteArray()
                 if (bytes.size > MONEY_LAN_MAX_FRAME_BYTES) {
                     bytes = protocolJson.encodeToString(
-                        errorResponse(requestId, "RESPONSE_TOO_LARGE", "响应超过协议大小上限，请缩小查询范围"),
+                        errorResponse(
+                            requestId,
+                            MoneyLanErrorCodes.RESPONSE_TOO_LARGE,
+                            "响应超过协议大小上限，请缩小查询范围",
+                        ),
                     ).encodeToByteArray()
                 }
                 DataOutputStream(clientSocket.getOutputStream()).use { output ->
@@ -165,13 +176,16 @@ class MoneyLanServer(
 
     private fun requireRequest(request: MoneyLanRequest) {
         if (request.version != MONEY_LAN_PROTOCOL_VERSION) {
-            throw MoneyLanProtocolException("UNSUPPORTED_VERSION", "手机仅支持协议版本 $MONEY_LAN_PROTOCOL_VERSION")
+            throw MoneyLanProtocolException(
+                MoneyLanErrorCodes.UNSUPPORTED_VERSION,
+                "手机仅支持协议版本 $MONEY_LAN_PROTOCOL_VERSION",
+            )
         }
         if (request.requestId.isBlank() || request.requestId.length > 128) {
-            throw MoneyLanProtocolException("INVALID_REQUEST", "requestId 无效")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.INVALID_REQUEST, "requestId 无效")
         }
         if (System.currentTimeMillis() >= expiresAt) {
-            throw MoneyLanProtocolException("SESSION_EXPIRED", "手机局域网会话已到期")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.SESSION_EXPIRED, "手机局域网会话已到期")
         }
     }
 
@@ -184,32 +198,33 @@ class MoneyLanServer(
                 System.currentTimeMillis() < pairingExpiresAt,
             allowWrite = allowWrite,
             expiresAt = expiresAt,
+            capabilities = SyncCapabilities.ALL,
         ),
     )
 
     private fun pair(request: MoneyLanRequest) = synchronized(session) {
         if (System.currentTimeMillis() >= pairingExpiresAt) {
-            throw MoneyLanProtocolException("PAIRING_EXPIRED", "配对码已过期，请在手机上重新启动服务")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_EXPIRED, "配对码已过期，请在手机上重新启动服务")
         }
         if (failedPairAttempts.get() >= MAX_PAIRING_FAILURES) {
-            throw MoneyLanProtocolException("PAIRING_LOCKED", "配对失败次数过多，请在手机上重新启动服务")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_LOCKED, "配对失败次数过多，请在手机上重新启动服务")
         }
         if (session.get() != null) {
-            throw MoneyLanProtocolException("ALREADY_PAIRED", "本次会话已经配对一台电脑")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.ALREADY_PAIRED, "本次会话已经配对一台电脑")
         }
         val arguments = try {
             protocolJson.decodeFromJsonElement<PairArguments>(request.arguments)
         } catch (error: SerializationException) {
-            throw MoneyLanProtocolException("VALIDATION_FAILED", "配对参数无效")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "配对参数无效")
         }
         if (!constantTimeEquals(arguments.code, pairingCode)) {
             if (failedPairAttempts.incrementAndGet() >= MAX_PAIRING_FAILURES) {
                 MoneyLanRuntime.update { it.copy(pairingCode = null) }
             }
-            throw MoneyLanProtocolException("PAIRING_FAILED", "配对码错误")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_FAILED, "配对码错误")
         }
         val clientName = arguments.clientName.trim().takeIf { it.isNotEmpty() }?.take(80)
-            ?: throw MoneyLanProtocolException("VALIDATION_FAILED", "客户端名称不能为空")
+            ?: throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "客户端名称不能为空")
         val paired = PairedSession(
             sessionId = UUID.randomUUID().toString(),
             clientName = clientName,
@@ -230,25 +245,17 @@ class MoneyLanServer(
     }
 
     private fun authenticate(token: String?): PairedSession {
-        val paired = session.get() ?: throw MoneyLanProtocolException("UNAUTHORIZED", "请先完成配对")
+        val paired = session.get()
+            ?: throw MoneyLanProtocolException(MoneyLanErrorCodes.UNAUTHORIZED, "请先完成配对")
         if (token == null || !constantTimeEquals(token, paired.token)) {
-            throw MoneyLanProtocolException("UNAUTHORIZED", "会话 Token 无效")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.UNAUTHORIZED, "会话 Token 无效")
         }
         return paired
     }
 
     private fun enforceWriteRate(action: String) {
         if (action !in writeActions) return
-        val now = System.currentTimeMillis()
-        synchronized(writeTimestamps) {
-            while (writeTimestamps.firstOrNull()?.let { now - it >= WRITE_RATE_WINDOW_MILLIS } == true) {
-                writeTimestamps.removeFirst()
-            }
-            if (writeTimestamps.size >= MAX_WRITES_PER_WINDOW) {
-                throw MoneyLanProtocolException("RATE_LIMITED", "一分钟内写入次数过多，请稍后重试")
-            }
-            writeTimestamps.addLast(now)
-        }
+        writeRateLimiter.chargeWriteAction()
     }
 
     private fun errorResponse(requestId: String, code: String, message: String) = MoneyLanResponse(
@@ -270,9 +277,9 @@ class MoneyLanServer(
         const val SOCKET_TIMEOUT_MILLIS = 15_000
         const val PAIRING_WINDOW_MILLIS = 10 * 60 * 1_000L
         const val MAX_PAIRING_FAILURES = 5
-        const val MAX_WRITES_PER_WINDOW = 60
-        const val WRITE_RATE_WINDOW_MILLIS = 60_000L
 
+        // sync.push is deliberately absent: the router charges it after the idempotent-replay
+        // check (replays are free) against both rate windows of the shared limiter.
         val writeActions = setOf(
             "journal.undo_latest",
             "cashflow.create",
@@ -329,6 +336,7 @@ private data class ServerInfoResult(
     val pairingAllowed: Boolean,
     val allowWrite: Boolean,
     val expiresAt: Long,
+    val capabilities: List<String>,
 )
 
 @Serializable

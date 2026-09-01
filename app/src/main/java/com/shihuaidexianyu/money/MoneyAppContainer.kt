@@ -83,6 +83,16 @@ class MoneyAppContainer(context: Context) {
 
     val aiJournaledLedgerUseCase get() = useCaseGraph.aiJournaledLedgerUseCase
 
+    val syncRepository get() = dataGraph.syncRepository
+
+    val getSyncStateUseCase get() = useCaseGraph.getSyncStateUseCase
+
+    val exportSyncSnapshotPageUseCase get() = useCaseGraph.exportSyncSnapshotPageUseCase
+
+    val pullSyncChangesUseCase get() = useCaseGraph.pullSyncChangesUseCase
+
+    val pushSyncPatchesUseCase get() = useCaseGraph.pushSyncPatchesUseCase
+
     val updateAccountUseCase get() = useCaseGraph.updateAccountUseCase
 
     val closeAccountUseCase get() = useCaseGraph.closeAccountUseCase

@@ -135,7 +135,12 @@ class CreateAccountViewModelTest {
         accountRepo: InMemoryAccountRepository = InMemoryAccountRepository(),
     ): CreateAccountViewModel {
         val reminderSettingsRepo = InMemoryAccountReminderSettingsRepository()
-        val createUseCase = CreateAccountUseCase(accountRepo, reminderSettingsRepo, testClockProvider)
+        val createUseCase = CreateAccountUseCase(
+            accountRepo,
+            reminderSettingsRepo,
+            testClockProvider,
+            directTransactionRunner,
+        )
         return CreateAccountViewModel(createUseCase)
     }
 }

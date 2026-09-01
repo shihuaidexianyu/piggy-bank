@@ -111,7 +111,12 @@ class LanMcpViewModel(
                 val message = when (result) {
                     UndoLatestAiMutationResult.Empty -> appContext.getString(R.string.lan_nothing_to_undo)
                     is UndoLatestAiMutationResult.Conflict -> result.message
+                    is UndoLatestAiMutationResult.BatchConflict -> result.message
                     is UndoLatestAiMutationResult.Undone -> appContext.getString(
+                        R.string.lan_undo_succeeded,
+                        result.entry.summary,
+                    )
+                    is UndoLatestAiMutationResult.BatchUndone -> appContext.getString(
                         R.string.lan_undo_succeeded,
                         result.entry.summary,
                     )

@@ -1,0 +1,27 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "error_dataset_mismatch.json": "1d9779201e025bf29b8a7b34ebcd51e845db95c09646a0558a4d2f912e4bbfa6",
+    "error_rate_limited.json": "bee1e4ca8a8e7476f813382430d7ff615b9f0351ccfe3825b5fa12ea62c4abaf",
+    "error_resync_required.json": "b07404471b9a77396c309b839393c334b04d0a0cd1badf800f2e688068eb5701",
+    "error_unsupported_capability.json": "930da1ca0b0aea99b029097f5c1cc4b80e96cc75a7a1bcde89eef8707bb2783d",
+    "error_write_disabled.json": "0b71ce78ee9d93d493167d43423c1f4864d6c31489925eee4c39674cd8ff248e",
+    "payload_account.json": "054a175154434308e29375bf046de02495968ffccb5cbc2e0a1f42abfee22cf3",
+    "payload_balance_adjustment.json": "609b7c354e7ee41cbfc6c5f8670c6e17a0ba8d19996f5a4eb6fd629e34407a0a",
+    "payload_balance_update.json": "3cba18f7dc5886d04a2f146b7a83ef92a6d15cfeb8dffdc88b675005a4c9f139",
+    "payload_cash_flow.json": "1325270f1ab7d5cc2f6182553e61544be5472610634acda348cfe058ec82b0c3",
+    "payload_transfer.json": "527122cc3aba5d925198dd44a1e5821642b4bd267ebfc17caf950f232c322c64",
+    "records_list_detailed_response.json": "c0b43e2176631854b8a4c10ff17a465ba3345bc08210c2fe0f6670031ffb5b78",
+    "server_info_response.json": "8eeccbb8c76b664bd428d1e7279a4feaf9e12607c755a00a2583def95b32c74f",
+    "sync_pull_request.json": "f1b2e8338705973bc840340db237a28529c266e92ea16dc716003a0ae08e60fb",
+    "sync_pull_response.json": "d0c0a08f45b976ce509fc6be66214fb7741cf9f7988b6e8aac6ff0de8b9ac746",
+    "sync_push_request.json": "34aa9eda5b22ea83576adbc58ca7fdccf1429c7b89137346f22f9531adaa295c",
+    "sync_push_response.json": "27e585e6a52fadb28adfcb7108f923362001b09c705cada97f672ba6c351230e",
+    "sync_snapshot_request_first.json": "10445b0ea309ab097b0bcf5474ac59b618ed8c11ee66a535d6ee294d2afb757d",
+    "sync_snapshot_request_next.json": "36997d13f5796cc83e734c05bf294fe483be4755ee347f48a23194ad2c3a0e4c",
+    "sync_snapshot_response_done.json": "05948a5c9292a6e49ac64b00ad1864bc74642b5e6584f67478b82d24d483c979",
+    "sync_snapshot_response_page.json": "0d18caa9cce1b8b4acdb842e899855b747edd52e28a2cb656fd796a64917b5b5",
+    "sync_state_response.json": "b7d35c044b921bcf79b4ed7a99f1da744966536cb6f953d809c2272d76531b8c",
+    "tombstone_cash_flow.json": "015220ddaaaca2d00c21f4af8fe1de84e4b7afa4a765f7c44dc91e7015baa0cb"
+  }
+}

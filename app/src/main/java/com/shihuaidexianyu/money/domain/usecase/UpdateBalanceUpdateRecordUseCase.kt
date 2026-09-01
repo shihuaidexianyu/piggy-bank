@@ -7,6 +7,7 @@ import com.shihuaidexianyu.money.domain.model.ledgerSubtractExact
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
@@ -18,6 +19,7 @@ class UpdateBalanceUpdateRecordUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -53,6 +55,7 @@ class UpdateBalanceUpdateRecordUseCase(
             if (!transactionRepository.updateBalanceUpdateRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)
             }
+            appendSyncChangesUseCase?.upsertBalanceUpdate(updated)
             refreshAccountActivityStateUseCase(existing.accountId)
         }
         runCatching { notificationSyncRequester.request(NotificationSyncReason.BALANCE_RECONCILED) }

@@ -8,6 +8,7 @@ import com.shihuaidexianyu.money.domain.time.ClockProvider
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class CloseAccountUseCase(
     private val accountRepository: AccountRepository,
@@ -18,6 +19,7 @@ class CloseAccountUseCase(
     private val accountLifecycleCoordinator: AccountLifecycleCoordinator,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(accountId: Long) {
         accountLifecycleCoordinator.withLifecycleLock {
@@ -33,6 +35,9 @@ class CloseAccountUseCase(
                 reminderRepository.disableEnabledForAccount(accountId, now)
                 accountReminderSettingsRepository.setEnabled(accountId, false)
                 accountRepository.closeAccount(accountId, now)
+                accountRepository.getAccountById(accountId)?.let { updated ->
+                    appendSyncChangesUseCase?.upsertAccount(updated)
+                }
             }
         }
         runCatching { notificationSyncRequester.request(NotificationSyncReason.ACCOUNT_CLOSED) }

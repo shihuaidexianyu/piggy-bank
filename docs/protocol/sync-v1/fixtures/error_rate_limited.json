@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0003",
+  "ok": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "一分钟内写入次数过多，请稍后重试"
+  }
+}

@@ -10,12 +10,14 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
 import com.shihuaidexianyu.money.domain.model.MAX_ACCOUNT_NAME_LENGTH
 import com.shihuaidexianyu.money.domain.model.normalizeAccountColorName
 import com.shihuaidexianyu.money.domain.model.normalizeAccountIconName
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class UpdateAccountUseCase(
     private val accountRepository: AccountRepository,
     private val accountReminderSettingsRepository: AccountReminderSettingsRepository,
     private val transactionRunner: DatabaseTransactionRunner,
     private val accountLifecycleCoordinator: AccountLifecycleCoordinator,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         accountId: Long,
@@ -43,6 +45,9 @@ class UpdateAccountUseCase(
                     ),
                 )
                 accountReminderSettingsRepository.updateReminderConfig(accountId, balanceUpdateReminderConfig)
+                accountRepository.getAccountById(accountId)?.let { updated ->
+                    appendSyncChangesUseCase?.upsertAccount(updated)
+                }
             }
         }
     }

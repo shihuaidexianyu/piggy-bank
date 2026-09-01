@@ -803,6 +803,88 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion19To20AddsSyncTablesAndBatchJournalMetadata() {
+        val dbName = "$TEST_DB-v19-sync"
+        helper.createDatabase(dbName, 19).apply {
+            execSQL(
+                """
+                INSERT INTO ai_mutation_journal (
+                    requestId,
+                    sessionId,
+                    clientName,
+                    action,
+                    recordKind,
+                    recordId,
+                    summary,
+                    afterSnapshotJson,
+                    status,
+                    createdAt
+                ) VALUES (
+                    'req-1',
+                    'session-1',
+                    'client',
+                    'CREATE_CASH_FLOW',
+                    'CASH_FLOW',
+                    7,
+                    'AI 新增收支记录 #7',
+                    '{}',
+                    'applied',
+                    1000
+                )
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 20,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        // The pre-existing journal row keeps its data and defaults to a single (non-batch) entry.
+        migrated.query(
+            "SELECT recordKind, recordId, entryType, itemCount, appliedCount, conflictCount " +
+                "FROM ai_mutation_journal",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("CASH_FLOW", cursor.getString(0))
+            assertEquals(7L, cursor.getLong(1))
+            assertEquals("single", cursor.getString(2))
+            assertTrue(cursor.isNull(3))
+            assertTrue(cursor.isNull(4))
+            assertTrue(cursor.isNull(5))
+        }
+
+        // Exactly one dataset row with a fresh id and the revision counter starting at 1.
+        migrated.query("SELECT singletonId, datasetId, nextRevision FROM sync_dataset").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1L, cursor.getLong(0))
+            assertTrue(cursor.getString(1).isNotBlank())
+            assertEquals(1L, cursor.getLong(2))
+            assertFalse(cursor.moveToNext())
+        }
+
+        migrated.query("SELECT COUNT(*) FROM sync_change_log").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM ai_mutation_journal_items").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+
+        val indexNames = buildSet {
+            migrated.query("PRAGMA index_list(sync_change_log)").use { cursor ->
+                while (cursor.moveToNext()) add(cursor.getString(1))
+            }
+        }
+        assertTrue("index_sync_change_log_entityKind_recordId" in indexNames)
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

@@ -6,12 +6,14 @@ import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class UpdateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -58,6 +60,7 @@ class UpdateTransferRecordUseCase(
             if (!transactionRepository.updateTransferRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.TRANSFER, recordId)
             }
+            appendSyncChangesUseCase?.upsertTransfer(updated)
             setOf(existing.fromAccountId, existing.toAccountId, fromAccountId, toAccountId).forEach {
                 refreshAccountActivityStateUseCase(it)
             }

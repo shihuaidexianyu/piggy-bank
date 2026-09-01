@@ -4,6 +4,7 @@ import com.shihuaidexianyu.money.data.repository.InMemoryAccountRepository
 import com.shihuaidexianyu.money.data.repository.InMemoryTransactionRepository
 import com.shihuaidexianyu.money.domain.model.Account
 import com.shihuaidexianyu.money.domain.model.AiMutationJournalEntry
+import com.shihuaidexianyu.money.domain.model.AiMutationJournalItem
 import com.shihuaidexianyu.money.domain.model.AiMutationJournalStatus
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.UndoLatestAiMutationResult
@@ -43,7 +44,7 @@ class AiJournaledLedgerUseCaseTest {
         val created = fixture.useCase.createCashFlow(
             fixture.createCommand("create", accountId, amount = 100, note = "初始"),
         )
-        val recordId = created.entry.recordId
+        val recordId = requireNotNull(created.entry.recordId)
 
         fixture.clock.now = 200
         fixture.useCase.updateCashFlow(
@@ -78,7 +79,7 @@ class AiJournaledLedgerUseCaseTest {
         val receipt = fixture.useCase.createCashFlow(
             fixture.createCommand("create", accountId, amount = 100, note = "AI 写入"),
         )
-        val current = assertNotNull(fixture.transactions.queryCashFlowRecordById(receipt.entry.recordId))
+        val current = assertNotNull(fixture.transactions.queryCashFlowRecordById(requireNotNull(receipt.entry.recordId)))
         assertTrue(
             fixture.transactions.updateCashFlowRecord(
                 current.copy(note = "用户后来修改", updatedAt = current.updatedAt + 1),
@@ -89,7 +90,7 @@ class AiJournaledLedgerUseCaseTest {
         val result = fixture.useCase.undoLatest("undo-conflict")
 
         assertIs<UndoLatestAiMutationResult.Conflict>(result)
-        assertEquals("用户后来修改", fixture.transactions.queryCashFlowRecordById(receipt.entry.recordId)?.note)
+        assertEquals("用户后来修改", fixture.transactions.queryCashFlowRecordById(requireNotNull(receipt.entry.recordId))?.note)
         assertEquals(AiMutationJournalStatus.APPLIED, fixture.journal.queryLatestApplied()?.status)
     }
 
@@ -123,7 +124,7 @@ class AiJournaledLedgerUseCaseTest {
                 .copy(occurredAt = null),
         )
         val cashRecord = assertNotNull(
-            fixture.transactions.queryCashFlowRecordById(cashReceipt.entry.recordId),
+            fixture.transactions.queryCashFlowRecordById(requireNotNull(cashReceipt.entry.recordId)),
         )
         assertEquals(777L, cashRecord.occurredAt)
 
@@ -139,7 +140,7 @@ class AiJournaledLedgerUseCaseTest {
             ),
         )
         val transferRecord = assertNotNull(
-            fixture.transactions.queryTransferRecordById(transferReceipt.entry.recordId),
+            fixture.transactions.queryTransferRecordById(requireNotNull(transferReceipt.entry.recordId)),
         )
         assertEquals(888L, transferRecord.occurredAt)
 
@@ -149,7 +150,7 @@ class AiJournaledLedgerUseCaseTest {
         )
         assertEquals(
             10L,
-            fixture.transactions.queryCashFlowRecordById(explicitReceipt.entry.recordId)?.occurredAt,
+            fixture.transactions.queryCashFlowRecordById(requireNotNull(explicitReceipt.entry.recordId))?.occurredAt,
         )
     }
 
@@ -163,9 +164,9 @@ class AiJournaledLedgerUseCaseTest {
         fixture.clock.now = 200
         fixture.useCase.deleteCashFlow(
             identity = fixture.identity("delete"),
-            recordId = created.entry.recordId,
+            recordId = requireNotNull(created.entry.recordId),
         )
-        assertNull(fixture.transactions.queryCashFlowRecordById(created.entry.recordId))
+        assertNull(fixture.transactions.queryCashFlowRecordById(requireNotNull(created.entry.recordId)))
 
         fixture.clock.now = 300
         val firstUndo = assertIs<UndoLatestAiMutationResult.Undone>(fixture.useCase.undoLatest("undo-delete"))
@@ -173,7 +174,7 @@ class AiJournaledLedgerUseCaseTest {
 
         assertFalse(firstUndo.replayed)
         assertTrue(replayedUndo.replayed)
-        assertEquals("保留", fixture.transactions.queryCashFlowRecordById(created.entry.recordId)?.note)
+        assertEquals("保留", fixture.transactions.queryCashFlowRecordById(requireNotNull(created.entry.recordId))?.note)
         assertEquals(created.entry.id, fixture.journal.queryLatestApplied()?.id)
     }
 
@@ -260,6 +261,7 @@ class AiJournaledLedgerUseCaseTest {
 
     private class FakeJournalRepository : AiMutationJournalRepository {
         private val entries = MutableStateFlow<List<AiMutationJournalEntry>>(emptyList())
+        private val batchItems = mutableMapOf<Long, List<AiMutationJournalItem>>()
         private var nextId = 1L
 
         override fun observeRecent(limit: Int): Flow<List<AiMutationJournalEntry>> =
@@ -288,6 +290,22 @@ class AiJournaledLedgerUseCaseTest {
             val id = nextId++
             entries.value = entries.value + entry.copy(id = id)
             return id
+        }
+
+        override suspend fun insertBatch(
+            entry: AiMutationJournalEntry,
+            items: List<AiMutationJournalItem>,
+        ): Long {
+            val id = insert(entry)
+            batchItems[id] = items.map { it.copy(journalId = id) }
+            return id
+        }
+
+        override suspend fun queryItems(journalId: Long): List<AiMutationJournalItem> =
+            batchItems[journalId].orEmpty().sortedBy { it.itemIndex }
+
+        override suspend fun markItemsUndone(journalId: Long) {
+            batchItems[journalId] = batchItems[journalId].orEmpty().map { it.copy(undoneAt = -1L) }
         }
 
         override suspend fun markUndone(id: Long, undoneAt: Long, undoRequestId: String): Boolean {

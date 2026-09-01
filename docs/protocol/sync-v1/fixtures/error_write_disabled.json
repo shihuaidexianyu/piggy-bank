@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0005",
+  "ok": false,
+  "error": {
+    "code": "WRITE_DISABLED",
+    "message": "本次手机会话未允许 AI 修改账目"
+  }
+}

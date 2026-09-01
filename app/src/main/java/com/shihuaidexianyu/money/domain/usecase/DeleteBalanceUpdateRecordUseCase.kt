@@ -4,9 +4,11 @@ import com.shihuaidexianyu.money.domain.time.nextMutationTimestamp
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.LedgerUndoToken
+import com.shihuaidexianyu.money.domain.model.sync.SyncEntityKind
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 import com.shihuaidexianyu.money.domain.notification.NoOpNotificationSyncRequester
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncReason
 import com.shihuaidexianyu.money.domain.notification.NotificationSyncRequester
@@ -17,6 +19,7 @@ class DeleteBalanceUpdateRecordUseCase(
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
     private val notificationSyncRequester: NotificationSyncRequester = NoOpNotificationSyncRequester,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -41,6 +44,12 @@ class DeleteBalanceUpdateRecordUseCase(
             ) {
                 throw LedgerRecordChangedException(LedgerRecordKind.BALANCE_UPDATE, recordId)
             }
+            appendSyncChangesUseCase?.deleteRecord(
+                entityKind = SyncEntityKind.BALANCE_UPDATE,
+                recordId = recordId,
+                updatedAt = deletedAt,
+                deletedAt = deletedAt,
+            )
             refreshAccountActivityStateUseCase(existing.accountId)
             LedgerUndoToken(
                 kind = LedgerRecordKind.BALANCE_UPDATE,

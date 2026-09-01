@@ -1,0 +1,15 @@
+{
+  "entityKind": "balance_update",
+  "sourceRevision": 402,
+  "payload": {
+    "recordId": 12,
+    "accountId": 3,
+    "actualBalance": "152300",
+    "systemBalanceBeforeUpdate": "152100",
+    "delta": "200",
+    "occurredAt": 1785000000000,
+    "createdAt": 1785000010000,
+    "updatedAt": 1785000010000,
+    "operationId": "op-7d1c4a55-2e8b-4f3a-8c6d-1b9e5a7c3f2d"
+  }
+}

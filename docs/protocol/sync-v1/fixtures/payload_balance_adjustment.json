@@ -1,0 +1,13 @@
+{
+  "entityKind": "balance_adjustment",
+  "sourceRevision": 377,
+  "payload": {
+    "recordId": 9,
+    "accountId": 5,
+    "delta": "-1500",
+    "occurredAt": 1784500000000,
+    "createdAt": 1784500010000,
+    "updatedAt": 1784500010000,
+    "operationId": "op-2b8e6f14-9a3c-4d7b-b5e1-6f4a8c2d9e1b"
+  }
+}

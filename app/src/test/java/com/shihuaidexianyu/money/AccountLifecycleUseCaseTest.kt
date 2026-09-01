@@ -43,7 +43,7 @@ class AccountLifecycleUseCaseTest {
         val reminders = InMemoryRecurringReminderRepository(MutableStateFlow(100L))
         val clock = testClockProvider(100L)
         val constructor = CloseAccountUseCase::class.java.declaredConstructors
-            .single { it.parameterCount == 8 }
+            .single { it.parameterCount == 9 }
 
         val error = assertFailsWith<InvocationTargetException> {
             constructor.newInstance(
@@ -55,6 +55,7 @@ class AccountLifecycleUseCaseTest {
                 AccountLifecycleCoordinator(),
                 null,
                 NoOpNotificationSyncRequester,
+                null,
             )
         }
 

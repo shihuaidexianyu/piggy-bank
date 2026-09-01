@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "requestId": "req-snap-0001",
+  "ok": true,
+  "data": {
+    "datasetId": "3f6b8c2a-9c1e-4f7a-9b3d-2f6a1c8e5d47",
+    "snapshotRevision": 1842,
+    "rows": [
+      {
+        "entityKind": "account",
+        "sourceRevision": 12,
+        "payload": {
+          "accountId": 3,
+          "name": "招商银行储蓄卡",
+          "initialBalance": "100000",
+          "kind": "funding",
+          "isHidden": false,
+          "displayOrder": 0,
+          "colorName": "blue",
+          "iconName": "bank",
+          "createdAt": 1754000000000,
+          "lastUsedAt": 1788260000000,
+          "lastBalanceUpdateAt": 1785000000000
+        }
+      },
+      {
+        "entityKind": "cash_flow",
+        "sourceRevision": 1830,
+        "payload": {
+          "recordId": 27,
+          "accountId": 3,
+          "direction": "outflow",
+          "amount": "8650",
+          "note": "聚餐 翅客 王慨然和他小弟",
+          "occurredAt": 1786747800000,
+          "createdAt": 1786747810000,
+          "updatedAt": 1786747810000,
+          "operationId": "ai:req-dinner-0001"
+        }
+      }
+    ],
+    "nextCursor": "czoxODQyOmNhc2hfZmxvdzoyNw",
+    "done": false
+  }
+}

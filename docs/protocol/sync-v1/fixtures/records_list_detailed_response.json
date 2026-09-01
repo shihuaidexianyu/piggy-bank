@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "requestId": "req-records-0001",
+  "ok": true,
+  "data": {
+    "records": [
+      {
+        "recordId": 27,
+        "type": "cash_flow",
+        "accountId": 3,
+        "accountName": "招商银行储蓄卡",
+        "title": "聚餐",
+        "amount": "-8650",
+        "occurredAt": 1786747800000,
+        "balanceBefore": "161000",
+        "balanceAfter": "152350",
+        "note": "聚餐 翅客 王慨然和他小弟",
+        "updatedAt": 1786747810000,
+        "operationId": "ai:req-dinner-0001"
+      }
+    ],
+    "nextCursor": {
+      "occurredAt": 1786747800000,
+      "sourceOrder": 0,
+      "recordId": 27
+    }
+  }
+}

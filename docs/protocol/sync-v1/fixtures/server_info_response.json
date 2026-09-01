@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "requestId": "req-info-0001",
+  "ok": true,
+  "data": {
+    "protocolVersion": 1,
+    "app": "Money",
+    "pairingAllowed": true,
+    "allowWrite": true,
+    "expiresAt": 1788278400000,
+    "capabilities": [
+      "sync.state.v1",
+      "sync.snapshot.v1",
+      "sync.pull.v1",
+      "sync.push.note.v1",
+      "records.list.detailed.v1"
+    ]
+  }
+}

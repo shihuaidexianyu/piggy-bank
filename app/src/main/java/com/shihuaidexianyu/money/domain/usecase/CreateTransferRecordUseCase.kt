@@ -5,12 +5,14 @@ import com.shihuaidexianyu.money.domain.model.TransferRecord
 import com.shihuaidexianyu.money.domain.repository.AccountRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class CreateTransferRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         fromAccountId: Long,
@@ -48,10 +50,10 @@ class CreateTransferRecordUseCase(
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(fromAccount, occurredAt)
             AccountRecordTimeValidator.requireOccurredAtOnOrAfterAccountCreated(toAccount, occurredAt)
 
-            transactionRepository.insertTransferRecord(
-                requested.copy(createdAt = now, updatedAt = now),
-            ).also { result ->
+            val stored = requested.copy(createdAt = now, updatedAt = now)
+            transactionRepository.insertTransferRecord(stored).also { result ->
                 if (result.inserted) {
+                    appendSyncChangesUseCase?.upsertTransfer(stored.copy(id = result.recordId))
                     refreshAccountActivityStateUseCase(fromAccountId)
                     refreshAccountActivityStateUseCase(toAccountId)
                 }

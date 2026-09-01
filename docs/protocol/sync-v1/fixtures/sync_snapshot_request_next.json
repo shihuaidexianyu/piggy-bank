@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "requestId": "req-snap-0002",
+  "action": "sync.snapshot",
+  "token": "example-session-token",
+  "arguments": {
+    "datasetId": "3f6b8c2a-9c1e-4f7a-9b3d-2f6a1c8e5d47",
+    "snapshotRevision": 1842,
+    "cursor": "czoxODQyOmNhc2hfZmxvdzoyNw"
+  }
+}

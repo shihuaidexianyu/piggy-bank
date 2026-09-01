@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0002",
+  "ok": false,
+  "error": {
+    "code": "RESYNC_REQUIRED",
+    "message": "同步游标早于服务器保留的最早 revision，请重新快照"
+  }
+}

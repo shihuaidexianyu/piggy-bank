@@ -7,12 +7,14 @@ import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.LedgerRecordChangedException
 import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.time.ClockProvider
+import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 
 class UpdateCashFlowRecordUseCase(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val refreshAccountActivityStateUseCase: RefreshAccountActivityStateUseCase,
     private val clockProvider: ClockProvider,
+    private val appendSyncChangesUseCase: AppendSyncChangesUseCase? = null,
 ) {
     suspend operator fun invoke(
         recordId: Long,
@@ -50,6 +52,7 @@ class UpdateCashFlowRecordUseCase(
             if (!transactionRepository.updateCashFlowRecord(updated, existing.updatedAt)) {
                 throw LedgerRecordChangedException(LedgerRecordKind.CASH_FLOW, recordId)
             }
+            appendSyncChangesUseCase?.upsertCashFlow(updated)
             setOf(existing.accountId, accountId).forEach {
                 refreshAccountActivityStateUseCase(it)
             }

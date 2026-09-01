@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "requestId": "req-push-0001",
+  "ok": true,
+  "data": {
+    "results": [
+      {
+        "patchId": "p-0001",
+        "status": "applied",
+        "revision": 1845
+      },
+      {
+        "patchId": "p-0002",
+        "status": "conflict",
+        "serverUpdatedAt": 1787200000000,
+        "serverPayload": {
+          "recordId": 31,
+          "fromAccountId": 3,
+          "toAccountId": 5,
+          "amount": "200000",
+          "note": "还信用卡（8月已还）",
+          "occurredAt": 1787000000000,
+          "createdAt": 1787000010000,
+          "updatedAt": 1787200000000,
+          "operationId": "op-9f2e7b31-4c2d-4e8a-9d1f-3a5b7c9e2d4f"
+        }
+      },
+      {
+        "patchId": "p-0003",
+        "status": "invalid",
+        "error": {
+          "code": "INVALID_PATCH",
+          "message": "补丁只能修改 note 字段"
+        }
+      }
+    ]
+  }
+}

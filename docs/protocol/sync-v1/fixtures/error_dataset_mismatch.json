@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0001",
+  "ok": false,
+  "error": {
+    "code": "DATASET_MISMATCH",
+    "message": "本地镜像与手机不是同一个数据集"
+  }
+}
