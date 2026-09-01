@@ -1,0 +1,4 @@
+# Sync v1 wire-contract fixtures carry a SHA-256 manifest (manifest.json) over raw bytes.
+# They must check out byte-identically on every platform, so force LF line endings
+# regardless of core.autocrlf.
+docs/protocol/** text eol=lf
