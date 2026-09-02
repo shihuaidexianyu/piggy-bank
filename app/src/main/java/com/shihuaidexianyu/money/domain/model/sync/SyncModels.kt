@@ -132,6 +132,22 @@ data class NotePatch(
     val changes: Map<String, String>,
 )
 
+/**
+ * One record patch (sync.push.records.v1) as decoded from the wire. [op], [entityKind] and
+ * [changes] stay raw (changes as the wire JsonObject) so the use case can reject them per-patch
+ * instead of failing the whole batch. `create` patches carry no recordId/expectedUpdatedAt;
+ * `update`/`delete` patches require both. A null [op] inside a record batch is itself an
+ * invalid patch (legacy note batches are routed to the note pipeline before this stage).
+ */
+data class RecordPatch(
+    val patchId: String,
+    val op: String? = null,
+    val entityKind: String,
+    val recordId: Long? = null,
+    val expectedUpdatedAt: Long? = null,
+    val changes: kotlinx.serialization.json.JsonObject,
+)
+
 enum class SyncPatchStatus(val value: String) {
     APPLIED("applied"),
     CONFLICT("conflict"),
@@ -147,6 +163,8 @@ enum class SyncPatchStatus(val value: String) {
 data class PatchResult(
     val patchId: String,
     val status: SyncPatchStatus,
+    /** New record id for applied `create` patches; null otherwise (the patch carries its id). */
+    val recordId: Long? = null,
     /** Allocated change-log revision for applied patches. */
     val revision: Long? = null,
     /** Current server `updatedAt` for conflict results. */
@@ -183,5 +201,19 @@ object SyncCapabilities {
     const val PUSH_NOTE = "sync.push.note.v1"
     const val RECORDS_LIST_DETAILED = "records.list.detailed.v1"
 
-    val ALL: List<String> = listOf(STATE, SNAPSHOT, PULL, PUSH_NOTE, RECORDS_LIST_DETAILED)
+    /** session.pair.begin/poll + session.resume with persistent device credentials. */
+    const val SESSION_DEVICE = "session.device.v1"
+
+    /** `sync.push` accepting mixed create/update/delete record patches. */
+    const val PUSH_RECORDS = "sync.push.records.v1"
+
+    val ALL: List<String> = listOf(
+        STATE,
+        SNAPSHOT,
+        PULL,
+        PUSH_NOTE,
+        RECORDS_LIST_DETAILED,
+        SESSION_DEVICE,
+        PUSH_RECORDS,
+    )
 }

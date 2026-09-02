@@ -13,7 +13,9 @@
       "sync.snapshot.v1",
       "sync.pull.v1",
       "sync.push.note.v1",
-      "records.list.detailed.v1"
+      "records.list.detailed.v1",
+      "session.device.v1",
+      "sync.push.records.v1"
     ]
   }
 }

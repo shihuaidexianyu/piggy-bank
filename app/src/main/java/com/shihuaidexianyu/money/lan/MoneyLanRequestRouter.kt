@@ -15,6 +15,7 @@ import com.shihuaidexianyu.money.domain.model.LedgerRecordKind
 import com.shihuaidexianyu.money.domain.model.UndoLatestAiMutationResult
 import com.shihuaidexianyu.money.domain.model.sync.NotePatch
 import com.shihuaidexianyu.money.domain.model.sync.PatchResult
+import com.shihuaidexianyu.money.domain.model.sync.RecordPatch
 import com.shihuaidexianyu.money.domain.model.sync.SyncMirrorJson
 import com.shihuaidexianyu.money.domain.usecase.AiCreateCashFlowCommand
 import com.shihuaidexianyu.money.domain.usecase.AiCreateTransferCommand
@@ -28,6 +29,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -35,8 +37,8 @@ import kotlinx.serialization.json.jsonObject
 class MoneyLanRequestRouter(
     private val container: MoneyAppContainer,
     private val writeRateLimiter: MoneyLanWriteRateLimiter = MoneyLanWriteRateLimiter(),
-) {
-    suspend fun route(request: MoneyLanRequest, client: MoneyLanClient): JsonElement {
+) : MoneyLanRouteHandler {
+    override suspend fun route(request: MoneyLanRequest, client: MoneyLanClient): JsonElement {
         if (!container.startupMigrationCoordinator.isReady) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.LEDGER_NOT_READY, "账本仍在完成启动迁移，请稍后重试")
         }
@@ -247,30 +249,69 @@ class MoneyLanRequestRouter(
         arguments: SyncPushArguments,
     ): JsonElement {
         // Idempotent replays return the stored batch results without consuming rate budget.
+        // A requestId can only have entered one of the two pipelines, so probe both.
         val stored = container.pushSyncPatchesUseCase.findStoredResults(request.requestId)
+            ?: container.pushRecordPatchesUseCase.findStoredResults(request.requestId)
         if (stored != null) {
             return protocolJson.encodeToJsonElement(SyncPushResult(stored.map { it.toResult() }))
         }
         writeRateLimiter.chargeSyncPush()
-        val result = container.pushSyncPatchesUseCase(
-            identity = request.identity(client),
-            expectedDatasetId = arguments.datasetId,
-            patches = arguments.patches.map { patch ->
-                NotePatch(
-                    patchId = patch.patchId,
-                    entityKind = patch.entityKind,
-                    recordId = patch.recordId,
-                    expectedUpdatedAt = patch.expectedUpdatedAt,
-                    changes = patch.changes,
-                )
-            },
-        )
+        val result = if (arguments.patches.any { it.op != null }) {
+            // sync.push.records.v1: any patch carrying `op` routes the whole batch to the record
+            // pipeline, which classifies op-less entries as invalid per patch.
+            container.pushRecordPatchesUseCase(
+                identity = request.identity(client),
+                expectedDatasetId = arguments.datasetId,
+                patches = arguments.patches.map { patch ->
+                    RecordPatch(
+                        patchId = patch.patchId,
+                        op = patch.op,
+                        entityKind = patch.entityKind,
+                        recordId = patch.recordId,
+                        expectedUpdatedAt = patch.expectedUpdatedAt,
+                        changes = patch.changes,
+                    )
+                },
+            )
+        } else {
+            container.pushSyncPatchesUseCase(
+                identity = request.identity(client),
+                expectedDatasetId = arguments.datasetId,
+                patches = arguments.patches.map { patch -> patch.toNotePatch() },
+            )
+        }
         return protocolJson.encodeToJsonElement(SyncPushResult(result.results.map { it.toResult() }))
+    }
+
+    /** Legacy note-patch shape: complete fields or the whole batch fails, as in v1. */
+    private fun SyncPushPatch.toNotePatch(): NotePatch {
+        if (recordId == null || expectedUpdatedAt == null) {
+            throw MoneyLanProtocolException(
+                MoneyLanErrorCodes.VALIDATION_FAILED,
+                "备注补丁必须包含 recordId 和 expectedUpdatedAt",
+            )
+        }
+        val noteChanges = changes.entries.associate { (key, value) ->
+            val text = (value as? JsonPrimitive)?.takeIf { it.isString }?.content
+                ?: throw MoneyLanProtocolException(
+                    MoneyLanErrorCodes.VALIDATION_FAILED,
+                    "备注补丁的 changes 必须是字符串键值对",
+                )
+            key to text
+        }
+        return NotePatch(
+            patchId = patchId,
+            entityKind = entityKind,
+            recordId = recordId,
+            expectedUpdatedAt = expectedUpdatedAt,
+            changes = noteChanges,
+        )
     }
 
     private fun PatchResult.toResult() = SyncPushPatchResult(
         patchId = patchId,
         status = status.value,
+        recordId = recordId,
         revision = revision,
         serverUpdatedAt = serverUpdatedAt,
         serverPayload = serverPayloadJson?.let { SyncMirrorJson.parseToJsonElement(it).jsonObject },

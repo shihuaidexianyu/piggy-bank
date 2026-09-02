@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "requestId": "req-pair-poll-0001",
+  "ok": true,
+  "data": {
+    "status": "approved",
+    "credential": "example-device-credential",
+    "token": "example-session-token",
+    "sessionId": "7c8f1a2b-5d4e-4a6b-9c0d-1e2f3a4b5c6d",
+    "allowWrite": true,
+    "expiresAt": 1788278400000
+  }
+}

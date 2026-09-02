@@ -23,24 +23,24 @@
 - 隐私与安全：支持生物识别应用锁、通知金额隐藏和最近任务内容保护。
 - JSON 备份：明文 backup v5，兼容 v1-v4，导入前生成安全快照并支持条件回滚。
 - 外部入口：桌面快捷方式和通知深链统一进入应用启动队列。
-- 局域网 AI：用户主动启动临时 LAN 服务，通过一次性配对码、会话 token 和 AI Journal 提供可撤销的 MCP 账本访问。
+- 局域网 AI：用户主动启动临时 LAN 服务（NSD 自动发现、手机端一键确认配对、持久设备凭据可随时撤销），通过会话 token 和 AI Journal 提供可撤销的 MCP 账本访问。
 
 ## 🤖 Money Client Skill
 
 [Money Client Skill](https://github.com/shihuaidexianyu/money-client-skill) 是本项目的独立 Codex skill 与 Python MCP bridge。它支持配对、账户与流水查询、带真实备注的统计、现金收支/转账写入、AI Journal 和冲突感知撤销。
 
 - 仓库：[shihuaidexianyu/money-client-skill](https://github.com/shihuaidexianyu/money-client-skill)
-- 安装包：[v0.1.0 Release](https://github.com/shihuaidexianyu/money-client-skill/releases/tag/v0.1.0)
+- 安装包：[v0.3.0 Release](https://github.com/shihuaidexianyu/money-client-skill/releases/tag/v0.3.0)
 - 调用示例：`$money-client 查询近一个月的日常收支，并按备注解释主要变化`
 
-手机端服务仅供可信局域网使用，默认最长运行四小时；停止服务会立即使会话 token 失效。AI 写入必须由当前请求明确授权，并与 Journal 记录在同一 Room 事务中完成。
+手机端服务仅供可信局域网使用，默认最长运行六小时（到期通知可一键重启）；已配对设备持有持久凭据，服务重启后会话静默恢复，用户可随时在手机端撤销设备。AI 写入必须由当前请求明确授权，并与 Journal 记录在同一 Room 事务中完成。
 
 ## 🧱 技术栈
 
 - **语言**: Kotlin 2.2.20
 - **UI**: Jetpack Compose BOM 2025.10.01 + Material 3
 - **架构**: Clean Architecture（Domain / Data / UI）+ MVVM
-- **数据库**: Room 2.8.0（SQLite），模式版本 19
+- **数据库**: Room 2.8.0（SQLite），模式版本 21
 - **设置存储**: Room portable settings + DataStore Preferences 1.1.7 device preferences
 - **导航**: Navigation Compose 2.9.5
 - **后台任务**: WorkManager 2.10.1

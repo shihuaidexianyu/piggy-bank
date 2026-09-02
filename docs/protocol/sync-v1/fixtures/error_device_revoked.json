@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-err-0005",
+  "ok": false,
+  "error": {
+    "code": "DEVICE_REVOKED",
+    "message": "设备未配对或配对已撤销，请重新配对"
+  }
+}

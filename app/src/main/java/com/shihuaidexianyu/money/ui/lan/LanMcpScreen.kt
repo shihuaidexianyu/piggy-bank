@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.AiMutationJournalEntry
 import com.shihuaidexianyu.money.domain.model.AiMutationJournalStatus
+import com.shihuaidexianyu.money.lan.LanPairedDevice
 import com.shihuaidexianyu.money.lan.MoneyLanServerStatus
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyConfirmDialog
@@ -52,6 +53,9 @@ fun LanMcpScreen(
     onAllowWriteChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onApprovePairing: () -> Unit,
+    onDenyPairing: () -> Unit,
+    onRevokeDevice: (String) -> Unit,
     onUndoLatest: () -> Unit,
     onDiscardLatest: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -65,7 +69,25 @@ fun LanMcpScreen(
         }
     }
     var discardTarget by remember { mutableStateOf<AiMutationJournalEntry?>(null) }
+    var revokeTarget by remember { mutableStateOf<LanPairedDevice?>(null) }
+    var manualPairingExpanded by remember { mutableStateOf(false) }
     CollectUiEffects(effectFlow, snackbarHostState) { }
+
+    // Confirmation-style pairing (session.device.v1): the client presented itself and is polling;
+    // the user approves here or from the notification actions.
+    state.runtime.pendingPairRequestId?.let {
+        MoneyConfirmDialog(
+            title = stringResource(R.string.lan_pair_request_title),
+            message = stringResource(
+                R.string.lan_pair_request_message,
+                state.runtime.pendingPairClientName ?: "",
+            ),
+            confirmLabel = stringResource(R.string.lan_notification_approve),
+            dismissLabel = stringResource(R.string.lan_notification_deny),
+            onConfirm = onApprovePairing,
+            onDismiss = onDenyPairing,
+        )
+    }
 
     discardTarget?.let { entry ->
         MoneyConfirmDialog(
@@ -78,6 +100,20 @@ fun LanMcpScreen(
                 discardTarget = null
             },
             onDismiss = { discardTarget = null },
+        )
+    }
+
+    revokeTarget?.let { device ->
+        MoneyConfirmDialog(
+            title = stringResource(R.string.lan_device_revoke_title),
+            message = stringResource(R.string.lan_device_revoke_message, device.clientName),
+            confirmLabel = stringResource(R.string.lan_device_revoke),
+            destructive = true,
+            onConfirm = {
+                onRevokeDevice(device.deviceId)
+                revokeTarget = null
+            },
+            onDismiss = { revokeTarget = null },
         )
     }
 
@@ -162,19 +198,39 @@ fun LanMcpScreen(
                         onClick = { copyText(endpoint) },
                         showChevron = false,
                     )
+                    state.runtime.discoveryName?.let {
+                        MoneySectionDivider()
+                        MoneyListRow(
+                            title = stringResource(R.string.lan_discovery_active),
+                            subtitle = it,
+                            showChevron = false,
+                        )
+                    }
                     state.runtime.pairingCode?.let { code ->
                         MoneySectionDivider()
                         MoneyListRow(
-                            title = stringResource(R.string.lan_pairing_code),
-                            subtitle = code.chunked(4).joinToString(" "),
-                            trailing = stringResource(R.string.lan_copy_command),
-                            onClick = {
-                                val host = state.runtime.addresses.firstOrNull() ?: return@MoneyListRow
-                                val command = "uv run money_mcp.py pair --host $host " +
-                                    "--port ${state.runtime.port} --code $code"
-                                copyText(command)
+                            title = stringResource(R.string.lan_manual_pairing),
+                            subtitle = if (manualPairingExpanded) {
+                                code.chunked(4).joinToString(" ")
+                            } else {
+                                stringResource(R.string.lan_manual_pairing_description)
                             },
-                            showChevron = false,
+                            trailing = if (manualPairingExpanded) {
+                                stringResource(R.string.lan_copy_command)
+                            } else {
+                                null
+                            },
+                            onClick = {
+                                if (manualPairingExpanded) {
+                                    val host = state.runtime.addresses.firstOrNull() ?: return@MoneyListRow
+                                    val command = "uv run money_mcp.py pair --host $host " +
+                                        "--port ${state.runtime.port} --code $code"
+                                    copyText(command)
+                                } else {
+                                    manualPairingExpanded = true
+                                }
+                            },
+                            showChevron = !manualPairingExpanded,
                         )
                     }
                     state.runtime.pairedClientName?.let { clientName ->
@@ -192,6 +248,36 @@ fun LanMcpScreen(
                             trailing = DateTimeTextFormatter.format(expiresAt),
                             showChevron = false,
                         )
+                    }
+                }
+            }
+        }
+
+        item { MoneySectionHeader(title = stringResource(R.string.lan_section_devices)) }
+        item {
+            MoneyListSection {
+                if (state.pairedDevices.isEmpty()) {
+                    MoneyListRow(
+                        title = stringResource(R.string.lan_devices_empty),
+                        showChevron = false,
+                    )
+                } else {
+                    state.pairedDevices.forEachIndexed { index, device ->
+                        MoneyListRow(
+                            title = device.clientName,
+                            subtitle = if (device.lastSeenAt > 0L) {
+                                stringResource(
+                                    R.string.lan_device_last_seen,
+                                    DateTimeTextFormatter.format(device.lastSeenAt),
+                                )
+                            } else {
+                                stringResource(R.string.lan_device_never_seen)
+                            },
+                            trailing = stringResource(R.string.lan_device_revoke),
+                            onClick = { revokeTarget = device },
+                            showChevron = false,
+                        )
+                        if (index != state.pairedDevices.lastIndex) MoneySectionDivider()
                     }
                 }
             }

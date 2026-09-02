@@ -179,6 +179,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 LanMcpViewModel(
                     context = context,
                     journalRepository = container.aiMutationJournalRepository,
+                    lanPairedDeviceStore = container.lanPairedDeviceStore,
                     aiJournaledLedgerUseCase = container.aiJournaledLedgerUseCase,
                 )
             },
@@ -191,6 +192,9 @@ internal fun NavGraphBuilder.addTopLevelGraph(
             onAllowWriteChange = viewModel::setAllowWrite,
             onStart = viewModel::startServer,
             onStop = viewModel::stopServer,
+            onApprovePairing = viewModel::approvePairing,
+            onDenyPairing = viewModel::denyPairing,
+            onRevokeDevice = viewModel::revokeDevice,
             onUndoLatest = viewModel::undoLatest,
             onDiscardLatest = viewModel::discardLatest,
         )

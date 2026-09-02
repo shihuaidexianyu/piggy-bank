@@ -18,6 +18,7 @@ import com.shihuaidexianyu.money.data.repository.DevicePreferencesRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.PortableSettingsRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.NotificationSyncingAccountReminderSettingsRepository
 import com.shihuaidexianyu.money.data.repository.RecurringReminderRepositoryImpl
+import com.shihuaidexianyu.money.data.repository.RoomLanPairedDeviceStore
 import com.shihuaidexianyu.money.data.repository.SyncRepositoryImpl
 import com.shihuaidexianyu.money.data.repository.TransactionRepositoryImpl
 import com.shihuaidexianyu.money.domain.repository.AccountReminderSettingsRepository
@@ -65,6 +66,8 @@ internal class DataGraph(context: Context) {
         syncDao = moneyDatabase.syncDao(),
         clockProvider = SystemClockProvider,
     )
+
+    val lanPairedDeviceStore = RoomLanPairedDeviceStore(moneyDatabase.pairedLanDeviceDao())
 
     val ledgerAggregateRepository: LedgerAggregateRepository = transactionRepositoryImpl
 

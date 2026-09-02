@@ -290,8 +290,9 @@ class AiJournaledLedgerUseCase(
                 AiMutationAction.DELETE_CASH_FLOW,
                 AiMutationAction.DELETE_TRANSFER,
                 -> restoreDeletedRecord(entry)
-                AiMutationAction.BATCH_NOTE_UPDATE ->
-                    error("批量条目必须通过批量撤销路径处理")
+                AiMutationAction.BATCH_NOTE_UPDATE,
+                AiMutationAction.BATCH_RECORD_WRITE,
+                -> error("批量条目必须通过批量撤销路径处理")
             }
 
             val undoneAt = clockProvider.nowMillis()
@@ -326,8 +327,11 @@ class AiJournaledLedgerUseCase(
     /**
      * Batch undo is all-or-nothing: every applied item's current state must still semantically
      * equal its after-snapshot (updatedAt ignored); any drift rejects the whole batch before a
-     * single record is touched. Only then are all before-snapshots restored via the leaf use
-     * cases, so the sync change-log sees one upsert per restored record.
+     * single record is touched. Only then is each item reverted via the leaf use cases, so the
+     * sync change-log sees one change per reverted record. Item shapes (sync.push.records.v1):
+     * undo a create by deleting the created record (no before-snapshot), undo an update by
+     * restoring the before snapshot, undo a delete by restoring the soft-deleted record through
+     * an undo token rebuilt from the stored snapshots.
      */
     private suspend fun undoBatch(
         entry: AiMutationJournalEntry,
@@ -363,10 +367,7 @@ class AiJournaledLedgerUseCase(
         }
 
         prechecked.forEach { precheck ->
-            val before = journalJson.decodeFromString<AiLedgerRecordSnapshot>(
-                requireNotNull(precheck.item.beforeSnapshotJson) { "批量 Journal 缺少操作前快照" },
-            )
-            restoreSnapshot(before, requireNotNull(precheck.current))
+            revertBatchItem(precheck)
         }
         val undoneAt = clockProvider.nowMillis()
         journalRepository.markItemsUndone(entry.id)
@@ -388,6 +389,41 @@ class AiJournaledLedgerUseCase(
             },
             replayed = false,
         )
+    }
+
+    private suspend fun revertBatchItem(precheck: BatchItemPrecheck) {
+        val before = precheck.item.beforeSnapshotJson
+            ?.let { journalJson.decodeFromString<AiLedgerRecordSnapshot>(it) }
+        val after = precheck.after
+        val current = requireNotNull(precheck.current)
+        when {
+            // Undo a create: the created record goes away (soft delete at its current revision).
+            before == null -> when (after.kind) {
+                LedgerRecordKind.CASH_FLOW ->
+                    requireNotNull(deleteCashFlowRecordUseCase(after.recordId, current.updatedAt))
+                LedgerRecordKind.TRANSFER ->
+                    requireNotNull(deleteTransferRecordUseCase(after.recordId, current.updatedAt))
+                else -> error("Journal 快照类型不受支持")
+            }
+            // Undo a delete: restore the soft-deleted record; the token is rebuilt from the
+            // after-snapshot (operationId + deletedAt), which the restore use case re-validates
+            // against the stored row.
+            after.deletedAt != null -> {
+                val restored = restoreLedgerRecordUseCase(
+                    LedgerUndoToken(
+                        kind = after.kind,
+                        recordId = after.recordId,
+                        operationId = after.operationId,
+                        deletedAt = requireNotNull(after.deletedAt),
+                    ),
+                )
+                check(restored == RestoreLedgerResult.RESTORED || restored == RestoreLedgerResult.ALREADY_ACTIVE) {
+                    "账本记录已变化，无法安全恢复"
+                }
+            }
+            // Undo an update: restore the before snapshot.
+            else -> restoreSnapshot(before, current)
+        }
     }
 
     private suspend fun restoredBatchItems(entry: AiMutationJournalEntry): List<AiUndoBatchItem> =

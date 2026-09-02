@@ -16,6 +16,7 @@ import com.shihuaidexianyu.money.data.dao.CashFlowRecordDao
 import com.shihuaidexianyu.money.data.dao.HistoryRecordDao
 import com.shihuaidexianyu.money.data.dao.LocalMigrationStateDao
 import com.shihuaidexianyu.money.data.dao.LedgerAggregateDao
+import com.shihuaidexianyu.money.data.dao.PairedLanDeviceDao
 import com.shihuaidexianyu.money.data.dao.PortableSettingsDao
 import com.shihuaidexianyu.money.data.dao.RecurringReminderDao
 import com.shihuaidexianyu.money.data.dao.SyncDao
@@ -28,6 +29,7 @@ import com.shihuaidexianyu.money.data.entity.BalanceAdjustmentRecordEntity
 import com.shihuaidexianyu.money.data.entity.BalanceUpdateRecordEntity
 import com.shihuaidexianyu.money.data.entity.CashFlowRecordEntity
 import com.shihuaidexianyu.money.data.entity.LocalMigrationStateEntity
+import com.shihuaidexianyu.money.data.entity.PairedLanDeviceEntity
 import com.shihuaidexianyu.money.data.entity.PortableSettingsEntity
 import com.shihuaidexianyu.money.data.entity.RecurringReminderEntity
 import com.shihuaidexianyu.money.data.entity.SyncChangeLogEntity
@@ -35,7 +37,7 @@ import com.shihuaidexianyu.money.data.entity.SyncDatasetEntity
 import com.shihuaidexianyu.money.data.entity.TransferRecordEntity
 import java.util.UUID
 
-const val MONEY_DATABASE_VERSION = 20
+const val MONEY_DATABASE_VERSION = 21
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -520,6 +522,24 @@ private val MIGRATION_19_20 = object : Migration(19, 20) {
     }
 }
 
+private val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Persistent paired LAN devices (session.device.v1): device-local credential hashes that
+        // survive service restarts. The plaintext credential is only ever held by the client.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `paired_lan_device` (
+                `deviceId` TEXT NOT NULL PRIMARY KEY,
+                `clientName` TEXT NOT NULL,
+                `credentialHash` TEXT NOT NULL,
+                `pairedAt` INTEGER NOT NULL,
+                `lastSeenAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -540,6 +560,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
     MIGRATION_17_18,
     MIGRATION_18_19,
     MIGRATION_19_20,
+    MIGRATION_20_21,
 )
 
 @Database(
@@ -557,6 +578,7 @@ internal val MONEY_DATABASE_MIGRATIONS = arrayOf(
         AiMutationJournalItemEntity::class,
         SyncDatasetEntity::class,
         SyncChangeLogEntity::class,
+        PairedLanDeviceEntity::class,
     ],
     version = MONEY_DATABASE_VERSION,
     exportSchema = true,
@@ -576,6 +598,7 @@ abstract class MoneyDatabase : RoomDatabase() {
     abstract fun aiMutationJournalDao(): AiMutationJournalDao
     abstract fun aiMutationJournalItemDao(): AiMutationJournalItemDao
     abstract fun syncDao(): SyncDao
+    abstract fun pairedLanDeviceDao(): PairedLanDeviceDao
 
     companion object {
         @Volatile

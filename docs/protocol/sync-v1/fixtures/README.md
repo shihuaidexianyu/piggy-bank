@@ -39,8 +39,12 @@
 | `sync_snapshot_response_page.json` / `sync_snapshot_response_done.json` | 快照分页 |
 | `sync_pull_request.json` / `sync_pull_response.json` | 增量拉取（upsert + delete） |
 | `sync_push_request.json` / `sync_push_response.json` | 批量备注补丁（applied/conflict/invalid） |
+| `sync_push_records_request.json` / `sync_push_records_response.json` | 批量记录补丁（带 `op` 的 create/update/delete 混合批；applied 回传 `recordId`） |
+| `session_pair_begin_request.json` / `session_pair_begin_response.json` | 确认式配对：登记待确认请求 |
+| `session_pair_poll_approved_response.json` | 确认式配对：批准后一次性下发 token + 设备凭据 |
+| `session_resume_request.json` / `session_resume_response.json` | 凭据静默恢复会话 |
 | `records_list_detailed_response.json` | 扩展字段列表（note/updatedAt/operationId） |
-| `error_*.json` | 稳定错误码响应样例 |
+| `error_*.json` | 稳定错误码响应样例（含 `DEVICE_REVOKED`） |
 | `manifest.json` | 上述文件的 SHA-256（重新生成方式见下） |
 
 重新生成 manifest（在 fixtures 目录内，Git Bash）：

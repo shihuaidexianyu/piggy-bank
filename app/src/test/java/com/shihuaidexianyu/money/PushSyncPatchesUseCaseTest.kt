@@ -30,6 +30,7 @@ import com.shihuaidexianyu.money.domain.usecase.RestoreLedgerRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateCashFlowRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.UpdateTransferRecordUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
+import com.shihuaidexianyu.money.domain.usecase.sync.PushRecordPatchesUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.PushSyncPatchesUseCase
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -80,6 +81,19 @@ internal class SyncPushFixture {
         syncRepository = syncRepository,
         updateCashFlowRecordUseCase = updateCash,
         updateTransferRecordUseCase = updateTransfer,
+        clockProvider = clock,
+    )
+
+    val pushRecords = PushRecordPatchesUseCase(
+        journalRepository = journal,
+        transactionRepository = transactionPort,
+        syncRepository = syncRepository,
+        createCashFlowRecordUseCase = createCash,
+        updateCashFlowRecordUseCase = updateCash,
+        deleteCashFlowRecordUseCase = deleteCash,
+        createTransferRecordUseCase = createTransfer,
+        updateTransferRecordUseCase = updateTransfer,
+        deleteTransferRecordUseCase = deleteTransfer,
         clockProvider = clock,
     )
 

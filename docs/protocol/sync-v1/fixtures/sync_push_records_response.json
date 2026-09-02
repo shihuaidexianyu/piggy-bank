@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "requestId": "req-push-records-0001",
+  "ok": true,
+  "data": {
+    "results": [
+      {
+        "patchId": "rp-0001",
+        "status": "applied",
+        "recordId": 78,
+        "revision": 1902
+      },
+      {
+        "patchId": "rp-0002",
+        "status": "conflict",
+        "recordId": 27,
+        "serverUpdatedAt": 1787200000000,
+        "serverPayload": {
+          "recordId": 27,
+          "accountId": 3,
+          "direction": "outflow",
+          "amount": "8650",
+          "note": "午餐（已改）",
+          "occurredAt": 1786747200000,
+          "createdAt": 1786747810000,
+          "updatedAt": 1787200000000,
+          "operationId": "ai:req-dinner-0001"
+        }
+      },
+      {
+        "patchId": "rp-0003",
+        "status": "applied",
+        "recordId": 45,
+        "revision": 1903
+      }
+    ]
+  }
+}

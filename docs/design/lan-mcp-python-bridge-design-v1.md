@@ -2,7 +2,35 @@
 
 状态：首版代码已实现；真实手机与目标 AI 客户端的端到端验收待执行
 项目：Money（com.shihuaidexianyu.money）
-最后更新：2026-08-31
+最后更新：2026-09-02
+
+> **v1.1 修订（2026-09-02）——简化配对 + 通用批量**：协议版本保持 1，新能力全部经
+> `server.info` 的 capabilities 协商，旧客户端/旧手机可任意混搭（逐项降级）。
+>
+> 1. **确认式配对**（capability `session.device.v1`）：新增 `session.pair.begin` /
+>    `session.pair.poll`。电脑端发起 begin 后手机弹出确认框（显示电脑名），用户点
+>    “允许”即完成配对——不再朗读八位码。八位码 `session.pair` 保留为手动兜底。
+> 2. **持久设备凭据**：配对成功一次性下发 256 位凭据，手机侧只在 Room
+>    `paired_lan_device` 表（schema v21）保存其 SHA-256 散列。服务重启、会话过期、
+>    手机换 IP 均由 `session.resume` 凭据握手静默恢复（电脑端先按 NSD 重新发现地址）。
+>    用户可在服务页的“已配对设备”列表随时撤销：删除凭据行并踢掉活跃会话；恢复未知
+>    设备返回新错误码 `DEVICE_REVOKED`，凭据不匹配返回 `UNAUTHORIZED` 并计入五次失败
+>    锁定。配对确认 UI 经 `MoneyLanRuntime.pairingResponder` 进程内桥到 Service/Server。
+> 3. **NSD/mDNS 自动发现**：服务广播 `_moneylink._tcp.`，TXT 记录 `proto=1` 与
+>    `caps=<逗号分隔 capability>`；电脑端 `discover` 命令据此免输入。
+> 4. **服务时限 4 → 6 小时**，到期通知带一键重启 action。
+> 5. **通用批量写入**（capability `sync.push.records.v1`）：`sync.push` 在备注 patch
+>    之外接受带 `op`（create/update/delete）的记录 patch，单批 ≤50 可混合三种操作，
+>    原子落账并整批进 Journal（批内 operationId 为 `ai:<requestId>:<patchId>`，零成功
+>    批次不入 Journal 以便重试稳定重分类），可一键整批 LIFO 撤销；create 结果回传
+>    `recordId`。`direction` 等枚举服务端严格校验，未知值按 `INVALID_PATCH` 拒绝。
+>    电脑端镜像 outbox 增加 `op` 列（schema v2；存在未推送补丁时拒绝静默重建），
+>    备注批与记录批分组为两条独立幂等的推送。配套 MCP 工具
+>    `money_preview_batch_changes` / `money_apply_batch_changes`（MCP 工具总数 22）。
+>
+> 权威 wire 样本见 `docs/protocol/sync-v1/fixtures/`（与 Python 仓逐字节同步，
+> `manifest.json` 钉哈希）；电脑端操作语义见 skill 仓 `references/operations.md` 与
+> `references/sync.md`。本文其余部分仍描述 v1 基线。
 
 本文档定义 Money 的局域网 AI 接入方案。
 

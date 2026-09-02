@@ -40,3 +40,8 @@ data class MoneyLanClient(
     val name: String,
     val allowWrite: Boolean,
 )
+
+/** Narrow route port so the LAN server can be unit-tested without the app container. */
+fun interface MoneyLanRouteHandler {
+    suspend fun route(request: MoneyLanRequest, client: MoneyLanClient): JsonElement
+}

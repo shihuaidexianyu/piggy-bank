@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "requestId": "req-pair-begin-0001",
+  "action": "session.pair.begin",
+  "arguments": {
+    "deviceId": "9f8b7c2d-3a4e-4f1a-8b2c-5d6e7f8a9b0c",
+    "clientName": "Hongwei-PC"
+  }
+}

@@ -21,7 +21,7 @@ It supports multi-account management (ordering, hiding, closing, reopening), cas
 | ------- | ------------ |
 | UI | Jetpack Compose (BOM 2025.10.01) + Material 3 |
 | Architecture | Clean Architecture (Domain / Data / UI) + MVVM |
-| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 19 |
+| Database | Room 2.8.0 (SQLite) with KSP 2.3.2, schema version 21 |
 | Settings | Room (`portable_settings`, backupable) + DataStore Preferences 1.1.7 (device-local) |
 | Navigation | Navigation Compose 2.9.5 |
 | Serialization | kotlinx.serialization 1.9.0 (JSON backup export/import) |
@@ -111,7 +111,7 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   └── SystemTimeProviders.kt   #   System clock/zone providers
 ├── data/
 │   ├── dao/                     # Room DAOs (incl. HistoryRecordDao union query, LedgerAggregateDao)
-│   ├── db/                      # MoneyDatabase (version 19) + DataStore extensions
+│   ├── db/                      # MoneyDatabase (version 21) + DataStore extensions
 │   ├── migration/               # StartupMigrationCoordinator, RoomStartupMigrationBackend,
 │   │                            #   LegacySourceRecoveryExporter (legacy-store upgrade + recovery)
 │   ├── debug/                   # DebugSampleDataSeeder (debug builds only)
@@ -138,7 +138,8 @@ app/src/main/java/com/shihuaidexianyu/money/
 │   ├── BalanceCheckWorker.kt              # Stale-account "balance needs check" notifications
 │   ├── AndroidMoneyNotificationPublisher.kt  # Channels + posting
 │   └── NotificationLaunchIntentConsumer.kt   # Notification deep links
-├── lan/                         # Temporary foreground LAN server, pairing, framed JSON protocol,
+├── lan/                         # Temporary foreground LAN server, confirmed pairing + persistent
+│                                #   paired-device store, NSD advertising, framed JSON protocol,
 │                                #   request router, and runtime state
 ├── ui/
 │   ├── accounts/                # Accounts list, detail, create, edit, reorder
@@ -245,7 +246,7 @@ Always run unit tests before submitting changes:
 
 ## Database Migrations
 
-Room schema is exported to `app/schemas/`. Current database version is **19**.
+Room schema is exported to `app/schemas/`. Current database version is **21**.
 
 Existing migrations:
 
@@ -267,6 +268,8 @@ Existing migrations:
 - `16 → 17`: Removed the `savings_goals` table. Legacy backup goal fields are accepted for compatibility but ignored.
 - `17 → 18`: Removed the spending-budget columns from `portable_settings`. Legacy backup budget fields are accepted for compatibility but ignored.
 - `18 → 19`: Added `ai_mutation_journal`, a device-local persistent LIFO journal for atomic AI ledger mutations and conflict-aware undo.
+- `19 → 20`: Added sync v1 state: `sync_dataset` (singleton dataset id + next revision), `sync_change_log` (retention-bounded change log for `sync.pull`), and batch journal items for `sync.push` (one Journal row per patch).
+- `20 → 21`: Added `paired_lan_device` (`session.device.v1`): device-local SHA-256 credential hashes that survive service restarts; the plaintext credential is only ever held by the client.
 
 When modifying entities:
 
@@ -295,8 +298,8 @@ When modifying entities:
 
 ## Security Considerations
 
-- **Local networking only**: There is no cloud backend or remote endpoint. `INTERNET` exists solely for the user-started `MoneyLanService`, which binds a temporary LAN port for up to four hours. It uses an eight-digit one-time pairing code and an ephemeral 256-bit session token; stopping the service invalidates the token. The current protocol is plaintext and must be treated as trusted-LAN-only.
-- **LAN write safety**: A session-level phone switch controls writes; there is no per-operation approval. Every successful AI write is atomically journaled, request IDs are idempotent, and conflict-aware LIFO undo uses existing mutation use cases. Never route LAN writes directly to DAOs or repositories.
+- **Local networking only**: There is no cloud backend or remote endpoint. `INTERNET` exists solely for the user-started `MoneyLanService`, which binds a temporary LAN port for up to six hours and advertises itself via NSD (`_moneylink._tcp.`, TXT `proto=1` + `caps`). Pairing is confirmed on the phone (`session.pair.begin`/`poll` approval dialog); approving once issues a 256-bit session token plus a persistent device credential whose SHA-256 hash is stored in the Room `paired_lan_device` table (plaintext is returned exactly once). `session.resume` silently restores sessions after expiry or service restarts; revoking a device deletes its row and kicks its active session. The eight-digit one-time code remains as the manual fallback. The current protocol is plaintext and must be treated as trusted-LAN-only.
+- **LAN write safety**: A session-level phone switch controls writes; there is no per-operation approval. Every successful AI write is atomically journaled, request IDs are idempotent, and conflict-aware LIFO undo uses existing mutation use cases. Batched record writes (`sync.push.records.v1`) land atomically and enter the Journal as one undoable unit with per-patch `operationId`s derived as `ai:<requestId>:<patchId>`. Never route LAN writes directly to DAOs or repositories.
 - **Data export**: Manual export writes unencrypted JSON to app-private cache and shares it only through a `FileProvider` URI under `cache/exports/`. The UI must warn users to save it only to a trusted location.
 - **Pre-import backup**: Before any replacement, `SafetySnapshotStore` atomically writes and verifies a snapshot under `filesDir/pre_import_backups/`; `ImportReceiptStore` records its hash and supports rollback without importing device-local privacy preferences.
 - **Biometric lock**: Optional app-wide biometric lock (`ui/lock/`: `AppLockScreen` + `AppLockViewModel` + `AndroidBiometricAuthenticationGateway`, hosted by `MainActivity` as a `FragmentActivity`), gated by a device preference.

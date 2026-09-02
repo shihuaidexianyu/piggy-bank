@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "requestId": "req-pair-begin-0001",
+  "ok": true,
+  "data": {
+    "pairRequestId": "pr-3f6b8c2a9c1e4f7a",
+    "status": "pending",
+    "expiresInSec": 60
+  }
+}

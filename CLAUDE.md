@@ -49,7 +49,7 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
-- **`lan/`** — temporary foreground LAN server, one-time pairing/session token, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
+- **`lan/`** — temporary foreground LAN server, NSD advertising, confirmed pairing with persistent device credentials, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
 
 ### Dependency injection is manual — do not add Hilt/Dagger/Koin
 
@@ -90,7 +90,7 @@ Notification sync uses a unified `MoneyNotificationWorker` (15-minute periodic u
 
 ## Database migrations
 
-Room schema version **19**, exported to `app/schemas/` (bundled as androidTest assets). Version 19 adds the device-local `ai_mutation_journal` table. When changing entities:
+Room schema version **21**, exported to `app/schemas/` (bundled as androidTest assets). Version 20 added sync v1 (`sync_dataset` + `sync_change_log` + batch journal items); version 21 adds the device-local `paired_lan_device` table (credential hashes for `session.device.v1`). When changing entities:
 
 1. Bump `MONEY_DATABASE_VERSION` in `MoneyDatabase.kt`.
 2. Add the `Migration` object there and register it in `MONEY_DATABASE_MIGRATIONS`.
@@ -109,4 +109,4 @@ Room schema version **19**, exported to `app/schemas/` (bundled as androidTest a
 - Release signing reads `signing/keystore.properties` (gitignored, as is all of `signing/`), falling back to `../timeline/keystore.properties`. Never commit keystores.
 - `allowBackup="false"` — the app deliberately does not use Android cloud/device-transfer backup.
 - Biometric app lock and amount privacy masking (in-app and notifications independently) live in `DevicePreferences` and the `ui/lock/` / privacy gateways.
-- The LAN service lasts at most four hours and uses one-time pairing plus an ephemeral token. Its protocol is plaintext trusted-LAN-only. There is no per-write approval; safety comes from session-level write permission, idempotent request IDs, atomic Journal insertion, semantic conflict detection, and strict LIFO undo through existing use cases.
+- The LAN service lasts at most six hours and advertises itself via NSD (`_moneylink._tcp.`). Pairing is a phone-side confirmation (`session.pair.begin`/`poll`) that issues an ephemeral session token plus a persistent device credential — the phone stores only its SHA-256 hash in `paired_lan_device`, the plaintext is delivered once, and `session.resume` silently restores sessions; the eight-digit code is the manual fallback. Its protocol is plaintext trusted-LAN-only. There is no per-write approval; safety comes from session-level write permission, idempotent request IDs, atomic Journal insertion (batched record writes enter as one undoable unit), semantic conflict detection, and strict LIFO undo through existing use cases.

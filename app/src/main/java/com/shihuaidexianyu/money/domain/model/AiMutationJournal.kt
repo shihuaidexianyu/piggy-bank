@@ -12,6 +12,9 @@ enum class AiMutationAction {
     DELETE_TRANSFER,
     /** Batch note-only patches submitted through `sync.push` (entryType = batch). */
     BATCH_NOTE_UPDATE,
+
+    /** Batch create/update/delete record patches (sync.push.records.v1, entryType = batch). */
+    BATCH_RECORD_WRITE,
 }
 enum class AiMutationJournalStatus(val value: String) {
     APPLIED("applied"),

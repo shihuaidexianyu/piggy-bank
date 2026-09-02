@@ -8,6 +8,8 @@ import com.shihuaidexianyu.money.domain.model.AiMutationJournalEntry
 import com.shihuaidexianyu.money.domain.model.UndoLatestAiMutationResult
 import com.shihuaidexianyu.money.domain.repository.AiMutationJournalRepository
 import com.shihuaidexianyu.money.domain.usecase.AiJournaledLedgerUseCase
+import com.shihuaidexianyu.money.lan.LanPairedDevice
+import com.shihuaidexianyu.money.lan.LanPairedDeviceStore
 import com.shihuaidexianyu.money.lan.MoneyLanRuntime
 import com.shihuaidexianyu.money.lan.MoneyLanRuntimeState
 import com.shihuaidexianyu.money.lan.MoneyLanServerStatus
@@ -27,6 +29,7 @@ import kotlinx.coroutines.launch
 data class LanMcpUiState(
     val runtime: MoneyLanRuntimeState = MoneyLanRuntimeState(),
     val allowWriteDraft: Boolean = true,
+    val pairedDevices: List<LanPairedDevice> = emptyList(),
     val journalEntries: List<AiMutationJournalEntry> = emptyList(),
     val latestAppliedEntry: AiMutationJournalEntry? = null,
     val appliedCount: Int = 0,
@@ -44,6 +47,7 @@ sealed interface LanMcpEffect : UiEffect.HasMessage {
 class LanMcpViewModel(
     context: Context,
     journalRepository: AiMutationJournalRepository,
+    private val lanPairedDeviceStore: LanPairedDeviceStore,
     private val aiJournaledLedgerUseCase: AiJournaledLedgerUseCase,
 ) : ViewModel() {
     private val appContext = context.applicationContext
@@ -59,23 +63,58 @@ class LanMcpViewModel(
     val uiState: StateFlow<LanMcpUiState> = combine(
         MoneyLanRuntime.state,
         allowWriteDraft,
+        lanPairedDeviceStore.observeDevices(),
         journalState,
         journalRepository.observeAppliedCount(),
         isJournalActionRunning,
-    ) { runtime, allowWrite, journal, appliedCount, journalActionRunning ->
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val journal = values[3] as JournalState
         LanMcpUiState(
-            runtime = runtime,
-            allowWriteDraft = allowWrite,
+            runtime = values[0] as MoneyLanRuntimeState,
+            allowWriteDraft = values[1] as Boolean,
+            pairedDevices = values[2] as List<LanPairedDevice>,
             journalEntries = journal.entries,
             latestAppliedEntry = journal.latestApplied,
-            appliedCount = appliedCount,
-            isJournalActionRunning = journalActionRunning,
+            appliedCount = values[4] as Int,
+            isJournalActionRunning = values[5] as Boolean,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = LanMcpUiState(),
     )
+
+    /** Answer a pending confirmation-style pairing request from the in-app dialog. */
+    fun approvePairing() {
+        val requestId = uiState.value.runtime.pendingPairRequestId ?: return
+        MoneyLanRuntime.pairingResponder?.approve(requestId)
+    }
+
+    fun denyPairing() {
+        val requestId = uiState.value.runtime.pendingPairRequestId ?: return
+        MoneyLanRuntime.pairingResponder?.deny(requestId)
+    }
+
+    /** Revoke a paired device: drops its stored credential and any active session it holds. */
+    fun revokeDevice(deviceId: String) {
+        viewModelScope.launch {
+            runCatching {
+                val responder = MoneyLanRuntime.pairingResponder
+                if (responder != null) {
+                    responder.revokeDevice(deviceId)
+                } else {
+                    lanPairedDeviceStore.remove(deviceId)
+                }
+            }.onSuccess {
+                effects.emit(LanMcpEffect.ShowMessage(appContext.getString(R.string.lan_device_revoked)))
+            }.onFailure { error ->
+                effects.emit(
+                    LanMcpEffect.ShowMessage(error.userMessage(appContext.getString(R.string.lan_journal_update_failed))),
+                )
+            }
+        }
+    }
 
     fun setAllowWrite(enabled: Boolean) {
         if (!uiState.value.isRunning) allowWriteDraft.value = enabled

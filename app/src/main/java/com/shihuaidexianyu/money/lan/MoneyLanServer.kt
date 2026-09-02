@@ -18,6 +18,7 @@ import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,12 +33,29 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
+/**
+ * LAN server for the Money Link Protocol. Two pairing styles share one active session:
+ *
+ * - Legacy one-time code (`session.pair`): 8-digit code shown on the phone, 10-minute window,
+ *   5 failures lock pairing. When the client also sends a `deviceId`, success additionally
+ *   issues a persistent device credential (session.device.v1).
+ * - Confirmation pairing (`session.pair.begin` / `session.pair.poll`): the client presents
+ *   itself, the user approves on the phone (in-app dialog or notification action), and the
+ *   client polls for the outcome. Approval issues a persistent device credential.
+ *
+ * A paired device resumes later sessions with `session.resume` (deviceId + credential) without
+ * any on-phone interaction. The phone stores only the SHA-256 hash of each credential; the
+ * plaintext is handed to the client exactly once. Revoking the row on the phone forces the
+ * device to pair again.
+ */
 class MoneyLanServer(
     private val scope: CoroutineScope,
-    private val router: MoneyLanRequestRouter,
+    private val router: MoneyLanRouteHandler,
+    private val pairedDeviceStore: LanPairedDeviceStore,
     private val allowWrite: Boolean,
     private val startedAt: Long,
     private val expiresAt: Long,
@@ -49,6 +67,8 @@ class MoneyLanServer(
     private val serverSocket = ServerSocket(0, SERVER_BACKLOG, InetAddress.getByName("0.0.0.0"))
     private val pairingCode = securePairingCode()
     private val pairingExpiresAt = minOf(startedAt + PAIRING_WINDOW_MILLIS, expiresAt)
+    private val pendingPair = AtomicReference<PendingPair?>(null)
+    private val lastPairBeginAt = AtomicLong(0)
     private var acceptJob: Job? = null
 
     val port: Int get() = serverSocket.localPort
@@ -93,6 +113,50 @@ class MoneyLanServer(
         acceptJob?.cancel()
     }
 
+    /**
+     * Approve the pending confirmation pairing (from the in-app dialog or the notification
+     * action). The credential is only minted when the client polls the outcome, so the
+     * plaintext credential never touches UI-side state.
+     */
+    fun approvePairing(pairRequestId: String): Boolean =
+        resolvePendingPair(pairRequestId, PairResolution.APPROVED)
+
+    fun denyPairing(pairRequestId: String): Boolean =
+        resolvePendingPair(pairRequestId, PairResolution.DENIED)
+
+    private fun resolvePendingPair(pairRequestId: String, resolution: PairResolution): Boolean {
+        val pending = pendingPair.get() ?: return false
+        if (pending.requestId != pairRequestId || pending.resolution != null ||
+            System.currentTimeMillis() >= pending.expiresAt
+        ) {
+            return false
+        }
+        val resolved = pendingPair.compareAndSet(pending, pending.copy(resolution = resolution))
+        if (resolved) {
+            MoneyLanRuntime.update {
+                it.copy(
+                    pendingPairRequestId = null,
+                    pendingPairClientName = null,
+                    pendingPairExpiresAt = null,
+                )
+            }
+        }
+        return resolved
+    }
+
+    /**
+     * Revoke a paired device (called from the devices UI). Drops the stored credential and, when
+     * the device holds the active session, ends that session immediately.
+     */
+    suspend fun revokeDevice(deviceId: String) {
+        pairedDeviceStore.remove(deviceId)
+        val active = session.get()
+        if (active != null && active.deviceId == deviceId) {
+            session.set(null)
+            MoneyLanRuntime.update { it.copy(pairedClientName = null) }
+        }
+    }
+
     private suspend fun handle(socket: Socket) {
         socket.use { clientSocket ->
             if (!clientSocket.inetAddress.isTrustedLocalAddress()) {
@@ -119,6 +183,9 @@ class MoneyLanServer(
                 val data = when (request.action) {
                     "server.info" -> serverInfo()
                     "session.pair" -> pair(request)
+                    "session.pair.begin" -> pairBegin(request)
+                    "session.pair.poll" -> pairPoll(request)
+                    "session.resume" -> resume(request)
                     else -> {
                         val paired = authenticate(request.token)
                         enforceWriteRate(request.action)
@@ -202,39 +269,230 @@ class MoneyLanServer(
         ),
     )
 
-    private fun pair(request: MoneyLanRequest) = synchronized(session) {
-        if (System.currentTimeMillis() >= pairingExpiresAt) {
-            throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_EXPIRED, "配对码已过期，请在手机上重新启动服务")
+    private suspend fun pair(request: MoneyLanRequest): JsonElement {
+        val arguments = try {
+            protocolJson.decodeFromJsonElement<PairArguments>(request.arguments)
+        } catch (error: SerializationException) {
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "配对参数无效")
         }
+        val issued = synchronized(session) {
+            if (System.currentTimeMillis() >= pairingExpiresAt) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_EXPIRED, "配对码已过期，请在手机上重新启动服务")
+            }
+            if (failedPairAttempts.get() >= MAX_PAIRING_FAILURES) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_LOCKED, "配对失败次数过多，请在手机上重新启动服务")
+            }
+            if (session.get() != null) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.ALREADY_PAIRED, "本次会话已经配对一台电脑")
+            }
+            if (!constantTimeEquals(arguments.code, pairingCode)) {
+                if (failedPairAttempts.incrementAndGet() >= MAX_PAIRING_FAILURES) {
+                    MoneyLanRuntime.update { it.copy(pairingCode = null) }
+                }
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_FAILED, "配对码错误")
+            }
+            val clientName = sanitizeClientName(arguments.clientName)
+            val deviceId = arguments.deviceId?.trim()?.takeIf { it.isNotEmpty() }
+            if (deviceId != null) {
+                requireValidDeviceId(deviceId)
+            }
+            val paired = PairedSession(
+                sessionId = UUID.randomUUID().toString(),
+                clientName = clientName,
+                token = secureToken(),
+                deviceId = deviceId,
+            )
+            session.set(paired)
+            IssuedPairing(paired, deviceId, deviceId?.let { secureToken() })
+        }
+        MoneyLanRuntime.update {
+            it.copy(pairingCode = null, pairedClientName = issued.session.clientName)
+        }
+        val deviceId = issued.deviceId
+        val credential = issued.credential
+        if (deviceId != null && credential != null) {
+            pairedDeviceStore.upsert(
+                LanPairedDevice(
+                    deviceId = deviceId,
+                    clientName = issued.session.clientName,
+                    credentialHash = sha256Hex(credential),
+                    pairedAt = System.currentTimeMillis(),
+                    lastSeenAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+        return protocolJson.encodeToJsonElement(
+            PairResult(
+                token = issued.session.token,
+                sessionId = issued.session.sessionId,
+                allowWrite = allowWrite,
+                expiresAt = expiresAt,
+                credential = credential,
+            ),
+        )
+    }
+
+    /** Outcome of a successful legacy code pairing, carried outside the session lock. */
+    private data class IssuedPairing(
+        val session: PairedSession,
+        val deviceId: String?,
+        val credential: String?,
+    )
+
+    private fun pairBegin(request: MoneyLanRequest): JsonElement {
         if (failedPairAttempts.get() >= MAX_PAIRING_FAILURES) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_LOCKED, "配对失败次数过多，请在手机上重新启动服务")
         }
         if (session.get() != null) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.ALREADY_PAIRED, "本次会话已经配对一台电脑")
         }
+        val now = System.currentTimeMillis()
+        // Cheap throttle against notification spam: at most one begin per couple of seconds.
+        val lastBegin = lastPairBeginAt.get()
+        if (now - lastBegin < PAIR_BEGIN_MIN_INTERVAL_MILLIS ||
+            !lastPairBeginAt.compareAndSet(lastBegin, now)
+        ) {
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.RATE_LIMITED, "配对请求过于频繁，请稍后再试")
+        }
         val arguments = try {
-            protocolJson.decodeFromJsonElement<PairArguments>(request.arguments)
+            protocolJson.decodeFromJsonElement<PairBeginArguments>(request.arguments)
         } catch (error: SerializationException) {
             throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "配对参数无效")
         }
-        if (!constantTimeEquals(arguments.code, pairingCode)) {
+        val deviceId = arguments.deviceId.trim()
+        requireValidDeviceId(deviceId)
+        val clientName = sanitizeClientName(arguments.clientName)
+        val pending = PendingPair(
+            requestId = UUID.randomUUID().toString(),
+            deviceId = deviceId,
+            clientName = clientName,
+            expiresAt = now + PAIR_CONFIRM_WINDOW_MILLIS,
+        )
+        // Single pending slot: a newer begin replaces an expired-or-waiting request; the client
+        // holding the old requestId will observe "expired" on its next poll.
+        pendingPair.set(pending)
+        MoneyLanRuntime.update {
+            it.copy(
+                pendingPairRequestId = pending.requestId,
+                pendingPairClientName = pending.clientName,
+                pendingPairExpiresAt = pending.expiresAt,
+            )
+        }
+        return protocolJson.encodeToJsonElement(
+            PairBeginResult(
+                pairRequestId = pending.requestId,
+                status = PAIR_STATUS_PENDING,
+                expiresInSec = (PAIR_CONFIRM_WINDOW_MILLIS / 1_000L).toInt(),
+            ),
+        )
+    }
+
+    private suspend fun pairPoll(request: MoneyLanRequest): JsonElement {
+        val arguments = try {
+            protocolJson.decodeFromJsonElement<PairPollArguments>(request.arguments)
+        } catch (error: SerializationException) {
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "配对参数无效")
+        }
+        val pending = pendingPair.get()
+        if (pending == null || pending.requestId != arguments.pairRequestId) {
+            return pairPollStatus(PAIR_STATUS_EXPIRED)
+        }
+        if (System.currentTimeMillis() >= pending.expiresAt) {
+            clearPendingPair(pending)
+            return pairPollStatus(PAIR_STATUS_EXPIRED)
+        }
+        when (pending.resolution) {
+            null -> return pairPollStatus(PAIR_STATUS_PENDING)
+            PairResolution.DENIED -> {
+                clearPendingPair(pending)
+                return pairPollStatus(PAIR_STATUS_DENIED)
+            }
+            PairResolution.APPROVED -> Unit
+        }
+        // Consume the pending request atomically so a double poll can never mint two credentials.
+        if (!pendingPair.compareAndSet(pending, null)) {
+            return pairPollStatus(PAIR_STATUS_EXPIRED)
+        }
+        val now = System.currentTimeMillis()
+        val credential = secureToken()
+        pairedDeviceStore.upsert(
+            LanPairedDevice(
+                deviceId = pending.deviceId,
+                clientName = pending.clientName,
+                credentialHash = sha256Hex(credential),
+                pairedAt = now,
+                lastSeenAt = now,
+            ),
+        )
+        val paired = PairedSession(
+            sessionId = UUID.randomUUID().toString(),
+            clientName = pending.clientName,
+            token = secureToken(),
+            deviceId = pending.deviceId,
+        )
+        synchronized(session) {
+            if (session.get() != null) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.ALREADY_PAIRED, "本次会话已经配对一台电脑")
+            }
+            session.set(paired)
+        }
+        MoneyLanRuntime.update {
+            it.copy(
+                pairingCode = null,
+                pairedClientName = paired.clientName,
+                pendingPairRequestId = null,
+                pendingPairClientName = null,
+                pendingPairExpiresAt = null,
+            )
+        }
+        return protocolJson.encodeToJsonElement(
+            PairPollResult(
+                status = PAIR_STATUS_APPROVED,
+                credential = credential,
+                token = paired.token,
+                sessionId = paired.sessionId,
+                allowWrite = allowWrite,
+                expiresAt = expiresAt,
+            ),
+        )
+    }
+
+    private suspend fun resume(request: MoneyLanRequest): JsonElement {
+        val arguments = try {
+            protocolJson.decodeFromJsonElement<ResumeArguments>(request.arguments)
+        } catch (error: SerializationException) {
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "会话恢复参数无效")
+        }
+        val deviceId = arguments.deviceId.trim()
+        if (arguments.credential.isBlank() || arguments.credential.length > MAX_CREDENTIAL_LENGTH) {
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "设备凭据无效")
+        }
+        val device = pairedDeviceStore.find(deviceId)
+            ?: throw MoneyLanProtocolException(
+                MoneyLanErrorCodes.DEVICE_REVOKED,
+                "设备未配对或配对已撤销，请重新配对",
+            )
+        if (!constantTimeEquals(sha256Hex(arguments.credential), device.credentialHash)) {
             if (failedPairAttempts.incrementAndGet() >= MAX_PAIRING_FAILURES) {
                 MoneyLanRuntime.update { it.copy(pairingCode = null) }
             }
-            throw MoneyLanProtocolException(MoneyLanErrorCodes.PAIRING_FAILED, "配对码错误")
+            throw MoneyLanProtocolException(MoneyLanErrorCodes.UNAUTHORIZED, "设备凭据无效")
         }
-        val clientName = arguments.clientName.trim().takeIf { it.isNotEmpty() }?.take(80)
-            ?: throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "客户端名称不能为空")
         val paired = PairedSession(
             sessionId = UUID.randomUUID().toString(),
-            clientName = clientName,
+            clientName = device.clientName,
             token = secureToken(),
+            deviceId = device.deviceId,
         )
-        session.set(paired)
-        MoneyLanRuntime.update {
-            it.copy(pairingCode = null, pairedClientName = paired.clientName)
+        synchronized(session) {
+            if (session.get() != null) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.ALREADY_PAIRED, "本次会话已经配对一台电脑")
+            }
+            session.set(paired)
         }
-        protocolJson.encodeToJsonElement(
+        runCatching { pairedDeviceStore.touchLastSeen(device.deviceId, System.currentTimeMillis()) }
+        MoneyLanRuntime.update { it.copy(pairedClientName = paired.clientName) }
+        return protocolJson.encodeToJsonElement(
             PairResult(
                 token = paired.token,
                 sessionId = paired.sessionId,
@@ -243,6 +501,21 @@ class MoneyLanServer(
             ),
         )
     }
+
+    private fun clearPendingPair(pending: PendingPair) {
+        if (pendingPair.compareAndSet(pending, null)) {
+            MoneyLanRuntime.update {
+                it.copy(
+                    pendingPairRequestId = null,
+                    pendingPairClientName = null,
+                    pendingPairExpiresAt = null,
+                )
+            }
+        }
+    }
+
+    private fun pairPollStatus(status: String): JsonElement =
+        protocolJson.encodeToJsonElement(PairPollResult(status = status))
 
     private fun authenticate(token: String?): PairedSession {
         val paired = session.get()
@@ -264,10 +537,22 @@ class MoneyLanServer(
         error = MoneyLanError(code = code, message = message),
     )
 
+    private enum class PairResolution { APPROVED, DENIED }
+
+    private data class PendingPair(
+        val requestId: String,
+        val deviceId: String,
+        val clientName: String,
+        val expiresAt: Long,
+        val resolution: PairResolution? = null,
+    )
+
     private data class PairedSession(
         val sessionId: String,
         val clientName: String,
         val token: String,
+        /** Set for sessions held by a persistently paired device (null for legacy pairings). */
+        val deviceId: String? = null,
     )
 
     private companion object {
@@ -277,6 +562,15 @@ class MoneyLanServer(
         const val SOCKET_TIMEOUT_MILLIS = 15_000
         const val PAIRING_WINDOW_MILLIS = 10 * 60 * 1_000L
         const val MAX_PAIRING_FAILURES = 5
+        const val PAIR_CONFIRM_WINDOW_MILLIS = 60 * 1_000L
+        const val PAIR_BEGIN_MIN_INTERVAL_MILLIS = 2_000L
+        const val MAX_CREDENTIAL_LENGTH = 128
+        const val MAX_DEVICE_ID_LENGTH = 64
+
+        const val PAIR_STATUS_PENDING = "pending"
+        const val PAIR_STATUS_APPROVED = "approved"
+        const val PAIR_STATUS_DENIED = "denied"
+        const val PAIR_STATUS_EXPIRED = "expired"
 
         // sync.push is deliberately absent: the router charges it after the idempotent-replay
         // check (replays are free) against both rate windows of the shared limiter.
@@ -311,6 +605,20 @@ class MoneyLanServer(
             right.encodeToByteArray(),
         )
 
+        fun sha256Hex(value: String): String {
+            val digest = MessageDigest.getInstance("SHA-256").digest(value.encodeToByteArray())
+            return digest.joinToString("") { "%02x".format(it) }
+        }
+
+        fun sanitizeClientName(raw: String): String = raw.trim().takeIf { it.isNotEmpty() }?.take(80)
+            ?: throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "客户端名称不能为空")
+
+        fun requireValidDeviceId(deviceId: String) {
+            if (deviceId.isEmpty() || deviceId.length > MAX_DEVICE_ID_LENGTH) {
+                throw MoneyLanProtocolException(MoneyLanErrorCodes.VALIDATION_FAILED, "设备标识无效")
+            }
+        }
+
         fun localIpv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList()
                 .asSequence()
@@ -340,7 +648,12 @@ private data class ServerInfoResult(
 )
 
 @Serializable
-private data class PairArguments(val code: String, val clientName: String)
+private data class PairArguments(
+    val code: String,
+    val clientName: String,
+    /** Present when the client wants a persistent device credential (session.device.v1). */
+    val deviceId: String? = null,
+)
 
 @Serializable
 private data class PairResult(
@@ -348,4 +661,32 @@ private data class PairResult(
     val sessionId: String,
     val allowWrite: Boolean,
     val expiresAt: Long,
+    /** Plaintext device credential, returned exactly once; the phone stores only its hash. */
+    val credential: String? = null,
 )
+
+@Serializable
+private data class PairBeginArguments(val deviceId: String, val clientName: String)
+
+@Serializable
+private data class PairBeginResult(
+    val pairRequestId: String,
+    val status: String,
+    val expiresInSec: Int,
+)
+
+@Serializable
+private data class PairPollArguments(val pairRequestId: String)
+
+@Serializable
+private data class PairPollResult(
+    val status: String,
+    val credential: String? = null,
+    val token: String? = null,
+    val sessionId: String? = null,
+    val allowWrite: Boolean? = null,
+    val expiresAt: Long? = null,
+)
+
+@Serializable
+private data class ResumeArguments(val deviceId: String, val credential: String)

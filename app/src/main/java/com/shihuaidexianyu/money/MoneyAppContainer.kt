@@ -93,6 +93,10 @@ class MoneyAppContainer(context: Context) {
 
     val pushSyncPatchesUseCase get() = useCaseGraph.pushSyncPatchesUseCase
 
+    val pushRecordPatchesUseCase get() = useCaseGraph.pushRecordPatchesUseCase
+
+    val lanPairedDeviceStore get() = dataGraph.lanPairedDeviceStore
+
     val updateAccountUseCase get() = useCaseGraph.updateAccountUseCase
 
     val closeAccountUseCase get() = useCaseGraph.closeAccountUseCase

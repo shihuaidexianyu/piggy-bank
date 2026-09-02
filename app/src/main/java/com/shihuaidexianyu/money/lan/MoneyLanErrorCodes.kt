@@ -30,4 +30,8 @@ object MoneyLanErrorCodes {
     const val RESYNC_REQUIRED = "RESYNC_REQUIRED"
     const val INVALID_PATCH = "INVALID_PATCH"
     const val UNSUPPORTED_CAPABILITY = "UNSUPPORTED_CAPABILITY"
+
+    // session.device.v1
+    /** The device credential was revoked on the phone; the device must pair again. */
+    const val DEVICE_REVOKED = "DEVICE_REVOKED"
 }

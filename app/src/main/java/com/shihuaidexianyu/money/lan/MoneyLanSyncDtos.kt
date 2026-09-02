@@ -64,13 +64,19 @@ data class SyncPushArguments(
     val patches: List<SyncPushPatch>,
 )
 
+/**
+ * One pushed patch. Legacy note patches omit [op] and carry `changes = {"note": ...}` with
+ * non-null [recordId]/[expectedUpdatedAt]. Record patches (sync.push.records.v1) set
+ * [op] to create/update/delete; `create` omits [recordId]/[expectedUpdatedAt].
+ */
 @Serializable
 data class SyncPushPatch(
     val patchId: String,
     val entityKind: String,
-    val recordId: Long,
-    val expectedUpdatedAt: Long,
-    val changes: Map<String, String>,
+    val op: String? = null,
+    val recordId: Long? = null,
+    val expectedUpdatedAt: Long? = null,
+    val changes: JsonObject = JsonObject(emptyMap()),
 )
 
 @Serializable
@@ -80,6 +86,8 @@ data class SyncPushResult(val results: List<SyncPushPatchResult>)
 data class SyncPushPatchResult(
     val patchId: String,
     val status: String,
+    /** New record id for applied create patches (sync.push.records.v1). */
+    val recordId: Long? = null,
     val revision: Long? = null,
     val serverUpdatedAt: Long? = null,
     val serverPayload: JsonObject? = null,

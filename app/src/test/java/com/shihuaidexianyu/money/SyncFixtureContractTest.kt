@@ -142,10 +142,103 @@ class SyncFixtureContractTest {
         assertEquals("cash_flow", patch.entityKind)
         assertEquals(27L, patch.recordId)
         assertEquals(1786747810000L, patch.expectedUpdatedAt)
-        assertEquals(mapOf("note" to "聚餐 翅客（王慨然和他小弟）"), patch.changes)
+        assertEquals(
+            mapOf("note" to "聚餐 翅客（王慨然和他小弟）"),
+            patch.changes.mapValues { entry -> entry.value.jsonPrimitive.content },
+        )
+        assertNull(patch.op)
         assertJsonTreeEquals(
             push.arguments,
             wireJson.encodeToJsonElement(SyncPushArguments.serializer(), pushArgs),
+        )
+
+        val recordsPush = roundTripRequest(dir, "sync_push_records_request.json")
+        assertEquals("sync.push", recordsPush.action)
+        val recordsArgs = wireJson.decodeFromJsonElement(
+            SyncPushArguments.serializer(),
+            recordsPush.arguments,
+        )
+        assertEquals(3, recordsArgs.patches.size)
+        val create = recordsArgs.patches[0]
+        assertEquals("create", create.op)
+        assertNull(create.recordId)
+        assertNull(create.expectedUpdatedAt)
+        assertEquals("1288", create.changes.getValue("amount").jsonPrimitive.content)
+        val delete = recordsArgs.patches[2]
+        assertEquals("delete", delete.op)
+        assertEquals(45L, delete.recordId)
+        assertTrue(delete.changes.isEmpty())
+        assertJsonTreeEquals(
+            recordsPush.arguments,
+            wireJson.encodeToJsonElement(SyncPushArguments.serializer(), recordsArgs),
+        )
+    }
+
+    @Test
+    fun sessionDeviceFixturesRoundTripThroughWireShaping() {
+        val dir = assumeFixturesPresent()
+
+        val begin = roundTripRequest(dir, "session_pair_begin_request.json")
+        assertEquals("session.pair.begin", begin.action)
+        val beginArgs = wireJson.decodeFromJsonElement(
+            PairBeginArgumentsFixture.serializer(),
+            begin.arguments,
+        )
+        assertEquals("9f8b7c2d-3a4e-4f1a-8b2c-5d6e7f8a9b0c", beginArgs.deviceId)
+        assertJsonTreeEquals(
+            begin.arguments,
+            wireJson.encodeToJsonElement(PairBeginArgumentsFixture.serializer(), beginArgs),
+        )
+
+        val beginResponse = roundTripResponse(dir, "session_pair_begin_response.json")
+        val beginResult = wireJson.decodeFromJsonElement(
+            PairBeginResultFixture.serializer(),
+            beginResponse.getValue("data"),
+        )
+        assertEquals("pending", beginResult.status)
+        assertEquals(60, beginResult.expiresInSec)
+        assertJsonTreeEquals(
+            beginResponse.getValue("data"),
+            wireJson.encodeToJsonElement(PairBeginResultFixture.serializer(), beginResult),
+        )
+
+        val pollApproved = roundTripResponse(dir, "session_pair_poll_approved_response.json")
+        val pollResult = wireJson.decodeFromJsonElement(
+            PairPollResultFixture.serializer(),
+            pollApproved.getValue("data"),
+        )
+        assertEquals("approved", pollResult.status)
+        assertNotNull(pollResult.credential)
+        assertNotNull(pollResult.token)
+        assertJsonTreeEquals(
+            pollApproved.getValue("data"),
+            wireJson.encodeToJsonElement(PairPollResultFixture.serializer(), pollResult),
+        )
+
+        val resume = roundTripRequest(dir, "session_resume_request.json")
+        assertEquals("session.resume", resume.action)
+        val resumeArgs = wireJson.decodeFromJsonElement(
+            ResumeArgumentsFixture.serializer(),
+            resume.arguments,
+        )
+        assertEquals("example-device-credential", resumeArgs.credential)
+        assertJsonTreeEquals(
+            resume.arguments,
+            wireJson.encodeToJsonElement(ResumeArgumentsFixture.serializer(), resumeArgs),
+        )
+
+        val resumeResponse = roundTripResponse(dir, "session_resume_response.json")
+        val resumeResult = wireJson.decodeFromJsonElement(
+            PairResultFixture.serializer(),
+            resumeResponse.getValue("data"),
+        )
+        assertEquals("example-session-token", resumeResult.token)
+        assertTrue(resumeResult.allowWrite)
+        // Legacy pair/resume results omit the credential key entirely.
+        assertFalse(resumeResponse.getValue("data").jsonObject.containsKey("credential"))
+        assertJsonTreeEquals(
+            resumeResponse.getValue("data"),
+            wireJson.encodeToJsonElement(PairResultFixture.serializer(), resumeResult),
         )
     }
 
@@ -239,6 +332,23 @@ class SyncFixtureContractTest {
             wireJson.encodeToJsonElement(SyncPushResult.serializer(), pushData),
         )
 
+        val recordsPushResponse = roundTripResponse(dir, "sync_push_records_response.json")
+        val batchData = wireJson.decodeFromJsonElement(
+            SyncPushResult.serializer(),
+            recordsPushResponse.getValue("data"),
+        )
+        assertEquals(listOf("applied", "conflict", "applied"), batchData.results.map { it.status })
+        // Applied create results report the newly allocated record id.
+        assertEquals(78L, batchData.results[0].recordId)
+        assertEquals(1902L, batchData.results[0].revision)
+        assertEquals(27L, batchData.results[1].recordId)
+        assertNotNull(batchData.results[1].serverPayload)
+        assertEquals(45L, batchData.results[2].recordId)
+        assertJsonTreeEquals(
+            recordsPushResponse.getValue("data"),
+            wireJson.encodeToJsonElement(SyncPushResult.serializer(), batchData),
+        )
+
         val records = roundTripResponse(dir, "records_list_detailed_response.json")
         val recordsData = wireJson.decodeFromJsonElement(
             RecordsListDetailedResult.serializer(),
@@ -274,6 +384,7 @@ class SyncFixtureContractTest {
             "error_rate_limited.json" to MoneyLanErrorCodes.RATE_LIMITED,
             "error_unsupported_capability.json" to MoneyLanErrorCodes.UNSUPPORTED_CAPABILITY,
             "error_write_disabled.json" to MoneyLanErrorCodes.WRITE_DISABLED,
+            "error_device_revoked.json" to MoneyLanErrorCodes.DEVICE_REVOKED,
         )
         expected.forEach { (name, code) ->
             val response = roundTripErrorResponse(dir, name)
@@ -512,6 +623,40 @@ class SyncFixtureContractTest {
         val allowWrite: Boolean,
         val expiresAt: Long,
         val capabilities: List<String>,
+    )
+
+    // session.device.v1 wire shapes mirror the server-private DTOs in MoneyLanServer.
+
+    @Serializable
+    private data class PairBeginArgumentsFixture(val deviceId: String, val clientName: String)
+
+    @Serializable
+    private data class PairBeginResultFixture(
+        val pairRequestId: String,
+        val status: String,
+        val expiresInSec: Int,
+    )
+
+    @Serializable
+    private data class PairPollResultFixture(
+        val status: String,
+        val credential: String? = null,
+        val token: String? = null,
+        val sessionId: String? = null,
+        val allowWrite: Boolean? = null,
+        val expiresAt: Long? = null,
+    )
+
+    @Serializable
+    private data class ResumeArgumentsFixture(val deviceId: String, val credential: String)
+
+    @Serializable
+    private data class PairResultFixture(
+        val token: String,
+        val sessionId: String,
+        val allowWrite: Boolean,
+        val expiresAt: Long,
+        val credential: String? = null,
     )
 
     private companion object {

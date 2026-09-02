@@ -885,6 +885,45 @@ class MoneyDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrateFromVersion20To21AddsPairedLanDeviceTable() {
+        val dbName = "$TEST_DB-v20-devices"
+        helper.createDatabase(dbName, 20).close()
+
+        val migrated = helper.runMigrationsAndValidate(
+            name = dbName,
+            version = 21,
+            validateDroppedTables = true,
+            *MONEY_DATABASE_MIGRATIONS,
+        )
+
+        // The table starts empty; existing databases carry no paired devices.
+        migrated.query("SELECT COUNT(*) FROM paired_lan_device").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+
+        // Column shape: only the credential hash is stored, never the plaintext.
+        migrated.execSQL(
+            """
+            INSERT INTO paired_lan_device (deviceId, clientName, credentialHash, pairedAt, lastSeenAt)
+            VALUES ('device-1', 'Hongwei-PC', 'deadbeef', 1000, 2000)
+            """.trimIndent(),
+        )
+        migrated.query(
+            "SELECT deviceId, clientName, credentialHash, pairedAt, lastSeenAt FROM paired_lan_device",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("device-1", cursor.getString(0))
+            assertEquals("Hongwei-PC", cursor.getString(1))
+            assertEquals("deadbeef", cursor.getString(2))
+            assertEquals(1000L, cursor.getLong(3))
+            assertEquals(2000L, cursor.getLong(4))
+            assertFalse(cursor.moveToNext())
+        }
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.createVersion4AccountsTable() {
         execSQL(
             """

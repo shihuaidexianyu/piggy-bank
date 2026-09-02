@@ -46,6 +46,7 @@ import com.shihuaidexianyu.money.domain.usecase.sync.AppendSyncChangesUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.ExportSyncSnapshotPageUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.GetSyncStateUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.PullSyncChangesUseCase
+import com.shihuaidexianyu.money.domain.usecase.sync.PushRecordPatchesUseCase
 import com.shihuaidexianyu.money.domain.usecase.sync.PushSyncPatchesUseCase
 import com.shihuaidexianyu.money.notification.calculateBalanceCheckBalances
 import com.shihuaidexianyu.money.domain.usecase.ResolveNotificationLaunchUseCase
@@ -389,6 +390,19 @@ internal class UseCaseGraph(
         syncRepository = data.syncRepository,
         updateCashFlowRecordUseCase = updateCashFlowRecordUseCase,
         updateTransferRecordUseCase = updateTransferRecordUseCase,
+        clockProvider = SystemClockProvider,
+    )
+
+    val pushRecordPatchesUseCase = PushRecordPatchesUseCase(
+        journalRepository = data.aiMutationJournalRepository,
+        transactionRepository = data.transactionRepository,
+        syncRepository = data.syncRepository,
+        createCashFlowRecordUseCase = createCashFlowRecordUseCase,
+        updateCashFlowRecordUseCase = updateCashFlowRecordUseCase,
+        deleteCashFlowRecordUseCase = deleteCashFlowRecordUseCase,
+        createTransferRecordUseCase = createTransferRecordUseCase,
+        updateTransferRecordUseCase = updateTransferRecordUseCase,
+        deleteTransferRecordUseCase = deleteTransferRecordUseCase,
         clockProvider = SystemClockProvider,
     )
 
