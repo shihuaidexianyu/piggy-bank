@@ -10,10 +10,10 @@ import com.shihuaidexianyu.money.domain.model.BalanceUpdateRecord
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.CashFlowRecord
 import com.shihuaidexianyu.money.domain.model.TransferRecord
+import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
 import com.shihuaidexianyu.money.ui.accounts.AccountsViewModel
 import java.time.Instant
-import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -60,8 +60,6 @@ class AccountsSnapshotQueryCountTest {
                 portableSettingsRepository = InMemoryPortableSettingsRepository(),
                 transactionRepository = transactions,
                 calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions) { 10L },
-                clockProvider = testClockProvider(10L),
-                zoneIdProvider = testZoneIdProvider(ZoneOffset.UTC),
             )
             runCurrent()
 
@@ -76,7 +74,7 @@ class AccountsSnapshotQueryCountTest {
         }
 
     @Test
-    fun `rows carry the signed net change of the current month`() =
+    fun `account balances include earlier months without loading a monthly change summary`() =
         runTest(dispatcher) {
             val now = Instant.parse("2026-08-16T10:00:00Z").toEpochMilli()
             val insideMonth = Instant.parse("2026-08-10T09:00:00Z").toEpochMilli()
@@ -127,19 +125,23 @@ class AccountsSnapshotQueryCountTest {
                 accountReminderSettingsRepository = InMemoryAccountReminderSettingsRepository(),
                 accountRepository = accounts,
                 portableSettingsRepository = InMemoryPortableSettingsRepository(),
-                transactionRepository = transactions,
+                transactionRepository = object : TransactionRepository by transactions {
+                    override suspend fun queryNetAmountChangeByAccount(
+                        startInclusive: Long,
+                        endExclusive: Long,
+                    ): Map<Long, Long> = error("Account rows do not need a monthly change query")
+                },
                 calculateAccountBalancesUseCase = CalculateAccountBalancesUseCase(transactions) { now },
-                clockProvider = testClockProvider(now),
-                zoneIdProvider = testZoneIdProvider(ZoneOffset.UTC),
             )
             runCurrent()
 
             val funding = viewModel.uiState.value.openAccounts.single { it.id == fundingId }
             val investment = viewModel.uiState.value.openAccounts.single { it.id == investmentId }
-            // −400 spending + 100 transfer in; the July record stays out.
-            assertEquals(-300L, funding.monthNetChange)
+            // Both July and August spending remain part of the current balance.
+            assertEquals(-1_000L, funding.balance)
             // −100 transfer out + 300 reconciliation delta.
-            assertEquals(200L, investment.monthNetChange)
+            assertEquals(200L, investment.balance)
+            assertEquals(AccountKind.INVESTMENT, investment.kind)
         }
 
     private suspend fun insertCashFlow(

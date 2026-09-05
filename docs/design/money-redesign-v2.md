@@ -345,11 +345,15 @@ The review screenshots were refreshed from the installed monochrome debug build.
 ### Activity refinement
 
 The activity page now starts with a compact title bar containing search and filter
-controls. Search expands on demand, existing queries stay visible, and closing it
-clears only the keyword. Loaded-page counts no longer compete with the records.
+controls. Search expands below the fixed toolbar, existing queries stay visible,
+and closing it clears only the keyword. Opening a blank search preserves the
+reading position. Focus and the keyboard wait for expansion to finish; interrupted
+transitions cancel pending focus. Loaded-page counts no longer compete with records.
 
-Each date remains a sticky group header with labeled cash-in/cash-out subtotals;
-a partially loaded date remains explicitly identified. Record rows have no type
+Each date remains a sticky group header with signed cash-in/cash-out subtotals
+(`+` / `−`) using the configured income/expense colors. A partially loaded date
+remains explicitly identified. Compact rows use 10 dp vertical padding and a 2 dp
+metadata gap; date headings use 10 dp above and 6 dp below. Record rows have no type
 icons. They align the title and amount above the account and time. Rows show only
 `HH:mm`, because the group header supplies the date. Non-cash events use a short
 text label where their meaning needs clarification. Long amounts and large text
@@ -367,6 +371,9 @@ expands again at the top. Detail sheets finish hiding before editor navigation.
 The NavHost viewport stays independent of the bottom bar/rail: top-level pages
 reserve their own chrome padding. Returning to activity keeps the list stationary
 instead of scaling and translating it behind the exiting editor.
+Applied system and chrome padding are consumed before IME avoidance, and the
+activity declares `adjustResize`, so opening the keyboard does not double-count
+the bottom space.
 
 Verification for the activity refinement: 666 unit tests passed; all 12 targeted
 device tests passed across HistoryPresentationTest, HistoryScreenLockedModeTest,
@@ -378,11 +385,15 @@ emulator temporarily slowed, and its original animation setting was restored.
 
 ### Account order refinement
 
-The order editor now mirrors account groups, uses monochrome name/balance rows
-with drag handles, and collapses hidden accounts. Quick sorting and undo live in
+The order editor now mirrors account groups, reuses each account's 40 dp icon and
+color beside its name/balance and drag handle, and collapses hidden accounts.
+Quick sorting and undo live in
 the overflow menu; save remains in the top bar. Moves and quick sorts preserve
 the storage slots of other groups. A released drag waits for pending measurement
 before committing its final position, including a quick move to the last row.
+
+The account list shows balances and actionable status only. The per-account
+monthly change caption and its otherwise unused snapshot query have been removed.
 
 Verification: 671 unit tests and all five ReorderAccountsPresentationTest device
 tests passed. Coverage includes group boundaries, hidden accounts, first-to-last
@@ -414,3 +425,19 @@ icon across a night-mode switch; reinstalling the same APK in the target mode
 refreshes that cache and confirms the matching resource. Immediate launcher-icon
 switching is therefore not guaranteed. The system mode was restored to auto.
 The two designs are shown in `_preview/icon-redesign/day-night.png`.
+
+### Detail polish verification
+
+All 671 unit tests pass, including account balances across months without the
+removed monthly-summary query. Debug assembly and lint pass (zero errors,
+29 warnings). Focused device checks cover all six history presentation tests,
+all five account-order tests, locked history, async page shells, and adaptive
+navigation. The history tests sample intermediate animation frames and verify
+that an interrupted search never separates date headers from records or resets
+the reading position. The final package passed the six history checks again.
+
+Light/dark account and activity screens were inspected on the emulator. Opening
+and closing search restored the first record to exactly the same bounds. The
+emulator's IME preferences and system theme were restored after manual checks;
+the updated app remains open on activity. Captures are under
+`_preview/ui-redesign/polish-*.png`.

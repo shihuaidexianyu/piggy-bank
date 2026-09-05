@@ -50,8 +50,6 @@ import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.formatSharePercent
-import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
-import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 
 data class AccountGroups(
     val normal: List<AccountListItemUiModel>,
@@ -346,24 +344,6 @@ private fun AccountRow(
         account.isStale -> stringResource(R.string.account_status_stale)
         else -> null
     }
-    // Second line for healthy rows: the account's signed net change this calendar month,
-    // colored by direction. Zero (a quiet month, or perfectly offsetting moves) stays silent.
-    val monthChangeText = if (account.monthNetChange != 0L) {
-        signedFormatInAppAmount(account.monthNetChange, currencySettings)
-    } else {
-        null
-    }
-    val monthChangeSemantics = monthChangeText?.let {
-        stringResource(R.string.account_month_change_format, it)
-    }
-    val caption = statusText ?: monthChangeSemantics
-    val captionSemantics = statusText ?: monthChangeSemantics
-    val captionColor = when {
-        statusText != null -> MaterialTheme.colorScheme.onSurfaceVariant
-        account.monthNetChange > 0L -> LocalMoneyColors.current.income
-        account.monthNetChange < 0L -> LocalMoneyColors.current.expense
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
     val isDimmed = account.isClosed || account.isHidden
     val balanceStyle = if (balanceText.length > 18) {
         MaterialTheme.typography.bodyMedium
@@ -380,7 +360,7 @@ private fun AccountRow(
                 contentDescription = buildString {
                     append(account.name)
                     append(balanceSemantics)
-                    captionSemantics?.let { append("，$it") }
+                    statusText?.let { append("，$it") }
                 }
                 role = Role.Button
             },
@@ -409,11 +389,11 @@ private fun AccountRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            caption?.let {
+            statusText?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = captionColor,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
             }

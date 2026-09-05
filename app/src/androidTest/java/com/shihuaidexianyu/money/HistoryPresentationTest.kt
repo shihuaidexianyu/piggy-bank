@@ -9,7 +9,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -90,6 +94,59 @@ class HistoryPresentationTest {
         composeRule.onNodeWithContentDescription("关闭搜索").performClick()
         composeRule.onNodeWithTag("history_search_field").assertDoesNotExist()
         composeRule.runOnIdle { assertEquals("", lastKeyword) }
+    }
+
+    @Test
+    fun interruptedSearchAnimationKeepsDateAndRecordsTogether() {
+        render()
+        val header = composeRule.onNode(SemanticsMatcher("date header") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("history_date_header_") == true
+        })
+        val row = composeRule.onNodeWithTag("history_row_cash_1")
+        val originalHeader = header.fetchSemanticsNode().boundsInRoot
+        val originalRow = row.fetchSemanticsNode().boundsInRoot
+        fun assertMovesTogether() {
+            val headerDelta = header.fetchSemanticsNode().boundsInRoot.top - originalHeader.top
+            val rowDelta = row.fetchSemanticsNode().boundsInRoot.top - originalRow.top
+            assertEquals("Date and record must move as one list", headerDelta, rowDelta, 1.5f)
+        }
+        composeRule.mainClock.autoAdvance = false
+        try {
+            composeRule.onNodeWithContentDescription("搜索账目").performClick()
+            repeat(3) {
+                composeRule.mainClock.advanceTimeBy(32)
+                composeRule.waitForIdle()
+                assertMovesTogether()
+            }
+            composeRule.onNodeWithContentDescription("关闭搜索").performClick()
+            repeat(3) {
+                composeRule.mainClock.advanceTimeBy(32)
+                composeRule.waitForIdle()
+                assertMovesTogether()
+            }
+            composeRule.mainClock.advanceTimeBy(500)
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag("history_search_field").assertDoesNotExist()
+            assertEquals(originalRow.top, row.fetchSemanticsNode().boundsInRoot.top, 1.5f)
+        } finally {
+            composeRule.mainClock.autoAdvance = true
+        }
+    }
+
+    @Test
+    fun openingAndClosingSearchWhileScrolledPreservesReadingPosition() {
+        render((1..30).map { record.copy(id = "cash_$it", recordId = it.toLong()) })
+        composeRule.onNode(hasScrollAction()).performScrollToIndex(16)
+        val row = composeRule.onNodeWithTag("history_row_cash_16")
+        val originalTop = row.fetchSemanticsNode().boundsInRoot.top
+        composeRule.onNodeWithContentDescription("搜索账目").performClick()
+        composeRule.onNodeWithTag("history_search_field").assertIsDisplayed().assertIsFocused()
+        composeRule.onNodeWithTag("history_row_cash_1").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("关闭搜索").performClick()
+        composeRule.onNodeWithTag("history_search_field").assertDoesNotExist()
+        row.assertIsDisplayed()
+        assertEquals(originalTop, row.fetchSemanticsNode().boundsInRoot.top, 1.5f)
+        composeRule.runOnIdle { assertTrue(scrolled) }
     }
 
     @Test

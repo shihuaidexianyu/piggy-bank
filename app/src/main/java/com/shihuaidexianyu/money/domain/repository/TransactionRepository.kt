@@ -137,8 +137,7 @@ interface TransactionRepository : DatabaseTransactionRunner {
 
     /**
      * Signed net change per account within a period — cash flow, transfers, reconciliation and
-     * manual adjustments all included, matching the balance formula. Feeds the accounts page's
-     * per-row month stat.
+     * manual adjustments all included, matching the balance formula.
      */
     suspend fun queryNetAmountChangeByAccount(
         startInclusive: Long,

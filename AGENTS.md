@@ -8,7 +8,7 @@ This file contains essential context for AI coding agents working on the **Money
 It supports multi-account management (ordering, hiding, closing, reopening), cash flow recording, transfers, balance reconciliation, manual balance adjustments, recurring reminders (with background notifications), history search, plaintext JSON backup export/import, app shortcuts, biometric app lock, amount privacy masking, dark mode, and journaled AI-assisted ledger access over the local network.
 
 - **Package / Application ID**: `com.shihuaidexianyu.money`
-- **Version**: `2.6.1` (versionCode `145`)
+- **Version**: `2.6.2` (versionCode `146`)
 - **Min SDK**: 31 (Android 12)
 - **Target/Compile SDK**: 36
 - **Language**: Kotlin 2.2.20
@@ -181,7 +181,7 @@ app/src/main/java/com/shihuaidexianyu/money/
    - Each screen has a paired `ViewModel` exposing a single `StateFlow<UiState>`.
    - Compose UI collects state and triggers events back to the ViewModel.
    - Product/interaction reference: `docs/design/money-redesign-v2.md`. Top-level navigation is overview, accounts, then activity. `MoneyFormPage.footer` keeps primary form actions reachable; optional account setup uses `MoneyExpandableSection`. Balance checking returns to its origin after saving, with a root snackbar. The computer connection and AI mutation journal are presented as `连接电脑` and `AI 修改记录`.
-   - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost.
+   - Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost. Consume applied system/chrome padding before child IME padding to avoid reserving it twice when the keyboard opens.
 
 ### Dependency Injection
 

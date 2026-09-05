@@ -1,6 +1,13 @@
 package com.shihuaidexianyu.money.ui.history
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -55,6 +62,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -154,9 +162,19 @@ fun HistoryScreen(
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
     val listState = rememberLazyListState()
     var searchExpanded by rememberSaveable { mutableStateOf(state.keyword.isNotBlank()) }
+    val searchVisibility = remember { MutableTransitionState(searchExpanded) }
+    searchVisibility.targetState = searchExpanded
     var requestSearchFocus by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val closeSearch = {
+        requestSearchFocus = false
+        focusManager.clearFocus()
+        keyboardController?.hide()
+        searchExpanded = false
+        onKeywordChange("")
+    }
     val latestOnScrolledChange by rememberUpdatedState(onScrolledChange)
     var selectedRecordId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(listState) {
@@ -165,16 +183,17 @@ fun HistoryScreen(
     LaunchedEffect(state.keyword) {
         if (state.keyword.isNotBlank()) searchExpanded = true
     }
-    LaunchedEffect(searchExpanded, requestSearchFocus) {
-        if (searchExpanded && requestSearchFocus) {
-            listState.scrollToItem(0)
+    LaunchedEffect(searchVisibility.isIdle, searchExpanded, requestSearchFocus) {
+        // Focus only after the field is fully placed. Fast open/close gestures cancel this
+        // request, and opening search never resets the reader's list position.
+        if (searchExpanded && searchVisibility.isIdle && requestSearchFocus) {
             searchFocusRequester.requestFocus()
+            keyboardController?.show()
             requestSearchFocus = false
         }
     }
     BackHandler(enabled = searchExpanded && state.keyword.isBlank()) {
-        searchExpanded = false
-        focusManager.clearFocus()
+        closeSearch()
     }
     state.records.firstOrNull { it.id == selectedRecordId }?.let { record ->
         HistoryRecordDetails(
@@ -493,9 +512,7 @@ fun HistoryScreen(
             IconButton(
                 onClick = {
                     if (searchExpanded) {
-                        searchExpanded = false
-                        onKeywordChange("")
-                        focusManager.clearFocus()
+                        closeSearch()
                     } else {
                         searchExpanded = true
                         requestSearchFocus = true
@@ -512,19 +529,30 @@ fun HistoryScreen(
                 Text(filterChipLabel(state, accountLocked), modifier = Modifier.padding(start = 4.dp))
             }
         },
+        header = {
+            // Search belongs to the fixed toolbar. Animate the viewport as one surface;
+            // inserting it as a lazy item made sticky dates jump ahead of moving records.
+            AnimatedVisibility(
+                visibleState = searchVisibility,
+                enter = expandVertically(tween(220), expandFrom = Alignment.Top) + fadeIn(tween(160)),
+                exit = shrinkVertically(tween(180), shrinkTowards = Alignment.Top) + fadeOut(tween(120)),
+            ) {
+                SearchField(
+                    value = state.keyword,
+                    onValueChange = onKeywordChange,
+                    placeholder = stringResource(R.string.history_search),
+                    modifier = Modifier
+                        .padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+                        .focusRequester(searchFocusRequester)
+                        .testTag("history_search_field"),
+                )
+            }
+        },
     ) {
         item(key = "history_controls", contentType = "controls") {
             // Keep a measurable top anchor when search is collapsed, so an empty controls
             // item is not skipped and reported as an already-scrolled list.
             Column(modifier = Modifier.heightIn(min = 1.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (searchExpanded) {
-                    SearchField(
-                        value = state.keyword,
-                        onValueChange = onKeywordChange,
-                        placeholder = stringResource(R.string.history_search),
-                        modifier = Modifier.focusRequester(searchFocusRequester).testTag("history_search_field"),
-                    )
-                }
                 if (hasActiveFilters(state, accountLocked)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -651,7 +679,7 @@ fun HistoryScreen(
                         key = { _, record -> "history_record_${record.id}" },
                         contentType = { _, _ -> "record" },
                     ) { index, record ->
-                        Column(modifier = Modifier.animateItem()) {
+                        Column(modifier = Modifier.animateItem(placementSpec = null)) {
                             HistoryRow(
                                 record = record,
                                 settings = state.settings,
@@ -847,11 +875,11 @@ private fun HistoryDateHeader(
     partialTotal: Boolean = false,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("history_date_header_$dateLabel"),
         color = MaterialTheme.colorScheme.background,
     ) {
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -859,20 +887,24 @@ private fun HistoryDateHeader(
                 text = dateLabel,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).alignByBaseline(),
             )
             if (cashIncomeTotal > 0L) {
                 Text(
                     text = stringResource(R.string.history_day_income, formatInAppAmount(cashIncomeTotal, settings)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = LocalMoneyColors.current.income,
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
             if (cashExpenseTotal < 0L) {
                 Text(
                     text = stringResource(R.string.history_day_expense, formatInAppAmount(cashExpenseTotal, settings).removePrefix("-")),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = LocalMoneyColors.current.expense,
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
             if (partialTotal) {
@@ -880,6 +912,7 @@ private fun HistoryDateHeader(
                     text = stringResource(R.string.history_partial_total),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
         }
@@ -1027,10 +1060,10 @@ private fun HistoryRow(
                 ).joinToString("，")
                 role = Role.Button
             }
-            .padding(vertical = 15.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (stackAmount) {
                 Text(record.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(amountText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = amountColor)

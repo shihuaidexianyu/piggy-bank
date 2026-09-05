@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.Column
@@ -407,15 +408,17 @@ fun MoneyNavGraph(
                 }
             },
         ) { innerPadding ->
+            val systemContentPadding = PaddingValues(
+                start = innerPadding.calculateStartPadding(layoutDirection),
+                end = innerPadding.calculateEndPadding(layoutDirection),
+                top = innerPadding.calculateTopPadding(),
+                bottom = systemBottomPadding,
+            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(
-                        start = innerPadding.calculateStartPadding(layoutDirection),
-                        end = innerPadding.calculateEndPadding(layoutDirection),
-                        top = innerPadding.calculateTopPadding(),
-                        bottom = systemBottomPadding,
-                    ),
+                    .padding(systemContentPadding)
+                    .consumeWindowInsets(systemContentPadding),
             ) {
                 CompositionLocalProvider(
                     LocalTopLevelContentPadding provides PaddingValues(

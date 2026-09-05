@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  当前版本 <code>2.6.1</code>（versionCode <code>145</code>）
+  当前版本 <code>2.6.2</code>（versionCode <code>146</code>）
 </p>
 
 ## ✨ 功能特性

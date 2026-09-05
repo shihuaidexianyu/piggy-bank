@@ -74,6 +74,7 @@ fun MoneyFormPage(
     contentPadding: PaddingValues = PaddingValues(start = MoneyDimens.screenHorizontalPadding, top = 8.dp, end = MoneyDimens.screenHorizontalPadding, bottom = MoneyDimens.formBottomPadding),
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(MoneyDimens.SpacingXl),
     footer: (@Composable () -> Unit)? = null,
+    header: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val defaultListState = rememberLazyListState()
@@ -108,6 +109,7 @@ fun MoneyFormPage(
                     scrolledContainerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
+            header?.invoke()
             LazyColumn(
                 state = resolvedListState,
                 modifier = Modifier.weight(1f),

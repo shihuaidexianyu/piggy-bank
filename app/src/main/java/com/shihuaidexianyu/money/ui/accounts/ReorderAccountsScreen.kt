@@ -56,6 +56,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.R
 import com.shihuaidexianyu.money.domain.model.PortableSettings
+import com.shihuaidexianyu.money.ui.common.AccountIconBadge
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.LocalCurrencySymbol
@@ -320,6 +321,12 @@ private fun OrderAccountRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            AccountIconBadge(
+                iconName = account.iconName,
+                colorName = account.colorName,
+                size = 40.dp,
+                iconSize = 22.dp,
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(account.name, style = MaterialTheme.typography.bodyLarge)
                 Text(amount, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -3,9 +3,9 @@ package com.shihuaidexianyu.money.ui.history
 /**
  * Scroll-anchor index math for the history LazyColumn.
  *
- * Item layout in `HistoryScreen`: one leading header item (search field, filter chips and the
- * filter summary row all live INSIDE it), then per date group a sticky date header followed by a
- * sequence of individually keyed record rows.
+ * Item layout in `HistoryScreen`: one leading controls item (filter chips and the filter
+ * summary), then per date group a sticky date header followed by individually keyed records.
+ * The search field lives above the list and does not participate in these indices.
  */
 internal const val HISTORY_HEADER_ITEM_COUNT = 1
 

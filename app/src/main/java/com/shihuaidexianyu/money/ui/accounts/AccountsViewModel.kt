@@ -11,10 +11,7 @@ import com.shihuaidexianyu.money.domain.repository.PortableSettingsRepository
 import com.shihuaidexianyu.money.domain.repository.TransactionRepository
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.domain.model.BalanceUpdateReminderConfig
-import com.shihuaidexianyu.money.domain.time.ClockProvider
-import com.shihuaidexianyu.money.domain.time.ZoneIdProvider
 import com.shihuaidexianyu.money.domain.usecase.CalculateAccountBalancesUseCase
-import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.util.AccountStatusUtils
 import com.shihuaidexianyu.money.ui.common.AsyncContent
 import com.shihuaidexianyu.money.ui.common.EmptyKind
@@ -40,8 +37,6 @@ data class AccountListItemUiModel(
     val requiresReopenAndSettle: Boolean = false,
     val isStale: Boolean,
     val displayOrder: Int,
-    /** Signed net balance change in the current calendar month — the per-row activity stat. */
-    val monthNetChange: Long = 0L,
 )
 
 data class AccountsUiState(
@@ -78,8 +73,6 @@ class AccountsViewModel(
     private val portableSettingsRepository: PortableSettingsRepository,
     private val transactionRepository: TransactionRepository,
     private val calculateAccountBalancesUseCase: CalculateAccountBalancesUseCase,
-    private val clockProvider: ClockProvider,
-    private val zoneIdProvider: ZoneIdProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
@@ -151,17 +144,6 @@ class AccountsViewModel(
             val reminderConfigs = accountReminderSettingsRepository.queryReminderConfigs()
             val settings = portableSettingsRepository.query()
             val balances = calculateAccountBalancesUseCase(accounts)
-            // Per-row month stat: the signed net change of each account's balance over the
-            // current calendar month (cash flow, transfers, reconciliation and adjustments —
-            // investment P&L is simply part of an investment account's change).
-            val monthRange = TimeRangeCalculator.currentMonthRange(
-                zoneIdProvider.zoneId(),
-                clockProvider.nowMillis(),
-            )
-            val monthNetChangeByAccount = transactionRepository.queryNetAmountChangeByAccount(
-                monthRange.startInclusive,
-                monthRange.endExclusive,
-            )
             val open = accounts.filterNot(Account::isClosed)
             val closed = accounts.filter(Account::isClosed)
             val issueIds = closed.asSequence()
@@ -169,8 +151,8 @@ class AccountsViewModel(
                 .mapTo(mutableSetOf(), Account::id)
             AccountsSnapshot(
                 settings = settings,
-                openAccounts = buildItems(open, reminderConfigs, balances, monthNetChangeByAccount),
-                closedAccounts = buildItems(closed, reminderConfigs, balances, monthNetChangeByAccount)
+                openAccounts = buildItems(open, reminderConfigs, balances),
+                closedAccounts = buildItems(closed, reminderConfigs, balances)
                     .map { account ->
                         account.copy(requiresReopenAndSettle = account.id in issueIds)
                     },
@@ -185,14 +167,12 @@ class AccountsViewModel(
         accounts: List<Account>,
         reminderConfigs: Map<Long, BalanceUpdateReminderConfig>,
         balances: Map<Long, Long>,
-        monthNetChangeByAccount: Map<Long, Long>,
     ): List<AccountListItemUiModel> = accounts
         .map {
             mapItem(
                 it,
                 reminderConfigs[it.id],
                 balances.getValue(it.id),
-                monthNetChangeByAccount[it.id] ?: 0L,
             )
         }
         .sortedBy { it.displayOrder }
@@ -201,7 +181,6 @@ class AccountsViewModel(
         account: Account,
         reminderConfig: BalanceUpdateReminderConfig?,
         balance: Long,
-        monthNetChange: Long,
     ): AccountListItemUiModel {
         return AccountListItemUiModel(
             id = account.id,
@@ -217,7 +196,6 @@ class AccountsViewModel(
                 reminderConfig = reminderConfig ?: BalanceUpdateReminderConfig(),
             ),
             displayOrder = account.displayOrder,
-            monthNetChange = monthNetChange,
         )
     }
 

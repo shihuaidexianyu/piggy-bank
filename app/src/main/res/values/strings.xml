@@ -131,7 +131,6 @@
     <string name="account_status_stale">余额待核对</string>
     <string name="account_balance_semantics_format">，余额 %1$s</string>
     <string name="account_share_semantics_format">占比 %1$s</string>
-    <string name="account_month_change_format">本月变化 %1$s</string>
     <string name="account_stale_badge">待核对</string>
 
     <!-- Common actions and fields -->
@@ -152,8 +151,8 @@
     <string name="history_title">明细</string>
     <string name="history_search">搜索账目</string>
     <string name="history_close_search">关闭搜索</string>
-    <string name="history_day_income">收 %1$s</string>
-    <string name="history_day_expense">支 %1$s</string>
+    <string name="history_day_income">+%1$s</string>
+    <string name="history_day_expense">−%1$s</string>
     <string name="history_post_balance">记后余额 %1$s</string>
     <string name="history_record_detail">账目详情</string>
     <string name="history_balance_evidence">余额变化</string>

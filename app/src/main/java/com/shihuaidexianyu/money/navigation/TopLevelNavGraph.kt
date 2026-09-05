@@ -2,6 +2,7 @@ package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -73,7 +74,8 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
-                modifier = Modifier.padding(LocalTopLevelContentPadding.current),
+                modifier = Modifier.padding(LocalTopLevelContentPadding.current)
+                    .consumeWindowInsets(LocalTopLevelContentPadding.current),
             )
     }
 
@@ -106,15 +108,14 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                     portableSettingsRepository = container.portableSettingsRepository,
                     transactionRepository = container.transactionRepository,
                     calculateAccountBalancesUseCase = container.calculateAccountBalancesUseCase,
-                    clockProvider = SystemClockProvider,
-                    zoneIdProvider = SystemZoneIdProvider,
                 )
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         AccountsScreen(
                 state = state,
-                modifier = Modifier.padding(LocalTopLevelContentPadding.current),
+                modifier = Modifier.padding(LocalTopLevelContentPadding.current)
+                    .consumeWindowInsets(LocalTopLevelContentPadding.current),
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
@@ -225,7 +226,10 @@ private fun HistoryScreenHost(
     val closedAccountReadOnlyMessage = stringResource(R.string.account_closed_readonly_description)
     HistoryScreen(
         state = state,
-        modifier = if (lockedAccountId == null) Modifier.padding(LocalTopLevelContentPadding.current) else Modifier,
+        modifier = if (lockedAccountId == null) {
+            Modifier.padding(LocalTopLevelContentPadding.current)
+                .consumeWindowInsets(LocalTopLevelContentPadding.current)
+        } else Modifier,
         onKeywordChange = viewModel::updateKeyword,
         onExcludeKeywordChange = viewModel::updateExcludeKeyword,
         onRecordTypesChange = viewModel::updateRecordTypes,
