@@ -14,8 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
-enum class ReorderSortMode { NONE, BALANCE, RECENT, NAME }
-
 data class ReorderAccountItemUiModel(
     val id: Long,
     val name: String,
@@ -33,7 +31,6 @@ data class ReorderAccountsUiState(
     val isSaving: Boolean = false,
     val accounts: List<ReorderAccountItemUiModel> = emptyList(),
     val isDirty: Boolean = false,
-    val sortMode: ReorderSortMode = ReorderSortMode.NONE,
 )
 
 sealed interface ReorderAccountsEffect {
@@ -102,77 +99,76 @@ class ReorderAccountsViewModel(
     }
 
     fun moveAccountUp(accountId: Long) {
-        val items = _uiState.value.accounts.toMutableList()
-        val index = items.indexOfFirst { it.id == accountId }
-        if (index <= 0) return
-        val item = items.removeAt(index)
-        items.add(index - 1, item)
-        _uiState.value = _uiState.value.copy(accounts = items, isDirty = items.map { it.id } != originalOrder)
+        moveByOne(accountId, -1)
     }
 
     fun moveAccountDown(accountId: Long) {
-        val items = _uiState.value.accounts.toMutableList()
-        val index = items.indexOfFirst { it.id == accountId }
-        if (index < 0 || index >= items.lastIndex) return
-        val item = items.removeAt(index)
-        items.add(index + 1, item)
-        _uiState.value = _uiState.value.copy(accounts = items, isDirty = items.map { it.id } != originalOrder)
+        moveByOne(accountId, 1)
+    }
+
+    private fun moveByOne(accountId: Long, direction: Int) {
+        val accounts = _uiState.value.accounts
+        val account = accounts.find { it.id == accountId } ?: return
+        val group = accounts.filter { it.orderGroup == account.orderGroup }
+        val index = group.indexOfFirst { it.id == accountId }
+        group.getOrNull(index + direction)?.let { moveAccount(accountId, it.id) }
+    }
+
+    fun moveAccount(accountId: Long, targetId: Long) {
+        updateOrder(moveAccountWithinGroup(_uiState.value.accounts, accountId, targetId))
+    }
+
+    private fun updateOrder(accounts: List<ReorderAccountItemUiModel>) {
+        if (_uiState.value.isSaving || _uiState.value.isLoading) return
+        _uiState.value = _uiState.value.copy(
+            accounts = accounts,
+            isDirty = accounts.map { it.id } != originalOrder,
+        )
     }
 
     fun sortByBalance() {
-        val sorted = _uiState.value.accounts.sortedWith(
+        val sorted = sortAccountGroups(
+            _uiState.value.accounts,
             compareByDescending<ReorderAccountItemUiModel> { it.balance }
                 .thenByDescending { it.lastUsedAt ?: Long.MIN_VALUE }
                 .thenBy { it.name },
         )
-        _uiState.value = _uiState.value.copy(
-            accounts = sorted,
-            isDirty = sorted.map { it.id } != originalOrder,
-            sortMode = ReorderSortMode.BALANCE,
-        )
+        updateOrder(sorted)
     }
 
-    fun restoreDefaultOrder() {
-        _uiState.value = _uiState.value.copy(
-            accounts = originalItems,
-            isDirty = originalItems.map { it.id } != originalOrder,
-            sortMode = ReorderSortMode.NONE,
-        )
+    fun undoChanges() {
+        updateOrder(originalItems)
     }
 
     fun sortByRecentUse() {
-        val sorted = _uiState.value.accounts.sortedWith(
+        val sorted = sortAccountGroups(
+            _uiState.value.accounts,
             compareByDescending<ReorderAccountItemUiModel> { it.lastUsedAt ?: Long.MIN_VALUE }
                 .thenBy { it.name },
         )
-        _uiState.value = _uiState.value.copy(
-            accounts = sorted,
-            isDirty = sorted.map { it.id } != originalOrder,
-            sortMode = ReorderSortMode.RECENT,
-        )
+        updateOrder(sorted)
     }
 
     fun sortByName() {
-        val sorted = _uiState.value.accounts.sortedBy { it.name }
-        _uiState.value = _uiState.value.copy(
-            accounts = sorted,
-            isDirty = sorted.map { it.id } != originalOrder,
-            sortMode = ReorderSortMode.NAME,
-        )
+        updateOrder(sortAccountGroups(_uiState.value.accounts, compareBy { it.name }))
     }
 
     fun save() {
-        if (_uiState.value.isSaving) return
+        val state = _uiState.value
+        if (state.isSaving || state.isLoading || !state.isDirty) return
+        _uiState.value = state.copy(isSaving = true)
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSaving = true)
-            runCatching {
-                val state = _uiState.value
+            try {
                 updateAccountDisplayOrderUseCase(
                     orderedAccountIds = state.accounts.map { it.id },
                 )
-            }.onSuccess {
+                originalItems = state.accounts
+                originalOrder = state.accounts.map { it.id }
+                _uiState.value = state.copy(isDirty = false)
                 effects.emit(ReorderAccountsEffect.Saved)
-            }.onFailure { error ->
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 effects.emit(ReorderAccountsEffect.ShowMessage(error.message.orEmpty(), messageRes = R.string.account_order_save_failed))
             }

@@ -74,8 +74,9 @@ class SettingsSectionContractTest {
     fun `backup and about copy describe the actual offline plaintext model`() {
         val copy = java.io.File("src/main/res/values/strings.xml").readText()
         assertTrue(copy.contains("未加密 JSON"))
-        assertTrue(copy.contains("完全离线"))
-        assertTrue(copy.contains("系统自动备份"))
+        assertTrue(copy.contains("账目保存在这台设备上"))
+        assertTrue(copy.contains("连接电脑需由你手动开启"))
+        assertTrue(copy.contains("不会自动备份"))
         listOf("AES", ".enc", "精确闹钟", "多个目标", "云同步").forEach { forbidden ->
             assertFalse(copy.contains(forbidden), forbidden)
         }

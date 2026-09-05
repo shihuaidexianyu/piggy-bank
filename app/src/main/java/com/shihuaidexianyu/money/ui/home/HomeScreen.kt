@@ -1,15 +1,5 @@
 package com.shihuaidexianyu.money.ui.home
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -29,8 +18,6 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,23 +25,16 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
@@ -73,11 +53,8 @@ import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
 import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
 import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
-import com.shihuaidexianyu.money.ui.history.HistoryRecordKind
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
-import com.shihuaidexianyu.money.ui.common.formatSharePercent
 import com.shihuaidexianyu.money.ui.common.signedFormatInAppAmount
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 
@@ -94,8 +71,6 @@ fun HomeScreen(
     onManageAccounts: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onRetry: () -> Unit = {},
-    onOpenHistory: () -> Unit = {},
-    onOpenRecord: (HomeRecentRecordUiModel) -> Unit = {},
     onSelectPeriod: (DashboardPeriod) -> Unit = {},
 ) {
     val rootSnackbarDispatcher = LocalRootSnackbarDispatcher.current
@@ -164,7 +139,7 @@ fun HomeScreen(
                         end = MoneyDimens.screenHorizontalPadding,
                         bottom = MoneyDimens.bottomNavContentPadding,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXl),
                 ) {
                     item {
                         PeriodOverviewBlock(
@@ -199,16 +174,6 @@ fun HomeScreen(
                                 accounts = renderedState.staleAccounts,
                                 settings = renderedState.settings,
                                 onReconcile = onStartUpdateBalance,
-                            )
-                        }
-                    }
-                    if (renderedState.recentRecords.isNotEmpty()) {
-                        item {
-                            HomeRecentRecordsSection(
-                                records = renderedState.recentRecords,
-                                settings = renderedState.settings,
-                                onOpenHistory = onOpenHistory,
-                                onOpenRecord = onOpenRecord,
                             )
                         }
                     }
@@ -268,10 +233,10 @@ private fun CircularHeaderIconButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(44.dp),
+        modifier = Modifier.size(48.dp),
         shape = CircleShape,
         colors = IconButtonDefaults.iconButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = Color.Transparent,
         ),
     ) {
         Box(
@@ -321,371 +286,123 @@ private fun PeriodOverviewBlock(
     periodInvestmentPnl: Long,
     onSelectPeriod: (DashboardPeriod) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        NetWorthHeroCard(
-            totalAssets = totalAssets,
-            settings = settings,
-            period = period,
-            selectedPeriod = selectedPeriod,
-            hasInvestmentAccounts = hasInvestmentAccounts,
-            investmentAssets = investmentAssets,
-            onSelectPeriod = onSelectPeriod,
-        )
-        PeriodFlowsCard(
-            cashInflow = cashInflow,
-            cashOutflow = cashOutflow,
-            settings = settings,
-            period = period,
-            hasInvestmentAccounts = hasInvestmentAccounts,
-            periodInvestmentPnl = periodInvestmentPnl,
-        )
-    }
-}
-
-/**
- * First story on home: how much money there is right now. The period switcher lives here;
- * everything about how money moved lives in [PeriodFlowsCard].
- */
-@Composable
-private fun NetWorthHeroCard(
-    totalAssets: Long,
-    settings: PortableSettings,
-    period: DashboardPeriod,
-    selectedPeriod: DashboardPeriod,
-    hasInvestmentAccounts: Boolean,
-    investmentAssets: Long,
-    onSelectPeriod: (DashboardPeriod) -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        // 青玉 hero: tonal primary container instead of a white card, so the net-worth figure
-        // owns the top of home; text on it uses the onPrimaryContainer ladder throughout.
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = MaterialTheme.shapes.extraLarge,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.home_current_net_assets),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
-                )
-                PeriodSwitcher(selected = selectedPeriod, onSelect = onSelectPeriod)
-            }
-            val recordText = formatInAppAmount(totalAssets, settings)
-            val recordStyle = when {
-                recordText.length > 12 -> MaterialTheme.typography.headlineSmall
-                recordText.length > 8 -> MaterialTheme.typography.displayMedium
-                else -> MaterialTheme.typography.displayLarge
-            }
-            RollingAmountText(
-                target = recordText,
-                style = recordStyle,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+    val colors = LocalMoneyColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXxl)) {
+        Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingMd)) {
+            Text(
+                text = stringResource(R.string.home_current_net_assets),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val amount = formatInAppAmount(totalAssets, settings)
+            Text(
+                text = amount,
+                style = if (amount.length > 12) MaterialTheme.typography.displayMedium
+                    else MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             if (hasInvestmentAccounts) {
-                val fundingAssets = totalAssets - investmentAssets
-                val fundingShare = formatSharePercent(fundingAssets, totalAssets)
-                val investmentShare = if (totalAssets > 0L && investmentAssets > 0L) {
-                    val fundingPercent = fundingAssets * 100L / totalAssets
-                    val investmentPercent = (100L - fundingPercent).coerceIn(0L, 100L)
-                    if (investmentPercent < 1L) "<1%" else "$investmentPercent%"
-                } else {
-                    ""
-                }
-                // Teal vs amber: the palette's warm accent keeps the two asset kinds clearly
-                // distinguishable where teal/slate were too close.
-                val fundingColor = MaterialTheme.colorScheme.primary
-                val investmentColor = LocalMoneyColors.current.current
-                // Legacy ledgers can go negative; a proportion bar only makes sense for a
-                // positive, fully-attributed total.
-                if (fundingAssets >= 0L && investmentAssets >= 0L && totalAssets > 0L) {
-                    AssetSplitBar(
-                        fundingAssets = fundingAssets,
-                        investmentAssets = investmentAssets,
-                        fundingColor = fundingColor,
-                        investmentColor = investmentColor,
-                    )
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXl),
                 ) {
-                    AssetSplitCell(
+                    AssetAmount(
                         label = stringResource(R.string.home_funding_assets),
-                        value = formatInAppAmount(fundingAssets, settings),
-                        share = fundingShare,
-                        dotColor = fundingColor,
+                        amount = formatInAppAmount(totalAssets - investmentAssets, settings),
                         modifier = Modifier.weight(1f),
                     )
-                    AssetSplitCell(
+                    AssetAmount(
                         label = stringResource(R.string.home_investment_assets),
-                        value = formatInAppAmount(investmentAssets, settings),
-                        share = investmentShare,
-                        dotColor = investmentColor,
+                        amount = formatInAppAmount(investmentAssets, settings),
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
-    }
-}
-
-/**
- * Odometers-style amount display: when the amount changes, digits that differ roll vertically
- * (new value enters from below on increase, from above on decrease) while unchanged characters,
- * the currency symbol and separators stay put. Reuses the app typography so tabular figures and
- * the font keep the exact look of a single Text.
- */
-@Composable
-private fun RollingAmountText(
-    target: String,
-    style: androidx.compose.ui.text.TextStyle,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    var current by remember { mutableStateOf(target) }
-    var previous by remember { mutableStateOf(target) }
-    if (target != current) {
-        previous = current
-        current = target
-    }
-    val chars = current.toList()
-    val prevChars = previous.toList()
-    val offset = chars.size - prevChars.size
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        chars.forEachIndexed { index, char ->
-            val prevChar = prevChars.getOrNull(index - offset)
-            if (prevChar == null || prevChar == char) {
-                Text(text = char.toString(), style = style, color = color)
-            } else {
-                AnimatedContent(
-                    targetState = char,
-                    transitionSpec = {
-                        val rising = charValue(targetState) >= charValue(initialState)
-                        val direction = if (rising) 1 else -1
-                        // Snappy spring roll: digits settle with a soft overshoot instead of a
-                        // fixed-duration tween.
-                        (slideInVertically(animationSpec = spring(dampingRatio = 0.86f, stiffness = 700f)) { direction * it } +
-                            fadeIn(animationSpec = tween(120))) togetherWith
-                            (slideOutVertically(animationSpec = spring(dampingRatio = 0.86f, stiffness = 700f)) { -direction * it } +
-                                fadeOut(animationSpec = tween(100)))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Column(verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingLg)) {
+            MoneySectionHeader(title = stringResource(R.string.home_period_activity))
+            PeriodSwitcher(selected = selectedPeriod, onSelect = onSelectPeriod)
+            PeriodAmountRow(
+                label = stringResource(period.incomeLabelRes()),
+                value = formatInAppAmount(cashInflow, settings),
+                color = colors.income,
+            )
+            PeriodAmountRow(
+                label = stringResource(period.expenseLabelRes()),
+                value = formatInAppAmount(cashOutflow, settings),
+                color = colors.expense,
+            )
+            PeriodAmountRow(
+                label = stringResource(period.netCashFlowLabelRes()),
+                value = signedFormatInAppAmount(cashInflow - cashOutflow, settings),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (hasInvestmentAccounts) {
+                PeriodAmountRow(
+                    label = stringResource(period.investmentPnlLabelRes()),
+                    value = signedFormatInAppAmount(periodInvestmentPnl, settings),
+                    color = when {
+                        periodInvestmentPnl > 0L -> colors.income
+                        periodInvestmentPnl < 0L -> colors.expense
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                    label = "rollingAmountChar",
-                ) { animatedChar ->
-                    Text(text = animatedChar.toString(), style = style, color = color)
-                }
-            }
-        }
-    }
-}
-
-private fun charValue(char: Char): Int = when (char) {
-    in '0'..'9' -> char - '0'
-    else -> -1
-}
-
-/**
- * Secondary asset split line in the hero card. Kept deliberately quiet: the onPrimaryContainer
- * ladder at reduced alpha, no semantic colors, so the cells never compete with the headline amount.
- */
-@Composable
-private fun AssetSplitCell(
-    label: String,
-    value: String,
-    share: String? = null,
-    dotColor: Color? = null,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (dotColor != null) {
-                // Matches the segment color in the AssetSplitBar above, so each cell reads as the
-                // legend for its bar segment.
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(dotColor),
                 )
             }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-            )
         }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxLines = 1,
-        )
-        share?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                maxLines = 1,
-            )
-        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
-/**
- * Second story on home: how cash moved during the selected period. The net figure is the
- * headline — "did this period save money" is the question the card answers — with income and
- * expense as the supporting cells, mirroring the hero card's headline-plus-breakdown language.
- */
 @Composable
-private fun PeriodFlowsCard(
-    cashInflow: Long,
-    cashOutflow: Long,
-    settings: PortableSettings,
-    period: DashboardPeriod,
-    hasInvestmentAccounts: Boolean,
-    periodInvestmentPnl: Long,
-) {
-    val moneyColors = LocalMoneyColors.current
-    val cashNet = cashInflow - cashOutflow
-    val netColor = when {
-        cashNet > 0 -> moneyColors.income
-        cashNet < 0 -> moneyColors.expense
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun AssetAmount(label: String, amount: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingXs)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(amount, style = MaterialTheme.typography.titleMedium)
     }
-    Card(
+}
+
+@Composable
+private fun PeriodAmountRow(label: String, value: String, color: Color) {
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = MaterialTheme.shapes.large,
+        horizontalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingLg),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(period.netCashFlowLabelRes()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-                Text(
-                    text = formatInAppAmount(cashNet, settings),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = netColor,
-                    maxLines = 1,
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                PeriodMetricCell(
-                    label = stringResource(period.incomeLabelRes()),
-                    value = formatInAppAmount(cashInflow, settings),
-                    color = moneyColors.income,
-                    modifier = Modifier.weight(1f),
-                )
-                PeriodMetricCell(
-                    label = stringResource(period.expenseLabelRes()),
-                    value = formatInAppAmount(cashOutflow, settings),
-                    color = moneyColors.expense,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            // Zero P&L is the common case for investment accounts in quiet periods; the row only
-            // earns its place when there is something to report.
-            if (hasInvestmentAccounts && periodInvestmentPnl != 0L) {
-                val pnlColor = if (periodInvestmentPnl > 0L) moneyColors.income else moneyColors.expense
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(period.investmentPnlLabelRes()),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = signedFormatInAppAmount(periodInvestmentPnl, settings),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = pnlColor,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge,
+            color = color, textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
-/**
- * Capsule period selector sitting inside the tonal hero: a translucent track mixed from the page
- * canvas keeps it quiet on the jade container, and the selected segment pops as a solid chip.
- * 40dp segment height preserves the Material touch target and selection semantics.
- */
 @Composable
-private fun PeriodSwitcher(
-    selected: DashboardPeriod,
-    onSelect: (DashboardPeriod) -> Unit,
-) {
-    val selectorDescription = stringResource(R.string.home_period_selector)
+private fun PeriodSwitcher(selected: DashboardPeriod, onSelect: (DashboardPeriod) -> Unit) {
     val haptics = LocalHapticFeedback.current
-    Surface(
-        modifier = Modifier
-            .width(146.dp)
-            .semantics { contentDescription = selectorDescription },
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        shape = CircleShape,
+    val description = stringResource(R.string.home_period_selector)
+    Row(
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(MoneyDimens.SpacingSm),
     ) {
-        Row(
-            modifier = Modifier.padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            DashboardPeriod.entries.forEach { period ->
-                val isSelected = period == selected
-                Surface(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                        onSelect(period)
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                        .semantics { this.selected = isSelected },
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                    } else {
-                        Color.Transparent
-                    },
-                    contentColor = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
-                    },
-                    shape = CircleShape,
-                    shadowElevation = if (isSelected) 1.dp else 0.dp,
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = stringResource(period.shortLabelRes()),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
+        DashboardPeriod.entries.forEach { period ->
+            val isSelected = period == selected
+            Surface(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    onSelect(period)
+                },
+                modifier = Modifier.weight(1f).semantics { this.selected = isSelected },
+                shape = MaterialTheme.shapes.small,
+                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            ) {
+                Box(modifier = Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+                    Text(stringResource(period.shortLabelRes()), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -764,123 +481,6 @@ private fun staleAccountCheckedText(lastBalanceUpdateAt: Long?): String {
     }
 }
 
-@Composable
-private fun HomeRecentRecordsSection(
-    records: List<HomeRecentRecordUiModel>,
-    settings: PortableSettings,
-    onOpenHistory: () -> Unit,
-    onOpenRecord: (HomeRecentRecordUiModel) -> Unit,
-) {
-    MoneySectionHeader(
-        title = stringResource(R.string.home_recent_records),
-        trailingContent = {
-            TextButton(onClick = onOpenHistory) { Text(stringResource(R.string.home_view_all)) }
-        },
-    )
-    MoneyListSection {
-        records.forEachIndexed { index, record ->
-            HomeRecentRecordRow(
-                record = record,
-                settings = settings,
-                onClick = { onOpenRecord(record) },
-            )
-            if (index != records.lastIndex) {
-                MoneySectionDivider()
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeRecentRecordRow(
-    record: HomeRecentRecordUiModel,
-    settings: PortableSettings,
-    onClick: () -> Unit,
-) {
-    val moneyColors = LocalMoneyColors.current
-    // Same row language as the history ledger (V1): type badge, "account · time" subtitle, and a
-    // signed amount. Transfers stay neutral (unsigned, transfer color). The running balance is
-    // deliberately omitted here — rows from different accounts interleave, so a per-row account
-    // balance reads as noise on the home dashboard.
-    val amountText = when (record.kind) {
-        HistoryRecordKind.TRANSFER -> formatInAppAmount(record.amount, settings)
-        else -> signedFormatInAppAmount(record.amount, settings)
-    }
-    val amountColor = when (record.kind) {
-        HistoryRecordKind.TRANSFER -> moneyColors.transfer
-        else -> when {
-            record.amount > 0 -> moneyColors.income
-            record.amount < 0 -> moneyColors.expense
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-    }
-    val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
-    val subtitleText = if (record.subtitle.isBlank()) timeLabel else "${record.subtitle} · $timeLabel"
-    Surface(
-        onClick = onClick,
-        color = Color.Transparent,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            RecordKindBadge(kind = record.kind, amount = record.amount)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(
-                    text = record.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subtitleText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = amountText,
-                style = MaterialTheme.typography.titleMedium,
-                color = amountColor,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PeriodMetricCell(
-    label: String,
-    value: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelLarge,
-            color = color,
-            maxLines = 1,
-        )
-    }
-}
-
 @androidx.annotation.StringRes
 private fun DashboardPeriod.shortLabelRes(): Int = when (this) {
     DashboardPeriod.WEEK -> R.string.home_period_week
@@ -914,38 +514,4 @@ private fun DashboardPeriod.investmentPnlLabelRes(): Int = when (this) {
     DashboardPeriod.WEEK -> R.string.home_week_investment_pnl
     DashboardPeriod.MONTH -> R.string.home_month_investment_pnl
     DashboardPeriod.YEAR -> R.string.home_year_investment_pnl
-}
-
-/** Two-segment proportion bar for the funding/investment asset split; colors come from the
- * theme palette (not income/expense colors, which carry flow semantics). */
-@Composable
-private fun AssetSplitBar(
-    fundingAssets: Long,
-    investmentAssets: Long,
-    fundingColor: Color,
-    investmentColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val total = (fundingAssets + investmentAssets).coerceAtLeast(1L)
-    val fundingFraction = (fundingAssets.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-    Canvas(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(CircleShape),
-    ) {
-        val gap = 2.dp.toPx()
-        val fundingWidth = (size.width - gap) * fundingFraction
-        drawRoundRect(
-            color = fundingColor,
-            size = androidx.compose.ui.geometry.Size(fundingWidth, size.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
-        )
-        drawRoundRect(
-            color = investmentColor,
-            topLeft = androidx.compose.ui.geometry.Offset(fundingWidth + gap, 0f),
-            size = androidx.compose.ui.geometry.Size(size.width - fundingWidth - gap, size.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f),
-        )
-    }
 }

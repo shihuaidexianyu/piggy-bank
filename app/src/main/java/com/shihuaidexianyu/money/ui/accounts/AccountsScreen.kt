@@ -80,6 +80,7 @@ fun AccountsScreen(
     onReorderAccounts: () -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
+    onBatchReconcile: () -> Unit = {},
 ) {
     val groups = accountGroups(state.openAccounts, state.closedAccounts)
     val hasClosedAccounts = state.closedAccounts.isNotEmpty()
@@ -110,10 +111,10 @@ fun AccountsScreen(
                     if (state.openAccounts.isNotEmpty()) {
                         IconButton(
                             onClick = onReorderAccounts,
-                            modifier = Modifier.size(44.dp),
+                            modifier = Modifier.size(48.dp),
                             shape = CircleShape,
                             colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent,
                             ),
                         ) {
                             Icon(
@@ -126,10 +127,10 @@ fun AccountsScreen(
                     }
                     IconButton(
                         onClick = onCreateAccount,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(48.dp),
                         shape = CircleShape,
                         colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
                         ),
                     ) {
                         Icon(
@@ -147,7 +148,7 @@ fun AccountsScreen(
             ),
         )
         LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
+            contentPadding = PaddingValues(start = MoneyDimens.screenHorizontalPadding, top = 8.dp, end = MoneyDimens.screenHorizontalPadding, bottom = MoneyDimens.bottomNavContentPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             val asyncContent = state.toAsyncContent(loadErrorMessage)
@@ -181,6 +182,16 @@ fun AccountsScreen(
                     }
                 }
             } else {
+                val staleCount = state.openAccounts.count { it.isStale }
+                if (staleCount > 0) {
+                    item {
+                        MoneyListRow(
+                            title = stringResource(R.string.accounts_need_check_format, staleCount),
+                            trailing = stringResource(R.string.balance_reconcile_title),
+                            onClick = onBatchReconcile,
+                        )
+                    }
+                }
                 normalKindGroups.forEach { (kind, accounts) ->
                     if (accounts.isNotEmpty()) {
                         val staleCount = accounts.count { it.isStale }
@@ -328,7 +339,6 @@ private fun AccountRow(
     val balanceText = formatInAppAmount(account.balance, currencySettings)
     // Empty for zero/negative balances or a non-positive total — a share is only meaningful
     // for money actually present.
-    val shareText = formatSharePercent(account.balance, totalBalance)
     val statusText = when {
         account.requiresReopenAndSettle -> stringResource(R.string.account_status_reopen_settle)
         account.isClosed -> stringResource(R.string.account_status_closed)
@@ -346,7 +356,7 @@ private fun AccountRow(
     val monthChangeSemantics = monthChangeText?.let {
         stringResource(R.string.account_month_change_format, it)
     }
-    val caption = statusText ?: monthChangeText
+    val caption = statusText ?: monthChangeSemantics
     val captionSemantics = statusText ?: monthChangeSemantics
     val captionColor = when {
         statusText != null -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -361,11 +371,6 @@ private fun AccountRow(
         MaterialTheme.typography.titleMedium
     }
     val balanceSemantics = stringResource(R.string.account_balance_semantics_format, balanceText)
-    val shareSemantics = if (shareText.isNotEmpty()) {
-        stringResource(R.string.account_share_semantics_format, shareText)
-    } else {
-        null
-    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -376,7 +381,6 @@ private fun AccountRow(
                     append(account.name)
                     append(balanceSemantics)
                     captionSemantics?.let { append("，$it") }
-                    shareSemantics?.let { append("，$it") }
                 }
                 role = Role.Button
             },
@@ -389,14 +393,6 @@ private fun AccountRow(
             isClosed = account.isClosed,
             size = 40.dp,
             iconSize = 22.dp,
-            // The ring visualizes the same share printed at the row's trailing edge. Every
-            // open account gets one (a zero balance draws the bare track) so badge sizes —
-            // and therefore name alignment — stay uniform down the list.
-            shareFraction = if (!account.isClosed && totalBalance > 0L) {
-                (account.balance.toDouble() / totalBalance.toDouble()).toFloat()
-            } else {
-                null
-            },
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -422,7 +418,7 @@ private fun AccountRow(
                 )
             }
         }
-        Column(horizontalAlignment = Alignment.End) {
+        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             Text(
                 text = balanceText,
                 style = balanceStyle,
@@ -431,16 +427,8 @@ private fun AccountRow(
                 } else {
                     MaterialTheme.colorScheme.onBackground
                 },
-                maxLines = 1,
             )
-            if (shareText.isNotEmpty()) {
-                Text(
-                    text = shareText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+
         }
     }
 }

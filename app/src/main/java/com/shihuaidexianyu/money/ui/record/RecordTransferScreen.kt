@@ -102,6 +102,15 @@ fun RecordTransferScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null) {
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = state.pendingTerminal == null,
+                )
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -202,11 +211,7 @@ fun RecordTransferScreen(
                     },
                     errorText = state.occurredAtError,
                 )
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    enabled = state.pendingTerminal == null,
-                )
+
             }
         }
     }

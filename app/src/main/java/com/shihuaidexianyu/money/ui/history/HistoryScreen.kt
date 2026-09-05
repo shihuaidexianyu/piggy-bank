@@ -1,5 +1,8 @@
 package com.shihuaidexianyu.money.ui.history
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -16,9 +19,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +48,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,12 +82,12 @@ import com.shihuaidexianyu.money.ui.common.MoneyDatePickerDialogHost
 import com.shihuaidexianyu.money.ui.common.MoneyDimens
 import com.shihuaidexianyu.money.ui.common.MoneyEmptyStateCard
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
+import com.shihuaidexianyu.money.ui.common.MoneyInlineLabelValue
 import com.shihuaidexianyu.money.ui.common.MoneyListRow
 import com.shihuaidexianyu.money.ui.common.MoneySectionDivider
 import com.shihuaidexianyu.money.ui.common.MoneySectionHeader
 import com.shihuaidexianyu.money.ui.common.MoneySelectionField
 import com.shihuaidexianyu.money.ui.common.MoneySingleLineField
-import com.shihuaidexianyu.money.ui.common.RecordKindBadge
 import com.shihuaidexianyu.money.ui.theme.LocalMoneyColors
 import com.shihuaidexianyu.money.ui.common.formatInAppAmount
 import com.shihuaidexianyu.money.ui.common.BalanceTransitionText
@@ -85,6 +101,7 @@ import com.shihuaidexianyu.money.domain.usecase.TimeRangeCalculator
 import com.shihuaidexianyu.money.util.DateTimeTextFormatter
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.launch
 
 private enum class HistoryFilterSheet {
     OVERVIEW,
@@ -131,10 +148,45 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRetry: () -> Unit = {},
+    onScrolledChange: (Boolean) -> Unit = {},
 ) {
     var sheet by remember { mutableStateOf<HistoryFilterSheet?>(null) }
     var dateField by remember { mutableStateOf<HistoryDateField?>(null) }
     val listState = rememberLazyListState()
+    var searchExpanded by rememberSaveable { mutableStateOf(state.keyword.isNotBlank()) }
+    var requestSearchFocus by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val latestOnScrolledChange by rememberUpdatedState(onScrolledChange)
+    var selectedRecordId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollBackward }.collect { latestOnScrolledChange(it) }
+    }
+    LaunchedEffect(state.keyword) {
+        if (state.keyword.isNotBlank()) searchExpanded = true
+    }
+    LaunchedEffect(searchExpanded, requestSearchFocus) {
+        if (searchExpanded && requestSearchFocus) {
+            listState.scrollToItem(0)
+            searchFocusRequester.requestFocus()
+            requestSearchFocus = false
+        }
+    }
+    BackHandler(enabled = searchExpanded && state.keyword.isBlank()) {
+        searchExpanded = false
+        focusManager.clearFocus()
+    }
+    state.records.firstOrNull { it.id == selectedRecordId }?.let { record ->
+        HistoryRecordDetails(
+            record = record,
+            settings = state.settings,
+            onDismiss = { selectedRecordId = null },
+            onOpenRecord = {
+                selectedRecordId = null
+                onRecordClick(record)
+            },
+        )
+    }
     val canPrefetch = state.hasMoreRecords &&
         !state.isLoading &&
         !state.isLoadingMore &&
@@ -145,7 +197,7 @@ fun HistoryScreen(
     var pendingAnchorDate by remember { mutableStateOf<String?>(null) }
     val visibleDateLabel by remember(listState) {
         derivedStateOf {
-            (listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String)
+            (listState.layoutInfo.visibleItemsInfo.firstOrNull { (it.key as? String)?.startsWith("history_date_") == true }?.key as? String)
                 ?.takeIf { it.startsWith("history_date_") }
                 ?.removePrefix("history_date_")
         }
@@ -435,66 +487,85 @@ fun HistoryScreen(
         onBack = onBack,
         modifier = modifier,
         listState = listState,
-        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
+        contentPadding = PaddingValues(start = 24.dp, top = 0.dp, end = 24.dp, bottom = MoneyDimens.bottomNavContentPadding),
         verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        item {
-            Column(
-                modifier = Modifier.padding(bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+        trailing = {
+            IconButton(
+                onClick = {
+                    if (searchExpanded) {
+                        searchExpanded = false
+                        onKeywordChange("")
+                        focusManager.clearFocus()
+                    } else {
+                        searchExpanded = true
+                        requestSearchFocus = true
+                    }
+                },
             ) {
-                SearchField(
-                    value = state.keyword,
-                    onValueChange = onKeywordChange,
-                    placeholder = stringResource(R.string.history_include_keyword),
+                Icon(
+                    imageVector = if (searchExpanded) Icons.Rounded.Close else Icons.Rounded.Search,
+                    contentDescription = stringResource(if (searchExpanded) R.string.history_close_search else R.string.history_search),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FilterChip(
-                        selected = hasActiveFilters(state, accountLocked),
-                        onClick = { sheet = HistoryFilterSheet.OVERVIEW },
-                        label = { Text(filterChipLabel(state, accountLocked)) },
+            }
+            TextButton(onClick = { focusManager.clearFocus(); sheet = HistoryFilterSheet.OVERVIEW }) {
+                Icon(Icons.Rounded.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(filterChipLabel(state, accountLocked), modifier = Modifier.padding(start = 4.dp))
+            }
+        },
+    ) {
+        item(key = "history_controls", contentType = "controls") {
+            // Keep a measurable top anchor when search is collapsed, so an empty controls
+            // item is not skipped and reported as an already-scrolled list.
+            Column(modifier = Modifier.heightIn(min = 1.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (searchExpanded) {
+                    SearchField(
+                        value = state.keyword,
+                        onValueChange = onKeywordChange,
+                        placeholder = stringResource(R.string.history_search),
+                        modifier = Modifier.focusRequester(searchFocusRequester).testTag("history_search_field"),
                     )
+                }
+                if (hasActiveFilters(state, accountLocked)) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        if (state.hasCommittedContent) {
+                        state.filterMatchCount?.let { count ->
                             Text(
-                                text = state.filterMatchCount?.let { matchCount ->
-                                    pluralStringResource(
-                                        R.plurals.history_matched_count,
-                                        matchCount,
-                                        matchCount,
-                                    )
-                                } ?: pluralStringResource(
-                                    R.plurals.history_loaded_count,
-                                    state.records.size,
-                                    state.records.size,
-                                ),
+                                pluralStringResource(R.plurals.history_matched_count, count, count),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        if (hasActiveFilters(state, accountLocked)) {
-                            TextButton(onClick = onClearAllFilters) {
-                                Text(stringResource(R.string.action_clear))
-                            }
-                        }
+                        TextButton(onClick = onClearAllFilters) { Text(stringResource(R.string.action_clear)) }
                     }
                 }
                 if (hasActiveFilters(state, accountLocked)) {
                     ActiveFilterChips(
                         state = state,
                         accountLocked = accountLocked,
-                        onOpenSheet = { sheet = it },
+                        onRemove = { filter ->
+                            when (filter) {
+                                HistoryFilterSheet.OVERVIEW -> onExcludeKeywordChange("")
+                                HistoryFilterSheet.TYPE -> onRecordTypesChange(emptySet())
+                                HistoryFilterSheet.BUSINESS -> onBusinessSemanticChange(HistoryBusinessSemantic.ALL)
+                                HistoryFilterSheet.ACCOUNT -> onAccountChange(null)
+                                HistoryFilterSheet.DATE -> onDateRangeChange(null, null)
+                                HistoryFilterSheet.AMOUNT -> {
+                                    onMinAmountChange("")
+                                    onMaxAmountChange("")
+                                }
+                                HistoryFilterSheet.DIRECTION -> onAmountDirectionChange(AmountDirectionFilter.ALL)
+                            }
+                        },
                     )
                 }
                 state.filterSummary?.let { summary ->
                     HistoryFilterSummaryRow(summary = summary, settings = state.settings)
+                }
+                if (state.isRefreshing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -552,11 +623,6 @@ fun HistoryScreen(
             is AsyncContent.Refreshing,
             -> {
                 val nowMillis = System.currentTimeMillis()
-                if (content is AsyncContent.Refreshing) {
-                    item(key = "history_refresh_progress") {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                }
                 recordGroups.forEach { (dateLabel, records) ->
                     stickyHeader(key = "history_date_$dateLabel") {
                         HistoryDateHeader(
@@ -580,45 +646,38 @@ fun HistoryScreen(
                                     ?.let { DateTimeTextFormatter.formatDateOnly(it.occurredAt) } == dateLabel,
                         )
                     }
-                    item(key = "history_day_card_$dateLabel") {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItem(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                            ),
-                            shape = MaterialTheme.shapes.medium,
-                        ) {
-                            Column {
-                                records.forEachIndexed { index, record ->
-                                    HistoryRow(
-                                        record = record,
-                                        settings = state.settings,
-                                        onClick = { onRecordClick(record) },
-                                    )
-                                    if (index != records.lastIndex) {
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                                        )
-                                    }
-                                }
+                    itemsIndexed(
+                        items = records,
+                        key = { _, record -> "history_record_${record.id}" },
+                        contentType = { _, _ -> "record" },
+                    ) { index, record ->
+                        Column(modifier = Modifier.animateItem()) {
+                            HistoryRow(
+                                record = record,
+                                settings = state.settings,
+                                accountBalanceAfter = lockedAccountId?.let { historyAccountBalanceAfter(record, it) },
+                                onClick = { focusManager.clearFocus(); selectedRecordId = record.id },
+                            )
+                            if (index != records.lastIndex) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                                )
                             }
                         }
                     }
                 }
                 state.loadMoreErrorMessageRes?.let { messageRes ->
-                item {
-                    MoneyEmptyStateCard(
-                        title = stringResource(messageRes),
-                        subtitle = stringResource(R.string.history_loaded_records_retained),
-                    ) {
-                        MoneyTonalButton(onClick = onRetryLoadMore) {
-                            Text(stringResource(R.string.action_retry))
+                    item {
+                        MoneyEmptyStateCard(
+                            title = stringResource(messageRes),
+                            subtitle = stringResource(R.string.history_loaded_records_retained),
+                        ) {
+                            MoneyTonalButton(onClick = onRetryLoadMore) {
+                                Text(stringResource(R.string.action_retry))
+                            }
                         }
                     }
                 }
-            }
                 if (state.isLoadingMore) {
                     item(key = "history_loading_more") {
                         Box(
@@ -719,11 +778,12 @@ private fun SearchField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    modifier: Modifier = Modifier,
 ) {
     TextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = placeholder },
         placeholder = { Text(placeholder) },
@@ -749,8 +809,8 @@ private fun SearchField(
             null
         },
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
@@ -786,51 +846,41 @@ private fun HistoryDateHeader(
     settings: PortableSettings,
     partialTotal: Boolean = false,
 ) {
-    val moneyColors = LocalMoneyColors.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = dateLabel,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                if (cashIncomeTotal > 0L) {
-                    Text(
-                        text = "+${formatInAppAmount(cashIncomeTotal, settings)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = moneyColors.income,
-                        maxLines = 1,
-                    )
-                }
-                if (cashExpenseTotal < 0L) {
-                    Text(
-                        text = formatInAppAmount(cashExpenseTotal, settings),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = moneyColors.expense,
-                        maxLines = 1,
-                    )
-                }
-                if (partialTotal) {
-                    Text(
-                        text = stringResource(R.string.history_partial_total),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
+            if (cashIncomeTotal > 0L) {
+                Text(
+                    text = stringResource(R.string.history_day_income, formatInAppAmount(cashIncomeTotal, settings)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (cashExpenseTotal < 0L) {
+                Text(
+                    text = stringResource(R.string.history_day_expense, formatInAppAmount(cashExpenseTotal, settings).removePrefix("-")),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (partialTotal) {
+                Text(
+                    text = stringResource(R.string.history_partial_total),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -841,7 +891,7 @@ private fun HistoryDateHeader(
 private fun ActiveFilterChips(
     state: HistoryUiState,
     accountLocked: Boolean,
-    onOpenSheet: (HistoryFilterSheet) -> Unit,
+    onRemove: (HistoryFilterSheet) -> Unit,
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -850,49 +900,56 @@ private fun ActiveFilterChips(
         if (state.excludeKeyword.isNotBlank()) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.OVERVIEW) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.OVERVIEW) },
                 label = { Text(stringResource(R.string.history_excluding_keyword, state.excludeKeyword)) },
             )
         }
         if (state.selectedRecordTypes.isNotEmpty()) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.TYPE) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.TYPE) },
                 label = { Text(typeSheetSummary(state)) },
             )
         }
         if (state.businessSemantic != HistoryBusinessSemantic.ALL) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.BUSINESS) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.BUSINESS) },
                 label = { Text(businessSemanticLabel(state.businessSemantic)) },
             )
         }
         if (!accountLocked && state.selectedAccountId != null) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.ACCOUNT) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.ACCOUNT) },
                 label = { Text(accountSheetSummary(state)) },
             )
         }
         if (state.dateStartAt != null || state.dateEndAt != null) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.DATE) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.DATE) },
                 label = { Text(dateSheetSummary(state)) },
             )
         }
         if (state.minAmountText.isNotBlank() || state.maxAmountText.isNotBlank()) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.AMOUNT) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.AMOUNT) },
                 label = { Text(amountChipLabel(state)) },
             )
         }
         if (state.amountDirectionFilter != AmountDirectionFilter.ALL) {
             FilterChip(
                 selected = true,
-                onClick = { onOpenSheet(HistoryFilterSheet.DIRECTION) },
+                trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.history_remove_filter), modifier = Modifier.size(16.dp)) },
+                onClick = { onRemove(HistoryFilterSheet.DIRECTION) },
                 label = { Text(directionChipLabel(state)) },
             )
         }
@@ -906,10 +963,12 @@ private fun HistoryFilterSheetContent(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -920,184 +979,139 @@ private fun HistoryFilterSheetContent(
 }
 
 @Composable
+private fun historyRecordAmount(record: HistoryRecordUiModel, settings: PortableSettings): String =
+    if (record.kind == HistoryRecordKind.TRANSFER) formatInAppAmount(record.amount, settings)
+    else signedFormatInAppAmount(record.amount, settings)
+
+@Composable
+private fun historyRecordColor(record: HistoryRecordUiModel): Color {
+    val colors = LocalMoneyColors.current
+    return when {
+        record.kind == HistoryRecordKind.TRANSFER -> colors.transfer
+        record.amount > 0 -> colors.income
+        record.amount < 0 -> colors.expense
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
+@Composable
 private fun HistoryRow(
     record: HistoryRecordUiModel,
     settings: PortableSettings,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    accountBalanceAfter: Long? = null,
 ) {
-    val moneyColors = LocalMoneyColors.current
-    // Bank-statement style: cash flow and balance events carry an explicit sign; transfers stay
-    // neutral (unsigned, transfer color).
-    val amountText = when (record.kind) {
-        HistoryRecordKind.TRANSFER -> formatInAppAmount(record.amount, settings)
-        else -> signedFormatInAppAmount(record.amount, settings)
-    }
-    val amountStyle = when {
-        amountText.length > 16 -> MaterialTheme.typography.labelMedium
-        amountText.length > 12 -> MaterialTheme.typography.bodyMedium
-        else -> MaterialTheme.typography.titleMedium
-    }
+    val amountText = historyRecordAmount(record, settings)
+    val amountColor = historyRecordColor(record)
     val kindLabel = historyKindLabel(record)
-    val amountColor = when (record.kind) {
-        HistoryRecordKind.TRANSFER -> moneyColors.transfer
-        else -> when {
-            record.amount > 0 -> moneyColors.income
-            record.amount < 0 -> moneyColors.expense
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
+    val timeLabel = DateTimeTextFormatter.formatTimeOnly(record.occurredAt)
+    val subtitleText = listOfNotNull(
+        kindLabel.takeIf { record.kind != HistoryRecordKind.CASH_FLOW },
+        record.subtitle.takeIf { it.isNotBlank() },
+        timeLabel,
+    ).joinToString(" · ")
+    val postBalanceText = accountBalanceAfter?.let {
+        stringResource(R.string.history_post_balance, formatInAppAmount(it, settings))
     }
-    val timeLabel = DateTimeTextFormatter.formatCompactDayTime(record.occurredAt, System.currentTimeMillis())
-    val subtitleText = if (record.subtitle.isBlank()) timeLabel else "${record.subtitle} · $timeLabel"
-    // Bank-statement transition "before → after" for the record's own account; transfer rows add
-    // the receiving account's transition on a second, dimmer line (same order as the subtitle).
-    // Statement transition pairs rendered by BalanceTransitionText; transfer rows add the
-    // receiving account's pair on a second, dimmer line (same order as the subtitle).
-    val balanceTransition = if (record.balanceBefore != null && record.balanceAfter != null) {
-        record.balanceBefore to record.balanceAfter
-    } else {
-        null
-    }
-    val relatedBalanceTransition = if (
-        record.kind == HistoryRecordKind.TRANSFER &&
-        record.relatedBalanceBefore != null &&
-        record.relatedBalanceAfter != null
-    ) {
-        record.relatedBalanceBefore to record.relatedBalanceAfter
-    } else {
-        null
-    }
-    // TalkBack segments ("余额从 x 变为 y"; transfers read both accounts, subtitle order).
-    val balanceChangeSemantics = if (record.balanceBefore != null && record.balanceAfter != null) {
-        if (record.kind == HistoryRecordKind.TRANSFER) {
-            stringResource(
-                R.string.history_transfer_from_balance_semantics_format,
-                formatInAppAmount(record.balanceBefore, settings),
-                formatInAppAmount(record.balanceAfter, settings),
-            )
-        } else {
-            stringResource(
-                R.string.history_balance_change_semantics_format,
-                formatInAppAmount(record.balanceBefore, settings),
-                formatInAppAmount(record.balanceAfter, settings),
-            )
-        }
-    } else {
-        null
-    }
-    val relatedBalanceChangeSemantics = if (
-        record.kind == HistoryRecordKind.TRANSFER &&
-        record.relatedBalanceBefore != null &&
-        record.relatedBalanceAfter != null
-    ) {
-        stringResource(
-            R.string.history_transfer_to_balance_semantics_format,
-            formatInAppAmount(record.relatedBalanceBefore, settings),
-            formatInAppAmount(record.relatedBalanceAfter, settings),
-        )
-    } else {
-        null
-    }
+    val stackAmount = LocalDensity.current.fontScale > 1.3f || amountText.length > 15
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .testTag("history_row_${record.id}")
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = buildString {
-                    append(record.title)
-                    append("，$kindLabel")
-                    // For transfers the subtitle names both accounts ("from → to").
-                    record.subtitle.takeIf { it.isNotBlank() }?.let { append("，$it") }
-                    append("，$amountText")
-                    append("，${DateTimeTextFormatter.format(record.occurredAt)}")
-                    balanceChangeSemantics?.let { append(it) }
-                    relatedBalanceChangeSemantics?.let { append(it) }
-                }
+                contentDescription = listOfNotNull(
+                    record.title, kindLabel, record.subtitle.takeIf { it.isNotBlank() },
+                    amountText, DateTimeTextFormatter.format(record.occurredAt), postBalanceText,
+                ).joinToString("，")
                 role = Role.Button
-            },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        RecordKindBadge(
-            kind = record.kind,
-            amount = record.amount,
-            modifier = Modifier.padding(top = 2.dp),
-        )
-        // Two-line statement layout: title+amount, then subtitle and the balance transition
-        // sharing one line. Transfers are the exception — their "from → to · time" subtitle
-        // needs the full width, so both transitions drop to their own right-aligned lines.
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = record.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = amountText,
-                    style = amountStyle,
-                    color = amountColor,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
             }
-            if (relatedBalanceTransition != null) {
-                Text(
-                    text = subtitleText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 3.dp),
-                )
-                balanceTransition?.let { (before, after) ->
-                    BalanceTransitionText(
-                        before = before,
-                        after = after,
-                        settings = settings,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 3.dp),
-                    )
-                }
-                BalanceTransitionText(
-                    before = relatedBalanceTransition.first,
-                    after = relatedBalanceTransition.second,
-                    settings = settings,
-                    // Receiving account sits one shade quieter under the FROM account's line.
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                )
+            .padding(vertical = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (stackAmount) {
+                Text(record.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(amountText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = amountColor)
             } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                     Text(
-                        text = subtitleText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        text = record.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f),
                     )
-                    balanceTransition?.let { (before, after) ->
-                        BalanceTransitionText(before = before, after = after, settings = settings)
-                    }
+                    Text(
+                        text = amountText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = amountColor,
+                        textAlign = TextAlign.End,
+                    )
                 }
+            }
+            Text(subtitleText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            postBalanceText?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistoryRecordDetails(
+    record: HistoryRecordUiModel,
+    settings: PortableSettings,
+    onDismiss: () -> Unit,
+    onOpenRecord: () -> Unit,
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var openingRecord by remember { mutableStateOf(false) }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            MoneySectionHeader(title = stringResource(R.string.history_record_detail))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(record.title, style = MaterialTheme.typography.titleLarge)
+                Text(historyRecordAmount(record, settings), style = MaterialTheme.typography.headlineLarge, color = historyRecordColor(record))
+                Text(historyKindLabel(record), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            MoneyInlineLabelValue(label = stringResource(R.string.account_single), value = record.subtitle)
+            MoneyInlineLabelValue(label = stringResource(R.string.field_occurred_time), value = DateTimeTextFormatter.format(record.occurredAt))
+            if (record.balanceBefore != null && record.balanceAfter != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(if (record.kind == HistoryRecordKind.TRANSFER) R.string.transfer_from_account else R.string.history_balance_evidence), style = MaterialTheme.typography.labelMedium)
+                    BalanceTransitionText(before = record.balanceBefore, after = record.balanceAfter, settings = settings)
+                }
+            }
+            if (record.kind == HistoryRecordKind.TRANSFER && record.relatedBalanceBefore != null && record.relatedBalanceAfter != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.transfer_to_account), style = MaterialTheme.typography.labelMedium)
+                    BalanceTransitionText(before = record.relatedBalanceBefore, after = record.relatedBalanceAfter, settings = settings)
+                }
+            }
+            if (record.canMutate) {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        openingRecord = true
+                        scope.launch {
+                            sheetState.hide()
+                            onOpenRecord()
+                        }
+                    },
+                    enabled = !openingRecord,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(if (record.kind == HistoryRecordKind.CASH_FLOW || record.kind == HistoryRecordKind.TRANSFER) R.string.action_edit_record else R.string.history_open_record))
+                }
+            } else {
+                Text(stringResource(R.string.account_closed_readonly_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

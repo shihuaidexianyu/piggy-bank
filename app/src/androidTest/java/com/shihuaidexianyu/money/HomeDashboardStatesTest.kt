@@ -3,6 +3,7 @@ package com.shihuaidexianyu.money
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import com.shihuaidexianyu.money.domain.model.ReminderType
 import com.shihuaidexianyu.money.ui.common.AccountOptionUiModel
@@ -78,7 +79,7 @@ class HomeDashboardStatesTest {
         }
 
         composeRule.onNodeWithText("当前净资产").assertIsDisplayed()
-        composeRule.onNodeWithText("创建或重新开启可用账户").assertIsDisplayed()
+        composeRule.onNodeWithText("添加一个可用账户").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("管理账户").performClick()
         composeRule.onNodeWithText("创建第一个账户").assertDoesNotExist()
         composeRule.onNodeWithText("快速记录").assertDoesNotExist()
@@ -144,8 +145,8 @@ class HomeDashboardStatesTest {
             }
         }
 
-        composeRule.onNodeWithText("宽带费").performClick()
-        composeRule.onNodeWithText("现金").performClick()
+        composeRule.onNodeWithText("宽带费").performScrollTo().performClick()
+        composeRule.onNodeWithText("现金").performScrollTo().performClick()
         composeRule.runOnIdle {
             assertEquals(1, reminderClicks)
             assertEquals(1L, reconciledAccount)

@@ -60,6 +60,10 @@ fun AccountDetailScreen(
     onViewAllHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
+    onRecordExpense: () -> Unit = {},
+    onRecordIncome: () -> Unit = {},
+    onTransfer: () -> Unit = {},
+    transferEnabled: Boolean = true,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     CollectUiEffects(effectFlow, snackbarHostState) { }
@@ -164,7 +168,15 @@ fun AccountDetailScreen(
                         onClick = onReconcileAccount,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(R.string.balance_reconcile_title))
+                        Text(stringResource(if (state.isInvestment) R.string.balance_update_market_value else R.string.balance_reconcile_title))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        TextButton(onClick = onRecordExpense) { Text(stringResource(R.string.ledger_expense)) }
+                        TextButton(onClick = onRecordIncome) { Text(stringResource(R.string.ledger_income)) }
+                        TextButton(onClick = onTransfer, enabled = transferEnabled) { Text(stringResource(R.string.history_transfer)) }
                     }
                     // The reminder schedule line only makes sense while the reminder is enabled.
                     if (state.reminderConfig.isEnabled) {

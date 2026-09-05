@@ -5,7 +5,7 @@ package com.shihuaidexianyu.money.ui.history
  *
  * Item layout in `HistoryScreen`: one leading header item (search field, filter chips and the
  * filter summary row all live INSIDE it), then per date group a sticky date header followed by a
- * single day card holding that day's records — two items per date group.
+ * sequence of individually keyed record rows.
  */
 internal const val HISTORY_HEADER_ITEM_COUNT = 1
 
@@ -13,7 +13,7 @@ internal const val HISTORY_HEADER_ITEM_COUNT = 1
  * Index of the sticky date-header item for [anchorDateLabel], or null when the anchor is absent
  * from the loaded page (the mutation removed that day, or the first page does not reach it).
  * [recordDateLabels] carries one formatted date label per loaded record, in list order, so the
- * group index counts DAYS — not records — which is what the two-items-per-group layout needs.
+ * the offset includes both preceding date headers and preceding record rows.
  */
 internal fun historyAnchorScrollIndex(
     anchorDateLabel: String?,
@@ -22,5 +22,14 @@ internal fun historyAnchorScrollIndex(
     if (anchorDateLabel == null) return null
     val groupIndex = recordDateLabels.distinct().indexOf(anchorDateLabel)
     if (groupIndex < 0) return null
-    return HISTORY_HEADER_ITEM_COUNT + groupIndex * 2
+    return HISTORY_HEADER_ITEM_COUNT + groupIndex + recordDateLabels.indexOf(anchorDateLabel)
+}
+
+/** Select the balance belonging to the scoped account, including receiving-side transfers. */
+internal fun historyAccountBalanceAfter(record: HistoryRecordUiModel, accountId: Long): Long? = when {
+    accountId !in record.accountIds -> null
+    record.primaryAccountId == accountId -> record.balanceAfter
+    record.kind != HistoryRecordKind.TRANSFER -> record.balanceAfter
+    record.primaryAccountId != null -> record.relatedBalanceAfter
+    else -> null
 }

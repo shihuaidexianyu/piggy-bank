@@ -10,13 +10,13 @@
     <string name="shortcut_balance_check_long">批量核对账户余额</string>
 
     <!-- Home -->
-    <string name="home_title">首页</string>
+    <string name="home_title">总览</string>
     <string name="home_load_failed">首页加载失败，请重试</string>
     <string name="home_create_first_account">创建第一个账户</string>
     <string name="home_create_first_account_description">创建账户后，就能开始记录收入、支出和转账。</string>
     <string name="home_create_now">立即创建</string>
-    <string name="home_open_account_required">创建或重新开启可用账户</string>
-    <string name="home_open_account_required_description">当前没有可记账的开放账户，历史净资产仍会保留。</string>
+    <string name="home_open_account_required">添加一个可用账户</string>
+    <string name="home_open_account_required_description">已有账户都已关闭。你可以创建账户，或重新开启原来的账户。</string>
     <string name="home_manage_accounts">管理账户</string>
     <string name="home_settings">设置</string>
     <string name="home_reminders">提醒</string>
@@ -34,8 +34,8 @@
     <string name="home_period_week">周</string>
     <string name="home_period_month">月</string>
     <string name="home_period_year">年</string>
-    <string name="home_funding_assets">现金资产</string>
-    <string name="home_investment_assets">投资资产</string>
+    <string name="home_funding_assets">日常账户</string>
+    <string name="home_investment_assets">投资账户</string>
     <string name="home_week_investment_pnl">本周投资损益</string>
     <string name="home_month_investment_pnl">本月投资损益</string>
     <string name="home_year_investment_pnl">今年投资损益</string>
@@ -48,8 +48,6 @@
     <string name="home_savings_goal_achieved">已达成目标</string>
     <string name="home_savings_goal_not_set_description">尚未设置净资产目标</string>
     <string name="home_savings_goal_save_failed">净资产目标保存失败，请重试</string>
-    <string name="home_recent_records">最近记录</string>
-    <string name="home_view_all">查看全部</string>
     <string name="action_retry">重试</string>
     <string name="async_empty">暂无数据</string>
 
@@ -108,7 +106,10 @@
     <string name="accounts_create">新建账户</string>
     <string name="accounts_management">管理</string>
     <string name="accounts_order">账户顺序</string>
-    <string name="accounts_reorder_drag_hint">拖拽调整顺序</string>
+    <string name="accounts_reorder_drag_hint">拖动右侧把手，调整组内顺序</string>
+    <string name="accounts_reorder_single_hint">同组有多个账户时，可以调整顺序</string>
+    <string name="accounts_order_more">更多排序操作</string>
+    <string name="accounts_order_saving">正在保存顺序</string>
     <string name="accounts_no_open">还没有开放账户</string>
     <string name="accounts_none">还没有账户</string>
     <string name="accounts_closed_hint">关闭账户可以在下方查看。</string>
@@ -149,11 +150,19 @@
 
     <!-- History -->
     <string name="history_title">明细</string>
+    <string name="history_search">搜索账目</string>
+    <string name="history_close_search">关闭搜索</string>
+    <string name="history_day_income">收 %1$s</string>
+    <string name="history_day_expense">支 %1$s</string>
+    <string name="history_post_balance">记后余额 %1$s</string>
+    <string name="history_record_detail">账目详情</string>
+    <string name="history_balance_evidence">余额变化</string>
+    <string name="history_open_record">查看完整记录</string>
     <string name="history_filter">筛选</string>
     <string name="history_filter_account">筛选账户</string>
     <string name="history_all_accounts">全部账户</string>
     <string name="history_type">类型</string>
-    <string name="history_business_semantic">业务含义</string>
+    <string name="history_business_semantic">账目内容</string>
     <string name="history_business_all">全部业务</string>
     <string name="history_daily_expense">日常消费</string>
     <string name="history_investment_pnl">投资盈亏</string>
@@ -214,10 +223,10 @@
 
     <!-- Settings -->
     <string name="settings_title">设置</string>
-    <string name="settings_section_display">显示</string>
-    <string name="settings_section_privacy">隐私</string>
-    <string name="settings_section_notifications">通知</string>
-    <string name="settings_section_data">数据</string>
+    <string name="settings_section_display">外观</string>
+    <string name="settings_section_privacy">隐私与安全</string>
+    <string name="settings_section_notifications">提醒与通知</string>
+    <string name="settings_section_data">数据与连接</string>
     <string name="settings_section_about">关于</string>
     <string name="settings_export_chooser">导出数据</string>
     <string name="settings_export_plaintext_title">导出明文备份</string>
@@ -229,7 +238,7 @@
     <string name="settings_amount_color">金额颜色习惯</string>
     <string name="settings_amount_color_description">统一首页、历史和金额差额的红绿显示</string>
     <string name="settings_currency_symbol">货币符号</string>
-    <string name="settings_currency_description">影响金额显示格式，最多 4 个字符</string>
+    <string name="settings_currency_description">只改变显示符号，不进行汇率换算</string>
     <string name="settings_import_overwrite_title">覆盖导入数据</string>
     <string name="settings_confirm_import">确认导入</string>
     <string name="settings_relock_title">离开后重新锁定</string>
@@ -238,7 +247,7 @@
     <string name="settings_biometric_lock">生物识别锁定</string>
     <string name="settings_biometric_description">启动应用时需验证生物识别或屏幕锁定方式</string>
     <string name="settings_relock_time">重新锁定时间</string>
-    <string name="settings_relock_description">使用单调计时，熄屏会立即锁定</string>
+    <string name="settings_relock_description">离开应用后按设定时间锁定；熄屏时立即锁定</string>
     <string name="settings_hide_recents">隐藏最近任务内容</string>
     <string name="settings_hide_notifications">隐藏通知金额</string>
     <string name="settings_notification_permission_channels">通知权限与渠道</string>
@@ -255,16 +264,16 @@
     <string name="settings_export_data">导出数据</string>
     <string name="settings_exporting">导出中</string>
     <string name="settings_import_data">导入数据</string>
-    <string name="settings_lan_ai">局域网 AI 服务</string>
-    <string name="settings_lan_ai_description">让电脑上的 AI 查询、统计和修改账目；修改可通过 Journal 逐步撤销</string>
-    <string name="lan_discard_title">放弃撤销资格？</string>
-    <string name="lan_discard_message">这不会再次修改账目，但会把“%1$s”移出可撤销栈。只有确认当前数据应当保留时才继续。</string>
+    <string name="settings_lan_ai">连接电脑</string>
+    <string name="settings_lan_ai_description">让电脑上的 AI 协助管理账目，修改可撤销</string>
+    <string name="lan_discard_title">保留这次修改？</string>
+    <string name="lan_discard_message">将无法再通过这里撤销“%1$s”。账目会保持当前状态。</string>
     <string name="lan_discard_confirm">放弃撤销</string>
-    <string name="lan_screen_title">局域网 AI 服务</string>
+    <string name="lan_screen_title">连接电脑</string>
     <string name="lan_section_service">服务</string>
     <string name="lan_current_status">当前状态</string>
     <string name="lan_allow_write">允许 AI 修改账目</string>
-    <string name="lan_allow_write_description">开启后不逐笔审批；每次成功修改都会原子写入 Journal</string>
+    <string name="lan_allow_write_description">允许电脑直接修改账目，无需逐笔确认；可在修改记录中撤销</string>
     <string name="lan_stop_service">停止服务</string>
     <string name="lan_start_session">启动本次会话</string>
     <string name="lan_section_connection">电脑连接</string>
@@ -273,7 +282,7 @@
     <string name="lan_copy">复制</string>
     <string name="lan_copy_command">复制命令</string>
     <string name="lan_manual_pairing">手动配对（备用）</string>
-    <string name="lan_manual_pairing_description">自动发现不可用时，在电脑上运行 pairing 命令并输入此配对码</string>
+    <string name="lan_manual_pairing_description">自动连接不可用时，展开配对码并复制连接命令。</string>
     <string name="lan_discovery_active">已在局域网内广播，电脑可自动发现本机</string>
     <string name="lan_paired_client">已配对电脑</string>
     <string name="lan_automatic_end">自动结束时间</string>
@@ -287,24 +296,24 @@
     <string name="lan_device_revoke_title">撤销配对？</string>
     <string name="lan_device_revoke_message">撤销后，设备「%1$s」的当前会话会立即断开，再次连接需要重新配对。</string>
     <string name="lan_device_revoked">已撤销设备配对</string>
-    <string name="lan_section_journal">AI Journal</string>
+    <string name="lan_section_journal">AI 修改记录</string>
     <string name="lan_journal_undo_count">%1$d 步可撤销</string>
     <string name="lan_undo_latest">撤销最近一步</string>
-    <string name="lan_undo_description">严格按栈顶逐步回退；检测到记录被后来修改时会停止</string>
+    <string name="lan_undo_description">从最近一次修改开始撤销。如果账目后来有变动，会保留现状并提示你。</string>
     <string name="lan_processing">处理中</string>
-    <string name="lan_current_stack_top">当前栈顶：%1$s</string>
-    <string name="lan_keep_and_discard">保留数据并放弃撤销此项</string>
+    <string name="lan_current_stack_top">最近一次修改：%1$s</string>
+    <string name="lan_keep_and_discard">保留当前账目</string>
     <string name="lan_journal_empty">还没有 AI 修改记录</string>
-    <string name="lan_journal_empty_description">查询和统计不会进入 Journal；只有成功的数据修改才会入栈。</string>
+    <string name="lan_journal_empty_description">电脑修改过的账目会显示在这里，查询不会产生修改记录。</string>
     <string name="lan_recent_entries">最近记录</string>
     <string name="lan_journal_entry_subtitle">%1$s · %2$s</string>
-    <string name="lan_security_notice">已配对设备可长期免密重连，可在「已配对设备」中随时撤销。协议当前为可信局域网明文传输，请勿在公共 Wi‑Fi 上开启。</string>
+    <string name="lan_security_notice">连接内容未加密，请只在可信的家庭或办公网络使用。已配对设备可自动重连，你可以随时取消配对。</string>
     <string name="lan_status_stopped">已停止</string>
     <string name="lan_status_starting">启动中</string>
     <string name="lan_status_running">运行中</string>
     <string name="lan_status_error">异常</string>
     <string name="lan_status_stopped_description">启动后，电脑可通过同一局域网连接</string>
-    <string name="lan_status_starting_description">正在创建临时端口和配对码</string>
+    <string name="lan_status_starting_description">正在准备电脑连接…</string>
     <string name="lan_status_waiting_description">等待电脑连接；同一局域网的电脑可自动发现本机</string>
     <string name="lan_status_connected_description">%1$s 已连接</string>
     <string name="lan_status_error_description">局域网服务启动失败</string>
@@ -317,8 +326,8 @@
     <string name="lan_undo_succeeded">已撤销：%1$s</string>
     <string name="lan_undo_failed">撤销失败</string>
     <string name="lan_discard_succeeded">已放弃该项的撤销资格</string>
-    <string name="lan_stack_changed">Journal 栈顶已变化，请重试</string>
-    <string name="lan_journal_update_failed">无法更新 Journal</string>
+    <string name="lan_stack_changed">最新修改已变化，请刷新后重试</string>
+    <string name="lan_journal_update_failed">无法更新修改记录</string>
     <string name="lan_session_timed_out">系统已结束本次长时间局域网会话</string>
     <string name="lan_port_start_failed">无法启动局域网端口</string>
     <string name="lan_notification_channel">局域网 AI 连接</string>
@@ -350,7 +359,7 @@
     <string name="settings_history">历史</string>
     <string name="settings_version">版本</string>
     <string name="settings_offline_safety">离线与数据安全</string>
-    <string name="settings_offline_safety_copy">完全离线运行；账本仅保存在本机，系统自动备份和设备迁移均已关闭。手动导出是未加密 JSON，请自行保存到可信位置。</string>
+    <string name="settings_offline_safety_copy">账目保存在这台设备上，不会自动备份。换机前请导出备份；连接电脑需由你手动开启。</string>
     <string name="settings_channel_enabled">已开启</string>
     <string name="settings_channel_disabled">已关闭</string>
     <string name="settings_notifications_available">权限和渠道均可用</string>
@@ -372,7 +381,7 @@
     <!-- Account detail -->
     <string name="account_detail_title">账户详情</string>
     <string name="account_detail_missing">账户不存在</string>
-    <string name="account_detail_missing_description">这个账户可能已经失效，或者当前路由里的账户 ID 不可用。</string>
+    <string name="account_detail_missing_description">未找到这个账户，请返回账户列表查看。</string>
     <string name="account_detail_back_to_list">返回账户列表</string>
     <string name="account_detail_last_reconciled_format">最近核对 %1$s</string>
     <string name="account_detail_never_reconciled">尚未核对余额</string>
@@ -546,9 +555,9 @@
     <string name="balance_above_system">高于系统记录</string>
     <string name="balance_below_system">低于系统记录</string>
     <string name="balance_unchanged_hint">余额无变化，可直接确认</string>
-    <string name="balance_correction_hint">如果这是漏记的收支，可以先补记一笔；如果只是实际余额修正，可直接保存本次核对。</string>
+    <string name="balance_correction_hint">漏记了收支？可以先补记一笔。直接保存会将差额记为对账调整。</string>
     <string name="balance_delta_investment">本次损益</string>
-    <string name="balance_investment_hint">市值涨跌直接保存即可，将计入投资损益；资金转入或转出请使用转账记录。</string>
+    <string name="balance_investment_hint">保存后，差额计入投资损益。资金转入或转出请另记转账。</string>
     <string name="balance_save_investment_update">保存市值更新</string>
     <string name="balance_never_checked">首次核对该账户</string>
     <string name="balance_checked_today">今天已核对过</string>
@@ -604,14 +613,12 @@
 
     <!-- Secondary screens -->
     <string name="accounts_reorder_empty_description">创建账户后才能调整顺序。</string>
-    <string name="accounts_reorder_hint">账户页按「日常 / 投资」分组展示，隐藏账户单独排列；此页的顺序在每个分组内部生效。</string>
     <string name="accounts_sort_balance">按余额</string>
     <string name="accounts_sort_recent">最近使用</string>
     <string name="accounts_sort_name">按名称</string>
     <string name="action_move_up">上移</string>
     <string name="action_move_down">下移</string>
-    <string name="accounts_save_order">保存顺序</string>
-    <string name="accounts_restore_order">恢复默认顺序</string>
+    <string name="accounts_restore_order">撤销本次调整</string>
     <string name="accounts_hidden_short">已隐藏</string>
     <string name="lock_checking">正在检查应用锁…</string>
     <string name="lock_locked">账本已锁定</string>
@@ -661,4 +668,16 @@
     <string name="ledger_action_menu_hint">选择这次要记录的内容</string>
     <string name="ledger_reconcile">核对</string>
     <string name="nav_history">明细</string>
+    <string name="home_period_activity">期间收支</string>
+    <string name="balance_saved_brief">余额已核对</string>
+    <string name="balance_value_saved_brief">市值已更新</string>
+    <string name="balance_update_market_value">更新市值</string>
+    <string name="balance_recorded_market_value">账面市值</string>
+    <string name="balance_current_market_value">实际市值</string>
+    <string name="balance_market_value_unchanged_hint">市值无变化，可直接确认</string>
+    <string name="account_optional_settings">图标与核对提醒</string>
+    <string name="action_expand">展开</string>
+    <string name="account_reminder_off">核对提醒已关闭，可稍后设置</string>
+    <string name="history_remove_filter">移除此筛选</string>
+    <string name="accounts_need_check_format">%1$d 个账户待核对</string>
 </resources>

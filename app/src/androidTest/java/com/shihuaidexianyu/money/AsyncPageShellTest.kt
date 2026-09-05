@@ -16,7 +16,8 @@ import org.junit.Test
 
 class AsyncPageShellTest {
     @Test
-    fun historyBusinessSemanticAppearsAsAnActiveFilterAndOpensItsChoices() {
+    fun historyBusinessSemanticCanBeRemovedDirectlyAndEditedFromFilters() {
+        var removed: HistoryBusinessSemantic? = null
         composeRule.setContent {
             MoneyTheme {
                 HistoryScreen(
@@ -28,6 +29,7 @@ class AsyncPageShellTest {
                     onKeywordChange = {},
                     onExcludeKeywordChange = {},
                     onRecordTypesChange = {},
+                    onBusinessSemanticChange = { removed = it },
                     onAccountChange = {},
                     onDateRangeChange = { _, _ -> },
                     onMinAmountChange = {},
@@ -42,6 +44,9 @@ class AsyncPageShellTest {
 
         composeRule.onNodeWithText("筛选 1").assertIsDisplayed()
         composeRule.onNodeWithText("投资盈亏").performClick()
+        composeRule.runOnIdle { assertEquals(HistoryBusinessSemantic.ALL, removed) }
+        composeRule.onNodeWithText("筛选 1").performClick()
+        composeRule.onNodeWithText("账目内容").performClick()
         composeRule.onNodeWithText("日常消费").assertIsDisplayed()
         composeRule.onNodeWithText("投资收益").assertIsDisplayed()
         composeRule.onNodeWithText("投资亏损").assertIsDisplayed()
@@ -68,7 +73,7 @@ class AsyncPageShellTest {
             }
         }
 
-        composeRule.onNodeWithText("首页").assertIsDisplayed()
+        composeRule.onNodeWithText("总览").assertIsDisplayed()
         composeRule.onNodeWithText("创建第一个账户").assertIsDisplayed()
         composeRule.onNodeWithText("立即创建").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("本月").assertDoesNotExist()
@@ -101,7 +106,7 @@ class AsyncPageShellTest {
             }
         }
 
-        composeRule.onNodeWithText("历史").assertIsDisplayed()
+        composeRule.onNodeWithText("明细").assertIsDisplayed()
         composeRule.onNodeWithText("午餐").assertIsDisplayed()
         composeRule.onNodeWithText("没有符合筛选条件的记录").assertIsDisplayed()
         composeRule.onNodeWithText("排除关键词").assertDoesNotExist()

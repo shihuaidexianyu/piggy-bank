@@ -139,6 +139,16 @@ fun EditTransferScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null) {
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
+                    label = stringResource(R.string.action_save_changes),
+                )
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -226,12 +236,7 @@ fun EditTransferScreen(
                     timeSubtitle = stringResource(R.string.ledger_edit_time_description),
                     errorText = state.occurredAtError,
                 )
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = stringResource(R.string.action_save_changes),
-                )
+
             }
         }
         if (state.hasConflict) {

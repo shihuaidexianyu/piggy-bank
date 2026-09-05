@@ -1,6 +1,8 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
@@ -9,6 +11,10 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.shihuaidexianyu.money.MoneyAppContainer
+import com.shihuaidexianyu.money.R
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.RootSnackbarAction
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailScreen
 import com.shihuaidexianyu.money.ui.accounts.AccountDetailViewModel
 import com.shihuaidexianyu.money.ui.accounts.CreateAccountScreen
@@ -78,11 +84,36 @@ internal fun NavGraphBuilder.addAccountsGraph(
             },
         )
         val state by viewModel.uiState.collectAsStateWithLifecycle()
+        val availabilityFlow = remember(container) {
+            openAccountAvailability(container.accountRepository.observeOpenAccounts())
+        }
+        val availability by availabilityFlow.collectAsStateWithLifecycle(initialValue = OpenAccountAvailability.Loading)
+        val rootDispatcher = LocalRootSnackbarDispatcher.current
+        val needSecondAccountMessage = stringResource(R.string.ledger_fab_need_second_message)
+        val createAccountLabel = stringResource(R.string.accounts_create)
         AccountDetailScreen(
             state = state,
             effectFlow = viewModel.effectFlow,
             onManageAccount = { navController.navigate(MoneyDestination.editAccountRoute(accountId)) },
             onReconcileAccount = { navController.navigate(MoneyDestination.updateBalanceRoute(accountId)) },
+            onRecordExpense = {
+                navController.navigate(MoneyDestination.recordCashFlowRoute(com.shihuaidexianyu.money.domain.model.CashFlowDirection.OUTFLOW, accountId))
+            },
+            onRecordIncome = {
+                navController.navigate(MoneyDestination.recordCashFlowRoute(com.shihuaidexianyu.money.domain.model.CashFlowDirection.INFLOW, accountId))
+            },
+            transferEnabled = availability is OpenAccountAvailability.Data,
+            onTransfer = {
+                val current = availability as? OpenAccountAvailability.Data
+                if (current != null) {
+                    when (resolveLedgerFabAction(LedgerFabAction.TRANSFER, current)) {
+                        LedgerFabDecision.OpenTransferForm -> navController.navigate(MoneyDestination.recordTransferRoute(accountId))
+                        else -> rootDispatcher?.dispatch(
+                            rootSnackbarEffect(needSecondAccountMessage, createAccountLabel, RootSnackbarAction.CreateAccount),
+                        )
+                    }
+                }
+            },
             onReopenAccount = viewModel::reopenAccount,
             onBackToAccounts = closeAccountsFlow,
             onRetry = viewModel::retry,

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Primary amount input for ledger forms. The Material 3 clickable surface preserves proper
- * interaction semantics while the large centred amount restores the form's visual hierarchy.
+ * interaction semantics while keeping the amount aligned with the rest of the form.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -87,15 +87,20 @@ internal fun MoneyAmountHeroField(
         shape = MaterialTheme.shapes.large,
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 24.dp, horizontal = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(vertical = MoneyDimens.SpacingXl),
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Text(
+                text = label + " · " + LocalCurrencySymbol.current,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
             Text(
                 text = displayValue,
                 style = amountStyle,
                 color = amountColor,
-                maxLines = 1,
                 modifier = Modifier.clearAndSetSemantics {},
             )
             if (isError && supportingText != null) {

@@ -105,6 +105,16 @@ fun EditBalanceUpdateScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null) {
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
+                    label = stringResource(R.string.action_save_changes),
+                )
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -126,13 +136,13 @@ fun EditBalanceUpdateScreen(
                 )
                 MoneyInlineLabelValue(label = stringResource(R.string.account_single), value = state.accountName)
                 MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_system),
+                    label = stringResource(if (state.isInvestmentAccount) R.string.balance_recorded_market_value else R.string.balance_system),
                     value = formatInAppAmount(state.systemBalanceBeforeUpdate, settings),
                 )
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
-                    label = stringResource(R.string.balance_actual),
+                    label = stringResource(if (state.isInvestmentAccount) R.string.balance_current_market_value else R.string.balance_actual),
                     allowSigned = true,
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
@@ -165,12 +175,7 @@ fun EditBalanceUpdateScreen(
                         }
                     },
                 )
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    enabled = !state.isLoading && !state.hasConflict && state.pendingTerminal == null,
-                    label = stringResource(R.string.action_save_changes),
-                )
+
                 if (state.hasConflict) {
                     MoneyTonalButton(
                         onClick = viewModel::reload,

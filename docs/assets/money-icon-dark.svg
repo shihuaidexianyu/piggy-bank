@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="512" height="512" role="img" aria-labelledby="title description">
-  <title id="title">Money 浅色应用图标</title>
-  <desc id="description">浅灰底上的珊瑚红钱币，中央留出圆角方孔。</desc>
+  <title id="title">Money 深色应用图标</title>
+  <desc id="description">炭黑底上的珊瑚红钱币，中央留出圆角方孔。</desc>
   <!-- Match the launcher's central 72 dp viewport; Android supplies its own outer mask. -->
-  <rect x="18" y="18" width="72" height="72" rx="15.75" fill="#FAFAFA" />
+  <rect x="18" y="18" width="72" height="72" rx="15.75" fill="#18181B" />
   <path d="M54,30 C67.255,30 78,40.745 78,54 C78,67.255 67.255,78 54,78 C40.745,78 30,67.255 30,54 C30,40.745 40.745,30 54,30 Z M47,44 H61 C62.657,44 64,45.343 64,47 V61 C64,62.657 62.657,64 61,64 H47 C45.343,64 44,62.657 44,61 V47 C44,45.343 45.343,44 47,44 Z" transform="rotate(45 54 54)" fill="#E5484D" fill-rule="evenodd" />
 </svg>

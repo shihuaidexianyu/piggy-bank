@@ -25,8 +25,7 @@ fun AdaptiveTopLevelNavigation(
     onDestinationClick: (MoneyDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Shared item colors so the bottom bar and the rail render selection identically: a jade
-    // indicator capsule with onPrimaryContainer glyphs, sitting on the surfaceContainer strip.
+    // Shared neutral selection colors keep the bottom bar and rail visually consistent.
     val selectedItemColor = MaterialTheme.colorScheme.onPrimaryContainer
     val unselectedItemColor = MaterialTheme.colorScheme.onSurfaceVariant
     val indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -34,12 +33,12 @@ fun AdaptiveTopLevelNavigation(
     when (type) {
         AdaptiveNavigationType.BOTTOM_BAR -> Surface(
             modifier = modifier.testTag("top_level_bottom_bar"),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = MaterialTheme.colorScheme.background,
         ) {
             Column {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = MaterialTheme.colorScheme.background,
                     tonalElevation = 0.dp,
                 ) {
                     MoneyDestination.topLevel.forEach { destination ->
@@ -70,7 +69,7 @@ fun AdaptiveTopLevelNavigation(
 
         AdaptiveNavigationType.NAVIGATION_RAIL -> NavigationRail(
             modifier = modifier.testTag("top_level_navigation_rail"),
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.background,
         ) {
             MoneyDestination.topLevel.forEach { destination ->
                 val label = stringResource(destination.labelRes)

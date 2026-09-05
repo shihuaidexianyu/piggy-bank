@@ -126,6 +126,11 @@ fun EditAccountScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && !state.isClosed) {
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -229,12 +234,7 @@ fun EditAccountScreen(
                     onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
                 )
             }
-            item {
-                MoneyCard {
-                    MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving, enabled = !state.isLoading)
-                }
-            }
-            item { MoneySectionHeader(title = stringResource(R.string.account_close_section)) }
+                item { MoneySectionHeader(title = stringResource(R.string.account_close_section)) }
             item {
                 MoneyListSection {
                     MoneyListRow(

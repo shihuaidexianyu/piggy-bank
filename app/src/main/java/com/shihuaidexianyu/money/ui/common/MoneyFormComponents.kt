@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,18 +71,21 @@ fun MoneyFormPage(
     onBack: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     listState: LazyListState? = null,
-    contentPadding: PaddingValues = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = MoneyDimens.bottomNavContentPadding),
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(14.dp),
+    contentPadding: PaddingValues = PaddingValues(start = MoneyDimens.screenHorizontalPadding, top = 8.dp, end = MoneyDimens.screenHorizontalPadding, bottom = MoneyDimens.formBottomPadding),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(MoneyDimens.SpacingXl),
+    footer: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val defaultListState = rememberLazyListState()
     val resolvedListState = listState ?: defaultListState
     val appBarScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
+                .widthIn(max = 640.dp)
                 .fillMaxSize()
+                .imePadding()
                 .nestedScroll(appBarScrollBehavior.nestedScrollConnection),
         ) {
             TopAppBar(
@@ -110,6 +115,15 @@ fun MoneyFormPage(
                 verticalArrangement = verticalArrangement,
             ) {
                 content()
+            }
+            if (footer != null) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = MoneyDimens.screenHorizontalPadding, vertical = MoneyDimens.SpacingMd),
+                    ) {
+                        footer()
+                    }
+                }
             }
         }
         snackbarHostState?.let { hostState ->
@@ -466,15 +480,8 @@ fun MoneySaveButton(
             .fillMaxWidth()
             .heightIn(min = 56.dp),
         enabled = enabled && !isSaving,
-        // Pill capsule: the one fully-rounded filled shape on every form, matching the home FAB.
-        shape = CircleShape,
-        // Filled buttons are the highest-emphasis surface on the page; a whisper of shadow
-        // (resting only, no press grow) is what reads as "quality" against the flat cards.
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 1.dp,
-            pressedElevation = 1.dp,
-            disabledElevation = 0.dp,
-        ),
+        shape = MaterialTheme.shapes.medium,
+        elevation = null,
     ) {
         if (isSaving) {
             androidx.compose.material3.CircularProgressIndicator(

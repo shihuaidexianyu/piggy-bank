@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/assets/money-icon.svg" width="144" height="144" alt="Money 应用图标" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/money-icon-dark.svg" />
+    <img src="docs/assets/money-icon.svg" width="144" height="144" alt="Money 应用图标" />
+  </picture>
 </p>
 
 <h1 align="center">Money</h1>
@@ -9,7 +12,7 @@
 </p>
 
 <p align="center">
-  当前版本 <code>2.5.33</code>（versionCode <code>142</code>）
+  当前版本 <code>2.6.1</code>（versionCode <code>145</code>）
 </p>
 
 ## ✨ 功能特性

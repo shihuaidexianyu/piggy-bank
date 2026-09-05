@@ -76,6 +76,8 @@ class TransactionRepositoryContractTest {
                     else -> null
                 }
             },
+            // Both implementations must start from the same opening balance in seedAccount().
+            accountInitialBalanceLookup = { accountId -> if (accountId == 1L) 100_000L else 0L },
             accountKindLookup = { accountId ->
                 if (accountId == 2L) AccountKind.INVESTMENT else AccountKind.FUNDING
             },

@@ -9,11 +9,10 @@ import org.junit.Test
 class HistoryScrollAnchorsTest {
     @Test
     fun `anchor in a day with multiple records targets that date header, not the record offset`() {
-        // Three records on 04-03 and two on 04-02: the group index counts days, so the 04-02
-        // header is item header + 2, not header + 3.
+        // The preceding group contributes one date header and three separate record rows.
         val labels = listOf("2024-04-03", "2024-04-03", "2024-04-03", "2024-04-02", "2024-04-02")
 
-        assertEquals(HISTORY_HEADER_ITEM_COUNT + 2, historyAnchorScrollIndex("2024-04-02", labels))
+        assertEquals(HISTORY_HEADER_ITEM_COUNT + 4, historyAnchorScrollIndex("2024-04-02", labels))
     }
 
     @Test

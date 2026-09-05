@@ -10,6 +10,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,6 +55,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -207,6 +216,11 @@ fun MoneyNavGraph(
         LocalWindowInfo.current.containerSize.width.toDp().value.toInt()
     }
     val navigationType = adaptiveNavigationType(windowWidthDp)
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val systemBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    var navigationBarHeight by remember { mutableStateOf(81.dp) }
+    var navigationRailWidth by remember { mutableStateOf(80.dp) }
     val openAccountAvailabilityFlow = remember(container) {
         openAccountAvailability(container.accountRepository.observeOpenAccounts())
     }
@@ -214,6 +228,7 @@ fun MoneyNavGraph(
         initialValue = OpenAccountAvailability.Loading,
     )
     var fabExpanded by remember { mutableStateOf(false) }
+    var historyScrolled by remember { mutableStateOf(false) }
     val createFirstAccountMessage = stringResource(R.string.ledger_fab_create_first_message)
     val createAccountLabel = stringResource(R.string.accounts_create)
     val needSecondAccountMessage = stringResource(R.string.ledger_fab_need_second_message)
@@ -348,101 +363,132 @@ fun MoneyNavGraph(
             rootSnackbarQueue.enqueue(effect)
         },
     ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        // Every screen hosts its own top app bar, which consumes the status bar inset itself;
-        // this Scaffold has no topBar, so reserving the top inset here too would double-pad
-        // the header with dead space. Keep only the bottom/horizontal insets for content.
-        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(
-            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
-        ),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
-                ExtendedFloatingActionButton(
-                    onClick = { fabExpanded = true },
-                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.ledger_fab_title)) },
-                    // Full-round capsule in primary roles, matching the filled primary button used
-                    // inside dialogs.
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-        },
-        bottomBar = {
-            if (isTopLevel && navigationType == AdaptiveNavigationType.BOTTOM_BAR) {
-                AdaptiveTopLevelNavigation(
-                    type = navigationType,
-                    currentRoute = currentRoute,
-                    onDestinationClick = ::navigateTopLevel,
-                )
-            }
-        },
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (isTopLevel && navigationType == AdaptiveNavigationType.NAVIGATION_RAIL) {
-                AdaptiveTopLevelNavigation(
-                    type = navigationType,
-                    currentRoute = currentRoute,
-                    onDestinationClick = ::navigateTopLevel,
-                )
-            }
-            NavHost(
-                navController = navController,
-                startDestination = MoneyDestination.Home.route,
-                modifier = Modifier.fillMaxSize(),
-            enterTransition = {
-                    val initial = initialState.destination.route
-                    val target = targetState.destination.route
-                    if (isTopLevelTransition(initial, target)) {
-                        topLevelEnterTransition()
-                    } else {
-                        subPageEnterTransition()
-                    }
-                },
-                exitTransition = {
-                    val initial = initialState.destination.route
-                    val target = targetState.destination.route
-                    if (isTopLevelTransition(initial, target)) {
-                        topLevelExitTransition()
-                    } else {
-                        subPageExitTransition()
-                    }
-                },
-                popEnterTransition = {
-                    val initial = initialState.destination.route
-                    val target = targetState.destination.route
-                    if (isTopLevelTransition(initial, target)) {
-                        topLevelEnterTransition()
-                    } else {
-                        popEnterTransition()
-                    }
-                },
-                popExitTransition = {
-                    val initial = initialState.destination.route
-                    val target = targetState.destination.route
-                    if (isTopLevelTransition(initial, target)) {
-                        topLevelExitTransition()
-                    } else {
-                        popExitTransition()
-                    }
-                },
-                ) {
-                    addTopLevelGraph(
-                        navController = navController,
-                        container = container,
-                        onBiometricLockChange = onBiometricLockChange,
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            // Every screen hosts its own top app bar, which consumes the status bar inset itself;
+            // this Scaffold has no topBar, so reserving the top inset here too would double-pad
+            // the header with dead space. Keep only the bottom/horizontal insets for content.
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(
+                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+            ),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                if (isTopLevel && shouldRenderLedgerFab(openAccountAvailability)) {
+                    ExtendedFloatingActionButton(
+                        onClick = { fabExpanded = true },
+                        expanded = currentRoute != MoneyDestination.History.route || !historyScrolled,
+                        icon = {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = if (currentRoute == MoneyDestination.History.route && historyScrolled) {
+                                    stringResource(R.string.ledger_fab_title)
+                                } else null,
+                            )
+                        },
+                        text = { Text(stringResource(R.string.ledger_fab_title)) },
+                        // Full-round capsule in primary roles, matching the filled primary button used
+                        // inside dialogs.
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     )
-                    addAccountsGraph(navController = navController, container = container)
-                    addRecordGraph(navController = navController, container = container)
-                    addBalanceGraph(navController = navController, container = container)
-                    addReminderGraph(navController = navController, container = container)
+                }
+            },
+            bottomBar = {
+                if (isTopLevel && navigationType == AdaptiveNavigationType.BOTTOM_BAR) {
+                    AdaptiveTopLevelNavigation(
+                        type = navigationType,
+                        currentRoute = currentRoute,
+                        onDestinationClick = ::navigateTopLevel,
+                        modifier = Modifier.onSizeChanged {
+                            navigationBarHeight = with(density) { it.height.toDp() } - systemBottomPadding
+                        },
+                    )
+                }
+            },
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = innerPadding.calculateStartPadding(layoutDirection),
+                        end = innerPadding.calculateEndPadding(layoutDirection),
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = systemBottomPadding,
+                    ),
+            ) {
+                CompositionLocalProvider(
+                    LocalTopLevelContentPadding provides PaddingValues(
+                        start = if (navigationType == AdaptiveNavigationType.NAVIGATION_RAIL) navigationRailWidth else 0.dp,
+                        bottom = if (navigationType == AdaptiveNavigationType.BOTTOM_BAR) navigationBarHeight else 0.dp,
+                    ),
+                ) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = MoneyDestination.Home.route,
+                        modifier = Modifier.fillMaxSize(),
+                        enterTransition = {
+                            val initial = initialState.destination.route
+                            val target = targetState.destination.route
+                            if (isTopLevelTransition(initial, target)) {
+                                topLevelEnterTransition()
+                            } else {
+                                subPageEnterTransition()
+                            }
+                        },
+                        exitTransition = {
+                            val initial = initialState.destination.route
+                            val target = targetState.destination.route
+                            if (initial == MoneyDestination.History.route && target !in topLevelRouteSet) {
+                                ExitTransition.None
+                            } else if (isTopLevelTransition(initial, target)) {
+                                topLevelExitTransition()
+                            } else {
+                                subPageExitTransition()
+                            }
+                        },
+                        popEnterTransition = {
+                            val initial = initialState.destination.route
+                            val target = targetState.destination.route
+                            if (target == MoneyDestination.History.route && initial !in topLevelRouteSet) {
+                                EnterTransition.None
+                            } else if (isTopLevelTransition(initial, target)) {
+                                topLevelEnterTransition()
+                            } else {
+                                popEnterTransition()
+                            }
+                        },
+                        popExitTransition = {
+                            val initial = initialState.destination.route
+                            val target = targetState.destination.route
+                            if (isTopLevelTransition(initial, target)) {
+                                topLevelExitTransition()
+                            } else {
+                                popExitTransition()
+                            }
+                        },
+                    ) {
+                        addTopLevelGraph(
+                            navController = navController,
+                            container = container,
+                            onBiometricLockChange = onBiometricLockChange,
+                            onHistoryScrolledChange = { historyScrolled = it },
+                        )
+                        addAccountsGraph(navController = navController, container = container)
+                        addRecordGraph(navController = navController, container = container)
+                        addBalanceGraph(navController = navController, container = container)
+                        addReminderGraph(navController = navController, container = container)
+                    }
+                }
+                if (isTopLevel && navigationType == AdaptiveNavigationType.NAVIGATION_RAIL) {
+                    AdaptiveTopLevelNavigation(
+                        type = navigationType,
+                        currentRoute = currentRoute,
+                        onDestinationClick = ::navigateTopLevel,
+                        modifier = Modifier.align(Alignment.TopStart).onSizeChanged {
+                            navigationRailWidth = with(density) { it.width.toDp() }
+                        },
+                    )
                 }
             }
         }
@@ -455,102 +501,34 @@ private fun LedgerActionDialog(
     onDismiss: () -> Unit,
     onAction: (LedgerFabAction) -> Unit,
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-    ) {
-        // Icon direction semantics mirror RecordKindBadge: income trends up, expense down.
-        val moneyColors = LocalMoneyColors.current
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.ledger_fab_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = stringResource(R.string.ledger_action_menu_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Text(stringResource(R.string.ledger_fab_title), style = MaterialTheme.typography.headlineSmall)
+            LedgerActionRow(stringResource(R.string.ledger_expense), Icons.AutoMirrored.Rounded.TrendingDown) {
+                onAction(LedgerFabAction.EXPENSE)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                LedgerActionButton(
-                    label = stringResource(R.string.ledger_income),
-                    icon = Icons.AutoMirrored.Rounded.TrendingUp,
-                    accent = moneyColors.income,
-                    onClick = { onAction(LedgerFabAction.INCOME) },
-                    modifier = Modifier.weight(1f),
-                )
-                LedgerActionButton(
-                    label = stringResource(R.string.ledger_expense),
-                    icon = Icons.AutoMirrored.Rounded.TrendingDown,
-                    accent = moneyColors.expense,
-                    onClick = { onAction(LedgerFabAction.EXPENSE) },
-                    modifier = Modifier.weight(1f),
-                )
+            LedgerActionRow(stringResource(R.string.ledger_income), Icons.AutoMirrored.Rounded.TrendingUp) {
+                onAction(LedgerFabAction.INCOME)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                LedgerActionButton(
-                    label = stringResource(R.string.history_transfer),
-                    icon = Icons.Rounded.SwapHoriz,
-                    accent = moneyColors.transfer,
-                    onClick = { onAction(LedgerFabAction.TRANSFER) },
-                    modifier = Modifier.weight(1f),
-                )
-                LedgerActionButton(
-                    label = stringResource(R.string.ledger_reconcile),
-                    icon = Icons.AutoMirrored.Rounded.FactCheck,
-                    accent = MaterialTheme.colorScheme.primary,
-                    onClick = { onAction(LedgerFabAction.RECONCILE) },
-                    modifier = Modifier.weight(1f),
-                )
+            LedgerActionRow(stringResource(R.string.history_transfer), Icons.Rounded.SwapHoriz) {
+                onAction(LedgerFabAction.TRANSFER)
+            }
+            LedgerActionRow(stringResource(R.string.ledger_reconcile), Icons.AutoMirrored.Rounded.FactCheck) {
+                onAction(LedgerFabAction.RECONCILE)
             }
         }
     }
 }
 
 @Composable
-private fun LedgerActionButton(
-    label: String,
-    icon: ImageVector,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // Tinted chip: a low-alpha accent wash replaces the muddy solid tonal block, keeping the
-    // full-strength accent icon/label clean on top (a stronger wash in dark mode). The accent
-    // palette already ships brighter dark variants, so the accent itself stays legible.
-    // Never add elevation here: the shadow would show through the translucent wash and render
-    // as a box-in-a-box ghost inside the chip.
-    val containerColor = accent.copy(
-        alpha = if (LocalDarkTheme.current) 0.16f else 0.10f,
-    )
-    FilledTonalButton(
+private fun LedgerActionRow(label: String, icon: ImageVector, onClick: () -> Unit) {
+    com.shihuaidexianyu.money.ui.common.MoneyListRow(
+        title = label,
         onClick = onClick,
-        modifier = modifier.heightIn(min = 92.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
-        shape = MaterialTheme.shapes.large,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = containerColor,
-            contentColor = accent,
-        ),
-    ) {
-        Column(
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(icon, contentDescription = null, tint = accent)
-            Text(label, style = MaterialTheme.typography.titleMedium, color = accent)
-        }
-    }
+        leading = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier.heightIn(min = 64.dp),
+    )
 }

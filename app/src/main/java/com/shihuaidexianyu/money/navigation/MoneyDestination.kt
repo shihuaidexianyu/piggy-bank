@@ -28,7 +28,7 @@ sealed class MoneyDestination(
 
     companion object {
         val topLevel: List<MoneyDestination>
-            get() = listOf(Home, History, Accounts)
+            get() = listOf(Home, Accounts, History)
 
         const val CreateAccountRoute = "accounts/create"
         const val ReorderAccountsRoute = "accounts/reorder"

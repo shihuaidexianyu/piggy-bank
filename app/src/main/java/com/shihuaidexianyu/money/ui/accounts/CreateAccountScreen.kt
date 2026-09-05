@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.ui.common.MoneyAmountField
+import com.shihuaidexianyu.money.ui.common.MoneyExpandableSection
 import com.shihuaidexianyu.money.ui.common.MoneyCard
 import com.shihuaidexianyu.money.ui.common.CollectUiEffects
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
@@ -52,6 +53,9 @@ fun CreateAccountScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
+        },
     ) {
         item {
             MoneyCard {
@@ -72,21 +76,27 @@ fun CreateAccountScreen(
                     kind = state.kind,
                     onKindSelected = viewModel::updateKind,
                 )
-                AccountVisualFields(
-                    colorName = state.colorName,
-                    iconName = state.iconName,
-                    onColorClick = { picker = AccountSettingsPicker.COLOR },
-                    onIconClick = { picker = AccountSettingsPicker.ICON },
-                )
-                AccountReminderFields(
-                    reminderConfig = state.reminderConfig,
-                    onReminderEnabledChange = viewModel::updateReminderEnabled,
-                    onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
-                    onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
-                    onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },
-                    onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
-                )
-                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
+                MoneyExpandableSection(
+                    title = stringResource(R.string.account_optional_settings),
+                    summary = if (state.reminderConfig.isEnabled) state.reminderConfig.displayText
+                        else stringResource(R.string.account_reminder_off),
+                ) {
+                    AccountVisualFields(
+                        colorName = state.colorName,
+                        iconName = state.iconName,
+                        onColorClick = { picker = AccountSettingsPicker.COLOR },
+                        onIconClick = { picker = AccountSettingsPicker.ICON },
+                    )
+                    AccountReminderFields(
+                        reminderConfig = state.reminderConfig,
+                        onReminderEnabledChange = viewModel::updateReminderEnabled,
+                        onReminderPeriodClick = { picker = AccountSettingsPicker.REMINDER_PERIOD },
+                        onReminderWeekdayClick = { picker = AccountSettingsPicker.REMINDER_WEEKDAY },
+                        onReminderMonthDayClick = { picker = AccountSettingsPicker.REMINDER_MONTH_DAY },
+                        onReminderTimeClick = { picker = AccountSettingsPicker.REMINDER_TIME },
+                    )
+                }
+
             }
         }
     }

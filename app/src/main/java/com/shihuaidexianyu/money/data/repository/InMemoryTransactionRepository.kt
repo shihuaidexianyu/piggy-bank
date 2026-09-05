@@ -942,7 +942,7 @@ class InMemoryTransactionRepository(
                 title = title,
                 amount = record.delta,
                 occurredAt = record.occurredAt,
-                keywordSource = listOfNotNull(title, "余额校正", accountNameLookup(record.accountId)).joinToString(" "),
+                keywordSource = listOfNotNull("余额矫正", title, accountNameLookup(record.accountId)).joinToString(" "),
                 accountName = accountNameLookup(record.accountId).orEmpty(),
                 balanceBefore = balancePoint?.balanceBefore,
                 balanceAfter = balancePoint?.balanceAfter,

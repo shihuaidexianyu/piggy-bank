@@ -48,6 +48,8 @@ Clean Architecture + MVVM under `app/src/main/java/com/shihuaidexianyu/money/`:
 - **`domain/`** — pure Kotlin, no Android deps. `repository/` holds interfaces only; `usecase/` holds single-responsibility use cases plus shared calculators/projectors/policies (`LedgerBalanceCalculator`, `HomeProjector`, `ReminderNextDueCalculator`); `model/backup/` holds the `@Serializable` snapshot DTOs.
 - **`data/`** — Room entities/DAOs, repository impls, `db/MoneyDatabase.kt`, `backup/` (JSON codec + staged import + safety snapshots), `export/`, `migration/` (startup legacy-store upgrade).
 - **`ui/`** — one package per feature; each screen has a paired ViewModel exposing a single `StateFlow<UiState>`.
+- UI/UX reference: `docs/design/money-redesign-v2.md`. Navigation order is overview, accounts, activity. Use `MoneyFormPage.footer` for primary form actions and `MoneyExpandableSection` for optional setup. Successful balance checking returns to its origin with a snackbar. Computer connection and AI journal labels are `连接电脑` and `AI 修改记录`.
+- Activity uses icon-free rows with time-only metadata, sticky date headers, and an expandable detail sheet for balance evidence. Keep top-level chrome padding inside destinations through `LocalTopLevelContentPadding` so navigation transitions do not resize the NavHost.
 - **`navigation/`, `notification/`, `util/`** — routes and nav graphs, WorkManager-backed notification sync, formatters/parsers.
 - **`lan/`** — temporary foreground LAN server, NSD advertising, confirmed pairing with persistent device credentials, framed JSON protocol and router. AI ledger writes must go through `AiJournaledLedgerUseCase`, which atomically records them in the persistent LIFO Journal.
 

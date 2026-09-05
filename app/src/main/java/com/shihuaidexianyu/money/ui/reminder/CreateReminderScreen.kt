@@ -84,6 +84,11 @@ fun CreateReminderScreen(
         title = stringResource(R.string.reminder_create_title),
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null) {
+                MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
+            }
+        },
         modifier = modifier,
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
@@ -205,9 +210,6 @@ fun CreateReminderScreen(
                     supportingText = state.anchorError,
                 )
             }
-        }
-        item {
-            MoneySaveButton(onClick = viewModel::save, isSaving = state.isSaving)
         }
     }
 }

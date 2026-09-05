@@ -1,6 +1,7 @@
 package com.shihuaidexianyu.money.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ internal fun NavGraphBuilder.addTopLevelGraph(
     navController: NavHostController,
     container: MoneyAppContainer,
     onBiometricLockChange: (Boolean) -> Unit,
+    onHistoryScrolledChange: (Boolean) -> Unit = {},
 ) {
     composable(MoneyDestination.Home.route) { homeEntry ->
         // Read from THIS destination's entry — navController.currentBackStackEntry points at
@@ -71,23 +73,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onRetry = viewModel::retry,
                 onSelectPeriod = viewModel::selectPeriod,
-                onOpenHistory = {
-                    navController.navigateToTopLevelTab(MoneyDestination.History)
-                },
-                onOpenRecord = { record ->
-                    when (record.kind) {
-                        HistoryRecordKind.CASH_FLOW -> navController.navigate(MoneyDestination.editCashFlowRoute(record.recordId))
-                        HistoryRecordKind.TRANSFER -> navController.navigate(MoneyDestination.editTransferRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_UPDATE -> navController.navigate(MoneyDestination.balanceUpdateDetailRoute(record.recordId))
-                        HistoryRecordKind.BALANCE_ADJUSTMENT -> navController.navigate(MoneyDestination.balanceAdjustmentDetailRoute(record.recordId))
-                    }
-                },
-                modifier = Modifier,
+                modifier = Modifier.padding(LocalTopLevelContentPadding.current),
             )
     }
 
     composable(MoneyDestination.History.route) {
-        HistoryScreenHost(navController = navController, container = container)
+        HistoryScreenHost(navController = navController, container = container, onScrolledChange = onHistoryScrolledChange)
     }
 
     // Drill-down from account detail "查看全部": the same History surface with the account
@@ -123,10 +114,12 @@ internal fun NavGraphBuilder.addTopLevelGraph(
         val state by viewModel.uiState.collectAsStateWithLifecycle()
         AccountsScreen(
                 state = state,
+                modifier = Modifier.padding(LocalTopLevelContentPadding.current),
                 onCreateAccount = { navController.navigate(MoneyDestination.CreateAccountRoute) },
                 onAccountClick = { navController.navigate(MoneyDestination.accountDetailRoute(it)) },
                 onToggleClosedVisibility = viewModel::toggleClosedVisibility,
                 onReorderAccounts = { navController.navigate(MoneyDestination.ReorderAccountsRoute) },
+                onBatchReconcile = { navController.navigate(MoneyDestination.BatchReconcileRoute) },
                 onRetry = viewModel::retry,
             )
     }
@@ -213,6 +206,7 @@ private fun HistoryScreenHost(
     container: MoneyAppContainer,
     lockedAccountId: Long? = null,
     onBack: (() -> Unit)? = null,
+    onScrolledChange: (Boolean) -> Unit = {},
 ) {
     val viewModel = viewModel<HistoryViewModel>(
         key = lockedAccountId?.let { "account_history_$it" },
@@ -231,6 +225,7 @@ private fun HistoryScreenHost(
     val closedAccountReadOnlyMessage = stringResource(R.string.account_closed_readonly_description)
     HistoryScreen(
         state = state,
+        modifier = if (lockedAccountId == null) Modifier.padding(LocalTopLevelContentPadding.current) else Modifier,
         onKeywordChange = viewModel::updateKeyword,
         onExcludeKeywordChange = viewModel::updateExcludeKeyword,
         onRecordTypesChange = viewModel::updateRecordTypes,
@@ -244,6 +239,7 @@ private fun HistoryScreenHost(
         onLoadMore = viewModel::loadMore,
         onRetryLoadMore = viewModel::loadMore,
         onRetry = viewModel::retry,
+        onScrolledChange = onScrolledChange,
         lockedAccountId = lockedAccountId,
         onBack = onBack,
         // Quick-record from the drill-down pre-selects the scoped account; the tab keeps the

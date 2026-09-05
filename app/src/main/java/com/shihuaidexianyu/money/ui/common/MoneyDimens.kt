@@ -16,6 +16,8 @@ object MoneyDimens {
     val SpacingMd: androidx.compose.ui.unit.Dp = 12.dp
     val SpacingLg: androidx.compose.ui.unit.Dp = 16.dp
     val SpacingXl: androidx.compose.ui.unit.Dp = 24.dp
+    val SpacingXxl: androidx.compose.ui.unit.Dp = 32.dp
+    val formBottomPadding: androidx.compose.ui.unit.Dp = 32.dp
 
     /**
      * Bottom content padding for LazyColumns on top-level screens. Large enough to clear the
@@ -24,5 +26,5 @@ object MoneyDimens {
     val bottomNavContentPadding: androidx.compose.ui.unit.Dp = 112.dp
 
     /** Standard horizontal content padding for screen edges. */
-    val screenHorizontalPadding: androidx.compose.ui.unit.Dp = 16.dp
+    val screenHorizontalPadding: androidx.compose.ui.unit.Dp = 24.dp
 }

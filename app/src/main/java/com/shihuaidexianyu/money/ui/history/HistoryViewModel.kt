@@ -104,6 +104,8 @@ data class HistoryRecordUiModel(
     val relatedBalanceBefore: Long? = null,
     /** Receiving account's after-balance for transfers; null for other kinds. */
     val relatedBalanceAfter: Long? = null,
+    /** Explicit source account identity for account-scoped transfer balances. */
+    val primaryAccountId: Long? = null,
 )
 
 data class HistoryUiState(
@@ -546,6 +548,7 @@ class HistoryViewModel(
                 balanceAfter = record.balanceAfter,
                 relatedBalanceBefore = record.relatedBalanceBefore,
                 relatedBalanceAfter = record.relatedBalanceAfter,
+                primaryAccountId = record.accountId,
             )
         }
     }

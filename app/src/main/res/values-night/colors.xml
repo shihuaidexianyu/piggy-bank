@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Launcher icon (dark): same geometry and dark ink as light, on the brand teal
-         disc (matches shortcut_icon_background) so the outline work stays readable. -->
-    <color name="launcher_icon_background">#256F70</color>
-    <color name="launcher_icon_ink">#333333</color>
-    <color name="launcher_icon_body">#FFC7C7</color>
-    <color name="launcher_icon_coin">#FFE08A</color>
+    <!-- Dark launcher palette shares the coral mark with the light variant. -->
+    <color name="launcher_icon_background">#18181B</color>
+    <color name="launcher_icon_foreground">#E5484D</color>
 </resources>

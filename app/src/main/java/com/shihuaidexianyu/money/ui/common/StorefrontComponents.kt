@@ -49,12 +49,12 @@ import androidx.compose.ui.res.stringResource
 import com.shihuaidexianyu.money.R
 
 /**
- * Material 3 card used as the white foreground layer above the softly tinted page canvas.
+ * A content group on the continuous ledger surface. Clickable groups retain a tonal boundary.
  */
 @Composable
 fun MoneyCard(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(vertical = 8.dp),
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
@@ -69,9 +69,8 @@ fun MoneyCard(
     if (onClick == null) {
         Card(
             modifier = modifier.fillMaxWidth(),
-            // Info cards sit at 20dp; list sections below stay at 16dp rows language.
             shape = MaterialTheme.shapes.large,
-            colors = moneyGroupCardColors(),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             content = cardContent,
         )
     } else {
@@ -108,13 +107,7 @@ fun MoneyTonalButton(
         modifier = modifier.heightIn(min = 48.dp),
         enabled = enabled,
         contentPadding = contentPadding,
-        // A resting whisper of shadow separates the tonal block from the card it sits on;
-        // without it the secondary action reads as flat decoration rather than a button.
-        elevation = ButtonDefaults.filledTonalButtonElevation(
-            defaultElevation = 1.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp,
-        ),
+        elevation = null,
         content = content,
     )
 }
@@ -146,9 +139,9 @@ fun MoneySectionHeader(
     ) {
         Text(
             text = title,
-            // 14sp Medium + wide tracking: the quiet "eyebrow" register used above every section.
-            style = MaterialTheme.typography.titleSmall.copy(letterSpacing = 0.84.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
         )
         if (trailingContent != null) {
             trailingContent()
@@ -318,9 +311,9 @@ fun MoneyListRow(
         switchStateText?.let { append("，$it") }
     }
     ListItem(
-        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        headlineContent = { Text(title) },
         supportingContent = subtitle?.let { text ->
-            { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            { Text(text) }
         },
         leadingContent = leading,
         trailingContent = if (trailing != null || accessory != null || showChevron) {

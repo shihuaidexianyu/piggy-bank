@@ -271,21 +271,13 @@ fun SettingsScreen(
         item {
             MoneyListSection {
                 MoneyListRow(
-                    title = stringResource(R.string.settings_lan_ai),
-                    subtitle = stringResource(R.string.settings_lan_ai_description),
-                    onClick = onOpenLanAi,
-                )
-                MoneySectionDivider()
-                MoneyListRow(
                     title = stringResource(R.string.settings_theme_mode),
-                    subtitle = stringResource(R.string.settings_theme_description),
                     trailing = devicePreferences.themeMode.displayName,
                     onClick = { dialog = SettingsDialog.ThemeMode },
                 )
                 MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_amount_color),
-                    subtitle = stringResource(R.string.settings_amount_color_description),
                     trailing = settings.amountColorMode.displayName,
                     onClick = { dialog = SettingsDialog.AmountColorMode },
                 )
@@ -384,6 +376,12 @@ fun SettingsScreen(
         }
         item {
             MoneyListSection {
+                MoneyListRow(
+                    title = stringResource(R.string.settings_lan_ai),
+                    subtitle = stringResource(R.string.settings_lan_ai_description),
+                    onClick = onOpenLanAi,
+                )
+                MoneySectionDivider()
                 MoneyListRow(
                     title = stringResource(R.string.settings_export_data),
                     subtitle = stringResource(R.string.settings_plaintext_warning),

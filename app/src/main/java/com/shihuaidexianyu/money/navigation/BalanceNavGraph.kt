@@ -209,7 +209,7 @@ internal fun NavGraphBuilder.addBalanceGraph(
         UpdateBalanceScreen(
             viewModel = viewModel,
             settings = settingsState.portableSettings,
-            onShowResult = { navController.navigate(MoneyDestination.balanceUpdateResultRoute(accountId)) },
+            onSaved = { navController.popBackStack() },
             onStartCashFlow = { direction, targetAccountId, amount ->
                 navController.navigate(
                     MoneyDestination.recordCashFlowRoute(

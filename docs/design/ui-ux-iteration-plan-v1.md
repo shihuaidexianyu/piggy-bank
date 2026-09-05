@@ -1,5 +1,8 @@
 # UI/UX Iteration Plan — v1
 
+Historical reference. The current product and interaction design is
+[Money redesign v2](money-redesign-v2.md); it supersedes the presentation and navigation decisions below.
+
 Status: Phase 1 (P0) implemented in 2.5.14 — kept as the design reference for Phase 2
 Scope owner: Money (com.shihuaidexianyu.money)
 Target release: next feature release after 2.5.13

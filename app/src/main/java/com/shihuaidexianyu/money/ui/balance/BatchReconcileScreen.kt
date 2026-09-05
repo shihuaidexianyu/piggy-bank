@@ -81,6 +81,16 @@ fun BatchReconcileScreen(
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null && state.accounts.isNotEmpty()) {
+                MoneySaveButton(
+                    onClick = viewModel::saveSelected,
+                    isSaving = state.isSaving,
+                    enabled = state.selectedCount > 0 && state.pendingTerminal == null,
+                    label = stringResource(R.string.balance_confirm_unchanged),
+                )
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -186,16 +196,6 @@ fun BatchReconcileScreen(
             }
         }
 
-        item {
-            MoneyCard {
-                MoneySaveButton(
-                    onClick = viewModel::saveSelected,
-                    isSaving = state.isSaving,
-                    enabled = state.selectedCount > 0 && state.pendingTerminal == null,
-                    label = stringResource(R.string.balance_confirm_unchanged),
-                )
-            }
-        }
     }
 }
 

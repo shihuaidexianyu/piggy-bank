@@ -14,9 +14,9 @@ import org.junit.Test
 
 class AdaptiveAppShellPolicyTest {
     @Test
-    fun `top level exposes exactly home history and accounts`() {
+    fun `top level prioritizes overview then accounts then activity`() {
         assertEquals(
-            listOf(R.string.home_title, R.string.nav_history, R.string.accounts_title),
+            listOf(R.string.home_title, R.string.accounts_title, R.string.nav_history),
             MoneyDestination.topLevel.map { it.labelRes },
         )
         assertEquals(3, MoneyDestination.topLevel.map { it.route }.distinct().size)

@@ -9,11 +9,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.shihuaidexianyu.money.ui.common.MoneyFormPage
 import com.shihuaidexianyu.money.ui.home.HomeScreen
+import com.shihuaidexianyu.money.ui.home.StaleAccountUiModel
 import com.shihuaidexianyu.money.ui.home.HomeUiState
 import com.shihuaidexianyu.money.ui.theme.MoneyTheme
 import org.junit.Rule
@@ -39,6 +42,11 @@ class LargeTextReachabilityTest {
                                 totalAssets = 123_456_789L,
                                 periodCashInflow = 20_000L,
                                 periodCashOutflow = 10_000L,
+                                staleAccountCount = 1,
+                                staleAccounts = listOf(StaleAccountUiModel(
+                                    accountId = 1L, name = "现金", colorName = "blue",
+                                    currentBalance = 123_456_789L, lastBalanceUpdateAt = null,
+                                )),
                             ),
                             onStartUpdateBalance = {},
                             onAllRemindersClick = {},
@@ -49,7 +57,8 @@ class LargeTextReachabilityTest {
             }
         }
 
-        composeRule.onNodeWithText("待核对账户").performScrollTo().assertIsDisplayed()
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("待核对账户"))
+        composeRule.onNodeWithText("待核对账户").assertIsDisplayed()
     }
 
     @Test
@@ -68,6 +77,7 @@ class LargeTextReachabilityTest {
             }
         }
 
-        composeRule.onNodeWithText("保存表单").performScrollTo().assertIsDisplayed()
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("保存表单"))
+        composeRule.onNodeWithText("保存表单").assertIsDisplayed()
     }
 }

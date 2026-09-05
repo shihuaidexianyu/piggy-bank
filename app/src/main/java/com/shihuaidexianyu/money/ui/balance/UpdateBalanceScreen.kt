@@ -21,6 +21,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shihuaidexianyu.money.domain.model.CashFlowDirection
 import com.shihuaidexianyu.money.domain.model.PortableSettings
 import com.shihuaidexianyu.money.ui.common.MoneyTonalButton
+import com.shihuaidexianyu.money.ui.common.LocalRootSnackbarDispatcher
+import com.shihuaidexianyu.money.ui.common.rootSnackbarEffect
 import com.shihuaidexianyu.money.ui.common.AccountPickerDialog
 import com.shihuaidexianyu.money.ui.common.AsyncContentRenderer
 import com.shihuaidexianyu.money.ui.common.formAsyncContent
@@ -48,7 +50,7 @@ import kotlin.math.abs
 fun UpdateBalanceScreen(
     viewModel: UpdateBalanceViewModel,
     settings: PortableSettings,
-    onShowResult: () -> Unit,
+    onSaved: () -> Unit,
     onStartCashFlow: (CashFlowDirection, Long, Long) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -58,12 +60,18 @@ fun UpdateBalanceScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var dateTimeField by remember { mutableStateOf<MoneyDateTimePickerField?>(null) }
     val selectedAccount = state.accounts.firstOrNull { it.id == state.selectedAccountId }
+    val isInvestment = selectedAccount?.isInvestment == true
+    val rootDispatcher = LocalRootSnackbarDispatcher.current
+    val savedMessage = stringResource(if (isInvestment) R.string.balance_value_saved_brief else R.string.balance_saved_brief)
     val guardedBack = rememberDirtyFormBackAction(state.isDirty, onBack)
 
     CollectUiEffects(viewModel.effectFlow, snackbarHostState) {}
     state.pendingTerminal?.let { terminal ->
         LaunchedEffect(terminal.token) {
-            if (terminal.kind == FormTerminalKind.SAVED) onShowResult()
+            if (terminal.kind == FormTerminalKind.SAVED) {
+                rootDispatcher?.dispatch(rootSnackbarEffect(savedMessage, token = terminal.token))
+                onSaved()
+            }
             viewModel.ackTerminal(terminal.token)
         }
     }
@@ -89,10 +97,26 @@ fun UpdateBalanceScreen(
     )
 
     MoneyFormPage(
-        title = stringResource(R.string.balance_reconcile_title),
+        title = stringResource(if (isInvestment) R.string.balance_update_market_value else R.string.balance_reconcile_title),
         modifier = modifier,
         snackbarHostState = snackbarHostState,
         onBack = guardedBack,
+        footer = {
+            if (!state.isLoading && state.loadErrorMessageRes == null) {
+                MoneySaveButton(
+                    onClick = viewModel::save,
+                    isSaving = state.isSaving,
+                    enabled = state.pendingTerminal == null,
+                    label = stringResource(
+                        when {
+                            state.deltaPreview == 0L -> R.string.balance_confirm_unchanged
+                            isInvestment -> R.string.balance_save_investment_update
+                            else -> R.string.balance_save_reconciliation
+                        },
+                    ),
+                )
+            }
+        },
     ) {
         if (state.isLoading || state.loadErrorMessageRes != null) {
             item {
@@ -105,7 +129,6 @@ fun UpdateBalanceScreen(
             }
             return@MoneyFormPage
         }
-        val isInvestment = selectedAccount?.isInvestment == true
         item {
             MoneyCard {
                 MoneySelectionField(
@@ -116,7 +139,7 @@ fun UpdateBalanceScreen(
                     supportingText = state.accountError,
                 )
                 MoneyInlineLabelValue(
-                    label = stringResource(R.string.balance_system),
+                    label = stringResource(if (isInvestment) R.string.balance_recorded_market_value else R.string.balance_system),
                     value = if (state.isLoading) {
                         "—"
                     } else {
@@ -133,7 +156,7 @@ fun UpdateBalanceScreen(
                 MoneyAmountField(
                     value = state.actualBalanceText,
                     onValueChange = viewModel::updateActualBalance,
-                    label = stringResource(R.string.balance_actual),
+                    label = stringResource(if (isInvestment) R.string.balance_current_market_value else R.string.balance_actual),
                     allowSigned = true,
                     isError = state.actualBalanceError != null,
                     supportingText = state.actualBalanceError,
@@ -258,18 +281,7 @@ fun UpdateBalanceScreen(
                         }
                     }
                 }
-                MoneySaveButton(
-                    onClick = viewModel::save,
-                    isSaving = state.isSaving,
-                    enabled = state.pendingTerminal == null,
-                    label = stringResource(
-                        when {
-                            state.deltaPreview == 0L -> R.string.balance_confirm_unchanged
-                            isInvestment -> R.string.balance_save_investment_update
-                            else -> R.string.balance_save_reconciliation
-                        },
-                    ),
-                )
+
             }
         }
     }
@@ -283,7 +295,7 @@ fun UpdateBalanceScreen(
  */
 @Composable
 internal fun investmentDeltaText(delta: Long, systemBalance: Long): String {
-    if (delta == 0L) return stringResource(R.string.balance_unchanged_hint)
+    if (delta == 0L) return stringResource(R.string.balance_market_value_unchanged_hint)
     val base = stringResource(
         if (delta > 0L) R.string.history_investment_gain else R.string.history_investment_loss,
     )
